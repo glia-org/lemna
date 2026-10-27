@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import Security
 import Testing
 @testable import FlowJournal
 
@@ -35,9 +36,9 @@ import Testing
             #expect(j.replay.isEmpty)
             for i in 0 ..< 500 {
                 let e: Edit = switch i % 7 {
-                case 0: .paragraphEnd
-                case 3: .deleteBackward(i % 3 + 1)
-                default: .insert(words[i % words.count])
+                case 0: .insert(at: i, "\n")
+                case 3: .delete(at: i / 2, count: i % 3 + 1)
+                default: .insert(at: i / 3, words[i % words.count])
                 }
                 edits.append(e)
                 j.append(e)
@@ -60,8 +61,8 @@ import Testing
 
     @Test func tornTailIsIgnored() throws {
         let (id, url) = try session { j in
-            for w in ["one ", "two ", "three"] {
-                j.append(.insert(w))
+            for (i, w) in ["one ", "two ", "three"].enumerated() {
+                j.append(.insert(at: 4 * i, w))
                 j.flush(.barrier)
             }
         }
@@ -72,19 +73,19 @@ import Testing
             try whole.prefix(cut).write(to: url)
             let k = try open()
             #expect(k.sessionID == id)
-            #expect(k.replay == [.insert("one "), .insert("two ")])
+            #expect(k.replay == [.insert(at: 0, "one "), .insert(at: 4, "two ")])
         }
         // The torn bytes were cut off, so what is typed after the restore follows the last whole record.
         _ = try session { k in
             #expect(k.sessionID == id)
-            k.append(.insert("2"))
+            k.append(.insert(at: 8, "2"))
         }
-        #expect(try open().replay == [.insert("one "), .insert("two "), .insert("2")])
+        #expect(try open().replay == [.insert(at: 0, "one "), .insert(at: 4, "two "), .insert(at: 8, "2")])
     }
 
     @Test func finishedSessionIsNoise() throws {
         let j = try open()
-        j.append(.insert("secret"))
+        j.append(.insert(at: 0, "secret"))
         j.flush(.full)
         let copy = try Data(contentsOf: j.fileURL)
         try j.finish()
@@ -100,7 +101,7 @@ import Testing
     }
 
     @Test func wrongKeyIsNoise() throws {
-        let (id, url) = try session { j in j.append(.insert("secret")) }
+        let (id, url) = try session { j in j.append(.insert(at: 0, "secret")) }
         try store.store(key: SymmetricKey(size: .bits256), for: id)
         let k = try open()
         #expect(k.sessionID != id)
@@ -111,8 +112,8 @@ import Testing
 
     @Test func reorderedRecordsStopTheReplay() throws {
         let (id, url) = try session { j in
-            for w in ["a", "b", "c", "d"] {
-                j.append(.insert(w))
+            for (i, w) in ["a", "b", "c", "d"].enumerated() {
+                j.append(.insert(at: i, w))
                 j.flush(.barrier)
             }
         }
@@ -122,12 +123,12 @@ import Testing
         try (data.prefix(r[0].upperBound) + data[r[2]] + data[r[1]] + data[r[3]]).write(to: url)
         let k = try open()
         #expect(k.sessionID == id)
-        #expect(k.replay == [.insert("a")])
+        #expect(k.replay == [.insert(at: 0, "a")])
     }
 
     @Test func aJournalInUseIsNotRestored() throws {
         let j = try open()
-        j.append(.insert("mine"))
+        j.append(.insert(at: 0, "mine"))
         j.flush(.full)
         let k = try open()  // j still holds its file's lock
         #expect(k.sessionID != j.sessionID)
@@ -139,13 +140,13 @@ import Testing
         let j = try open()
         let start = Date()
         for i in 0 ..< 20 {
-            j.append(.insert("\(i)"))
+            j.append(.insert(at: i, "\(i)"))
             usleep(450)
         }
         try #require(Date().timeIntervalSince(start) < 0.04, "the appends took longer than the window")
         Thread.sleep(forTimeInterval: 0.2)
         #expect(records(j.fileURL).count == 1)
-        j.append(.insert("later"))
+        j.append(.insert(at: 0, "later"))
         Thread.sleep(forTimeInterval: 0.2)
         #expect(records(j.fileURL).count == 2)
     }
@@ -175,7 +176,93 @@ import Testing
         try store.store(key: SymmetricKey(data: try #require(Data(base64Encoded: String(line[2])))), for: id)
         let k = try open()
         #expect(k.sessionID == id)
-        #expect(k.replay == (0 ..< 40).map { .insert("w\($0) ") })
+        var at = 0  // the helper types each word at the end
+        #expect(k.replay == (0 ..< 40).map { i in
+            defer { at += "w\(i) ".count }
+            return .insert(at: at, "w\(i) ")
+        })
+    }
+
+    @Test func v2RoundTripWithEditsInTheMiddle() throws {
+        // Typed "naïve 🙂 café", then a word put in the middle, a typo cut from it, a paragraph end before the last
+        // word: Character offsets, so é, ï and 🙂 are one each.
+        let edits: [Edit] = [.insert(at: 0, "naïve 🙂 café"), .insert(at: 6, "very "), .delete(at: 7, count: 2),
+                             .insert(at: 7, "er"), .insert(at: 13, "\n"), .delete(at: 0, count: 1)]
+        let (_, url) = try session { j in
+            for e in edits {
+                j.append(e)
+                j.flush(.barrier)
+            }
+        }
+        #expect(try Data(contentsOf: url).prefix(6) == Data("FLOWJ2".utf8))
+        #expect(try open().replay == edits)
+    }
+
+    /// A file as format 1 wrote it: its header, then records of its edits, its key in `store`.
+    func writeV1(_ batches: [[V1Edit]]) throws -> (id: UUID, url: URL) {
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let id = UUID(), key = SymmetricKey(size: .bits256)
+        try store.store(key: key, for: id)
+        var file = Format.header(id, magic: Format.magicV1)
+        for (seq, b) in batches.enumerated() { file += try Format.record(b, seq: UInt64(seq), key: key) }
+        let url = dir.appendingPathComponent("\(id.uuidString).journal")
+        try file.write(to: url)
+        return (id, url)
+    }
+
+    @Test func v1ReplaysAsTheTextItLeft() {
+        // Format 1's own rules: appends; a newline of any kind ends a paragraph; deleteBackward counts UTF-16 units
+        // (🙂 is two) and stops at the paragraph's start.
+        let v1: [V1Edit] = [.insert("one"), .paragraphEnd, .insert("cafe"), .deleteBackward(1), .insert("é 🙂"),
+                            .deleteBackward(2), .insert("x\r\ny"), .deleteBackward(9), .insert("z"), .paragraphEnd]
+        #expect(V1Edit.upgrade(v1) == [.insert(at: 0, "one\ncafé x\nz\n")])
+        #expect(V1Edit.upgrade([]) == [])
+        #expect(V1Edit.upgrade([.insert("a"), .deleteBackward(1)]) == [])
+    }
+
+    @Test func v1SessionMovesToV2() throws {
+        let (oldID, oldURL) = try writeV1([[.insert("hello"), .paragraphEnd], [.insert("wörld"), .deleteBackward(1)]])
+        // The order: when the old key goes, the new file already holds the text, and the old file is still there.
+        let watching = Watching(store)
+        watching.onDestroy = { [dir] id in
+            guard id == oldID else { return }
+            let files = (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []
+            let new = files.map { dir.appendingPathComponent($0) }.filter { $0 != oldURL }
+            #expect(files.contains(oldURL.lastPathComponent))
+            #expect(new.count == 1)
+            let data = new.first.flatMap { try? Data(contentsOf: $0) }
+            let key = data.flatMap(Format.sessionID).flatMap { try? self.store.key(for: $0) }
+            #expect(data.flatMap { d in key.flatMap { Format.read(d, key: $0) } }?.edits
+                    == [.insert(at: 0, "hello\nwörl")])
+        }
+        var j: Journal? = try Journal.open(directory: dir, keyStore: watching)
+        #expect(watching.destroyed == [oldID])
+        #expect(j!.sessionID != oldID)
+        #expect(j!.replay == [.insert(at: 0, "hello\nwörl")])
+        #expect(!FileManager.default.fileExists(atPath: oldURL.path))
+        #expect(try store.key(for: oldID) == nil)
+        #expect(try Data(contentsOf: j!.fileURL).prefix(6) == Data("FLOWJ2".utf8))
+        // Writing goes on in the new file, and the next open restores it.
+        j!.append(.insert(at: 10, "d"))
+        j!.flush(.full)
+        let newID = j!.sessionID
+        weak var gone = j
+        j = nil
+        while gone != nil { usleep(1000) }
+        let k = try open()
+        #expect(k.sessionID == newID)
+        #expect(k.replay == [.insert(at: 0, "hello\nwörl"), .insert(at: 10, "d")])
+    }
+
+    @Test func aV1SessionWhoseKeyWillNotGoStaysAsItWas() throws {
+        let (oldID, oldURL) = try writeV1([[.insert("kept")]])
+        let refusing = Watching(store)
+        refusing.refuse = oldID
+        #expect(throws: KeychainError.self) { try Journal.open(directory: dir, keyStore: refusing) }
+        // Nothing new is left behind: the old file and its key, as before; the next open moves it.
+        #expect(try FileManager.default.contentsOfDirectory(atPath: dir.path) == [oldURL.lastPathComponent])
+        #expect(try store.sessions() == [oldID])
+        #expect(try open().replay == [.insert(at: 0, "kept")])
     }
 
     // Uses the login keychain, which may prompt: FLOW_KEYCHAIN_TEST=1 swift test ... --filter loginKeychain
@@ -200,7 +287,7 @@ import Testing
             let j = try Journal.open(directory: dir.appendingPathComponent("\(level)"), keyStore: store)
             var us: [Double] = []
             for i in 0 ..< 300 {
-                j.append(.insert("w\(i) "))
+                j.append(.insert(at: 3 * i, "w\(i) "))
                 let t0 = DispatchTime.now().uptimeNanoseconds
                 j.flush(level)
                 us.append(Double(DispatchTime.now().uptimeNanoseconds - t0) / 1000)
@@ -214,7 +301,7 @@ import Testing
         let key = try #require(try store.key(for: id))
         var file = Format.header(id)
         for i in 0 ..< 36_000 {
-            file += try Format.record([i % 6 == 5 ? .insert(" ") : .insert("e")], seq: UInt64(i), key: key)
+            file += try Format.record([Edit.insert(at: i, i % 6 == 5 ? " " : "e")], seq: UInt64(i), key: key)
         }
         try file.write(to: url)
         let t0 = DispatchTime.now().uptimeNanoseconds
@@ -226,6 +313,25 @@ import Testing
 }
 
 private final class BundleMarker {}
+
+/// A key store that reports each destroy before it happens, and can refuse one.
+private final class Watching: KeyStore {
+    let inner: KeyStore
+    var onDestroy: (UUID) -> Void = { _ in }
+    var refuse: UUID?
+    private(set) var destroyed: [UUID] = []
+    init(_ inner: KeyStore) { self.inner = inner }
+
+    func store(key: SymmetricKey, for session: UUID) throws { try inner.store(key: key, for: session) }
+    func key(for session: UUID) throws -> SymmetricKey? { try inner.key(for: session) }
+    func sessions() throws -> [UUID] { try inner.sessions() }
+    func destroy(for session: UUID) throws {
+        if session == refuse { throw KeychainError(status: errSecInteractionNotAllowed) }
+        onDestroy(session)
+        try inner.destroy(for: session)
+        destroyed.append(session)
+    }
+}
 
 /// The byte ranges of the file's records (length prefix included), read from the length prefixes alone.
 private func records(_ url: URL) -> [Range<Int>] {

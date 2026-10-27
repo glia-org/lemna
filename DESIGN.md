@@ -33,7 +33,7 @@ Both wait for the display-link tick and then for vsync. Known cuts for the app: 
 
 ## Plan (v1), one milestone at a time, each with tests and a try by the user
 
-All five built on 2026-10-27 (`app/`, `lib/FlowJournal`, `lib/FlowClicks`); none tried by the user yet. `HANDOFF.md` lists what to try.
+Items 1–8 built on 2026-10-27 (`app/`, `lib/FlowJournal`, `lib/FlowClicks`, `lib/FlowHarper`); the user tried the v1 window only. `HANDOFF.md` lists what to try.
 
 1. **Surface** (S1 V2 B1 P0, W1's window): the app bundle skeleton (`app/`, SwiftPM, `make-app.sh` assembles `Flow.app` and ad-hoc signs it), an ordinary resizable window, the line from the spike with clip, fade and glide, real paragraphs in the model (shown as `¶` on the line), dead keys, Reduce Motion, 120 Hz hold, draw-on-key. Tests: layout core, offscreen render to PNG.
 2. **Journal** (E2): AES-GCM append-only journal, key store (login keychain now), write/barrier/flush policy, silent restore, Done/Discard destroys the key. Tests: round trip, kill -9 mid-session then restore, discard leaves noise.

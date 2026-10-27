@@ -1,4 +1,4 @@
-// Flow (working name): the writing surface (DESIGN.md S1 V2 B1 P0) in a small floating box over whatever the user is
+// Flow (working name): the writing surface (DESIGN.md S1 V2 B4 P0) in a small floating box over whatever the user is
 // doing, or in an ordinary window for long sessions (W2), kept in the journal (E2), with key clicks (K1), the session
 // frame (M1: time box, intent, private log), summoning (hotkey, menu-bar item), and the end of a session: Done → review
 // with Harper's suggestions → paste into the app behind the box, copy, save or discard (O1 O2 O3 R1 R2).

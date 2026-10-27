@@ -1,18 +1,19 @@
-// The line's geometry and drawing (DESIGN.md S1 V2). Core Text shapes it and Core Graphics draws it into a bitmap, so
-// the tests render exactly what the app's Metal strip shows.
+// The line's geometry and drawing (DESIGN.md S1 V2 B4). Core Text shapes it and Core Graphics draws it into a bitmap,
+// so the tests render exactly what the app's Metal strip shows.
 import CoreGraphics
 import CoreText
 import Foundation
 
-/// A shaped glyph: its font (a fallback one for characters Menlo lacks), id, x in the line, advance, and whether it
-/// belongs to a paragraph end.
+/// A shaped glyph: its font (a fallback one for characters Menlo lacks), id, x in the line, advance, whether it
+/// belongs to a paragraph end, and whether it stands after the caret.
 public struct Glyph {
-    public let font: CTFont, id: CGGlyph, x: CGFloat, advance: CGFloat, muted: Bool
+    public let font: CTFont, id: CGGlyph, x: CGFloat, advance: CGFloat, muted: Bool, after: Bool
 }
 
-/// The line laid out. It rests with its end at the caret.
+/// The line laid out around the caret: `caret` is the caret's x in it, where the text before it ends and the text
+/// after it begins. It rests with that x at the caret.
 public struct Shaped {
-    public var glyphs: [Glyph] = [], width: CGFloat = 0
+    public var glyphs: [Glyph] = [], width: CGFloat = 0, caret: CGFloat = 0
     public init() {}
 }
 
@@ -31,12 +32,18 @@ public func rgb(_ hex: UInt32) -> CGColor {
 
 public enum Line {
     public static let glideDuration = 0.140
-    /// The caret's x, and where the fade (V2) reaches full strength and nothing, as fractions of the width.
+    /// The caret's x, and where the fade of the text before it (V2) reaches full strength and nothing, as fractions
+    /// of the width.
     public static let caret: CGFloat = 0.6, opaqueFrom = 0.45, clearAt = 0.25
+    /// The text after the caret (B4): full strength up to 80 % of the width, nothing from 95 % on.
+    public static let afterOpaqueTo: CGFloat = 0.8, afterClearAt: CGFloat = 0.95
     public static let paragraphEnd = " ¶ "
-    /// Characters shaped per edit: 200 Menlo cells at 28 pt span about 3,400 pt, the visible 35 % of a window over
-    /// 9,000 pt wide.
+    /// Characters shaped on each side of the caret per edit: 200 Menlo cells at 28 pt span about 3,400 pt, the
+    /// visible 35 % of a window over 9,000 pt wide (before the caret 25 % to 60 %, after it 60 % to 95 %).
     public static let tail = 200
+    /// About one word, in cells: an English word averages about five letters, plus its space. Holding ← leaves the
+    /// text at most this far behind the caret.
+    public static let wordCells = 6
     static let mutedKey = NSAttributedString.Key("FlowMuted")
 
     /// Ease-out cubic, 1 − (1 − u)³, with u clamped to 0…1.
@@ -50,33 +57,47 @@ public enum Line {
         min(max((x - clearAt * w) / ((opaqueFrom - clearAt) * w), 0), 1)
     }
 
-    /// The width of `s` alone: how far an edit that adds or removes `s` at the end moves the line's end. Measured on
-    /// its own, not as the difference of two shaped tails, because the tail's start moves with every key.
-    public static func width(_ s: String, font: CTFont) -> CGFloat {
-        s.isEmpty ? 0 : CTLineGetTypographicBounds(CTLineCreateWithAttributedString(attributed(s, font, muted: false)),
-                                                   nil, nil, nil)
+    /// The same for the text after the caret: 1 left of 80 %, 0 at 95 % and right of it, linear between.
+    public static func fadeAfter(x: Double, width w: Double) -> Double {
+        min(max((afterClearAt * w - x) / ((afterClearAt - afterOpaqueTo) * w), 0), 1)
     }
 
-    /// Shapes the line: the text's tail with its paragraph ends, then the marked text (a pending dead key) as its end,
-    /// in the text colour.
+    /// The width of `s` alone as the line shows it (a paragraph end as ` ¶ `): how far an edit that adds or removes
+    /// `s` at the caret, or a caret move over it, moves the text. Measured on its own, not as the difference of two
+    /// shaped lines, because their start moves with every key.
+    public static func width(_ s: String, font: CTFont) -> CGFloat {
+        let shown = s.replacingOccurrences(of: "\n", with: paragraphEnd)
+        return shown.isEmpty ? 0 : CTLineGetTypographicBounds(
+            CTLineCreateWithAttributedString(attributed(shown, font, muted: false)), nil, nil, nil)
+    }
+
+    /// Shapes the line around the caret: the text before it with its paragraph ends, then the marked text (a pending
+    /// dead key, at the caret, in the text colour), then the text after it; once per edit, as one line, so the two
+    /// parts meet where Core Text puts the caret.
     public static func shape(_ text: Text, marked: String, font: CTFont) -> Shaped {
+        let (before, after) = text.line(around: tail)
         let s = NSMutableAttributedString()
-        for part in text.line(last: tail) + [(text: marked, muted: false)] where !part.text.isEmpty {
+        for part in before + [(text: marked, muted: false)] where !part.text.isEmpty {
             s.append(attributed(part.text, font, muted: part.muted))
         }
+        let split = s.length  // the caret, in the line's UTF-16 units
+        for part in after { s.append(attributed(part.text, font, muted: part.muted)) }
         let line = CTLineCreateWithAttributedString(s)
         var out = Shaped()
         out.width = CTLineGetTypographicBounds(line, nil, nil, nil)
+        out.caret = CTLineGetOffsetForStringIndex(line, split, nil)
         for run in CTLineGetGlyphRuns(line) as! [CTRun] {
             let attributes = CTRunGetAttributes(run) as NSDictionary, n = CTRunGetGlyphCount(run)
             let runFont = attributes[kCTFontAttributeName as String] as! CTFont, muted = attributes[mutedKey.rawValue] != nil
             var ids = [CGGlyph](repeating: 0, count: n), pos = [CGPoint](repeating: .zero, count: n)
-            var adv = [CGSize](repeating: .zero, count: n)
+            var adv = [CGSize](repeating: .zero, count: n), at = [CFIndex](repeating: 0, count: n)
             CTRunGetGlyphs(run, CFRange(), &ids)
             CTRunGetPositions(run, CFRange(), &pos)
             CTRunGetAdvances(run, CFRange(), &adv)
+            CTRunGetStringIndices(run, CFRange(), &at)
             for i in 0..<n {
-                out.glyphs.append(Glyph(font: runFont, id: ids[i], x: pos[i].x, advance: adv[i].width, muted: muted))
+                out.glyphs.append(Glyph(font: runFont, id: ids[i], x: pos[i].x, advance: adv[i].width, muted: muted,
+                                        after: at[i] >= split))
             }
         }
         return out
@@ -100,23 +121,40 @@ public enum Line {
         CGRect(x: band.minX + caret * band.width, y: band.midY - 0.6 * style.size, width: 2, height: 1.2 * style.size)
     }
 
-    /// Draws the band: its background; the line, its end at the caret moved by the glide's `offset`, each glyph faded by
-    /// its centre's x and clipped at the caret; the caret on top. Nothing is drawn right of the caret (S1): a new glyph
-    /// emerges from under it as the line glides, and a deleted one is gone at once.
-    public static func draw(_ line: Shaped, offset: CGFloat, in c: CGContext, band: CGRect, style: Style) {
-        let bar = caretRect(in: band, style: style), x0 = bar.minX - line.width + offset
+    /// Draws the band: its background; the text before the caret, its end at the caret's left edge moved by `before`,
+    /// each glyph faded by its centre's x (V2) and clipped at the caret; the text after the caret, its start at the
+    /// caret's right edge moved by `after`, faded the other way and clipped at the caret and at 95 % (B4); the caret on
+    /// top. So no glyph ever overlaps the caret: nothing before it is drawn right of it (S1; a new glyph emerges from
+    /// under it as that part glides, a deleted one is gone at once), nothing after it left of it, and a caret move
+    /// passes the text under it. `before` is the edit's glide and the caret move's together, `after` the move's alone.
+    public static func draw(_ line: Shaped, before: CGFloat, after: CGFloat, in c: CGContext, band: CGRect,
+                            style: Style) {
+        let bar = caretRect(in: band, style: style), w = Double(band.width)
         let baseline = band.midY - (CTFontGetAscent(style.font) - CTFontGetDescent(style.font)) / 2  // centres the glyphs
         c.saveGState()
         c.setFillColor(style.background)
         c.fill(band)
-        c.clip(to: CGRect(x: band.minX, y: band.minY, width: bar.minX - band.minX, height: band.height))
-        for g in line.glyphs {
-            let x = x0 + g.x, a = fade(x: Double(x + g.advance / 2 - band.minX), width: Double(band.width))
-            guard a > 0, x < bar.minX else { continue }
-            c.setAlpha(CGFloat(a))
-            c.setFillColor(g.muted ? style.muted : style.text)
-            var id = g.id, p = CGPoint(x: x, y: baseline)
-            CTFontDrawGlyphs(g.font, &id, &p, 1, c)
+        func part(_ isAfter: Bool, from x0: CGFloat, clip: CGRect, alpha: (Double) -> Double) {
+            c.saveGState()
+            c.clip(to: clip)
+            for g in line.glyphs where g.after == isAfter {
+                let x = x0 + g.x, a = alpha(Double(x + g.advance / 2 - band.minX))
+                guard a > 0, x < clip.maxX, x + g.advance > clip.minX else { continue }
+                c.setAlpha(CGFloat(a))
+                c.setFillColor(g.muted ? style.muted : style.text)
+                var id = g.id, p = CGPoint(x: x, y: baseline)
+                CTFontDrawGlyphs(g.font, &id, &p, 1, c)
+            }
+            c.restoreGState()
+        }
+        part(false, from: bar.minX - line.caret + before,
+             clip: CGRect(x: band.minX, y: band.minY, width: bar.minX - band.minX, height: band.height)) {
+            fade(x: $0, width: w)
+        }
+        part(true, from: bar.maxX - line.caret + after,
+             clip: CGRect(x: bar.maxX, y: band.minY, width: band.minX + afterClearAt * band.width - bar.maxX,
+                          height: band.height)) {
+            fadeAfter(x: $0, width: w)
         }
         c.restoreGState()
         c.setFillColor(style.caret)

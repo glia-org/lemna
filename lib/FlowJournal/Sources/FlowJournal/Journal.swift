@@ -2,11 +2,12 @@ import CryptoKit
 import Darwin
 import Foundation
 
-/// One change to the text, as the app's text model replays it. The journal holds edits, never the text.
+/// One change to the text, as the app's text model replays it: offsets and counts in Characters (Swift's grapheme
+/// clusters) of the text as it stands before the edit. The journal holds edits, never the text, and never the caret:
+/// moving it changes nothing to keep.
 public enum Edit: Codable, Equatable {
-    case insert(String)
-    case deleteBackward(Int)
-    case paragraphEnd
+    case insert(at: Int, String)
+    case delete(at: Int, count: Int)
 }
 
 public enum FlushLevel {
@@ -17,7 +18,7 @@ public enum FlushLevel {
 }
 
 /// A session's encrypted, append-only journal (DESIGN.md E2). One file per session, `<uuid>.journal`:
-/// `FLOWJ1`, the session's UUID (16 bytes), then records. A record is a 4-byte little-endian length and an AES-GCM
+/// `FLOWJ2`, the session's UUID (16 bytes), then records. A record is a 4-byte little-endian length and an AES-GCM
 /// `SealedBox.combined` (nonce, ciphertext, tag) of one batch of edits; its sequence number is in the payload and is
 /// the authenticated data, so records cannot be reordered, dropped or spliced in without the replay stopping there.
 public final class Journal {
@@ -41,7 +42,8 @@ public final class Journal {
 
     /// Restores the most recent unfinished session in `directory` (a journal whose key `keyStore` still has), or
     /// starts a new one. Creates the directory (0700) and marks it excluded from backups. Each journal holds an
-    /// exclusive `flock` on its file for its lifetime; `open` skips files whose lock is held.
+    /// exclusive `flock` on its file for its lifetime; `open` skips files whose lock is held. A session restored from
+    /// a format 1 file moves into a new file of format 2 (`migrate`): this journal is then the new one.
     public static func open(directory: URL, keyStore: KeyStore) throws -> Journal {
         let fm = FileManager.default
         try fm.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
@@ -62,7 +64,8 @@ public final class Journal {
             .map { directory.appendingPathComponent($0) }
             .sorted { modified($0) > modified($1) }
         var unreadable: [URL] = []
-        var restored: (url: URL, id: UUID, key: SymmetricKey, edits: [Edit], end: Int, records: Int, size: Int, fd: Int32)?
+        var restored: (url: URL, id: UUID, key: SymmetricKey, version: Int, edits: [Edit], end: Int, records: Int,
+                       size: Int, fd: Int32)?
         for url in journals {
             let fd = Darwin.open(url.path, O_WRONLY | O_APPEND | O_CLOEXEC)
             // Locked by the journal writing it (in another process, or another instance in this one): in use, so
@@ -86,11 +89,15 @@ public final class Journal {
                 unreadable.append(url)
                 continue
             }
-            restored = (url, id, key, read.edits, read.end, read.records, data.count, fd)
+            restored = (url, id, key, read.version, read.edits, read.end, read.records, data.count, fd)
         }
 
         if let r = restored {
             let fd = r.fd
+            if r.version == 1 {
+                return try migrate(r.edits, from: (r.id, r.url, fd), directory: directory, keyStore: keyStore,
+                                   unreadable: unreadable)
+            }
             if r.end < r.size {
                 // Cut the torn or unreadable tail, so what is typed next follows the last whole record.
                 guard ftruncate(fd, off_t(r.end)) == 0 else { let e = posixError(); Darwin.close(fd); throw e }
@@ -100,7 +107,15 @@ public final class Journal {
                            replay: r.edits, unreadable: unreadable, keyStore: keyStore)
         }
 
-        // A new session. The key reaches the store before the file has a byte, so no record is ever without it.
+        let new = try create(in: directory, keyStore: keyStore)
+        return Journal(id: new.id, url: new.url, key: new.key, fd: new.fd, end: off_t(Format.headerSize), seq: 0,
+                       replay: [], unreadable: unreadable, keyStore: keyStore)
+    }
+
+    /// A new session's file, locked, with its header. The key reaches the store before the file has a byte, so no
+    /// record is ever without it.
+    private static func create(in directory: URL, keyStore: KeyStore) throws
+        -> (id: UUID, url: URL, key: SymmetricKey, fd: Int32) {
         let id = UUID()
         let key = SymmetricKey(size: .bits256)
         try keyStore.store(key: key, for: id)
@@ -124,8 +139,38 @@ public final class Journal {
         // drains the drive's cache, this included.
         let dfd = Darwin.open(directory.path, O_RDONLY | O_CLOEXEC)
         if dfd >= 0 { fsync(dfd); Darwin.close(dfd) }
-        return Journal(id: id, url: url, key: key, fd: fd, end: off_t(header.count), seq: 0,
-                       replay: [], unreadable: unreadable, keyStore: keyStore)
+        return (id, url, key, fd)
+    }
+
+    /// A session of format 1 (typing only at the end) restored: its edits, read as format 2's, go into a new file of
+    /// format 2, which is on the drive (F_FULLFSYNC) before the old file is finished, key destroyed first, then the
+    /// file deleted. A crash in between leaves both keyed; `open` then takes the newer, the new one. If the old key
+    /// will not go, the new file goes instead and `open` throws, so the session stays as it was, in format 1, for
+    /// the next open. Silent: the text is the same, and the journal is the new one from here on.
+    private static func migrate(_ edits: [Edit], from old: (id: UUID, url: URL, fd: Int32), directory: URL,
+                                keyStore: KeyStore, unreadable: [URL]) throws -> Journal {
+        let new: (id: UUID, url: URL, key: SymmetricKey, fd: Int32)
+        do { new = try create(in: directory, keyStore: keyStore) } catch { Darwin.close(old.fd); throw error }
+        var end = off_t(Format.headerSize), seq: UInt64 = 0
+        do {
+            if !edits.isEmpty {
+                let record = try Format.record(edits, seq: 0, key: new.key)
+                guard writeAll(new.fd, record) else { throw posixError() }
+                (end, seq) = (end + off_t(record.count), 1)
+            }
+            if fcntl(new.fd, F_FULLFSYNC) == -1 { fsync(new.fd) }
+            try keyStore.destroy(for: old.id)
+        } catch {
+            Darwin.close(new.fd)
+            unlink(new.url.path)
+            try? keyStore.destroy(for: new.id)
+            Darwin.close(old.fd)
+            throw error
+        }
+        unlink(old.url.path)  // noise now that its key is gone, so a failure here loses nothing
+        Darwin.close(old.fd)
+        return Journal(id: new.id, url: new.url, key: new.key, fd: new.fd, end: end, seq: seq, replay: edits,
+                       unreadable: unreadable, keyStore: keyStore)
     }
 
     private init(id: UUID, url: URL, key: SymmetricKey, fd: Int32, end: off_t, seq: UInt64, replay: [Edit],
@@ -233,40 +278,61 @@ private func posixError() -> POSIXError {
 
 /// The file format, apart from the journal's state so tests can read and build files.
 enum Format {
-    static let magic = Data("FLOWJ1".utf8)
+    static let magic = Data("FLOWJ2".utf8)
+    /// Format 1, from before the caret could move (DESIGN.md B1): still read, and moved to format 2 on restore;
+    /// written only by the tests.
+    static let magicV1 = Data("FLOWJ1".utf8)
     static let headerSize = 6 + 16
 
-    struct Batch: Codable {
+    struct Batch<E: Codable>: Codable {
         var seq: UInt64
-        var edits: [Edit]
+        var edits: [E]
     }
 
-    static func header(_ id: UUID) -> Data {
+    static func header(_ id: UUID, magic: Data = magic) -> Data {
         magic + withUnsafeBytes(of: id.uuid) { Data($0) }
     }
 
-    static func sessionID(in data: Data) -> UUID? {
-        guard data.count >= headerSize, data.prefix(magic.count) == magic else { return nil }
-        return data.withUnsafeBytes { UUID(uuid: $0.loadUnaligned(fromByteOffset: magic.count, as: uuid_t.self)) }
+    /// The format (1 or 2) and the session's UUID; nil when the header is not a journal's.
+    static func header(in data: Data) -> (version: Int, id: UUID)? {
+        guard data.count >= headerSize else { return nil }
+        let version: Int
+        switch data.prefix(magic.count) {
+        case magic: version = 2
+        case magicV1: version = 1
+        default: return nil
+        }
+        return (version, data.withUnsafeBytes { UUID(uuid: $0.loadUnaligned(fromByteOffset: magic.count, as: uuid_t.self)) })
     }
+
+    static func sessionID(in data: Data) -> UUID? { header(in: data)?.id }
 
     static func aad(_ seq: UInt64) -> Data {
         withUnsafeBytes(of: seq.littleEndian) { Data($0) }
     }
 
     /// One record: the length, then nonce ‖ ciphertext ‖ tag under a fresh random nonce.
-    static func record(_ edits: [Edit], seq: UInt64, key: SymmetricKey) throws -> Data {
+    static func record<E: Codable>(_ edits: [E], seq: UInt64, key: SymmetricKey) throws -> Data {
         let payload = try JSONEncoder().encode(Batch(seq: seq, edits: edits))
         let sealed = try AES.GCM.seal(payload, using: key, authenticating: aad(seq)).combined!  // 12-byte nonce: never nil
         return withUnsafeBytes(of: UInt32(sealed.count).littleEndian) { Data($0) } + sealed
     }
 
     /// Opens the records in order and stops at the first that is short (a torn tail) or does not open (damage,
-    /// reordering). nil when the header is not a journal's or a whole first record does not open (wrong key).
-    static func read(_ data: Data, key: SymmetricKey) -> (edits: [Edit], end: Int, records: Int)? {
-        guard sessionID(in: data) != nil else { return nil }
+    /// reordering). nil when the header is not a journal's or a whole first record does not open (wrong key). A file
+    /// of format 1 comes back as format 2's edits (`V1Edit.upgrade`).
+    static func read(_ data: Data, key: SymmetricKey) -> (version: Int, edits: [Edit], end: Int, records: Int)? {
+        guard let version = header(in: data)?.version else { return nil }
+        if version == 1 {
+            return records(data, key: key, as: V1Edit.self).map { (1, V1Edit.upgrade($0.edits), $0.end, $0.records) }
+        }
+        return records(data, key: key, as: Edit.self).map { (2, $0.edits, $0.end, $0.records) }
+    }
+
+    private static func records<E: Codable>(_ data: Data, key: SymmetricKey, as: E.Type)
+        -> (edits: [E], end: Int, records: Int)? {
         let decoder = JSONDecoder()
-        var edits: [Edit] = []
+        var edits: [E] = []
         var at = headerSize
         var seq: UInt64 = 0
         while at + 4 <= data.count {
@@ -275,7 +341,7 @@ enum Format {
             let start = data.startIndex + at + 4
             guard let box = try? AES.GCM.SealedBox(combined: data[start ..< start + n]),
                   let plain = try? AES.GCM.open(box, using: key, authenticating: aad(seq)),
-                  let batch = try? decoder.decode(Batch.self, from: plain), batch.seq == seq
+                  let batch = try? decoder.decode(Batch<E>.self, from: plain), batch.seq == seq
             else {
                 if seq == 0 { return nil }
                 break
@@ -285,5 +351,37 @@ enum Format {
             at += 4 + n
         }
         return (edits, at, Int(seq))
+    }
+}
+
+/// An edit of format 1: typing only at the end of the text, paragraphs apart by "\n". `insert` appended its text, a
+/// newline of any kind in it ending a paragraph; `deleteBackward` took that many UTF-16 units off the last paragraph,
+/// never past its start; `paragraphEnd` ended it.
+enum V1Edit: Codable, Equatable {
+    case insert(String)
+    case deleteBackward(Int)
+    case paragraphEnd
+
+    /// Format 1's edits as format 2's: the text they leave, as one insert. They only ever appended or cut at the end,
+    /// so nothing but that text can be recovered from them; and as one edit, its offsets need no Character counting
+    /// of a text that format 1 cut in UTF-16 units. The cuts are NSString's, as format 1's app made them.
+    static func upgrade(_ edits: [V1Edit]) -> [Edit] {
+        var paragraphs = [""]
+        for e in edits {
+            switch e {
+            case .insert(let s):
+                for (k, part) in s.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline).enumerated() {
+                    if k > 0 { paragraphs.append("") }
+                    paragraphs[paragraphs.count - 1] += part
+                }
+            case .deleteBackward(let n):
+                let last = paragraphs[paragraphs.count - 1] as NSString
+                paragraphs[paragraphs.count - 1] = last.substring(to: max(last.length - n, 0))
+            case .paragraphEnd:
+                paragraphs.append("")
+            }
+        }
+        let text = paragraphs.joined(separator: "\n")
+        return text.isEmpty ? [] : [.insert(at: 0, text)]
     }
 }

@@ -146,7 +146,33 @@
     once, that app has the keys; summon again: the box is back as it was (the review too). Not while a question or the
     save panel is up on the box, nor within a Copy's or Save's 10 s grace. Typing with the accent menu (hold e) or an
     input method should not hide it: watch for that.
-- Next: the user tries v1, pass 6 and pass 7b; then DESIGN.md's Open items.
+- App, pass 8 (B4 editing anywhere on the line, which replaces B1; Plan item 8): built, 74 app tests pass (65 before,
+  adapted: B1's backspace test now checks ⌫ across spaces and paragraph ends; and 9 new: every key of B4 with its boundaries, the word rules, Characters with é, 🙂 and 👩‍💻, typing in
+  the middle, the replay of every key's edits, the line's two parts, the after-part's fade, the move glide's cap and
+  limit), and the journal's 14 (10 before, adapted, and 4 new: format 1 replayed as its text, its move to format 2 in
+  order, a refused move leaving format 1 as it was, a format 2 round trip with edits in the middle; the login-keychain
+  test skipped as before). `make-app.sh` builds, signs and verifies. Not tried: the builder showed no window (the line
+  was drawn offscreen: `app/renders/editing.png`, `move-left-70ms.png`). `app/README.md` (Pass 8) says what each part
+  does; the journal's format 2 is in `lib/FlowJournal/README.md`. It changes v1's list above: ⌫ deletes across spaces
+  and paragraph ends, and the arrows move the caret. Try, after `app/make-app.sh` and `open app/build/Flow.app`:
+  - Type a sentence, then ⌥← a few times: the caret stays at 60 %, the whole text glides right under it, word by word;
+    the words after the caret show at full strength and fade out toward the right edge (gone at 95 %).
+  - Fix a typo there: ← to it, ⌫ the wrong letter (the text before the caret glides back), type the right one (it
+    comes out from under the caret; the text after it stays put).
+  - → back to the end (or ⌘→ to the paragraph's end, ⌘← to its start): the text slides back; typing goes on as before.
+  - ⌥⌫ takes the word before the caret (and the spaces after it); ⌦ the letter after the caret, ⌥⌦ the next word:
+    the text after the caret closes up at once, without a glide.
+  - Return in the middle: a muted ` ¶ ` appears at the caret and the rest of the paragraph follows it. ⌫ right after
+    the ` ¶ ` (or ← past it, which lands before it, then ⌦) joins the paragraphs again.
+  - Hold ←: the text runs right and never trails more than about a word behind; Reduce Motion: every step jumps.
+  - Clicks: letters click as before; every ⌫, ⌥⌫, ⌦, ⌥⌦ that deletes clicks the backspace sound; ⌫ at the very start
+    and ⌦ at the very end are silent; arrows are silent.
+  - Dead keys and the accent menu mid-text: ← into a word, ´ then e, or hold e and pick é: it lands at the caret.
+  - Restore: edit in the middle, ⌘Q, relaunch: the text is back with the caret at its end. A session left unfinished
+    by yesterday's build (format 1): the first launch of this build shows its text as before and moves it into a new
+    journal file without a word; `sessions.noindex/` then holds one new `<uuid>.journal` (starting `FLOWJ2`), the old
+    one gone.
+- Next: the user tries v1, pass 6, pass 7b and pass 8; then DESIGN.md's Open items.
 
 ## Build and run
 

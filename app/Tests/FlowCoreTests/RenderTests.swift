@@ -13,12 +13,13 @@ let renders = #filePath.split(separator: "/", omittingEmptySubsequences: false).
     + "/renders"
 
 /// One frame as the app shows it: the background the view's layer paints, the strip's band across the middle.
-func render(_ text: Text, marked: String = "", offset: CGFloat, name: String) -> [UInt8] {
+/// `offset` moves the text before the caret (an edit's glide), `moved` all of it (a caret move's).
+func render(_ text: Text, marked: String = "", offset: CGFloat, moved: CGFloat = 0, name: String) -> [UInt8] {
     let style = Style(font: menlo), size = CGSize(width: 1200, height: 700), (w, h) = (2400, 1400)
     let c = Line.context(width: w, height: h, rowBytes: 4 * w, scale: 2, data: nil)
     c.setFillColor(style.background)
     c.fill(CGRect(origin: .zero, size: size))
-    Line.draw(Line.shape(text, marked: marked, font: menlo), offset: offset, in: c,
+    Line.draw(Line.shape(text, marked: marked, font: menlo), before: offset + moved, after: moved, in: c,
               band: Line.band(in: size, style: style), style: style)
     mkdir(renders, 0o755)  // fails harmlessly once it exists
     let url = CFURLCreateWithFileSystemPath(nil, renders + "/" + name as CFString, .cfurlposixPathStyle, false)!
@@ -40,11 +41,11 @@ func inkedColumns(_ px: [UInt8]) -> ClosedRange<Int> {
 }
 
 @Test func offscreenRenders() {
-    let before = Text(["The line glides left and the old words fade.", "Next on"])
+    let before = Text("The line glides left and the old words fade.\nNext on")
     var after = before
-    let key = after.type("e").added  // "Next one"
+    after.insert("e")  // "Next one"
     var g = Glide()
-    g.add(Double(Line.width(key, font: menlo)), at: 0, reduceMotion: false)
+    g.add(Double(Line.width("e", font: menlo)), at: 0, reduceMotion: false)
 
     let idle = render(before, offset: 0, name: "idle.png")
     let glide0 = render(after, offset: CGFloat(g.offset(at: 0)), name: "glide-0.png")
@@ -59,5 +60,20 @@ func inkedColumns(_ px: [UInt8]) -> ClosedRange<Int> {
         let ink = inkedColumns(frame)
         #expect(ink.upperBound < caretEnd)  // nothing right of the caret
         #expect(ink.lowerBound >= fadeEnd)  // nothing left of the fade's end
+    }
+
+    // Editing in the middle (B4): the caret back in "glides", the text after it fading out toward the right edge; and
+    // the frame 70 ms into a ← (the whole text gliding right, passing under the caret).
+    var middle = Text("The line glides left and the old words fade.\nNext one", caret: 15)
+    let editing = render(middle, offset: 0, name: "editing.png")
+    let passed = middle.moveLeft()
+    var s = Glide()
+    if case .caret(let p, _) = passed.motion { s.add(-Double(Line.width(p, font: menlo)), at: 0, reduceMotion: false) }
+    let moving = render(middle, offset: 0, moved: CGFloat(s.offset(at: 0.070)), name: "move-left-70ms.png")
+    #expect(moving != editing)
+    for frame in [editing, moving] {
+        let ink = inkedColumns(frame)
+        #expect(ink.upperBound < 2 * 1140)  // nothing from 95 % of the width on
+        #expect(ink.lowerBound >= fadeEnd)
     }
 }

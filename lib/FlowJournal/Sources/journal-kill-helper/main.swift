@@ -15,8 +15,10 @@ final class PrintingKeyStore: KeyStore {
 }
 
 let journal = try Journal.open(directory: URL(fileURLWithPath: CommandLine.arguments[1]), keyStore: PrintingKeyStore())
+var at = 0  // each word typed at the end: its offset is the Characters before it
 for i in 0 ..< Int(CommandLine.arguments[2])! {
-    journal.append(.insert("w\(i) "))
+    journal.append(.insert(at: at, "w\(i) "))
+    at += "w\(i) ".count
 }
 Thread.sleep(forTimeInterval: 0.3)  // past the 50 ms window: the batch is write()n, never flushed
 print("ready")

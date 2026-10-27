@@ -3,7 +3,9 @@
 The writing surface (DESIGN.md S1 V2 B1 P0), kept in the journal (E2), with key clicks (K1), the session frame (M1),
 and the end of a session (O1 O2 R1), as a macOS app: v1 as planned, then pass 6 (Plan item 6): the surface is a small
 floating box over whatever the user is doing (W2) and Done can paste into the app behind it (O3); then pass 7b (Plan
-item 7): Harper's suggestions in the review, accepted one by one (R2), and a click outside hides the box. Swift +
+item 7): Harper's suggestions in the review, accepted one by one (R2), and a click outside hides the box; then pass 8
+(Plan item 8): the caret moves through the text and typing and deleting work anywhere on the line (B4, which replaces
+B1), with the journal in format 2. Swift +
 AppKit, SwiftPM with the Command Line Tools only (no Xcode), three package dependencies by path (`../lib/FlowJournal`,
 `../lib/FlowClicks`, `../lib/FlowHarper`, whose Rust half cargo builds), ad-hoc signed (there is no Developer ID
 yet).
@@ -41,14 +43,16 @@ launch on: no Dock icon, no menu bar) into the Info.plist, and checks the signat
 The tests need no window and no keychain (the journal test keeps its key in memory). `HarperReviewTests` lints
 through the real library and prints its timings. `offscreenRenders` draws the
 window's content as the app does (1200 × 700 pt at 2×) and writes `app/renders/idle.png`, `glide-0.png`,
-`glide-70ms.png`, `glide-140ms.png` (after a new key) and `marked.png` (a pending `´` at the caret). `app/build/` and
+`glide-70ms.png`, `glide-140ms.png` (after a new key), `marked.png` (a pending `´` at the caret), `editing.png` (the caret
+back in the text, the text after it shown) and `move-left-70ms.png` (70 ms into a ← there). `app/build/` and
 `app/renders/` are git-ignored.
 
 ## Layout
 
-- `Sources/FlowCore` (no AppKit): `Text.swift` the model (paragraphs, typing at the end, Return, backspace within the
-  word, `plainText`, the line's tail with ` ¶ `, a journal edit applied, the replay), `Line.swift` the geometry and
-  drawing (Core Text shaping, fade, clip at the caret, caret, the band), `Glide.swift` the glide, `Mechanical.swift`
+- `Sources/FlowCore` (no AppKit): `Text.swift` the model (one string with `"\n"` between paragraphs and a caret in
+  Characters; each key's edits and motion as a `Change`; a journal edit applied, the replay; the line's two parts
+  around the caret with ` ¶ `), `Line.swift` the geometry and drawing (Core Text shaping around the caret, the two
+  fades, the clips at the caret, caret, the band), `Glide.swift` the glide, `Mechanical.swift`
   the deterministic pass R1 and the word count, `Session.swift` the end of a session as a state machine and the
   duration's wording, `Frame.swift` the session frame (the time box's fill and end, the soft end's tone as WAV bytes,
   the private log's line and append), `Summoning.swift` the menu-bar mark, when the Bluetooth notice shows, and what a
@@ -64,13 +68,15 @@ window's content as the app does (1200 × 700 pt at 2×) and writes `app/renders
   the dim overlays, what it holds); `Paste.swift` the pasteboard (Copy's item, the old clipboard kept and put back)
   and the posted ⌘V; `Keeper.swift` the journal in the app (open and restore, append, the flushes); `Review.swift` the
   review's content (with Harper's column and its rows) and its sheet host for the window; `LineView.swift` the view
-  (text input, edits as journal edits and clicks, display link); `Strip.swift` the Metal band (Core Graphics into a
+  (text input, the keys of B4, edits as journal edits and clicks, the two glides, display link); `Strip.swift` the
+  Metal band (Core Graphics into a
   shared buffer, blitted into the drawable); `Frame.swift` the surface's bottom edge (the time box's line, the
   Bluetooth notice) and the Time box… and Intent… sheets; `Summon.swift` the hotkey (Carbon) and the menu-bar item
   with Flow's menu.
-- `Tests/FlowCoreTests`: the model, the glide, the fade, nothing drawn right of the caret, the renders (`CoreTests`,
-  `RenderTests`); R1's rules, counts and idempotence (`MechanicalTests`); the state machine (`SessionTests`); the
-  journal round trip through the app's replay (`JournalReplayTests`); the time box, the tone, the log's line and file,
+- `Tests/FlowCoreTests`: the model, the glide, the fades, nothing before the caret drawn right of it, the text after it
+  from the caret to 95 %, the renders (`CoreTests`, `RenderTests`); every key of B4, its boundaries, the word rules,
+  Characters with é, 🙂 and 👩‍💻, the replay of every key's edits (`EditingTests`); R1's rules, counts and idempotence (`MechanicalTests`); the state machine (`SessionTests`); the
+  journal round trip through the app's replay, edits in the middle included (`JournalReplayTests`); the time box, the tone, the log's line and file,
   the menu-bar mark, the Bluetooth notice, the review's keys (`FrameTests`); the box's frame and its clamps, the review
   growing it from its bottom edge, one container at a time, the paste's decision table, the restore rule, the pasted
   grace, the click-outside guard's table (`BoxTests`); Harper's list keys (`FrameTests`); accepting one, the later
@@ -87,13 +93,13 @@ Milestone 1, the surface (the window is window mode since pass 6, below):
   6). No Edit menu yet.
 - The line: Menlo 28 pt, its end at a caret fixed at 60 % of the width, vertically centred; the whole line glides left
   by each key's advance over 140 ms (ease-out cubic, a leftover capped at one advance), and back on backspace; nothing
-  is drawn right of the caret; glyphs fade from full strength at 45 % of the width to nothing at 25 %. Reduce Motion
+  is drawn right of the caret (since pass 8: of the text before it); glyphs fade from full strength at 45 % of the width to nothing at 25 %. Reduce Motion
   jumps. A resize lays the line out again.
 - The model: paragraphs; Return ends one (twice leaves a blank line), shown on the line as a muted ` ¶ `; backspace only
-  within the current word, never past a typed space or a paragraph end.
+  within the current word, never past a typed space or a paragraph end (B1; pass 8 replaces this, below).
 - Input through `NSTextInputClient`: dead keys and input methods (the pending text is the line's end), the
-  press-and-hold accent menu (replaces the letter just typed). Arrows, clicks and other ⌘ shortcuts do nothing; Esc
-  hides the box (pass 6) and does nothing in the window.
+  press-and-hold accent menu (replaces the letter just typed). Arrows, clicks and other ⌘ shortcuts do nothing (since
+  pass 8 the arrows move the caret); Esc hides the box (pass 6) and does nothing in the window.
 - Frames: a key draws and presents its frame at once; the display link (up to 120 Hz) runs only while a glide does;
   two drawables in the layer's queue.
 
@@ -103,8 +109,9 @@ Milestone 2 in the app, the journal (E2):
   (`KeychainKeyStore()`); the journal creates the folder (0700) and excludes it from backups. The edits of the last
   unfinished session are replayed into the model without a word: the line shows where it ended.
 - Every change to the text is one edit: typing `insert`, Return `paragraphEnd`, backspace and the press-and-hold
-  replacement `deleteBackward(n)` with `n` in UTF-16 units; `Text.apply` is the one path for both typing and the
-  replay, so a restore rebuilds the text that was typed. A dead key still pending at Done joins the text as shown.
+  replacement `deleteBackward(n)` with `n` in UTF-16 units (format 1; since pass 8 `insert(at:)` and
+  `delete(at:count:)` in Characters, below); `Text.apply` is the one path for both typing and the replay, so a restore
+  rebuilds the text that was typed. A dead key still pending at Done joins the text as shown.
 - Flushes: the journal writes each 50 ms batch itself; the app adds `.full` on 1 s idle (one timer, moved on by each
   edit, on a background queue), on deactivate and on Done (both off the main thread), and on quit
   (`applicationShouldTerminate` waits for it, then terminates).
@@ -150,7 +157,8 @@ Milestone 4 in the app, the clicks (K1):
 - A click on each key that changes the text, played before the edit is laid out and drawn: `.letter` for typed
   characters (and a dead key's pending mark, a key that shows), `.space` for white space, `.paragraph` for Return,
   `.backspace` for a backspace that deletes. A blocked backspace (after a space, at a paragraph's start) is silent, as
-  are keys while the review is up and ⌘ chords. Volume stays at the library's default.
+  are keys while the review is up and ⌘ chords. Volume stays at the library's default. (Since pass 8 every delete key
+  that deletes clicks `.backspace`; caret moves are silent.)
 - Session › Sound (⌘K, and in the menu-bar item) with a check mark, kept in UserDefaults as `sound` (default on). Off
   pauses the engine and also silences the soft end's tone.
 - Bluetooth: when the output is Bluetooth at launch, after the output device changes, or when the sound is turned on,
@@ -292,8 +300,61 @@ Pass 7b, Harper in the review (R2) and a click outside (W2):
 - Build: the bundle's executable grew from 0.80 MB to 10.33 MB (+9.5 MB, Harper's library dead-stripped);
   `codesign --verify --deep --strict` passes.
 
+Pass 8, editing anywhere on the line (B4, which replaces B1):
+
+- The model (`Text`): one string, a paragraph end as `"\n"` (any newline the input system sends becomes one), and a
+  caret counted in Characters, as is everything else: the journal's offsets, the line's parts, the steps of the keys.
+  So é, 🙂 and 👩‍💻 are each one ← and one ⌫; a combining accent typed after its letter joins it. The caret's index into
+  the string is kept beside the count, so a step of the caret walks one Character; an edit walks the text twice (its
+  new count and the caret's index): about 0.2 ms at 35,000 Characters in release, measured, less for shorter texts.
+- Keys (`LineView.doCommand`, by the commands AppKit's key bindings send, checked against
+  `StandardKeyBinding.dict` and Apple's `NSStandardKeyBindingResponding`): ← → (`moveLeft:`, `moveRight:`) one
+  Character, a paragraph end included (← past ` ¶ ` lands before it); ⌥← ⌥→ (`moveWordLeft:`, `moveWordRight:`) over
+  white space, then over the word, to its start or its end; ⌘← ⌘→ (they send `moveToLeftEndOfLine:` and
+  `moveToRightEndOfLine:`, not `moveToBeginningOfLine:`) to the paragraph's start or end; typing and Return insert at
+  the caret; ⌫ (`deleteBackward:`) deletes the Character before the caret anywhere, across spaces and paragraph ends;
+  ⌥⌫ (`deleteWordBackward:`) back to where ⌥← lands, ⌦ (`deleteForward:`) the Character after the caret, ⌥⌦
+  (`deleteWordForward:`) on to where ⌥→ lands. Words are runs between white space of any kind (⌥Space's no-break space
+  and the paragraph end count). The commands that mean the same moves come along (⌃B ⌃F, ⌃⌥B ⌃⌥F;
+  `moveToBeginningOfLine:`, `moveToEndOfLine:`, ⌃A ⌃E and ⌥↑ ⌥↓ as paragraph moves; ⌃H and ⌃D send ⌫'s and ⌦'s
+  commands anyway). ⌫ at the start and ⌦ at the end, and a move with nowhere to go, do nothing: no click, no edit, no
+  frame. ↑, ↓, ⇧ selections, ⌘⌫ and every other command still do nothing; so do clicks (no mouse placement), and there
+  is no undo on the line.
+  `keyDown` lets ⌘← and ⌘→ through to the key bindings; other ⌘ chords stay the menu's.
+- Each key returns a `Change`: the journal's edits (none for a move) and the motion the line needs: text added or
+  removed before the caret, removed after it, or passed over by the caret.
+- The line (`Line.shape`, `Line.draw`): the 200 Characters before the caret, the pending text, and the 200 after it,
+  shaped as one line on each key that edits or moves the caret; `Shaped.caret` is the caret's x in it (Core Text's
+  offset for that index). The text before the caret ends at the caret's left edge, faded to the left as before (V2) and clipped at the caret; the text
+  after it starts at the caret's right edge, full strength to 80 % of the width, fading to nothing at 95 % (by each
+  glyph's centre), clipped at the caret and at 95 %. So no glyph is ever drawn on the caret.
+- The glides: an insertion glides the text before the caret as before (it emerges from under the caret) and leaves the
+  text after it; a deletion before the caret glides it back; a deletion after the caret closes that text up at once. A
+  caret move glides the whole text by the width of what the caret passed (140 ms ease-out; Reduce Motion jumps), so the
+  caret stays where it is and the text passes under it: a Character crossing the caret is hidden on one side and comes
+  out on the other. That glide's remainder is capped at one word (`Line.wordCells`, six cells) and it starts at most
+  one band's width away (⌘→ to a far paragraph end slides in rather than starting where nothing is shaped). Both
+  glides run together: the part before the caret moves by the sum.
+- Input system: the selected and marked ranges sit at the caret (in UTF-16 units, as it counts), the document it reads
+  is the text with the pending text at the caret, and the press-and-hold menu's replacement (a range ending at the
+  caret) takes the Characters holding those units before the caret, anywhere in the text.
+- Journal format 2 (`../lib/FlowJournal/README.md`, Format): `insert(at:, text)` and `delete(at:, count:)` in
+  Characters; moves are not journaled and the replay puts the caret at the end. A session left by a build before pass 8
+  (format 1) is restored as its text and moved into a format 2 file without a word.
+- Clicks: a letter (or space, or paragraph) click on typing as before, the backspace click on every delete key that
+  deletes, nothing on a caret move.
+
 ## Known gaps
 
+- Pass 8 is not tried (the builder shows no windows; the line was drawn offscreen, `editing.png`,
+  `move-left-70ms.png`). Untried: how the glide of a held ← and of ⌘← feels, and whether a Character passing under the
+  caret on a move reads as moving or as blinking (the alternative, not clipping during a move, would draw text over the
+  caret, which S1 rejected); whether the accent menu and input methods place themselves right with the caret mid-text;
+  ⌘← and ⌘→ in the box (they reach the view because the main menu has no item for them).
+- A caret move during an insertion's glide moves the Character it passes from one part to the other, and with it from
+  the insertion's offset to the move's: it may shift by what remains of that glide, under one advance.
+- The text after the caret is shaped up to 200 Characters: in a window wider than about 9,000 pt its fade would end
+  early.
 - Pass 7b is not tried at all (the builder shows no windows; the review was drawn offscreen at 905, 820 and 780 pt
   for a look, outside the tests). Untried: whether the press-and-hold accent menu, an input method's candidate window
   or the menu-bar item's menu takes key from the box (they should not; if one does, a click outside would hide the
