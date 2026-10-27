@@ -1,7 +1,7 @@
 // Flow (working name): the writing surface (DESIGN.md S1 V2 B1 P0) in a small floating box over whatever the user is
 // doing, or in an ordinary window for long sessions (W2), kept in the journal (E2), with key clicks (K1), the session
 // frame (M1: time box, intent, private log), summoning (hotkey, menu-bar item), and the end of a session: Done → review
-// → paste into the app behind the box, copy, save or discard (O1 O2 O3 R1).
+// with Harper's suggestions → paste into the app behind the box, copy, save or discard (O1 O2 O3 R1 R2).
 import AppKit
 import Carbon.HIToolbox
 import FlowClicks
@@ -19,6 +19,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// The app in front when the box was last summoned from it: where Paste goes (O3).
     private var target: NSRunningApplication?
     private let keeper = Keeper()
+    /// Harper (R2), on its own serial queue from launch on.
+    private let lint = Lint()
     private var session = Session()
     private var review: Review?
     /// The review's host in window mode; in the box the box holds the review itself.
@@ -72,6 +74,9 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         hotkey = Hotkey { [unowned self] in self.hotkeyPressed() }
         if hotkey == nil { NSLog("Flow: the hotkey could not be registered; the menu-bar item shows Flow") }
         statusItem = makeStatusItem(target: self)
+        NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification, object: box.panel,
+                                               queue: .main) { [unowned self] _ in self.boxLostKeys() }
+        lint.warmUp()
     }
 
     // MARK: Clicks (K1)
@@ -151,6 +156,28 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         surface.hide()
         apply()
         handBack()
+    }
+
+    /// The box stopped being the key window. A click outside it (into another app, through the dim) hides it as Esc
+    /// does, the review included; the session stays. The guard (`ClickOutside`) exists because the box also loses the
+    /// keys to Flow itself, and hiding then would pull the box from under its own sheet or question: a sheet on the box
+    /// (Save…, Discard…, Time box…, Intent…, an alert) takes the keys as it opens, and the box is going anyway on Esc,
+    /// the hotkey, a paste and Open Window. In a hand-off's grace the review stays, so its Undo stays in reach. Decided
+    /// a turn later, once AppKit has made the new key window key: `NSApp.keyWindow` then names it when it is Flow's,
+    /// and is nil when another app has the keys.
+    private func boxLostKeys() {
+        DispatchQueue.main.async { [self] in
+            guard !box.panel.isKeyWindow else { return }  // it has them back already
+            var graced = false
+            if case .graced = session.phase { graced = true }
+            guard ClickOutside.hides(boxOnScreen: surface.onScreen == .box, asking: asking,
+                                     sheet: box.panel.attachedSheet != nil, graced: graced,
+                                     flowHasKeys: NSApp.keyWindow != nil)
+            else { return }
+            surface.hide()
+            apply()
+            handBack()
+        }
     }
 
     /// Open Window (⌃⌘F, also from the box) and back: the line moves to the other container. Only while writing, so
@@ -387,13 +414,19 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         totals = (keeper.started ?? Date(), seconds, words)
         let r = Review(raw: raw, stats: "\(Session.duration(seconds)) · \(words) \(words == 1 ? "word" : "words")",
                        note: keeper.problem.map { "Not kept on disk: \($0)." }, intent: intent,
-                       paste: surface.mode == .box)  // the window has no app behind it to paste into
+                       paste: surface.mode == .box,  // the window has no app behind it to paste into
+                       lint: lint.lint)
         r.onCopy = { [unowned self] in self.copyOut() }
         r.onPaste = { [unowned self] in self.pasteOut() }
         r.onSave = { [unowned self] in self.saveOut() }
         r.onBack = { [unowned self] in self.back() }
         r.onDiscard = { [unowned self] in self.discard(nil) }
         r.onUndoHandoff = { [unowned self] in
+            if self.session.undo() { self.review?.showHandoff(nil, undoable: false) }
+        }
+        // A suggestion accepted (or R1 toggled) after a hand-off: what was copied, saved or pasted is no longer the
+        // text shown, so the grace stops, as under the save panel, and the session is not finished with the older text.
+        r.onTextChange = { [unowned self] in
             if self.session.undo() { self.review?.showHandoff(nil, undoable: false) }
         }
         showSurface()  // the hotkey may have hidden it; the menu-bar item's Done comes from another app

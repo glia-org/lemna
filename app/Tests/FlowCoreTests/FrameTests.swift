@@ -115,3 +115,20 @@ import Testing
     #expect(route(53) == .back && route(53, cmd: true) == .pass)
     #expect(route(1, cmd: true) == .pass && route(0) == .pass)  // ⌘S, letters: the panel's
 }
+
+@Test func reviewKeysWithHarpersList() {
+    func route(_ k: UInt16, cmd: Bool = false, others: Bool = false, rep: Bool = false,
+               listed: Bool = true) -> ReviewKey {
+        ReviewKey.route(keyCode: k, command: cmd, others: others, isRepeat: rep, listed: listed)
+    }
+    #expect(route(36) == .accept && route(76) == .accept)  // Return accepts the selected suggestion
+    #expect(route(36, rep: true) == .nothing)  // held (⌘⏎ at Done, ⌘ let go first): not down the list
+    #expect(route(36, cmd: true) == .copy && route(36, cmd: true, rep: true) == .nothing)  // ⌘⏎ stays Copy/Paste
+    #expect(route(51) == .skip && route(51, rep: true) == .nothing)  // ⌫ skips, once per press
+    #expect(route(126) == .up && route(125) == .down && route(125, rep: true) == .down)  // arrows repeat
+    #expect(route(126, others: true) == .pass && route(125, cmd: true) == .pass && route(51, cmd: true) == .pass)
+    #expect(route(53) == .back)  // Esc is Back still
+    // Without a selected suggestion (checking, none, unavailable): as before.
+    #expect(route(36, listed: false) == .nothing && route(51, listed: false) == .pass)
+    #expect(route(126, listed: false) == .pass && route(125, listed: false) == .pass)
+}

@@ -1,5 +1,6 @@
 // The box (W2) and paste at Done (O3): the box's frame on a screen and its clamps, the review growing it upward from
-// its bottom edge, which container is on screen, the paste's decision table, when the old clipboard comes back.
+// its bottom edge, which container is on screen, the paste's decision table, when the old clipboard comes back, and
+// when a click outside hides the box.
 import CoreGraphics
 import Testing
 @testable import FlowCore
@@ -106,4 +107,22 @@ private let laptop = CGRect(x: 0, y: 80, width: 1512, height: 868)
     let stale = s.tick(at: 110)
     #expect(!stale)  // the paste's grace end is stale
     #expect(s.undo() && s.phase == .review)  // Undo within the grace keeps the text
+}
+
+@Test func clickOutsideHidesOnlyAnUnguardedBox() {
+    // Every combination: only a box on screen with no question, no sheet, no grace, and the keys gone to another app.
+    for bits in 0..<32 {
+        let (onScreen, asking, sheet, graced, flow) = (bits & 1 != 0, bits & 2 != 0, bits & 4 != 0, bits & 8 != 0,
+                                                       bits & 16 != 0)
+        let hides = ClickOutside.hides(boxOnScreen: onScreen, asking: asking, sheet: sheet, graced: graced,
+                                       flowHasKeys: flow)
+        #expect(hides == (bits == 1), "\(bits)")
+    }
+    #expect(ClickOutside.hides(boxOnScreen: true, asking: false, sheet: false, graced: false, flowHasKeys: false))
+    // The save panel or a question opened on the box: its sheet has the keys.
+    #expect(!ClickOutside.hides(boxOnScreen: true, asking: false, sheet: true, graced: false, flowHasKeys: true))
+    // Esc, the hotkey, a paste, Open Window: the box is already going.
+    #expect(!ClickOutside.hides(boxOnScreen: false, asking: false, sheet: false, graced: false, flowHasKeys: false))
+    // Copied, within the grace: the review and its Undo stay.
+    #expect(!ClickOutside.hides(boxOnScreen: true, asking: false, sheet: false, graced: true, flowHasKeys: false))
 }

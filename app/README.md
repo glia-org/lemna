@@ -2,20 +2,30 @@
 
 The writing surface (DESIGN.md S1 V2 B1 P0), kept in the journal (E2), with key clicks (K1), the session frame (M1),
 and the end of a session (O1 O2 R1), as a macOS app: v1 as planned, then pass 6 (Plan item 6): the surface is a small
-floating box over whatever the user is doing (W2) and Done can paste into the app behind it (O3). Swift + AppKit,
-SwiftPM with the Command Line Tools only (no Xcode), two package dependencies by path (`../lib/FlowJournal`,
-`../lib/FlowClicks`), ad-hoc signed (there is no Developer ID yet).
+floating box over whatever the user is doing (W2) and Done can paste into the app behind it (O3); then pass 7b (Plan
+item 7): Harper's suggestions in the review, accepted one by one (R2), and a click outside hides the box. Swift +
+AppKit, SwiftPM with the Command Line Tools only (no Xcode), three package dependencies by path (`../lib/FlowJournal`,
+`../lib/FlowClicks`, `../lib/FlowHarper`, whose Rust half cargo builds), ad-hoc signed (there is no Developer ID
+yet).
 
 ## Build, run, test
 
 ```sh
-app/make-app.sh            # release build, assembles, ad-hoc signs and verifies app/build/Flow.app, prints its path
+app/make-app.sh            # cargo, then the release build; assembles, ad-hoc signs and verifies app/build/Flow.app
 open app/build/Flow.app
 
-cd app
+cd app                     # the tests need Harper's library built: make-app.sh, or its cargo line, first
 F=/Library/Developer/CommandLineTools/Library/Developer/Frameworks
-swift test -Xswiftc -F -Xswiftc $F -Xlinker -F -Xlinker $F -Xlinker -rpath -Xlinker $F
+swift test -Xswiftc -F -Xswiftc $F -Xlinker -F -Xlinker $F -Xlinker -rpath -Xlinker $F \
+    -Xlinker -L"$PWD/../lib/FlowHarper/rust/target/release"
 ```
+
+Harper (`../lib/FlowHarper`) is a Rust static library behind a Swift package; SwiftPM does not build its Rust half.
+`make-app.sh` runs `CARGO_INCREMENTAL=0 cargo build --release --manifest-path ../lib/FlowHarper/rust/Cargo.toml` (cargo
+from PATH, else rustup's `~/.rustup/toolchains/stable-aarch64-apple-darwin/bin`), then `swift build -c release` with
+`-Xlinker -L` to `lib/FlowHarper/rust/target/release`. Every `swift build` and `swift test` of this package needs that
+`-L` (the app and the tests link the library): without it the link fails with `Could not find or use auto-linked
+library 'flow_harper'` (`../lib/FlowHarper/README.md`, Linking). FlowCore itself does not import Harper.
 
 `swift test` needs the flags because the Command Line Tools ship swift-testing outside the default search path (plain
 `swift test` fails with "no such module 'Testing'"; XCTest is not in them at all). They also ship its Foundation
@@ -28,7 +38,8 @@ own type (`.init(fileURLWithPath:)`), the temporary folder comes from Darwin's `
 launch on: no Dock icon, no menu bar) into the Info.plist, and checks the signature with
 `codesign --verify --deep --strict`.
 
-The tests need no window and no keychain (the journal test keeps its key in memory). `offscreenRenders` draws the
+The tests need no window and no keychain (the journal test keeps its key in memory). `HarperReviewTests` lints
+through the real library and prints its timings. `offscreenRenders` draws the
 window's content as the app does (1200 × 700 pt at 2×) and writes `app/renders/idle.png`, `glide-0.png`,
 `glide-70ms.png`, `glide-140ms.png` (after a new key) and `marked.png` (a pending `´` at the caret). `app/build/` and
 `app/renders/` are git-ignored.
@@ -41,23 +52,31 @@ window's content as the app does (1200 × 700 pt at 2×) and writes `app/renders
   the deterministic pass R1 and the word count, `Session.swift` the end of a session as a state machine and the
   duration's wording, `Frame.swift` the session frame (the time box's fill and end, the soft end's tone as WAV bytes,
   the private log's line and append), `Summoning.swift` the menu-bar mark, when the Bluetooth notice shows, and what a
-  key does in the review, `Box.swift` the box's frame on a screen and grown for the review (`BoxFrame`) and which
-  container holds the line (`Surface`), `Paste.swift` the paste's decision table and the restore rule.
+  key does in the review, `Box.swift` the box's frame on a screen and grown for the review (`BoxFrame`), which
+  container holds the line (`Surface`) and when a click outside hides the box (`ClickOutside`), `Paste.swift` the
+  paste's decision table and the restore rule, `Suggestions.swift` Harper's suggestions as plain values (`Suggestion`:
+  UTF-16 offsets, `apply`, `shift`), the review's list of them (`SuggestionList`: selection, accept, skip, accept all,
+  the footer's count) and where the list goes for a width (`ReviewLayout`).
 - `Sources/Flow`: `main.swift` the app, window, menus, clicks and the sound toggle, summoning and the two containers
-  (`apply()`), the session frame, and the end of a session (Done, Back, Copy, Paste, Save, Discard, the grace, the log
-  line); `Box.swift` the box (the non-activating panel, the dim overlays, what it holds); `Paste.swift` the pasteboard
-  (Copy's item, the old clipboard kept and put back) and the posted ⌘V; `Keeper.swift` the journal in the app (open
-  and restore, append, the flushes); `Review.swift` the review's content and its sheet host for the window;
-  `LineView.swift` the view (text input, edits as journal edits and clicks, display link); `Strip.swift` the Metal
-  band (Core Graphics into a shared buffer, blitted into the drawable); `Frame.swift` the surface's bottom edge (the
-  time box's line, the Bluetooth notice) and the Time box… and Intent… sheets; `Summon.swift` the hotkey (Carbon) and
-  the menu-bar item with Flow's menu.
+  (`apply()`), a click outside the box, the session frame, and the end of a session (Done, Back, Copy, Paste, Save,
+  Discard, the grace, the log line); `Lint.swift` Harper on its serial queue (the warm-up, each review's lint, its
+  results as FlowCore's values; the one file that imports FlowHarper); `Box.swift` the box (the non-activating panel,
+  the dim overlays, what it holds); `Paste.swift` the pasteboard (Copy's item, the old clipboard kept and put back)
+  and the posted ⌘V; `Keeper.swift` the journal in the app (open and restore, append, the flushes); `Review.swift` the
+  review's content (with Harper's column and its rows) and its sheet host for the window; `LineView.swift` the view
+  (text input, edits as journal edits and clicks, display link); `Strip.swift` the Metal band (Core Graphics into a
+  shared buffer, blitted into the drawable); `Frame.swift` the surface's bottom edge (the time box's line, the
+  Bluetooth notice) and the Time box… and Intent… sheets; `Summon.swift` the hotkey (Carbon) and the menu-bar item
+  with Flow's menu.
 - `Tests/FlowCoreTests`: the model, the glide, the fade, nothing drawn right of the caret, the renders (`CoreTests`,
   `RenderTests`); R1's rules, counts and idempotence (`MechanicalTests`); the state machine (`SessionTests`); the
   journal round trip through the app's replay (`JournalReplayTests`); the time box, the tone, the log's line and file,
   the menu-bar mark, the Bluetooth notice, the review's keys (`FrameTests`); the box's frame and its clamps, the review
   growing it from its bottom edge, one container at a time, the paste's decision table, the restore rule, the pasted
-  grace (`BoxTests`).
+  grace, the click-outside guard's table (`BoxTests`); Harper's list keys (`FrameTests`); accepting one, the later
+  offsets shifted, offsets past `é`, 🙂 and 👩‍💻, accept all in order, a stale suggestion, the selection, the footer's
+  wording, the kind's label, beside or below for a width (`SuggestionTests`); the handoff's sample through R1 and the
+  real Harper, accepted, and Done → suggestions on the 1,000-word fixture, timed (`HarperReviewTests`).
 
 ## What it covers
 
@@ -224,7 +243,67 @@ Pass 6, the box and paste (W2, O3):
   with `Pasted · Undo (10 s)`; Undo keeps the session and its text (the paste in the other app stays). After the
   grace the session is finished as after Copy (logged, key destroyed) and the next summon shows an empty line.
 
+Pass 7b, Harper in the review (R2) and a click outside (W2):
+
+- Warm-up: after launch, one `Harper.lint("Warm up.")` on the app's one serial queue (`DispatchQueue(label:
+  "org.flow.harper")`, `.userInitiated`); every later lint runs there, one at a time. It builds Harper's linter, which
+  the first lint in a process pays for: 240–260 ms here, so the first review does not.
+- The lint: when the review opens (box or window), R1's text goes to that queue; FlowHarper's suggestions become
+  FlowCore's `Suggestion`s (UTF-16 offsets, as the text view counts; Harper's first replacement, or none when it only
+  points; numbered in text order) and come back on the main thread. Until then the column says `checking…` under its
+  heading; with no answer after 2 s it says `Harper unavailable`, that answer is dropped when it comes, and the review
+  works as before. R1's Undo (and Redo) lints the shown text afresh: the list and the accepted count start over for
+  it, and an answer for the other text is dropped. Measured on the 1,000-word fixture (`HarperReviewTests`, debug
+  Swift, release Rust, M2 Pro, 2026-10-27): Done → suggestions in hand 113–118 ms (R1 2.3 ms, the rest the first lint
+  of a new text), the same text again 18–20 ms; not counted: the hop to the main thread and building the rows. Harper
+  also caches per sentence and per thread: the same text on a thread that had not linted it took 40 ms instead of 19
+  (a probe, 2026-10-27; the short warm-up does not warm that cache). A serial queue keeps its thread while GCD lets it
+  (a probe kept it through 25 s idle, moved it once other work ran in the pause); a moved re-lint costs those ~20 ms.
+- The column (`Review.swift`), as the panel's review mock-up: headed `HARPER · ENGLISH · OFFLINE` (12 pt, `#5c646f`),
+  one row per suggestion in 12 pt grey, in text order: its place (1 to N, renumbered as rows go), Harper's kind in
+  words (`WordChoice` → `word choice`), and `wrong → replacement` with the wrong part struck through (a deletion is the
+  struck part alone; a suggestion Harper only points at is not struck, and shows `skip` only). Harper's explanation is the row's tooltip. The selected row
+  and its range in the text stand on `#283457`; the text scrolls to it, the list to the row. Under the rows the small
+  buttons `accept`, `skip`, `accept all` (accept all applies every suggestion that has a replacement, in text order,
+  and leaves the pointed-at ones). A click on a row selects it. With nothing (left) to suggest the column goes and one
+  muted line says `Harper · no suggestions`. The column's place stays in all these states, so the text does not move
+  when Harper answers.
+- Keys (`ReviewKey`), while a suggestion is selected: ↑ and ↓ move the selection (they repeat), Return accepts it,
+  ⌫ skips it (a held Return or ⌫ does nothing more: only a fresh press acts, so ⌘⏎ held at Done with ⌘ let go first
+  does not accept as it repeats). Without one (checking, none, unavailable) the keys do what they did. ⌘⏎ stays Paste
+  in the box and Copy in the window; Esc stays Back.
+- Accepting: `SuggestionList.accept` applies the replacement (`Suggestion.apply`, which refuses when the text no
+  longer holds the flagged words there), drops the row, and moves the later suggestions by the change in length
+  (`Suggestion.shift`); the text view changes only that range (it keeps its scroll). The footer's R1 line gains
+  ` · Harper: N accepted`. Copy, Save and Paste hand off the text as accepted. An accept, accept all or R1's toggle
+  during a hand-off's grace stops the grace (as the save panel does): what was handed off is no longer the text
+  shown, so the session is not finished with it.
+- Layout (`ReviewLayout`): from 820 pt of the review's own width on, the list stands right of the text column (72
+  characters, about 564 pt), 16 pt apart, as wide as the room allows up to 330 pt, the pair centred, its top on the
+  text's: in the box on a 1512 pt screen (905 pt inside) the list is 285 pt wide; at 820 pt, 200 pt. Under 820 pt the
+  list goes under the text, as wide as the column, at most about seven rows tall (it scrolls). The window's sheet
+  asks for 950 pt (less in a narrower window: under 860 pt of window the sheet is under 820 and the list goes below).
+  The content view decides at each size its host gives it.
+- Click outside: when the box stops being the key window (`NSWindow.didResignKeyNotification` for the panel), a turn
+  later, it hides with the dim as Esc does (the session stays, a review included: the next summon shows it again),
+  unless `ClickOutside` holds it: the box is not on screen (Esc, the hotkey, a paste, Open Window hid it), a question
+  is up, a sheet hangs on it (Save…, Discard…, Time box…, Intent…, an alert), the review is in a hand-off's grace, or
+  another window of Flow's has the keys (`NSApp.keyWindow` is then not nil).
+- Build: the bundle's executable grew from 0.80 MB to 10.33 MB (+9.5 MB, Harper's library dead-stripped);
+  `codesign --verify --deep --strict` passes.
+
 ## Known gaps
+
+- Pass 7b is not tried at all (the builder shows no windows; the review was drawn offscreen at 905, 820 and 780 pt
+  for a look, outside the tests). Untried: whether the press-and-hold accent menu, an input method's candidate window
+  or the menu-bar item's menu takes key from the box (they should not; if one does, a click outside would hide the
+  box while typing or opening the menu); how the list scrolls with many rows; the tooltips.
+- Harper's `lint` gives `[]` both for a clean text and when it fails (a panic inside Harper, bad JSON): the column
+  then says `Harper · no suggestions`, never `Harper unavailable`; only the 2 s wait shows unavailable.
+- Harper is English only (American): a German session gets most of its words flagged as Spelling, one row each.
+- An accept has no undo of its own; R1's Undo (or Redo) drops every accept and lints that text afresh.
+- SCOWL's notice (`../lib/FlowHarper/THIRD_PARTY.md`) is not copied into the bundle; it must ship with any distributed
+  build (DESIGN.md Open 9).
 
 - Pass 6 is not tried at all (the builder shows no windows): whether `NSTextInputClient` (marked text, the accent
   menu, input methods) works in the non-activating key panel; whether the main menu's key equivalents (⌘⏎ Done, ⌃⌘F,
@@ -240,8 +319,6 @@ Pass 6, the box and paste (W2, O3):
 - The target is the app in front at the summon. A click into another app and then back on the box (rather than the
   hotkey) leaves the old target; when the box is the key window of an inactive Flow, ⌘V goes wherever the keys are
   once the box hides.
-- A click through the dim into another app leaves the box and the dim on screen (nothing hides the box but Esc, the
-  hotkey, Show Flow and a paste).
 - The dim and the box are fitted to the screens at each summon, not while they show: a display plugged in meanwhile
   is not dimmed until the next summon.
 - AeroSpace and other tiling window managers: whether they still tile the window of an accessory app is untried (v1

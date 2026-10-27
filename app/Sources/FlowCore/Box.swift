@@ -1,5 +1,5 @@
-// The box (DESIGN.md W2): where it sits on the screen, how the review grows it in place, and which of the two
-// containers holds the line. Free of AppKit, so the tests check them.
+// The box (DESIGN.md W2): where it sits on the screen, how the review grows it in place, which of the two containers
+// holds the line, and when a click outside hides it. Free of AppKit, so the tests check them.
 import CoreGraphics
 
 /// The box's frame in screen points (origin at the bottom left, as AppKit's).
@@ -60,4 +60,15 @@ public struct Surface: Equatable {
 
     /// Open Window (⌃⌘F) and back, and the window's close button: the line moves to `c`, which comes on screen.
     public mutating func use(_ c: Container) { (mode, shown) = (c, true) }
+}
+
+/// A click outside the box (into another app, also through the dim) takes the keys from it, and then the box goes, as
+/// with Esc; the session stays. But the box loses the keys for other reasons too, so this guards the hide: when it is
+/// already going or not on screen (Esc, the hotkey, a paste, window mode), when a question of Flow's is up or a sheet
+/// hangs on it (Discard…, Time box…, Intent…, Save…, the journal's alert: the sheet took the keys), when the review is
+/// in a hand-off's grace (its Undo stays in reach), and when another window of Flow's has the keys.
+public enum ClickOutside {
+    public static func hides(boxOnScreen: Bool, asking: Bool, sheet: Bool, graced: Bool, flowHasKeys: Bool) -> Bool {
+        boxOnScreen && !asking && !sheet && !graced && !flowHasKeys
+    }
 }
