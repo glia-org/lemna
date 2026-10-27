@@ -13,7 +13,7 @@ swift build -c release                    # binary: .build/release/appkit-line
 time .build/release/appkit-line --quit-after-first-frame   # launch timing; prints main-to-first-frame, writes nothing
 .build/release/appkit-line                # by hand: type, Esc quits (and overwrites the two result files)
 F=/Library/Developer/CommandLineTools/Library/Developer/Frameworks
-swift test -Xswiftc -F -Xswiftc $F -Xlinker -F -Xlinker $F -Xlinker -rpath -Xlinker $F   # 8 tests, no window
+swift test -Xswiftc -F -Xswiftc $F -Xlinker -F -Xlinker $F -Xlinker -rpath -Xlinker $F   # 9 tests, no window
 ```
 
 `swift test` needs the flags because the Command Line Tools ship swift-testing outside the default search path
@@ -30,8 +30,8 @@ If macOS does not activate the window when it starts from a terminal, `--bench` 
 | warm rebuild after touching `main.swift` | ≈ 2 s |
 | binary, stripped (`strip -o`) | 139,480 bytes (unstripped 194,088) |
 | dependencies | 0 packages; links system frameworks and the OS's Swift runtime only (`otool -L`: AppKit, CoreFoundation, CoreGraphics, CoreText, Foundation, Metal, QuartzCore, libobjc, /usr/lib/swift/*) |
-| unit tests | 8 of 8 (ease curve, fade per x, backspace within word, ¶ rule, glide continuity and cap, Reduce Motion, percentile) |
-| source | `main.swift` 381 lines + `LineCore.swift` 54 (SPEC: ~400 per program) |
+| unit tests | 9 of 9 (ease curve, fade per x, backspace within word, ¶ rule, glide continuity and cap, Reduce Motion, percentile, nothing drawn right of the caret) |
+| source | `main.swift` 374 lines + `LineCore.swift` 82 (SPEC: ~400 per program) |
 
 Most of the cold build is Clang building the AppKit/Foundation module cache inside `.build`.
 
@@ -42,7 +42,8 @@ Most of the cold build is Clang building the AppKit/Foundation module cache insi
   `CAMetalLayer` (`.bgra8Unorm`, sRGB, `framebufferOnly = false`). The window's own background fills the rest.
 - Per edit: the last 120 characters are shaped once with Core Text (`CTLineCreateWithAttributedString`,
   `CTLineGetGlyphRuns`, `CTRunGetGlyphs/Positions/Advances`, each run's own font).
-- Per frame: Core Graphics fills the strip and draws each glyph with `CTFontDrawGlyphs`, its alpha set from the
+- Per frame: Core Graphics fills the strip and draws each glyph with `CTFontDrawGlyphs` (`Line.draw` in
+  `LineCore`), clipped at the caret's x so nothing is drawn right of the caret (DESIGN.md S1), its alpha set from the
   fade at the glyph's centre x, into a bitmap context whose memory is a shared `MTLBuffer` (ring of 3); a blit
   encoder copies it into the drawable's texture; `present`, `commit`. `addPresentedHandler` records
   `presentedTime` for the frame, and the first presented frame holding a key's glyph gives that key's `present_ts`.
@@ -71,9 +72,9 @@ prints it on each run.
    to the remaining offset". Read literally (only the older text offset), the new glyph is drawn on top of the
    previous last glyph for the first frames, and on the next keystroke the previous glyph jumps by the remaining
    offset when it joins the older text. One offset for the whole line (painted at caret − width + offset, as in the
-   research notes) is the only reading where nothing jumps; the new glyph then appears in the key's first frame at
-   its place in the line, just right of the caret, and slides left with the rest. **The GPUI half should use the
-   same reading**, or the two halves look different (the measurements are unaffected).
+   research notes) is the only reading where nothing jumps; the new glyph then starts at its place in the line, just
+   right of the caret, and emerges from under the caret (clipped there) as it slides left with the rest. **The GPUI
+   half should use the same reading**, or the two halves look different (the measurements are unaffected).
 2. **"Never lags more than one keystroke behind"**: a remaining offset in the direction of the new step is capped
    at one step, so the offset is at most two advances. At 12 keys/s the cap never binds (the remainder after 83 ms
    is ≈ 7 % of an advance).

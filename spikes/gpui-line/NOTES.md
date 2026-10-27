@@ -33,7 +33,7 @@ The bench binary's summary reads three numbers it cannot know from the environme
 | binary, stripped (`strip -o`) | 6,730,832 bytes (unstripped, with line tables: 9,889,928) |
 | dependencies | 360 crates compiled on this Mac (`cargo tree -e normal,build`, unique); 671 packages in `Cargo.lock` (all platforms) |
 | linked system libraries | 19 (AppKit, Metal, QuartzCore, CoreText, CoreVideo, OpenGL, Carbon, CoreLocation, UserNotifications, …) |
-| source | 844 lines in 4 files, ≈ 570 without tests, comments and blank lines (SPEC: ~400; the excess is the IME input handler, the presented-time hook and the bench poster, none of which GPUI provides) |
+| source | 849 lines in 4 files, ≈ 570 without tests, comments and blank lines (SPEC: ~400; the excess is the IME input handler, the presented-time hook and the bench poster, none of which GPUI provides) |
 
 `Cargo.lock` was seeded from the the terminal app checkout's, so the build resolves the same versions offline (no Little
 Snitch prompt, no download).
@@ -86,15 +86,18 @@ Snitch prompt, no download).
    Return against the bindings before the input context, so these never reach `insertText:`.
 9. **Dead keys and marked text** use GPUI's `EntityInputHandler` (`replace_and_mark_text_in_range` for ⌥E's `´`,
    `replace_text_in_range` for the following `e`, which replaces the marked text with `é`). Marked text is drawn in
-   the caret colour just right of the caret; the IME's candidate and accent windows are placed at the caret
-   (`bounds_for_range`). Not testable without a hand on the keyboard: ⌥E then E should give `é`, ⌥U then O `ö`.
+   the caret colour as the line's end, its end at the caret (as the AppKit half places it); the IME's candidate and
+   accent windows are placed at the caret (`bounds_for_range`). Not testable without a hand on the keyboard: ⌥E then
+   E should give `é`, ⌥U then O `ö`.
 
 ## Behaviour choices (the same as the AppKit half; coordinator's amendment)
 
-- One offset for the whole line, the new glyph included: a keystroke adds +advance (the new glyph appears just
-  right of the caret in the key's first frame) and the offset eases to 0 over 140 ms with 1 − (1 − t)³. A leftover
+- One offset for the whole line, the new glyph included: a keystroke adds +advance (the new glyph starts just
+  right of the caret, under the clip below) and the offset eases to 0 over 140 ms with 1 − (1 − t)³. A leftover
   offset in the same direction is capped at one step, so the line never trails more than one keystroke. Backspace
   glides back the other way; the deleted glyph goes at once. Reduce Motion: no glide.
+- Nothing is drawn right of the caret (DESIGN.md S1): the glyphs, marked text included, are painted inside
+  `window.with_content_mask` with its right edge at the caret's x, so the new glyph emerges from under the caret.
 - Text colour `#d8dce3` (the SPEC gives none); the fade uses each glyph's centre x.
 - Backspace "back to the last space" is taken literally: after Return (` ¶`) one backspace removes the `¶`, the next
   does nothing. Whether `¶` should count as a word boundary is open.

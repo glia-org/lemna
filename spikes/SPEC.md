@@ -10,15 +10,20 @@ Xcode). Results go to `spikes/results/<name>-keys.csv` and `spikes/results/<name
 ## Behaviour (identical in both)
 
 - One window, 1200×700 pt, background `#0e1013`, no title text needed. Not full screen (the console must stay visible).
-- One line of text in a monospaced font (Menlo, 28 pt; the system's if Menlo is missing), vertically centred.
+- One line of text in a monospaced font (Menlo, 28 pt; the system's if Menlo is missing), colour `#d8dce3`,
+  vertically centred.
 - The caret is fixed at 60 % of the window width: a 2 pt bar, 1.2 em tall, colour `#7aa7f0`.
-- Typed text is laid out so that its end sits at the caret. Each keystroke appends; the new glyph appears **in the
-  same frame as the key event** at its final position, and the already-written text glides left by the new glyph's
-  advance over 140 ms with an ease-out curve (the offset starts at +advance and goes to 0). Keystrokes during a
-  glide add their advance to the remaining offset; the glide never lags more than one keystroke behind.
+- Typed text is laid out so that its end sits at the caret. Each keystroke appends, and the whole line, the new
+  glyph included, is drawn with one x offset that starts at +advance in the key's frame and eases to 0 over 140 ms
+  (ease-out, 1 − (1 − t)³). Keystrokes during a glide add their advance to the remaining offset; a leftover offset
+  in the same direction is capped at one advance, so the glide never lags more than one keystroke behind.
+- Nothing is ever drawn right of the caret (DESIGN.md S1): the text is clipped at the caret's x, so the new glyph
+  emerges from under the caret as the line glides left, and the caret is drawn on top of the text. Backspace's
+  glide back and marked text (a pending dead key, drawn as the line's end) are under the same clip.
 - Fade (V2): per glyph, opacity 1 right of 45 % of the width, falling linearly to 0 at 25 % of the width, nothing
   drawn left of that.
-- Backspace deletes within the current word only (back to the last space); before that it does nothing.
+- Backspace deletes within the current word only (back to the last space); before that it does nothing. The
+  deleted glyph goes at once and the line glides back (offset −advance to 0).
 - Return inserts a space followed by `¶` (so paragraphs stay visible in one line).
 - Text input goes through `NSTextInputClient` / `interpretKeyEvents:` (GPUI: its input handler), so dead keys work:
   ⌥E then E must give `é`, ⌥U then O must give `ö`. Not testable without a hand on the keyboard; say so.
@@ -56,3 +61,5 @@ directly and label `handled_ts − key_ts` as in-process only), then quit and wr
 `spikes/run-bench.sh` builds both in release and runs each with `--bench`, then prints the two summaries side by
 side as one table. The builders do not run the window-showing binaries themselves (a visible window takes the
 user's focus); they build, run any windowless self-test they wrote, and hand the script over.
+
+Note (2026-10-27): with the clip, `present_ts` is the first frame drawn after the key; its first visible pixels come one refresh later. Left as is; the spike is done.
