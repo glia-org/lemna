@@ -1,4 +1,5 @@
-// The writing as paragraphs, typed only at the end (DESIGN.md S1 B1 P0).
+// The writing as paragraphs, typed only at the end (DESIGN.md S1 B1 P0), and rebuilt from the journal's edits (E2).
+import FlowJournal
 import Foundation
 
 public struct Text: Equatable {
@@ -49,6 +50,24 @@ public struct Text: Equatable {
         guard let c = paragraphs[i].last, !c.isWhitespace else { return nil }
         paragraphs[i].removeLast()
         return c
+    }
+
+    /// One journal edit applied. The restore replays through here, and every edit the app journals is one this applies
+    /// exactly as typing did (`deleteBackward` counts UTF-16 units, as the press-and-hold replacement does), so a
+    /// restore rebuilds the text that was typed.
+    @discardableResult
+    public mutating func apply(_ edit: Edit) -> (removed: String, added: String) {
+        switch edit {
+        case .insert(let s): type(s)
+        case .deleteBackward(let n): type("", replacing: n)
+        case .paragraphEnd: ("", endParagraph())
+        }
+    }
+
+    /// The text a journal's edits leave: the silent restore at launch.
+    public init(replaying edits: [Edit]) {
+        self.init()
+        for e in edits { apply(e) }
     }
 
     /// What the line shows: about the last `n` characters, each paragraph end as ` ¶ ` (muted). Only the tail can be

@@ -1,13 +1,20 @@
 // The writing surface (DESIGN.md S1 V2 B1 P0): the view fills the window, its layer paints the background, and the
-// line is drawn into the strip across its middle on each key and, while a glide runs, on each display refresh.
+// line is drawn into the strip across its middle on each key and, while a glide runs, on each display refresh. Every
+// change to the text leaves as a journal edit (E2).
 import AppKit
 import FlowCore
+import FlowJournal
 import QuartzCore
 
 final class LineView: NSView, NSTextInputClient {
     let style: Style
     private let strip = Strip()
-    private var text = Text(), marked = ""
+    private(set) var text = Text()
+    private var marked = ""
+    /// Each change to the text, as the journal records it; called on the key event.
+    var onEdit: (Edit) -> Void = { _ in }
+    /// False from Done until Back: keys do nothing and the line keeps its last frame.
+    private(set) var accepting = true
     private var shaped = Shaped(), glide = Glide()
     private var link: CADisplayLink?
     private var keyFrame = 0.0  // when a key last drew a frame
@@ -88,20 +95,55 @@ final class LineView: NSView, NSTextInputClient {
 
     private func width(_ s: String) -> CGFloat { Line.width(s, font: style.font) }
 
+    /// Applies an edit and hands it to the journal: the one way the text changes, but for backspace.
+    @discardableResult
+    private func record(_ e: Edit) -> (removed: String, added: String) {
+        let change = text.apply(e)
+        onEdit(e)
+        return change
+    }
+
+    // MARK: Session
+
+    /// Shows `t` at rest and takes keys: the restore at launch, and the clear after a session ends.
+    func load(_ t: Text) {
+        (text, marked, glide, accepting) = (t, "", Glide(), true)
+        inputContext?.discardMarkedText()  // after `marked` is empty, so an unmarkText it may send adds nothing
+        shaped = Line.shape(text, marked: "", font: style.font)
+        if window != nil { render(at: CACurrentMediaTime()) }
+    }
+
+    /// Done: keys stop. Pending input (a dead key) joins the text, as the line already shows it, so the review and the
+    /// journal hold what was on screen.
+    func stop() {
+        accepting = false
+        if !marked.isEmpty {
+            record(.insert(marked))
+            marked = ""
+            shaped = Line.shape(text, marked: "", font: style.font)
+        }
+        inputContext?.discardMarkedText()
+    }
+
+    /// Back: keys again.
+    func resume() { accepting = true }
+
     // MARK: Input
 
     override func keyDown(with event: NSEvent) {
-        guard !event.modifierFlags.contains(.command) else { return }  // ⌘ chords: the menu's, or nothing
+        guard accepting, !event.modifierFlags.contains(.command) else { return }  // ⌘ chords: the menu's, or nothing
         interpretKeyEvents([event])
     }
 
     /// Return and backspace; every other command (Esc's cancelOperation:, arrows, ⌥⌫, Tab) does nothing.
     override func doCommand(by selector: Selector) {
+        guard accepting else { return }
         switch selector {
         case #selector(NSStandardKeyBindingResponding.insertNewline(_:)):
-            edited(width(text.endParagraph()))
+            edited(width(record(.paragraphEnd).added))
         case #selector(NSStandardKeyBindingResponding.deleteBackward(_:)):
-            guard let c = text.backspace() else { return }
+            guard let c = text.backspace() else { return }  // B1 decides here, so not through `record`
+            onEdit(.deleteBackward(String(c).utf16.count))  // which `Text.apply` replays as the same cut
             edited(-width(String(c)))
         default:
             break
@@ -109,19 +151,22 @@ final class LineView: NSView, NSTextInputClient {
     }
 
     func insertText(_ string: Any, replacementRange r: NSRange) {
+        guard accepting else { return }
         let s = (string as? NSAttributedString)?.string ?? (string as? String) ?? ""
         let pressAndHold = marked.isEmpty && r.location != NSNotFound && NSMaxRange(r) == text.utf16Count
-        let change = text.type(s, replacing: pressAndHold ? r.length : 0), old = marked
+        let removed = pressAndHold && r.length > 0 ? record(.deleteBackward(r.length)).removed : ""
+        let added = s.isEmpty ? "" : record(.insert(s)).added, old = marked
         marked = ""
-        edited(width(change.added) - width(change.removed) - width(old))
+        edited(width(added) - width(removed) - width(old))
     }
     func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
+        guard accepting else { return }
         let old = marked
         marked = (string as? NSAttributedString)?.string ?? (string as? String) ?? ""
         edited(width(marked) - width(old))
     }
     func unmarkText() {  // the pending text stays as it is shown, so the line does not move
-        text.type(marked)
+        if !marked.isEmpty { record(.insert(marked)) }
         marked = ""
     }
     func hasMarkedText() -> Bool { !marked.isEmpty }
