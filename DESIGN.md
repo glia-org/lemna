@@ -51,5 +51,5 @@ Later: R2 Harper (v1.5), W2 panel + O3 paste (v2), the name, Developer ID.
 3. The name.
 4. Tiling window managers: verify under AeroSpace that the window is tiled and keeps focus (the spike's AppKit bench waited for activation under it, 2026-10-27).
 5. Dead keys by hand (´ then e → é on the German layout, ⌥U then o → ö).
-7. Hotkey: ⌃⌥Space is macOS's default chord for "Select next source in Input menu" (off on this Mac, on by default elsewhere); change the default before anyone else gets a build.
+7. Hotkey: the user keeps ⌃⌥Space (2026-10-27; it also collides with macOS's input-source chord, off here, and with OmniFocus's quick entry). Reconsider only before a build goes to others; the constant is in `app/Sources/Flow/Summon.swift`.
 8. Soft-end tone is silent while Sound is off; decide whether it should play regardless.
