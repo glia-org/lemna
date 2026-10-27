@@ -1,0 +1,37 @@
+#!/bin/zsh
+# Builds Flow in release and assembles build/Flow.app, ad-hoc signed: there is no Developer ID yet (DESIGN.md E2, X1).
+# Idempotent: the bundle is assembled afresh on each run. Run: app/make-app.sh
+set -eu
+cd "${0:A:h}"
+swift build -c release
+app=build/Flow.app
+rm -rf "$app"
+mkdir -p "$app/Contents/MacOS"
+cp "$(swift build -c release --show-bin-path)/Flow" "$app/Contents/MacOS/Flow"
+cat > "$app/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>org.flow.app</string>
+	<key>CFBundleName</key>
+	<string>Flow</string>
+	<key>CFBundleExecutable</key>
+	<string>Flow</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+</dict>
+</plist>
+PLIST
+plutil -lint -s "$app/Contents/Info.plist"
+codesign --force --sign - --deep "$app"
+echo "$PWD/$app"

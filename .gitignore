@@ -3,3 +3,5 @@ target/
 spikes/results/*.csv
 *.app/
 .DS_Store
+app/build/
+app/renders/
