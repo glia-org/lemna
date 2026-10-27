@@ -76,7 +76,49 @@
   under macOS 14's cooperative activation (untried; the deprecated call is the fallback); ⌃⌥Space is macOS's default
   "Select next source in Input menu" where that shortcut is on; the time box stands still while the Mac sleeps;
   intent and time box do not survive a quit (memory only, by design).
-- Next: the user tries v1; then DESIGN.md's Later (R2 Harper, v1.5) and Open items.
+- App, pass 6 (W2 the box, O3 paste at Done; Plan item 6): built, 51 tests pass (44 before, 7 new: the box's frame
+  and clamps, the review grown from the bottom edge, one container at a time, the paste's decision table, the restore
+  rule, the pasted grace), `make-app.sh` assembles, signs and verifies the bundle, now with `LSUIElement`. Not tried:
+  the builder showed no window. `app/README.md` (Pass 6) says what each part does. It changes some of v1's lists
+  above: nothing shows at launch and there is no Dock icon or menu bar (the menu-bar item's menu holds Open Window,
+  Done, Discard…, Time box…, Intent…, Sound, Show Log, Quit); Esc hides the box; ⌃⌘F is Open Window (full screen
+  only from the window's green button); the window's close button returns to the box. Try, after `app/make-app.sh`
+  and `open app/build/Flow.app`:
+  - Summon from another app (TextEdit, say): ⌃⌥Space or the menu-bar item's Show Flow. A dark rounded box about 60 %
+    of the screen wide, a line tall, centred in the lower third of the screen with the pointer; every screen dimmed
+    around it, the menu bar and Dock not. The app behind stays active (its name stays in the menu bar).
+  - Type: the line glides as in the window; dead keys (´ then e), ⌥U then o, the accent menu on a held e, clicks.
+  - Esc: box and dim gone at once, the app behind has the keys. Summon again: the text is still there.
+  - Hotkey while the box is up: it goes. Click into another app through the dim, then the hotkey: the box takes the
+    keys back.
+  - Done in place: ⌘⏎. The box grows upward, its bottom edge where it was, to about 60 % of the screen's height, with
+    the review (intent, text, footer, Discard… / Back, Save…, Copy, Paste). Esc or Back: back to the line.
+  - Paste: ⌘⏎ again (or Paste). The first time, macOS asks for Accessibility and the footer says
+    `Copied · allow Flow under Privacy & Security › Accessibility to paste` (the text is on the clipboard). Allow
+    Flow under System Settings › Privacy & Security › Accessibility, then Done, ⌘⏎ again: the box goes and the text
+    lands where the cursor was in TextEdit; then in Mail, then in a terminal. Copy something first: about a quarter
+    second after the paste the clipboard holds that again. After each rebuild the ad-hoc signature changes and macOS
+    may keep the old entry: if paste copies again, remove Flow from the Accessibility list (−) and allow it anew.
+  - How Undo works after a paste: the box is hidden, so the 10 s grace runs in the background. Summon within 10 s:
+    the review with `Pasted · Undo (10 s)`; Undo keeps the session and the text in Flow (the paste in the other app
+    stays). Summon after 10 s: an empty line, a new session; the log has its line.
+  - Hold ⌘⏎ a little long at the paste: the box waits for Return to come up, so no repeated ⌘⏎ reaches the app
+    (which would send a message in many apps).
+  - Secure Input: focus a password field (Safari, or Terminal with Secure Keyboard Entry on), summon, write, Done,
+    ⌘⏎: `Secure input is on: copied instead` in the footer, nothing typed into the field. If the box first went and
+    came back with that line, Secure Input came on only once the field had the keys again (the second check).
+  - No target: summon from TextEdit, click into TextEdit through the dim and quit it (⌘Q), click the box, Done, ⌘⏎:
+    `Copied · no app to paste into`.
+  - Window mode: ⌃⌘F in the box (or Open Window in the menu-bar item): the box goes, Flow comes forward with v1's
+    window and the same text, the line at 60 % of the window. ⌃⌘F again, or the close button: back to the box. Done
+    in the window: v1's sheet, ⌘⏎ copies (no Paste there). In full screen (green button), ⌃⌘F leaves full screen
+    first, then the box.
+  - Over a full-screen app (Safari in full screen): the box and the dim show over it.
+  - AeroSpace: it leaves the box and the dim alone (they float); whether it still tiles the window now that Flow has
+    no Dock icon is open.
+  - Time box…, Intent…, Discard… from the menu-bar item with the box hidden: the box comes, with the question as a
+    sheet on it.
+- Next: the user tries v1 and pass 6; then DESIGN.md's Plan item 7 (R2 Harper, `lib/FlowHarper`) and Open items.
 
 ## Build and run
 

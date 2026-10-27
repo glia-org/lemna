@@ -1,5 +1,5 @@
-// Summoning (DESIGN.md W1): a global hotkey that brings Flow's window to the front or puts it away, and a menu-bar item
-// with a short menu.
+// Summoning (DESIGN.md W2): a global hotkey that brings the box (or, in window mode, the window) or puts it away, and
+// the menu-bar item with Flow's menu.
 import AppKit
 import Carbon.HIToolbox
 import FlowCore
@@ -38,8 +38,10 @@ final class Hotkey {
     }
 }
 
-/// The menu-bar item: the mark (a template, so the menu bar tints it), and Show Flow (with the hotkey's chord), Done,
-/// Sound and Quit. The App validates the items: Done's state, Sound's check mark.
+/// The menu-bar item: the mark (a template, so the menu bar tints it) and Flow's menu. As an accessory app Flow has no
+/// menu bar of its own, so this menu carries the main menu's items too: Show Flow (with the hotkey's chord), Open
+/// Window, Done, Discard…, Time box…, Intent…, Sound, Show Log, Quit. The App validates them: Done's state, Sound's
+/// check mark, Open Window's title.
 func makeStatusItem(target: AnyObject) -> NSStatusItem {
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)  // retained by the caller
     let mark = NSImage(size: StatusMark.size, flipped: false) { _ in
@@ -53,9 +55,17 @@ func makeStatusItem(target: AnyObject) -> NSStatusItem {
     let menu = NSMenu()
     menu.addItem(withTitle: "Show Flow", action: #selector(App.summon(_:)), keyEquivalent: Hotkey.equivalent)
         .keyEquivalentModifierMask = Hotkey.modifiers
+    menu.addItem(withTitle: "Open Window", action: #selector(App.toggleWindow(_:)), keyEquivalent: "f")
+        .keyEquivalentModifierMask = [.control, .command]
     menu.addItem(.separator())
     menu.addItem(withTitle: "Done", action: #selector(App.done(_:)), keyEquivalent: "\r")
+    menu.addItem(withTitle: "Discard…", action: #selector(App.discard(_:)), keyEquivalent: "")
+    menu.addItem(.separator())
+    menu.addItem(withTitle: "Time box…", action: #selector(App.setTimeBox(_:)), keyEquivalent: "")
+    menu.addItem(withTitle: "Intent…", action: #selector(App.setIntent(_:)), keyEquivalent: "")
+    menu.addItem(.separator())
     menu.addItem(withTitle: "Sound", action: #selector(App.toggleSound(_:)), keyEquivalent: "k")
+    menu.addItem(withTitle: "Show Log", action: #selector(App.showLog(_:)), keyEquivalent: "")
     for i in menu.items where i.action != nil { i.target = target }  // the app may not be active: no key window
     menu.addItem(.separator())
     menu.addItem(withTitle: "Quit Flow", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")

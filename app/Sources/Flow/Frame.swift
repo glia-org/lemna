@@ -1,11 +1,14 @@
 // The session frame on screen (DESIGN.md M1): the surface's bottom edge, with the time box's line and the Bluetooth
-// notice (K1), and the two small sheets, Time box… and Intent….
+// notice (K1), in the box or the window (it is the line's subview and moves with it), and the two small sheets, Time
+// box… and Intent….
 import AppKit
 import FlowCore
 
 /// The bottom edge of the surface: the time box's 1 pt line along the very bottom (`#262b32` track, `#5c646f` fill,
-/// no numbers) and, above it, the Bluetooth notice. Both stay off the line: the window is at least 300 pt tall, so the
-/// line's band starts 122 pt up, and this strip is 40 pt. Clicks go through to the surface.
+/// no numbers) and, above it, the Bluetooth notice. Both stay off the line's glyphs: in the window (at least 300 pt
+/// tall) the line's band starts 122 pt up; in the box (110 pt inside its border) 27 pt up, where the notice's top
+/// meets the band's lower quarter, which holds no ink (the band is twice the font's size, the glyphs centred). This
+/// view is above the strip, so the notice shows either way. Clicks go through to the surface.
 final class EdgeView: NSView {
     static let height: CGFloat = 40
     /// How far the time box's line has filled, 0…1; nil: no time box, no line.

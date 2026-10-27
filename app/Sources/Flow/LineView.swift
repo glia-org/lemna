@@ -1,6 +1,7 @@
-// The writing surface (DESIGN.md S1 V2 B1 P0): the view fills the window, its layer paints the background, and the
-// line is drawn into the strip across its middle on each key and, while a glide runs, on each display refresh. Every
-// change to the text leaves as a journal edit (E2) and, ahead of the drawing, as a click (K1).
+// The writing surface (DESIGN.md S1 V2 B1 P0): the view fills its container (the box, or the window: one view moved
+// between them, W2), its layer paints the background, and the line is drawn into the strip across its middle on each
+// key and, while a glide runs, on each display refresh. Every change to the text leaves as a journal edit (E2) and,
+// ahead of the drawing, as a click (K1).
 import AppKit
 import FlowClicks
 import FlowCore
@@ -17,6 +18,8 @@ final class LineView: NSView, NSTextInputClient {
     /// Clicks on the keys that change the text, played before the edit is laid out and drawn so the sound leaves
     /// first; nil when the player could not start.
     var clicks: ClickPlayer?
+    /// Esc while writing: the box hides (the app decides; in the window Esc does nothing).
+    var onEscape: () -> Void = {}
     /// False from Done until Back: keys do nothing and the line keeps its last frame.
     private(set) var accepting = true
     private var shaped = Shaped(), glide = Glide()
@@ -37,13 +40,15 @@ final class LineView: NSView, NSTextInputClient {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        guard window != nil, link == nil else { return }
-        let l = displayLink(target: self, selector: #selector(tick(_:)))
-        l.preferredFrameRateRange = CAFrameRateRange(minimum: 80, maximum: 120, preferred: 120)  // ProMotion holds 120
-        l.isPaused = true  // runs only while a glide does
-        l.add(to: .main, forMode: .common)
-        link = l
-        relayout()
+        guard window != nil else { return }
+        if link == nil {  // made once; it follows the view to the display it is on
+            let l = displayLink(target: self, selector: #selector(tick(_:)))
+            l.preferredFrameRateRange = CAFrameRateRange(minimum: 80, maximum: 120, preferred: 120)  // ProMotion holds 120
+            l.isPaused = true  // runs only while a glide does
+            l.add(to: .main, forMode: .common)
+            link = l
+        }
+        relayout()  // each move into the box or the window: its size, its scale, a fresh frame
     }
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
@@ -70,9 +75,16 @@ final class LineView: NSView, NSTextInputClient {
         render(at: CACurrentMediaTime())
     }
 
+    /// Draws again as the view now stands: its container came on screen, or the line came back from under the review.
+    func redraw() { relayout() }
+
     // MARK: Frames
 
+    /// Presents a frame only while the view is on screen: a drawable presented to a hidden window or view may not come
+    /// back to the layer's pool of two, and the next `nextDrawable` would wait up to a second on the main thread. The
+    /// box hides often (Esc, the hotkey, a paste) and the session can end while it is hidden; `redraw` catches up.
     private func render(at t: Double) {
+        guard window?.isVisible == true, !isHiddenOrHasHiddenAncestor else { return }
         let band = CGRect(origin: .zero, size: strip.bounds.size), offset = CGFloat(glide.offset(at: t))
         strip.present { Line.draw(shaped, offset: offset, in: $0, band: band, style: style) }
     }
@@ -139,7 +151,8 @@ final class LineView: NSView, NSTextInputClient {
         interpretKeyEvents([event])
     }
 
-    /// Return and backspace; every other command (Esc's cancelOperation:, arrows, ⌥⌫, Tab) does nothing.
+    /// Return, backspace and Esc (its cancelOperation:, after the input method had its say, so an input method's own
+    /// Esc still cancels its pending text); every other command (arrows, ⌥⌫, Tab) does nothing.
     override func doCommand(by selector: Selector) {
         guard accepting else { return }
         switch selector {
@@ -151,6 +164,8 @@ final class LineView: NSView, NSTextInputClient {
             clicks?.play(.backspace)
             onEdit(.deleteBackward(String(c).utf16.count))  // which `Text.apply` replays as the same cut
             edited(-width(String(c)))
+        case #selector(NSResponder.cancelOperation(_:)):
+            onEscape()
         default:
             break
         }

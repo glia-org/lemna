@@ -1,10 +1,12 @@
-// The end of a session (DESIGN.md O1 O2 E2) as a state machine, free of AppKit and of clocks so the tests drive it:
-// writing → review (Done) → graced (copied or saved: finished at `until` unless undone) → cleared → writing.
+// The end of a session (DESIGN.md O1 O2 O3 E2) as a state machine, free of AppKit and of clocks so the tests drive it:
+// writing → review (Done) → graced (copied, saved or pasted: finished at `until` unless undone) → cleared → writing.
 // Each event returns whether it applied; the app acts only on true, so a stale timer or a second click does nothing.
 
 public enum Handoff: Equatable {
     case copied
     case saved(name: String)
+    /// Pasted into the app behind the box (O3); the box is hidden, so the grace runs out of sight.
+    case pasted
 }
 
 public enum Phase: Equatable {
@@ -12,7 +14,7 @@ public enum Phase: Equatable {
     case writing
     /// The review is up; the surface keeps its last frame.
     case review
-    /// Copied or saved: the session is finished at `until` unless Undo comes first.
+    /// Copied, saved or pasted: the session is finished at `until` unless Undo comes first.
     case graced(Handoff, until: Double)
     /// Finished or discarded: the key is gone, the surface clears and a new session starts.
     case cleared
@@ -40,7 +42,7 @@ public struct Session: Equatable {
         return true
     }
 
-    /// Copied or saved at `t`. Another hand-off during a grace starts it again.
+    /// Copied, saved or pasted at `t`. Another hand-off during a grace starts it again.
     @discardableResult public mutating func handedOff(_ how: Handoff, at t: Double) -> Bool {
         guard phase == .review || isGraced else { return false }
         phase = .graced(how, until: t + Self.grace)

@@ -1,6 +1,7 @@
 #!/bin/zsh
 # Builds Flow in release and assembles build/Flow.app, ad-hoc signed: there is no Developer ID yet (DESIGN.md E2, X1).
 # Idempotent: the bundle is assembled afresh on each run. Run: app/make-app.sh
+# LSUIElement: an accessory app from launch on (no Dock icon, no menu bar; DESIGN.md W2), as main.swift sets it too.
 set -eu
 cd "${0:A:h}"
 swift build -c release
@@ -28,6 +29,8 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 	<string>6.0</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
+	<key>LSUIElement</key>
+	<true/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSPrincipalClass</key>

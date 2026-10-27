@@ -1,9 +1,10 @@
 # Flow app
 
 The writing surface (DESIGN.md S1 V2 B1 P0), kept in the journal (E2), with key clicks (K1), the session frame (M1),
-summoning (W1) and the end of a session (O1 O2 R1), as a macOS app: v1 as planned. Swift + AppKit, SwiftPM with the
-Command Line Tools only (no Xcode), two package dependencies by path (`../lib/FlowJournal`, `../lib/FlowClicks`),
-ad-hoc signed (there is no Developer ID yet).
+and the end of a session (O1 O2 R1), as a macOS app: v1 as planned, then pass 6 (Plan item 6): the surface is a small
+floating box over whatever the user is doing (W2) and Done can paste into the app behind it (O3). Swift + AppKit,
+SwiftPM with the Command Line Tools only (no Xcode), two package dependencies by path (`../lib/FlowJournal`,
+`../lib/FlowClicks`), ad-hoc signed (there is no Developer ID yet).
 
 ## Build, run, test
 
@@ -23,7 +24,8 @@ overlay without a module, so no test file imports Foundation and Testing togethe
 own type (`.init(fileURLWithPath:)`), the temporary folder comes from Darwin's `mkdtemp`.
 
 `make-app.sh` copies the click pack (`lib/FlowClicks/Sources/FlowClicks/DefaultPack`, `pack.json` and its WAVs) into
-`Contents/Resources/DefaultPack`, where `SoundPack.bundled()` loads it, and checks the signature with
+`Contents/Resources/DefaultPack`, where `SoundPack.bundled()` loads it, writes `LSUIElement` (an accessory app from
+launch on: no Dock icon, no menu bar) into the Info.plist, and checks the signature with
 `codesign --verify --deep --strict`.
 
 The tests need no window and no keychain (the journal test keeps its key in memory). `offscreenRenders` draws the
@@ -39,25 +41,31 @@ window's content as the app does (1200 × 700 pt at 2×) and writes `app/renders
   the deterministic pass R1 and the word count, `Session.swift` the end of a session as a state machine and the
   duration's wording, `Frame.swift` the session frame (the time box's fill and end, the soft end's tone as WAV bytes,
   the private log's line and append), `Summoning.swift` the menu-bar mark, when the Bluetooth notice shows, and what a
-  key does in the review sheet.
-- `Sources/Flow`: `main.swift` the app, window, menus, clicks and the sound toggle, the session frame, and the end of
-  a session (Done, Back, Copy, Save, Discard, the grace, the log line); `Keeper.swift` the journal in the app (open
-  and restore, append, the flushes); `Review.swift` the review sheet; `LineView.swift` the view (text input, edits as
-  journal edits and clicks, display link); `Strip.swift` the Metal band (Core Graphics into a shared buffer, blitted
-  into the drawable); `Frame.swift` the surface's bottom edge (the time box's line, the Bluetooth notice) and the
-  Time box… and Intent… sheets; `Summon.swift` the hotkey (Carbon) and the menu-bar item.
+  key does in the review, `Box.swift` the box's frame on a screen and grown for the review (`BoxFrame`) and which
+  container holds the line (`Surface`), `Paste.swift` the paste's decision table and the restore rule.
+- `Sources/Flow`: `main.swift` the app, window, menus, clicks and the sound toggle, summoning and the two containers
+  (`apply()`), the session frame, and the end of a session (Done, Back, Copy, Paste, Save, Discard, the grace, the log
+  line); `Box.swift` the box (the non-activating panel, the dim overlays, what it holds); `Paste.swift` the pasteboard
+  (Copy's item, the old clipboard kept and put back) and the posted ⌘V; `Keeper.swift` the journal in the app (open
+  and restore, append, the flushes); `Review.swift` the review's content and its sheet host for the window;
+  `LineView.swift` the view (text input, edits as journal edits and clicks, display link); `Strip.swift` the Metal
+  band (Core Graphics into a shared buffer, blitted into the drawable); `Frame.swift` the surface's bottom edge (the
+  time box's line, the Bluetooth notice) and the Time box… and Intent… sheets; `Summon.swift` the hotkey (Carbon) and
+  the menu-bar item with Flow's menu.
 - `Tests/FlowCoreTests`: the model, the glide, the fade, nothing drawn right of the caret, the renders (`CoreTests`,
   `RenderTests`); R1's rules, counts and idempotence (`MechanicalTests`); the state machine (`SessionTests`); the
   journal round trip through the app's replay (`JournalReplayTests`); the time box, the tone, the log's line and file,
-  the menu-bar mark, the Bluetooth notice, the review's keys (`FrameTests`).
+  the menu-bar mark, the Bluetooth notice, the review's keys (`FrameTests`); the box's frame and its clamps, the review
+  growing it from its bottom edge, one container at a time, the paste's decision table, the restore rule, the pasted
+  grace (`BoxTests`).
 
 ## What it covers
 
-Milestone 1, the surface:
+Milestone 1, the surface (the window is window mode since pass 6, below):
 
 - One ordinary resizable window (titled, transparent title bar, standard buttons, minimum 600 × 300, frame
-  remembered), so tiling window managers place it; full screen from the green button or View ▸ Enter Full Screen
-  (⌃⌘F). No Edit menu yet.
+  remembered), so tiling window managers place it; full screen from the green button (⌃⌘F is Open Window since pass
+  6). No Edit menu yet.
 - The line: Menlo 28 pt, its end at a caret fixed at 60 % of the width, vertically centred; the whole line glides left
   by each key's advance over 140 ms (ease-out cubic, a leftover capped at one advance), and back on backspace; nothing
   is drawn right of the caret; glyphs fade from full strength at 45 % of the width to nothing at 25 %. Reduce Motion
@@ -65,7 +73,8 @@ Milestone 1, the surface:
 - The model: paragraphs; Return ends one (twice leaves a blank line), shown on the line as a muted ` ¶ `; backspace only
   within the current word, never past a typed space or a paragraph end.
 - Input through `NSTextInputClient`: dead keys and input methods (the pending text is the line's end), the
-  press-and-hold accent menu (replaces the letter just typed). Esc, arrows, clicks and other ⌘ shortcuts do nothing.
+  press-and-hold accent menu (replaces the letter just typed). Arrows, clicks and other ⌘ shortcuts do nothing; Esc
+  hides the box (pass 6) and does nothing in the window.
 - Frames: a key draws and presents its frame at once; the display link (up to 120 Hz) runs only while a glide does;
   two drawables in the layer's queue.
 
@@ -80,14 +89,16 @@ Milestone 2 in the app, the journal (E2):
 - Flushes: the journal writes each 50 ms batch itself; the app adds `.full` on 1 s idle (one timer, moved on by each
   edit, on a background queue), on deactivate and on Done (both off the main thread), and on quit
   (`applicationShouldTerminate` waits for it, then terminates).
-- The close button hides the window; the Dock icon brings it back. ⌘Q quits and keeps the session.
+- ⌘Q quits and keeps the session. (v1: the close button hid the window and the Dock icon brought it back; since pass 6
+  the close button returns to the box, and there is no Dock icon.)
 - If the journal cannot open (keychain locked or refused, folder not writable), one plain alert says so and writing
   goes on without a journal; the review's footer repeats it. Nothing else on the surface.
 
 Milestone 3, the end of a session (O1 O2 R1):
 
 - Menus: Flow (About Flow, a placeholder; Quit ⌘Q), Session (Done ⌘⏎, Discard…, Time box…, Intent…, Sound ⌘K, Show
-  Log), View (Enter Full Screen ⌃⌘F). Done is off while the text is blank or a review or question is up.
+  Log), View (Open Window ⌃⌘F, since pass 6). Done is off while the text is blank or a review or question is up. Since
+  pass 6 Flow shows no menu bar; these menus hold the key equivalents, and the menu-bar item's menu shows the items.
 - Done stops the surface (keys do nothing; the line keeps its last frame) and opens the review sheet: the text with R1
   applied, read-only, selectable, scrollable (system font 15 pt, `#d9dde3` on `#14171b`, at most 72 characters a
   line); a footer with `R1 · N fixes: … · Undo` (Undo shows the raw text, Redo the fixed one), the duration and word
@@ -130,14 +141,15 @@ Milestone 4 in the app, the clicks (K1):
 Milestone 5, summoning (W1) and the session frame (M1):
 
 - Hotkey ⌃⌥Space (`Hotkey` in `Summon.swift`, the one place the chord is defined), registered with Carbon's
-  `RegisterEventHotKey`: no permission prompt, works ad-hoc signed. It brings the window to the front and makes it
-  key (unhiding the app, restoring a minimised or closed window) or, when Flow's window or a sheet on it is already
-  key, hides the app so the app before it comes back. If the chord cannot be registered, one line in the system log;
-  the menu-bar item still works.
+  `RegisterEventHotKey`: no permission prompt, works ad-hoc signed. Since pass 6 it toggles the box (below); in window
+  mode it does what v1's did: brings the window to the front and makes it key (unhiding the app, restoring a
+  minimised window) or, when the window or a sheet on it is already key, hides the app so the app before it comes
+  back. If the chord cannot be registered, one line in the system log; the menu-bar item still works.
 - Menu-bar item: a template image drawn in code (16 × 16 pt; a 1.5 pt line from x 2 to 14 with a 1.5 × 8.5 pt caret
-  bar centred at 60 % of it), so it follows the menu bar's appearance; its menu: Show Flow (⌃⌥Space shown as its
-  key equivalent), Done ⌘⏎, Sound ✓ ⌘K, Quit Flow ⌘Q. Done from there brings the window forward first.
-- The app keeps the regular activation policy (Dock icon): tiling window managers expect it.
+  bar centred at 60 % of it), so it follows the menu bar's appearance; its menu (since pass 6 all of Flow's menu):
+  Show Flow (⌃⌥Space shown as its key equivalent), Open Window / Close Window ⌃⌘F, Done ⌘⏎, Discard…, Time box…,
+  Intent…, Sound ✓ ⌘K, Show Log, Quit Flow ⌘Q. Done from there brings the box (or the window) forward first.
+- v1 kept the regular activation policy (Dock icon) for tiling window managers; pass 6 makes Flow an accessory app.
 - Session › Time box…: a sheet with Off, 10, 15, 25 minutes (radio buttons), Set / Cancel. The box starts when it is
   set; Set on the running box leaves it running; Set on an ended one starts it again. It lasts for this session only
   (in memory; gone at the session's end or a quit).
@@ -157,15 +169,90 @@ Milestone 5, summoning (W1) and the session frame (M1):
   at Done. Totals only: no text, no timing per key. Session › Show Log reveals the file in Finder (off until it
   exists).
 
+Pass 6, the box and paste (W2, O3):
+
+- Accessory app: `LSUIElement` in the Info.plist and `setActivationPolicy(.accessory)` in code; no Dock icon, no menu
+  bar (the menu-bar item is the menu). On launch nothing shows.
+- The box: an `NSPanel` (`.nonactivatingPanel`, borderless, `canBecomeKey` overridden to true), level `.floating`,
+  on all Spaces and as a full-screen auxiliary, transient (left out of Mission Control), `hidesOnDeactivate` off,
+  movable by its background, on and off screen at once. Content: `#0e1013`, 10 pt corners, a 1 pt `#262b32` border
+  drawn over the content (the line and the review sit 1 pt inside it), the system shadow along the rounded outline;
+  the whole panel at alpha 0.97 (on the background alone, the opaque Metal band would show as a darker stripe). Size
+  (`BoxFrame`): 60 % of the visible frame of the screen with the pointer (at least 600 pt, at most the screen), 4 em
+  tall (112 pt at 28 pt: the line's 2 em band with one em above and below), centred across, its centre two thirds of
+  the way down, on whole points, inside the visible frame. A box dragged elsewhere goes back to that place at the next
+  summon.
+- The dim: one borderless window per screen, black at 0.35, transparent to the mouse, one level under the box, the
+  box's collection behaviour, on and off with the box at once; fitted to the screens at each summon. The menu bar and
+  the Dock stay above it.
+- The line: one `LineView`, moved between the box and the window (whichever is on screen); its caret stays at 60 % of
+  the container. It draws only while it is on screen (a hidden layer may keep its drawables), and once per show.
+  The time box's line and the Bluetooth notice are its subview, so they sit at the box's bottom edge inside the
+  border. The notice is checked at each summon, so one at launch is not spent unseen.
+- Summoning (`Surface`): the hotkey and Show Flow show the box (recording `NSWorkspace.frontmostApplication` as the
+  app to paste into, unless that is Flow itself) and make it key without activating Flow, with the dim; again while
+  the box has the keys, they hide both. A box left on screen after a click into another app takes the keys back
+  (and that app becomes the target). Esc while writing hides the box; the session stays, the journal keeps
+  everything, and hiding flushes it fully (as deactivating did). Where Flow did get activated (window mode, a
+  question), hiding hides the app so the app before it comes back.
+- Window mode: Open Window (⌃⌘F in the box, or the menu-bar item) hides the box and dim, activates Flow
+  (`NSApp.activate()`, and `activate(ignoringOtherApps:)` 0.2 s later if Flow is still not active) and shows v1's
+  window with the line in it. ⌃⌘F again (Close Window) or the close button returns to the box (out of full screen
+  first). Only while writing: a review or question stays with the container it opened on (the close button then only
+  hides the window).
+- Review in place: Done in the box grows it upward from its bottom edge to 60 % of the visible height (at least 240
+  pt, its top inside the screen) and shows the review's content (the same as the sheet's: intent, text, footer,
+  buttons; the 72-character column centred); Back or Esc shrinks it to the line. In the window the review is v1's
+  sheet. The two hosts share one content view (`Review`) and its key routing (`handles`, tried from
+  `performKeyEquivalent` before the main menu, whose Done shares ⌘⏎, and from `sendEvent`).
+- Questions (Discard…, Time box…, Intent…, Save…, the journal alert) are sheets on the container on screen; on the box
+  Flow is activated first, since a sheet takes keys only in the active app.
+- Paste (O3): in the box's review a Paste button is the rightmost and ⌘⏎ presses it (Copy stays a button; in the
+  window ⌘⏎ is Copy). `Paste.decide` first: Secure Input on (`IsSecureEventInputEnabled`) → copy, footer
+  `Secure input is on: copied instead`; no PostEvent permission (`CGPreflightPostEventAccess`) →
+  `CGRequestPostEventAccess` (macOS asks once) and copy, `Copied · allow Flow under Privacy & Security ›
+  Accessibility to paste`; no target (none recorded, or it quit) → copy, `Copied · no app to paste into`. Else, once
+  Return is up (at most 1 s; a held ⌘⏎ would otherwise auto-repeat into the app behind, where it sends messages in
+  many apps): the old pasteboard's items are kept (each type's data, as NSPasteboard gives it; nothing when macOS
+  15.4's pasteboard privacy denies Flow), the pasteboard is written as Copy writes it, the box and dim go, the target
+  is brought forward if it is not in front (yield, then `activate(from:)`, then a plain `activate`), and after 120 ms
+  Secure Input is checked again (a password field turns it on only once its window has the keys back: then the text
+  stays copied and the box comes back saying so); else ⌘V goes out as two `CGEvent`s (`kVK_ANSI_V` down and up,
+  `.maskCommand`, a private event source so held keys add no flags) to `.cghidEventTap`. 250 ms later the old items
+  go back if the pasteboard's change count is still the one Flow's write left.
+- Undo after a paste: the box is hidden, so the grace runs in the background. Summoning within 10 s shows the review
+  with `Pasted · Undo (10 s)`; Undo keeps the session and its text (the paste in the other app stays). After the
+  grace the session is finished as after Copy (logged, key destroyed) and the next summon shows an empty line.
+
 ## Known gaps
 
+- Pass 6 is not tried at all (the builder shows no windows): whether `NSTextInputClient` (marked text, the accent
+  menu, input methods) works in the non-activating key panel; whether the main menu's key equivalents (⌘⏎ Done, ⌃⌘F,
+  ⌘K, ⌘Q) reach the app while it is not active (the box's `sendEvent` hands them to the menu if not); whether
+  `.floating` shows over a full-screen app; how sheets look on the borderless box (a question on the 112 pt box hangs
+  below its top edge); whether the hotkey with a sheet up on the box brings the sheet back with the box.
+- The PostEvent permission is tied to the code signature, and an ad-hoc signature changes with every build: after a
+  rebuild macOS may show Flow as allowed under Accessibility but drop its events. Remove Flow there (−) and paste
+  again to be asked anew.
+- Keeping the old clipboard reads the general pasteboard. Where macOS (15.4 on) asks before an app reads it
+  programmatically, that read may raise the system's paste alert at each paste; with the alert answered Deny, Flow
+  leaves its text on the clipboard instead of restoring. Large items (an image) are read in full on the main thread.
+- The target is the app in front at the summon. A click into another app and then back on the box (rather than the
+  hotkey) leaves the old target; when the box is the key window of an inactive Flow, ⌘V goes wherever the keys are
+  once the box hides.
+- A click through the dim into another app leaves the box and the dim on screen (nothing hides the box but Esc, the
+  hotkey, Show Flow and a paste).
+- The dim and the box are fitted to the screens at each summon, not while they show: a display plugged in meanwhile
+  is not dimmed until the next summon.
+- AeroSpace and other tiling window managers: whether they still tile the window of an accessory app is untried (v1
+  kept the Dock icon for that).
 - Not tried with the window shown (the builder does not open windows): typing feel and latency, 120 Hz on ProMotion,
   live resize, full screen, AeroSpace tiling, dead keys and the accent menu, the review sheet's look and keys, the
   save panel on the sheet, the restore; nor anything of milestones 4 and 5 (clicks in the app, the hotkey, the
   menu-bar item, the sheets, the bottom edge, the tone, the log). DESIGN.md Open 4 and 5 stay open.
-- `NSApp.activate()` (macOS 14's cooperative activation) does not promise to activate; whether the hotkey brings
-  Flow forward from another app is untried. If it does not, the deprecated `activate(ignoringOtherApps: true)` is the
-  fallback.
+- `NSApp.activate()` (macOS 14's cooperative activation) does not promise to activate; since pass 6 window mode
+  falls back to `activate(ignoringOtherApps: true)` (to be deprecated) when Flow is still not active 0.2 s later.
+  The box needs no activation.
 - ⌃⌥Space is also macOS's default for "Select next source in Input menu" (System Settings › Keyboard › Keyboard
   Shortcuts › Input Sources); where that shortcut is on, it takes the chord.
 - The time box runs on the media clock, which stands still while the Mac sleeps: a box resumes after a wake rather
