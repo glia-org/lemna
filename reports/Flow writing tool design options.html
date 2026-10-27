@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flow Writing Research Report</title>
+<style>
+/* The research report behind the flow-writer design panel, rendered from its Markdown with pandoc. Same language as
+   the panel: one mono font for headings and data, 1 px lines, the panel's tokens. */
+:root{
+  color-scheme:dark;
+  --bg:#0e1013; --surface:#14171b; --raise:#1b1f25; --line:#262b32; --line-2:#3a414c;
+  --fg:#d9dde3; --muted:#8d95a0; --faint:#5c646f;
+  --accent:#7aa7f0; --accent-soft:rgba(122,167,240,.13); --on-accent:#0e1013;
+  --work:#e2a03a; --need:#f06a43; --done:#52b87c;
+  --ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"CaskaydiaCove Nerd Font Mono","Cascadia Code","Cascadia Mono","Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 var(--ui);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1000px;margin-inline:auto;padding:32px clamp(16px,4vw,32px) 120px}
+.top{display:flex;flex-direction:column;gap:12px;margin-bottom:30px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.eyebrow{margin:0;font:500 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.note{margin:0;max-width:80ch;color:var(--muted);font-size:13px}
+.note b{color:var(--fg);font-weight:600}
+.toc{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0;padding:0;list-style:none;font:500 12px/1.5 var(--mono)}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code{font:12.5px/1.3 var(--mono);overflow-wrap:anywhere}
+article h1{margin:0 0 16px;font:600 clamp(24px,4vw,34px)/1.15 var(--mono);letter-spacing:-.02em}
+article h1 + p{font-size:16px}
+article h2{margin:46px 0 14px;padding-bottom:10px;border-bottom:1px solid var(--line);font:600 19px/1.25 var(--mono)}
+article h3{margin:30px 0 10px;font:600 15px/1.3 var(--mono)}
+article p{margin:0 0 14px;max-width:78ch}
+article strong{font-weight:600;color:#fff}
+.tw{overflow-x:auto;margin:6px 0 24px}
+table.keys{border-collapse:collapse;width:100%;min-width:680px;font-size:13px;line-height:1.45;color:var(--muted)}
+table.keys td,table.keys th{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+table.keys th{font:500 12px/1.3 var(--mono);color:var(--fg);border-bottom-color:var(--line-2)}
+table.keys td:first-child{color:var(--fg)}
+table.keys strong{color:var(--fg)}
+</style>
+<div class="wrap">
+<header class="top">
+<p class="eyebrow">Research report · flow writing tool</p>
+<p class="note">The report behind the <a href="../docs/design-panel-flow-writer.html">design panel</a>, rendered from <a href="Flow%20writing%20tool%20design%20options.md">its Markdown</a>; sources in the <a href="../research_notes/Flow%20writing%20tool%20design%20options/">five research notes</a>. <b>IDs differ in the panel:</b> the report's H and T are S1 and S2, its D0–D6 are E0–E6, its P0–P9 (post-processing) are R1–R5, and the panel's P is pressure.</p>
+<ul class="toc">
+<li><a href="#hiding-the-text-removes-the-urge-to-fix-not-the-ability-to-think">Psychology</a></li>
+<li><a href="#no-tool-slides-one-line-sideways-and-the-calm-ones-cannot-hand-text-off">Prior art</a></li>
+<li><a href="#gpui-gives-this-implementer-the-shortest-safe-path-from-key-to-glyph">Stack</a></li>
+<li><a href="#only-pasting-into-other-apps-needs-a-permission-and-it-costs-the-app-store">Hand-off and panel</a></li>
+<li><a href="#an-encrypted-journal-with-a-deletable-key-survives-everything-except-a-day-of-snapshots">Never lose, privacy</a></li>
+<li><a href="#mechanical-fixes-belong-in-the-tool-ai-belongs-at-the-end-visible-or-elsewhere">Post-processing</a></li>
+<li><a href="#fourteen-decisions-each-with-a-default-and-a-reason-to-change-it">Decision table</a></li>
+<li><a href="#conclusion">Conclusion</a></li>
+</ul>
+</header>
+<article>
+<h1 id="slide-words-away-without-losing-any">Slide words away without losing any</h1>
+<p>Build the tool as a calm, forward-only writer whose caret stays put while one horizontal line slides left, a mode no shipping software offers, written in Rust and GPUI with a thin objc2 layer for the Mac hooks, an always-running cpal stream for the clicks, an encrypted append-only journal whose key lives in the data protection keychain, and deterministic clean-up in the tool with AI kept outside it or confined to an opt-in, visible pass at the end. The psychology backs the core idea narrowly but firmly: typists who cannot see their output <strong>correct 9% of their errors instead of 42%</strong> at a small cost in speed, and hiding earlier text leaves quality "little, if at all" affected, so the tool removes the trigger to edit, not the ability to think. The same evidence sets three limits: the tool should not be sold as producing better text, it should not hide everything (glances back before a new sentence help plan the next one, and one writer limited to two lines reported "paranoia"), and on a physical keyboard the click buys pleasure and rhythm, not speed. Pasting into another app is the one feature that needs a permission (Accessibility); it also rules out the Mac App Store and hands the text to another app's storage. No storage design both survives a power loss and leaves nothing recoverable during the roughly 24 hours local APFS snapshots last, but the recommended journal survives every other failure and turns "delete" into crypto-shredding, destroying the key so the ciphertext becomes noise. How many trailing words to show, how far backspace reaches and whether the click helps have no comparative evidence and should be settled on the writer's own session data.</p>
+<h2 id="hiding-the-text-removes-the-urge-to-fix-not-the-ability-to-think">Hiding the text removes the urge to fix, not the ability to think</h2>
+<p>The founding evidence for "don't look back" is old and thin, but it all points one way. Peter Elbow's freewriting rule, "Never stop to look back, to cross something out, to wonder how to spell something", rests on his claim that editing while producing makes writing "dead" (<a href="https://www.research.ucsb.edu/sites/default/files/RD/docs/FREEWRITING-by-Peter-Elbow.pdf">Elbow 1973</a>). Sheridan Blau tested it as "invisible writing", first with an empty pen over carbon paper and later with a dimmed screen. He expected coherence to collapse as tasks got harder; his students insisted invisible writing was "no impediment to their thinking" (<a href="https://eric.ed.gov/?id=ED232156">Blau, ERIC ED232156</a>), and in informal experiments with over 100 teachers "both objective measures and self-reports indicated that invisible writing helps writers focus" (<a href="https://eric.ed.gov/?id=ED288201">Blau, ERIC ED288201</a>). The one controlled study, which removed visual feedback from handwriting, found text quality "little, if at all, affected"; the cost fell on low-level execution, not on conceptual work (<a href="https://doi.org/10.1080/00207590244000089">Olive &amp; Piolat 2002</a>). Regular freewriting reliably raises fluency, with 39 students going from <strong>19.5 to 30.1 words per minute</strong> over a semester (<a href="https://eric.ed.gov/?id=EJ1469720">Yasuda 2025</a>), but no controlled study shows it improves the final text. The honest claim is narrow: forward-only drafting does not hurt quality on ordinary tasks, and it helps the writers Blau singled out, those blocked "by their verbal self-consciousness or by a tendency to compulsive overediting".</p>
+<p>Typing experiments explain why it works. Skilled typing runs on an inner loop at the level of single keystrokes, which needs no screen, and an outer loop that watches the screen (<a href="https://doi.org/10.1126/science.1190483">Logan &amp; Crump 2010</a>). When fast typists saw their output only at the end of each trial, accuracy did not change and the interval between keystrokes rose only from 125 to 134 ms, yet they <strong>corrected 9% of their errors instead of 42%</strong> while still reporting 54% of them afterwards: they noticed and moved on (<a href="https://www.cmu.edu/dietrich/psychology/nozarilab/papers/2020PinetNozari.pdf">Pinet &amp; Nozari 2020</a>). Showing asterisks instead of letters left speed unchanged and simply turned corrected errors into uncorrected ones (<a href="https://microsoft.com/en-us/research/wp-content/uploads/2014/08/C63_JRKimTan_HS2014.pdf">Kim &amp; Tan 2014</a>). Cognitive models of writing predict the same: planning, turning ideas into sentences and reviewing all draw on one central executive (<a href="https://doi.org/10.17239/jowr-2013.05.02.1">Kellogg et al. 2013</a>), and writers who met a planted error finished the sentence first in 88% of trials (<a href="https://repository.uantwerpen.be/link/irua/100224">Quinlan et al. 2012</a>). A forward-only tool works with the way writers already schedule fixes; what it removes is the visible typo that pulls reviewing forward. The same research says what to leave out. Typists cued to attend to the mechanics of their own typing slowed by 20% between keystrokes and made twice as many errors (<a href="https://doi.org/10.1111/j.1467-9280.2009.02442.x">Logan &amp; Crump 2009</a>), and monitoring one's own typing in order to report on it was disruptive in itself (<a href="https://doi.org/10.1037/a0031007">Snyder &amp; Logan 2013</a>). Red squiggles, autocorrect pop-ups and a live character count are that kind of invitation; strictly this extrapolates from copy-typing to composing, but it is the best evidence there is.</p>
+<p>Hiding everything goes too far. Eye-tracking shows writers spend about <strong>13% of their time looking back</strong> at their own text, mostly just before a new sentence, and that these glances serve planning rather than error-hunting (<a href="https://irep.ntu.ac.uk/id/eprint/16307/">Torrance et al. 2016</a>); writers who watched the screen typed faster and produced more than those who watched the keyboard (<a href="https://www.lunduniversity.lu.se/lup/publication/76c41904-2e75-40b5-bae4-39e2791a26eb">Johansson et al. 2010</a>). Kellogg's direct test of a rough against a polished draft found no difference in quality either way, while a short outline, even one kept in the head, helped (<a href="https://scholarsmine.mst.edu/psysci_facwork/284">Kellogg 1988</a>). The design consequence is a visible frontier and an invisible history: the eyes rest on the last few words, which support the next clause, and everything older is gone or unreadable. Motion helps with the second half. Text moving right to left is understood less well than a static page (<a href="https://doi.org/10.1177/001872088402600109">Granaas et al. 1984</a>), so history is hard to reread while it slides, and steady motion the writer causes does not capture attention, only motion that suddenly starts does (<a href="https://doi.org/10.1111/1467-9280.01458">Abrams &amp; Christ 2003</a>). The brief's observation that VS Code with word wrap off "immensely helps" fits all three findings, but it is one person's report; no study compares a sliding horizontal line with any other layout.</p>
+<p>Flow theory lists clear proximal goals, immediate feedback and a challenge matched to skill, yet <strong>only the challenge–skill link has been validated in controlled experiments</strong> (<a href="https://aisel.aisnet.org/amcis2015/HCI/GeneralPresentations/12">Schaffer &amp; Feng 2015</a>). Motivation research is sharper: positive feedback that informs raises intrinsic motivation (d = 0.33), while expected rewards tied to engagement, completion or performance lower it (d = −0.28 to −0.40) (<a href="https://doi.org/10.1037/0033-2909.125.6.627">Deci, Koestner &amp; Ryan 1999</a>), and progress feedback that lags behind expectations makes people give up more often (<a href="https://doi.org/10.1016/j.intcom.2010.03.001">Conrad et al. 2010</a>). Every keystroke should therefore get an echo that informs and does not judge (the glyph at the caret, the slide, optionally a click), and nothing evaluative should run during the session: no live word count, no words per minute, no streaks, no reward images. A plain summary at the end ("23 min, 812 words") is the feedback the evidence favours. Calm-technology principles point the same way: status belongs in the periphery, a good tool "will offer, but not demand" (<a href="https://calmtech.com/papers/designing-calm-technology">Weiser &amp; Brown</a>), and a failure should "default to a usable state" (<a href="https://www.caseorganic.com/post/principles-of-calm-technology">Case</a>), which for this tool means hidden text must never become lost text. A pulse at breathing rate has aesthetic precedent but no evidence of effect during typing; if used at all, it belongs to idle moments only.</p>
+<p>Pressure buys words and costs ideas. In Robert Boice's randomized study of blocked academics, writers forced to produce three pages a session under threat of a donation to a "despised organization" wrote 3.2 pages a day against 0.9 for regular writing without incentives, but their <strong>ideas per page fell to 0.43 from 0.7–0.8</strong>, and Boice later advised the "least pressure sufficient" because aversiveness "can generalize to the act of writing itself" (<a href="https://mail.sdkrashen.com/content/articles/optimal_levels.pdf">Krashen 2002 on Boice</a>). A user of The Most Dangerous Writing App describes both sides at once, "That's a relief" and "I cannot lose this all, it's a whole paragraph already!" (<a href="https://www.lesswrong.com/posts/5cJq8wGw2WACm9gHR/review-the-most-dangerous-writing-app">LessWrong review</a>). A calm tool keeps the forward motion and drops the threat: no deletion on pause, no lockout. Session framing works best mild: Elbow's 10–20 minutes as a time box or word target the writer picks (evidence on fixed against self-chosen breaks is split between <a href="https://doi.org/10.1111/bjep.12593">Biwer et al. 2023</a> and <a href="https://doi.org/10.3390/bs16071158">Göksu et al. 2026</a>), an optional one-line intent before starting as the cheap form of Kellogg's mental outline, and a private log of minutes and words, since recording one's own output was the most effective form of management in Boice's work. None of it should be required; "simply type" means the tool opens onto an empty line.</p>
+<p>The click needs to be sold for what it is. Controlled studies of added key sounds concern flat or touch keyboards with no physical click. On a flat keyboard, touch typists managed <strong>43.1 words per minute with no feedback, 51.1 with a beep and 55.6 with local haptic clicks</strong>, against 65.6 on a real keyboard, and the beep fell in the same speed group as silence (<a href="https://microsoft.com/en-us/research/wp-content/uploads/2014/08/C63_JRKimTan_HS2014.pdf">Kim &amp; Tan 2014</a>); participants still preferred auditory or haptic feedback to none (<a href="https://doi.org/10.1109/whc.2015.7177717">Ma et al. 2015</a>). A Mac's physical keyboard already gives the fingers tactile and acoustic feedback, so a typewriter or mechanical click adds rhythm, presence and pleasure rather than speed, and no study has tested even that. Timing matters more than timbre: audio feels simultaneous at about <strong>19 ms</strong> and perceived quality drops between 70 and 100 ms (<a href="https://doi.org/10.1145/2611387">Kaaresoja et al. 2014</a>), so the click must leave within roughly 20–30 ms of key-down. Moderate ambient noise helped adults on creative tasks in one study (<a href="https://doi.org/10.1086/665048">Mehta et al. 2012</a>), enough to justify an optional ambient sound that is off by default. Haptics are not an option, because Force Touch trackpads give feedback only while a finger rests on them (<a href="https://developer.apple.com/documentation/appkit/nshapticfeedbackperformer/perform(_:performancetime:)">Apple</a>).</p>
+<h3 id="three-choices-decide-the-feel-and-none-has-comparative-evidence">Three choices decide the feel, and none has comparative evidence</h3>
+<p>The amount of visible text comes in three grades. V1 shows only the last word or keystroke, as Ilys does, which suppresses rereading most but gives no planning support; V2 shows the last several words back to the start of the current clause, fading to nothing toward the left edge; V3 shows the current sentence plus a dimmed previous one, like iA Writer's Focus mode, which gives the most support and the most temptation to reread. <strong>V2 is the recommended default</strong>, with V1 as a "deep" option, because it keeps in view about one clause, roughly what verbal working memory holds while a sentence forms, and removes the history that tempts review. Backspace comes in four grades: B0 is append-only, as in Draft's Hemingway Mode; B1 allows backspace within the current word until the next space; B2 allows unlimited backspace into text no longer visible; B3 makes backspace strike words out for later review instead of deleting them. Writers still notice about half their typos without seeing them, and one reviewer of a no-backspace mode reports "I make enough typos that using backspace is a requirement anyway" (<a href="https://www.lesswrong.com/posts/5cJq8wGw2WACm9gHR/review-the-most-dangerous-writing-app">LessWrong</a>), so <strong>B1 is the default</strong>: it allows the quick motor-level fix and blocks reaching back into finished words, the same compromise as the 15-character correction window of 1980s electronic typewriters. The line's direction is either H, the horizontal ticker of the brief, which leaves nothing to reread, or T, a vertical typewriter with dimmed history, which is familiar but keeps history legible; build H only and add T if testing calls for it. All three choices are best settled by logging a few numbers per session over some weeks (words per minute, pauses over 2 s, backspace rate and a one-item flow rating) while switching between V1 and V2, B0 and B1, and sound on and off. The result is personal tuning, not general evidence.</p>
+<h2 id="no-tool-slides-one-line-sideways-and-the-calm-ones-cannot-hand-text-off">No tool slides one line sideways, and the calm ones cannot hand text off</h2>
+<p>The tools found fall into two camps. The punitive camp threatens: The Most Dangerous Writing App deletes everything after about five seconds of inactivity (<a href="https://en.wikipedia.org/wiki/The_Most_Dangerous_Writing_App">Wikipedia</a>), Flowstate fades the text out and deletes it (<a href="https://nofilmschool.com/2016/02/you-have-exactly-five-seconds-writing-app-flowstate-deletes-everything-you-just-wrote">No Film School</a>), and Write or Die and Cold Turkey Writer use similar threats or lockouts. The calm camp hides text without threats: Ilys shows "the last character you typed, but that's it" (<a href="https://thenextweb.com/news/write-drunk-edit-sober">The Next Web</a>), Smashkey Freewriter for macOS shows five rolling lines with delete, arrows and selection switched off (<a href="https://smashkey.gumroad.com/l/smashkey-v1">Gumroad</a>), and the Freewrite Alpha hardware shows two to six lines. Every typewriter mode found is vertical: iA Writer keeps "the cursor … vertically centered" (<a href="https://ia.net/writer/support/editor/focus-mode">iA</a>) and Ulysses fixes the current line at the top, middle or bottom (<a href="https://help.ulysses.app/mac-customization-guide">Ulysses</a>). <strong>No software was found with a horizontal, fixed-caret, single-line mode.</strong> Its only ancestors are 1980s electronic typewriters with one-line LCDs, such as the Brother EP-44, which printed 15 characters behind the typing so the last 15 could still be fixed (<a href="https://worldofspectrum.org/files/large/b54719eb314f6d2">World of Spectrum</a>). Demand exists, since Day One and Obsidian users have asked for modes that blur text or forbid editing (<a href="https://forums.dayoneapp.com/forums/topic/writing-mode-that-blurs-text-as-you-write-temporarily-preventing-self-editing">Day One forum</a>; <a href="https://forum.obsidian.md/t/typewriter-mode-hemingway-mode-dont-allow-editing-as-you-write/21642">Obsidian forum</a>), and not finding a tool does not prove there is none, because the App Store could not be searched systematically.</p>
+<div class="tw"><table class="keys">
+<thead>
+<tr>
+<th>Tool</th>
+<th>What stays visible</th>
+<th>Editing while writing</th>
+<th>Sound</th>
+<th>How text leaves</th>
+<th>Lesson</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ilys (web)</td>
+<td>last character</td>
+<td>none until the word goal</td>
+<td>none</td>
+<td>after the goal</td>
+<td>revealing text at the goal is a ready-made ending</td>
+</tr>
+<tr>
+<td>Most Dangerous Writing App (web, GPL-3)</td>
+<td>all; "hardcore" mode hides it</td>
+<td>hardcore blocks backspace</td>
+<td>none</td>
+<td>copy</td>
+<td>deletion on idle causes panic</td>
+</tr>
+<tr>
+<td>Smashkey Freewriter (Mac)</td>
+<td>5 rolling lines</td>
+<td>no delete, arrows or selection</td>
+<td>none</td>
+<td>copy or export</td>
+<td>closest Mac software; no hand-off</td>
+</tr>
+<tr>
+<td>Freewrite Alpha ($349)</td>
+<td>2–6 lines</td>
+<td>cursor only by key chord</td>
+<td>mechanical keys</td>
+<td>cloud sync</td>
+<td>2 lines felt like vanishing, 5 worked</td>
+</tr>
+<tr>
+<td>OmmWriter, FocusWriter</td>
+<td>full page</td>
+<td>normal</td>
+<td>key sounds, ambience</td>
+<td>file</td>
+<td>sounds liked; nothing hidden</td>
+</tr>
+<tr>
+<td>iA Writer, Ulysses, Scrivener</td>
+<td>sentence or paragraph focus, vertical</td>
+<td>normal</td>
+<td>none</td>
+<td>file</td>
+<td>every typewriter mode is vertical</td>
+</tr>
+<tr>
+<td>Wispr Flow, VoiceInk, Handy</td>
+<td>(dictation)</td>
+<td>(dictation)</td>
+<td>none</td>
+<td>paste into focused app</td>
+<td>clipboard and paste failures</td>
+</tr>
+</tbody>
+</table></div>
+<p>What users say maps directly onto design rules. They praise forward motion ("That forces you to just dump out the words from your head") and fear deletion threats (<a href="https://www.lesswrong.com/posts/5cJq8wGw2WACm9gHR/review-the-most-dangerous-writing-app">LessWrong</a>). With the Alpha's two-line setting, one reviewer felt "a certain paranoia that creeps in when you can't see anything you wrote more than a sentence or two ago", while five lines made the device usable (<a href="https://freddiedeboer.substack.com/p/review-freewrite-alpha">deBoer</a>); AlphaSmart owners, by contrast, describe the small screen as freeing, "I can't see what all has been written so it can't distract me" (<a href="https://www.writingforums.com/threads/alphasmart-neo-review.140507/">Writing Forums</a>). A single line is a stronger version of the two-line setting, so V2's trailing context is the guard against that paranoia, not decoration, and the first thing to test. Lag ruins the experience, as the main complaint about the Freewrite Traveler shows (<a href="https://appleinsider.com/articles/23/07/02/freewrite-traveler-review-portable-distraction-free-writing">AppleInsider</a>). Key sounds are liked ("it was making me want to work and type more", <a href="https://apps.apple.com/us/app/klack/id6446206067">Klack, App Store</a>), but system-wide sounds that fire outside writing annoy (<a href="https://forum.literatureandlatte.com/t/customized-typing-sounds/15277">L&amp;L forum</a>); sounds confined to the tool's own window avoid both the annoyance and any permission. Paste into other apps is fragile, and Wispr Flow's own help pages cover cases where the old clipboard was pasted or paste worked only in some apps (<a href="https://docs.wisprflow.ai/articles/7971211038-fix-text-not-pasting-after-dictation">Wispr docs</a>).</p>
+<p>Several pieces are reusable within their licences. Thock (MIT, Swift) is the model for the sound engine: it picks a random sample per key type, varies pitch, plays key-up sounds and places sounds left or right by key position (<a href="https://github.com/kamillobinski/thock">Thock</a>). Permissive mechanical-switch samples exist in the MIT packs from Mechvibes and kbsim in Thock's registry (<a href="https://github.com/kamillobinski/thock-soundpacks">thock-soundpacks</a>) and in a CC0 keyboard pack on OpenGameArt (<a href="https://opengameart.org/content/keyboard-soundpack-1-typing-and-single-keystrokes">OpenGameArt</a>), but <strong>no permissively licensed typewriter pack was found</strong>: Tickeys' typewriter pack has no licence file (<a href="https://github.com/yingDev/Tickeys/tree/master/Tickeys.app/Contents/Resources/data">Tickeys</a>), FocusWriter's sound sits in a GPL-3 repository (<a href="https://github.com/gottcode/focuswriter">FocusWriter</a>), and Kachunk's recordings are proprietary (<a href="https://hunted.space/product/kachunk">Kachunk</a>), so a typewriter sound means recording one or buying a royalty-free pack (<a href="https://stormwave-audio.itch.io/typewriter-sfx-pack">Stormwave</a>). For the paste path, VoiceInk (<a href="https://github.com/Beingpax/VoiceInk/tree/main/VoiceInk/Infrastructure/SystemIntegration/Paste">GitHub</a>) and espanso document the pitfalls best but are GPL-3, so their code cannot be copied into a non-GPL app; Handy is the permissive (MIT) Rust reference (<a href="https://handy.computer/docs/paste-methods">Handy</a>).</p>
+<h2 id="gpui-gives-this-implementer-the-shortest-safe-path-from-key-to-glyph">GPUI gives this implementer the shortest safe path from key to glyph</h2>
+<p>The hard requirement is correct text input, not speed. On macOS a dead-key sequence such as ⌥E then E (giving é) is handled as input-method composition with provisional "marked text", not as two key events (<a href="https://lists.w3.org/Archives/Public/public-webapps-github/2023Jul/0056.html">W3C list</a>), so the view must implement <code>NSTextInputClient</code> (<a href="https://developer.apple.com/documentation/appkit/nstextinputclient">Apple</a>). GPUI does: its macOS window registers the full method set and routes printable keys to an active input method first (<a href="https://docs.rs/crate/gpui-pre-macos/0.3.8/source/src/window.rs">gpui-pre-macos window.rs</a>), and Zed's team still had dead-key fixes in flight in October 2026 (<a href="https://github.com/zed-industries/zed/pull/65991">zed#65991</a>). The Rust stacks built on winit fail here: "Compose/dead keys break on MacOS" has been open in winit since 2021 (<a href="https://github.com/rust-windowing/winit/issues/2040">winit#2040</a>), egui reports "no events for dead keys nor for the result" on the Mac (<a href="https://github.com/emilk/egui/issues/4439">egui#4439</a>), and iced's dead-key issue has been open since 2022 (<a href="https://github.com/iced-rs/iced/issues/1544">iced#1544</a>). Tauri carries an input-method bug in its native host layer (<a href="https://github.com/tauri-apps/tauri/issues/15924">tauri#15924</a>), Flutter has open composition bugs on macOS (<a href="https://github.com/flutter/flutter/issues/194199">flutter#194199</a>), and Electron's 80–150 MB hello-world (<a href="https://noqta.tn/en/blog/tauri-2-desktop-apps-rust-web-technologies-2026">noqta.tn</a>) contradicts a tiny tool.</p>
+<div class="tw"><table class="keys">
+<thead>
+<tr>
+<th>Stack</th>
+<th>macOS text input</th>
+<th>120 Hz</th>
+<th>Menu bar and panel</th>
+<th>Later ports</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rust + GPUI + objc2</td>
+<td>full <code>NSTextInputClient</code>, maintained by Zed</td>
+<td>proven in Zed</td>
+<td>non-activating panel built in; status item via objc2</td>
+<td>Windows, Linux</td>
+<td>recommended</td>
+</tr>
+<tr>
+<td>Swift + AppKit</td>
+<td>native</td>
+<td><code>NSView.displayLink</code> (macOS 14+), Core Animation</td>
+<td>direct</td>
+<td>UI rewrite</td>
+<td>strongest alternative</td>
+</tr>
+<tr>
+<td>Rust + winit, egui or iced</td>
+<td>dead keys broken (open issues)</td>
+<td>manual</td>
+<td>via objc2</td>
+<td>good</td>
+<td>ruled out</td>
+</tr>
+<tr>
+<td>Tauri 2</td>
+<td>WebKit good, host layer buggy</td>
+<td>requestAnimationFrame</td>
+<td>plugin</td>
+<td>good</td>
+<td>adds a JavaScript hop</td>
+</tr>
+<tr>
+<td>Flutter</td>
+<td>composition bugs</td>
+<td>Impeller</td>
+<td>plugins</td>
+<td>good</td>
+<td>no gain</td>
+</tr>
+<tr>
+<td>Electron</td>
+<td>good</td>
+<td>yes</td>
+<td>yes</td>
+<td>good</td>
+<td>ruled out by size</td>
+</tr>
+</tbody>
+</table></div>
+<p>For someone fluent in Rust and GPUI, GPUI wins. It renders through Metal with Core Text shaping, already provides the non-activating panel the summoning flow needs (<code>WindowKind::PopUp</code>, present on all Spaces and over full-screen apps), supports running as a menu-bar agent, integrates AccessKit, and keeps Windows and Linux open (<a href="https://docs.rs/crate/gpui-pre-macos/0.3.8/source/src/window.rs">gpui-pre-macos</a>). Its costs are real: it is pre-1.0 and warns "There will often be breaking changes", current code ships as snapshot crates such as <code>gpui-pre</code> (<a href="https://crates.io/crates/gpui">crates.io gpui</a>; <a href="https://crates.io/crates/gpui-pre">gpui-pre</a>), it has no status-item API, and a large production GPUI app was measured locally at 52 MB (a minimal one was not measured). The defence is to pin the snapshot and run a fixed input test before every bump: ⌥E E, ⌥U U, ⌥N N, Pinyin, Japanese Kana, the emoji picker and dictation. Swift with AppKit is the lowest-risk route if the app stays on the Mac. It gives the smallest binary, since the Swift runtime has shipped with macOS since 10.14.4 (<a href="https://swift.org/blog/abi-stability-and-apple/">Swift.org</a>), carries no framework risk, has first-class VoiceOver, and is the natural home of the OS-integration code, which calls the same Apple APIs in either language; its price is learning AppKit's responder chain, <code>NSTextInputClient</code> and Core Animation now and rewriting the interface for any other OS later. <strong>A hard size limit of a few megabytes, a Mac App Store edition, or VoiceOver-grade accessibility from day one would flip the recommendation to Swift.</strong> "Metal" is not a separate decision: no stack here needs hand-written Metal, because each frame's work is one translation.</p>
+<h3 id="shape-the-line-once-per-keystroke-move-it-every-frame">Shape the line once per keystroke, move it every frame</h3>
+<p>The line's glyphs are laid out once per edit; on each display-link frame the line is painted at the caret position minus an offset, and the offset moves toward its new target with a short ease-out or a critically damped spring of about 50–80 ms (6–10 frames at 120 Hz), so fast typing never trails by more than a fraction of a character. Moving one line costs far less than the 8.3 ms a 120 Hz frame allows. Zed found GPUI frames took "consistently under 4 ms" yet still dropped because ProMotion displays lower their refresh rate when nothing is drawn, and presenting a frame on every display-link callback for one second after the last input held "a smooth 120 fps" (<a href="https://zed.dev/blog/120fps">Zed blog</a>); the same trick applies. Text stays sharp at fractional offsets because GPUI renders each glyph at four horizontal subpixel offsets with Core Text subpixel positioning (<a href="https://docs.rs/crate/gpui-pre/0.3.8/source/src/text_system.rs">gpui-pre text_system.rs</a>), so the line moves in 0.25-pixel steps on a Retina display. The AppKit equivalent is a pre-rendered <code>CALayer</code> moved by Core Animation, slightly soft while moving and snapped to whole pixels at rest, the compromise WPF uses (<a href="https://learn.microsoft.com/fr-fr/archive/blogs/seema/after-animating-text-the-text-seems-to-pause-for-1-second-and-then-render-more-sharply-than-before-why-is-that">Microsoft</a>) because snapping during motion causes jitter (<a href="https://blogs.gnome.org/chergert/?p=10314">GTK blog</a>); an AppKit build should use <code>NSView.displayLink</code> (macOS 14+) rather than the deprecated <code>CVDisplayLink</code> (<a href="https://developer.apple.com/documentation/appkit/nsview/displaylink(target:selector:)">Apple</a>). The fade toward the left edge is a per-glyph opacity, cheap in either stack, while a true blur would need a shader or Core Image filter whose cost was not measured. With Reduce Motion on (<a href="https://developer.apple.com/documentation/appkit/nsworkspace/accessibilitydisplayshouldreducemotion">Apple</a>), the slide becomes a jump. For scale, Apple's Magic Keyboard alone takes 15 ms from key press to USB packet (<a href="https://danluu.com/keyboard-latency/">Dan Luu</a>) and Terminal.app shows a typed character in a median of 6 ms (<a href="https://danluu.com/term-latency/">Dan Luu</a>); the app's share of key-to-screen time should stay in that range.</p>
+<h3 id="keep-one-sound-stream-running-with-every-sample-in-memory">Keep one sound stream running with every sample in memory</h3>
+<p>The click comes from one output stream that runs as long as the writing window is open, with every sample loaded into memory at start and the voices mixed in the app's own audio callback. CoreAudio's default buffer is 512 frames, about 10.7 ms at 48 kHz, and the power-saving hint raises it to 4,096 (<a href="https://developer.apple.com/library/mac/technotes/tn2321/_index.html">Apple TN2321</a>), so the app should request 64–128 frames. Three shortcuts add delay and should be avoided: a fresh <code>AVAudioPlayer</code> per key, reconnecting audio nodes per sound (one developer measured close to 20 ms per play, <a href="https://developer.apple.com/forums/thread/68603">Apple forums</a>), and time-pitch effect units instead of resampling in the mixer. In Swift the right tool is <code>AVAudioEngine</code> with pre-attached player nodes or an <code>AVAudioSourceNode</code>; in Rust it is cpal over CoreAudio's default output (<a href="https://github.com/RustAudio/cpal/blob/master/src/host/coreaudio/macos/device.rs">cpal</a>) with a hand-written mixer, or kira if scheduled sounds are wanted later (<a href="https://docs.rs/kira/">kira</a>). Variation follows Thock: a few samples per key class (letters, space, Return, backspace) played in rotation without repeating the last, ±1–2 dB of gain and a small playback-rate change, with 16–32 simultaneous voices so fast typists never run out. Triggering on key-down, before layout, gives a budget of roughly 5–20 ms on built-in speakers or wired output (an estimate from buffer sizes, not a measurement). Bluetooth breaks it: AirPods measured 126–274 ms (<a href="https://stephencoyle.net/airpods">Stephen Coyle</a>), so the app should detect a Bluetooth output and offer to mute. Keys typed into the app's own window need no permission; only global key monitoring needs Input Monitoring (<a href="https://developer.apple.com/forums/thread/707680">Apple DTS</a>). Return gets its own sample, and the typewriter bell is kept for the end of a session, since a single line has no line ends.</p>
+<h2 id="only-pasting-into-other-apps-needs-a-permission-and-it-costs-the-app-store">Only pasting into other apps needs a permission, and it costs the App Store</h2>
+<p>The second mode, a panel summoned by hotkey that pastes into the app in use, is simpler than it sounds because macOS has the right window type. Carbon's <code>RegisterEventHotKey</code> registers a global shortcut with no permission and works in the sandbox (<a href="https://github.com/sindresorhus/KeyboardShortcuts">KeyboardShortcuts</a>); since Sequoia, sandboxed apps can no longer use hotkeys whose only modifiers are Option or Shift-Option (<a href="https://shottr.cc/kb/sequoia">Shottr</a>), so the default should include ⌘ or ⌃. A non-activating <code>NSPanel</code> "does not activate the owning app" (<a href="https://developer.apple.com/documentation/appkit/nswindow/stylemask-swift.struct/nonactivatingpanel">Apple</a>) yet can take keyboard input, so it receives the typing, input methods included, while the previous app stays active; when the writer finishes, the panel hides and the paste lands in that still-active app without any hand-back of focus. That sidesteps macOS 14's cooperative activation (<code>yieldActivation(to:)</code>, then <code>activate()</code>), which Apple does not guarantee (<a href="https://developer.apple.com/documentation/appkit/passing-control-from-one-app-to-another-with-cooperative-activation">Apple</a>), and the failure Electron hit on Sonoma because a plain <code>NSWindow</code> cannot be non-activating (<a href="https://github.com/electron/electron/issues/35815">electron#35815</a>). GPUI's PopUp window kind is exactly this panel; the app runs as a menu-bar agent (<code>LSUIElement</code>) with an <code>NSStatusItem</code> added through objc2.</p>
+<h3 id="two-insertion-methods-one-permission-many-silent-failures">Two insertion methods, one permission, many silent failures</h3>
+<p>Shipping tools all settled on the same two methods. The first writes the text to the pasteboard and sends a synthetic ⌘V; VoiceInk's version waits 200 ms, posts the four key events 10 ms apart, and puts the old clipboard back after at least 250 ms, but only if its own marker is still there (<a href="https://github.com/Beingpax/VoiceInk/blob/main/VoiceInk/Infrastructure/SystemIntegration/Paste/CursorPaster.swift">VoiceInk CursorPaster</a>). The second "types" the text as synthetic key events carrying Unicode, 20 UTF-16 units per event and 10 ms apart, because receivers can cut longer payloads short (<a href="https://github.com/espanso/espanso/blob/dev/espanso-inject/src/mac/native.mm">espanso</a>); Apple warns that "application frameworks may ignore the Unicode string" (<a href="https://developer.apple.com/documentation/coregraphics/cgevent/keyboardsetunicodestring(stringlength:unicodestring:)">Apple</a>), and Handy notes the method does not account for non-US layouts (<a href="https://handy.computer/docs/paste-methods">Handy</a>). Both need the privilege to post events, which System Settings shows as "Accessibility" (<a href="https://developer.apple.com/forums/thread/820594">Apple forums 820594</a>). Apple's developer support calls it sandbox-compatible, yet in 2026 App Review twice rejected a sandboxed clipboard tool that posts ⌘V under guideline 2.4.5 (same thread), and Spokenly's Mac App Store build cannot paste automatically at all (<a href="https://spokenly.app/docs/mac-app-store">Spokenly</a>). <strong>Plan for a Developer ID-signed, notarised build outside the App Store</strong>; a stable signing identity also keeps the permission from going stale, which is why Wispr Flow's help pages tell users to re-grant Accessibility when paste stops working (<a href="https://docs.wisprflow.ai/articles/7971211038-fix-text-not-pasting-after-dictation">Wispr docs</a>).</p>
+<p>Paste fails in known places. Secure Input, which password fields turn on and password managers often leave on, blocks other apps' keyboard events (<a href="https://developer.apple.com/library/mac/technotes/tn2150/_index.html">Apple TN2150</a>; <a href="https://espanso.org/docs/troubleshooting/secure-input">espanso</a>); remote-desktop clients, elevated apps and some games refuse synthetic input (<a href="https://docs.openwhispr.com/help/fix/text-not-pasting.md">OpenWhispr</a>); and since macOS 26.4 Terminal checks which app filled the pasteboard and may warn before pasting (<a href="https://mjtsai.com/blog/2026/04/03/macos-26-4-paste-protection/">Michael Tsai</a>). Writing text through the Accessibility APIs instead is unreliable in Electron and WebKit (<a href="https://github.com/electron/electron/pull/38102">electron#38102</a>). A custom input method (InputMethodKit) is the cleanest channel, but the user must install and select it as an input source, and input-blocking bugs were reported on macOS 15.2 (<a href="https://developer.apple.com/forums/thread/789199">Apple forums</a>), which makes it an expert option at most. The pipeline that follows hides the panel, checks <code>IsSecureEventInputEnabled()</code> and falls back to copying with a note when it is on, otherwise puts the text on the pasteboard with clipboard-manager markers and posts ⌘V, restores the previous clipboard only if nothing else changed it, offers Unicode typing as the fallback, and always keeps "copy only", which needs no permission. Restoring means reading the clipboard first, and Apple has announced an alert for programmatic pasteboard reads that was still a developer preview in 2026 (<a href="https://developer.apple.com/documentation/appkit/nspasteboard/accessbehavior-swift.enum">Apple</a>; <a href="https://mjtsai.com/blog/2025/05/12/pasteboard-privacy-preview-in-macos-15-4/">Michael Tsai</a>), so the restore step must stay optional. VoiceInk's own code warns that "posting events does not establish that the receiving editor accepted them" (<a href="https://github.com/Beingpax/VoiceInk/blob/main/VoiceInk/Infrastructure/SystemIntegration/Paste/DirectTextTyper.swift">VoiceInk DirectTextTyper</a>), so the tool keeps the text until the writer confirms it landed and offers a "paste last" shortcut, as Wispr Flow does.</p>
+<h3 id="dimming-needs-no-permission-and-matters-only-for-the-panel">Dimming needs no permission and matters only for the panel</h3>
+<p>In full screen the writing window already covers everything, and iA's users report that its focus mode "shines" there (<a href="https://ia.net/writer/support/editor/focus-mode">iA</a>). In panel mode the HazeOver pattern applies locally: one borderless, black, partly transparent window per screen directly below the panel, ignoring the mouse (<a href="https://developer.apple.com/documentation/appkit/nswindow/ignoresmouseevents">Apple</a>) and joined to all Spaces and full-screen apps (<a href="https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct/fullscreenauxiliary">Apple</a>). This needs <strong>no permission</strong>; HazeOver recommends Accessibility only because it tracks other apps' windows (<a href="https://HazeOver.com/help.html">HazeOver help</a>). The overlay fades in over 150–250 ms, or appears at once under Reduce Motion. Focus modes are out of reach, because an app can only react to a Focus change (<code>SetFocusFilterIntent</code>, macOS 13+, <a href="https://developer.apple.com/documentation/appintents/setfocusfilterintent">Apple</a>), not switch Do Not Disturb on. What a click outside the panel should do (dismiss it, as Spotlight does) is a product decision, and the overlay's behaviour with Stage Manager was not tested.</p>
+<h3 id="only-the-interface-ports-the-os-hooks-are-rewritten-everywhere">Only the interface ports; the OS hooks are rewritten everywhere</h3>
+<p>GPUI carries the interface, text and, through cross-platform cpal, the sound to other systems: Zed has shipped a stable Windows build on DirectX 11 and DirectWrite since October 2025 (<a href="https://zed.dev/blog/zed-for-windows-is-here">Zed blog</a>) and builds for Linux under X11 and Wayland (<a href="https://zed.dev/blog/zed-on-linux">Zed blog</a>). The hotkey, panel, injection and overlay code is per-OS in every stack, as espanso's per-platform backends show (<a href="https://espanso.org/docs/configuration/options/">espanso</a>), and Wayland is the weakest target for both global hotkeys and typing into other apps, so on Linux the tool should only copy. Swift does not port cheaply: The Browser Company needed generated Swift bindings for WinRT plus WinUI 3 to ship Arc on Windows, and that build still lacks parity with the Mac version (<a href="https://www.windowscentral.com/software-apps/windows-11/arc-for-windows-is-beautiful-and-unique-web-browser-inside-and-out-and-its-available-for-download-now">Windows Central</a>).</p>
+<h2 id="an-encrypted-journal-with-a-deletable-key-survives-everything-except-a-day-of-snapshots">An encrypted journal with a deletable key survives everything except a day of snapshots</h2>
+<p>The brief asks for two things that pull apart, never losing text and never storing it in the clear, and <strong>no design gives both survival of a power loss and nothing recoverable on disk</strong>: to survive a power cut, either the key or the plaintext must sit on persistent storage. The question is how much a plain file exposes. FileVault protects the disk from a thief when the Mac is off (<a href="https://support.apple.com/guide/security/sec4c6dc1b6e">Apple Platform Security</a>), but while the user is logged in every process running as that user reads the plaintext, Spotlight indexes it, and Time Machine takes a local APFS snapshot about every hour, keeping each for up to 24 hours plus one before every macOS update (<a href="https://support.apple.com/en-ca/102154">Apple</a>); nothing can be excluded from a snapshot (<a href="https://eclecticlight.co/2026/01/06/exclude-or-include-items-in-backup-search-icloud-drive-and-quicklook-preview/">Eclectic Light</a>). Common editors accept this. VS Code's hot exit backs up unsaved files in plaintext on every change (<a href="https://code.visualstudio.com/docs/editing/codebasics">VS Code</a>), Vim updates a swap file next to the document after 200 characters or four idle seconds (<a href="https://vimhelp.org/recover.txt.html">vimhelp</a>), and NSDocument's Versions is worse for private drafts, because each saved version lands in a root-only store per volume that forensic tools collect (<a href="https://eclecticlight.co/2025/09/08/managing-macos-versioning-and-the-documentrevisions-v100-folder/">Eclectic Light</a>). Deleting a file proves nothing on an SSD; Apple removed "Secure Empty Trash" because overwriting flash cannot be guaranteed (<a href="https://www.loopinsight.com/2015/11/30/why-secure-empty-trash-is-gone-in-el-capitan-and-what-to-do-instead">Loop Insight</a>). The only real delete is crypto-shredding, which is also how Apple's own fast wipe works (<a href="https://support.apple.com/guide/security/sec93292bfa6/web">Apple</a>).</p>
+<p>The designs compared are D0, a plaintext journal as editors keep; D1, NSDocument autosave with Versions; D2, an encrypted journal whose key sits in the data protection keychain; D3, D2 with the key wrapped by a Secure Enclave key; D4, an encrypted journal whose key exists only in a helper process's memory; D5, a key derived from a passphrase; and D6, memory only. The table shows the four that frame the choice.</p>
+<div class="tw"><table class="keys">
+<thead>
+<tr>
+<th>Event</th>
+<th>D0 plaintext journal</th>
+<th>D2 encrypted, key in keychain</th>
+<th>D4 key only in a helper's memory</th>
+<th>D6 memory only</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>App crash, Force Quit</td>
+<td>survives</td>
+<td>survives</td>
+<td>survives (helper alive)</td>
+<td>lost</td>
+</tr>
+<tr>
+<td>Accidental ⌘Q or ⌘W</td>
+<td>survives</td>
+<td>survives</td>
+<td>survives</td>
+<td>lost unless confirmed</td>
+</tr>
+<tr>
+<td>Power loss, kernel panic</td>
+<td>survives to the last flush</td>
+<td>survives to the last flush</td>
+<td>unreadable (fails closed)</td>
+<td>lost</td>
+</tr>
+<tr>
+<td>Logout, reboot, OS update</td>
+<td>survives</td>
+<td>survives</td>
+<td>lost</td>
+<td>lost</td>
+</tr>
+<tr>
+<td>Backup disk, Spotlight, iCloud</td>
+<td>plaintext exposed</td>
+<td>ciphertext only</td>
+<td>ciphertext only</td>
+<td>nothing</td>
+</tr>
+<tr>
+<td>Local snapshots after delete (about 24 h)</td>
+<td>plaintext</td>
+<td>ciphertext plus keychain database</td>
+<td>useless ciphertext</td>
+<td>nothing</td>
+</tr>
+<tr>
+<td>Someone at the unlocked Mac</td>
+<td>readable</td>
+<td>readable</td>
+<td>readable</td>
+<td>on screen</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="writing-is-nearly-free-and-a-full-flush-costs-two-milliseconds">Writing is nearly free, and a full flush costs two milliseconds</h3>
+<p>Once <code>write()</code> returns, the bytes sit in the kernel's cache and survive a crash, SIGKILL or Force Quit; only a kernel panic or power loss needs a flush. On macOS <code>fsync</code> "is not sufficient to guarantee that your data is on stable storage", while <code>F_FULLFSYNC</code> asks the drive itself to flush (<a href="https://mjtsai.com/blog/2022/02/17/apple-ssd-benchmarks-and-f_fullsync">Giampaolo via Michael Tsai</a>). Measured for this research on one M2 Pro under macOS 26.5 with FileVault on (no public source), a 64-byte append took about <strong>3 µs</strong> with <code>write()</code> alone, 23 µs with <code>fsync</code>, about 190 µs with <code>F_BARRIERFSYNC</code> (which orders writes without forcing a flush) and about <strong>2 ms</strong> with <code>F_FULLFSYNC</code>, 4–5 ms in the slowest 1%. At about 100 ms between keystrokes, even a full flush per keystroke is affordable off the main thread. Older figures disagree sharply, with 46 flushes per second on an M1 in 2022 (<a href="https://www.eevblog.com/forum/general-computing/apples-ssd-milking-machine/25/">Hector Martin</a>) and 24 ms per <code>F_FULLFSYNC</code> on an Intel MacBook Pro in 2021 (<a href="https://www.postgresql.org/message-id/1673109.1610733352@sss.pgh.pa.us">Tom Lane</a>), so the numbers should be re-measured on the target machines. Rust's <code>File::sync_all</code> already issues <code>F_FULLFSYNC</code> on macOS (<a href="https://github.com/rust-lang/rust/pull/60121">rust#60121</a>). The journal routine that follows uses a dedicated writer thread that writes each batch of keystrokes and follows it with a barrier, runs a full flush about a second after the last key, on losing focus, on close and on quit (not on a timer, which App Nap can throttle in the background), gives each record an authentication tag so recovery drops a half-written tail cleanly, compacts by atomic file replacement, and sets the backup-exclusion flag on the folder rather than the files, because atomic renames reset it on files (<a href="https://developer.apple.com/documentation/foundation/urlresourcekey/isexcludedfrombackupkey">Apple</a>). The journal lives in a folder such as <code>~/Library/Application Support/&lt;app&gt;/Sessions.noindex/</code>, never in Documents or on the Desktop, which may sync to iCloud; SQLite adds nothing for a single-writer journal.</p>
+<h3 id="where-the-key-lives-decides-what-survives">Where the key lives decides what survives</h3>
+<p>D2 stores the session key as a data protection keychain item marked usable only when unlocked and only on this device, never synchronised; such items raise no prompts and do not travel to other devices through backups (<a href="https://developer.apple.com/documentation/technotes/tn3137-on-mac-keychains">TN3137</a>; <a href="https://developer.apple.com/documentation/security/ksecattraccessiblewhenunlockedthisdeviceonly">Apple</a>). The catch is that this keychain needs an entitlement authorised by a provisioning profile embedded in an app bundle (TN3137). Developer ID apps qualify, but an unsigned test build made for this research got <code>-34018 "A required entitlement isn't present."</code>, so a Rust build needs a bundling and signing step outside cargo, while <code>security-framework</code>'s <code>use_protected_keychain()</code> covers the call itself (<a href="https://docs.rs/security-framework/latest/security_framework/passwords/struct.PasswordOptions.html">docs.rs</a>). Encryption costs nothing noticeable: AES-GCM sealed a 64-byte record in 1.5 µs in the same test. D3 wraps the key with the Secure Enclave, which makes a stolen backup useless on any other Mac and lets restoring a crashed session require Touch ID (<a href="https://developer.apple.com/documentation/security/protecting-keys-with-the-secure-enclave">Apple</a>); in testing, CryptoKit created Secure Enclave keys even from an unsigned binary, behaviour Apple does not document but <code>age-plugin-se</code> relies on (<a href="https://github.com/remko/age-plugin-se">GitHub</a>). D4 survives an app crash but loses the session safely on power loss or logout, and its helper must check the code signature of every caller; a 1Password flaw, CVE-2024-42218, let local attackers get around exactly that kind of macOS protection (<a href="https://tenable.com/cve/CVE-2024-42218">Tenable</a>). Standard Notes offers a similar choice between stored and memory-only keys (<a href="https://standardnotes.com/help/79">Standard Notes</a>). D5 survives everything but makes the writer type a secret, which breaks "simply type"; D6 loses everything in a crash; D1 leaves copies the app cannot delete.</p>
+<p>Quitting should never discard. After a crash, ⌘Q, ⌘W or logout the key and journal stay, and the next launch reopens the session silently, as VS Code does; a "Restore?" dialog only invites a wrong click, and a hold-to-quit guard like Chrome's (<a href="https://www.tekrevue.com/tip/hold-command-q-to-quit-chrome-mac/">TekRevue</a>) becomes unnecessary. "Done" or "Discard" deletes the keychain item, wipes the key from memory and deletes the journal; an undo grace period can keep the key in memory alone for a few seconds, and a crash in that window simply completes the discard, which is the safe direction. Orphaned journals and keys are deleted at launch. Two details matter. One record per keystroke leaks typing rhythm through record sizes and timestamps, so records should be batched or padded into windows of about 50 ms. And for up to a day, snapshots hold both the journal and the keychain database; recovering the key would need the same Mac, the user's keys and specialist tools, so the honest message is "unreadable once discarded; system snapshots clear within about a day", with D4 as a per-session choice for writers who want even that window closed. Keeping text in the tool is the same journal with its key kept until the writer deletes it.</p>
+<h3 id="handing-text-off-moves-it-into-someone-elses-storage">Handing text off moves it into someone else's storage</h3>
+<p>The clipboard is the leakiest hand-off: clipboard managers record it, Universal Clipboard sends it to the user's other devices, and macOS 26 adds an opt-in clipboard history in Spotlight that since 26.1 keeps entries for 30 minutes, 8 hours or 7 days (<a href="https://www.macworld.com/article/2962021/this-macos-tahoe-26-1-setting-will-eliminate-embarrassing-clipboard-mishaps.html">Macworld</a>). The tool can mark its text with the community "Concealed" and "Transient" types that Maccy, Alfred and others honour (<a href="https://nspasteboard.org/">nspasteboard.org</a>), write it with <code>currentHostOnly</code> to keep it off other devices (<a href="https://developer.apple.com/documentation/appkit/nspasteboard/contentsoptions">Apple</a>), and optionally clear it after a delay if nothing else replaced it; whether Spotlight's history honours the markers is unknown. Pasting into another app moves the text into that app's undo history and autosave, so the tool's privacy promise ends at the hand-off. The tool's own copy is shredded only after the hand-off is confirmed, never on ⌘Q.</p>
+<h2 id="mechanical-fixes-belong-in-the-tool-ai-belongs-at-the-end-visible-or-elsewhere">Mechanical fixes belong in the tool; AI belongs at the end, visible, or elsewhere</h2>
+<p>A forward-only draft arrives with typos the writer felt but could not fix, missing sentence punctuation, run-on blocks and no formatting. A deterministic pass handles part of it: capitals after <code>.</code>, <code>?</code> and <code>!</code> and at paragraph starts, collapsed double spaces, no space before punctuation, "i" as a word turned into "I", and Return as a paragraph mark, which yields Markdown. These fixes are predictable, reversible and instant, but they cannot add missing full stops. Placing paragraph breaks by typing pauses fails too: writers do pause longer at sentence and paragraph boundaries (<a href="https://psycholing-journal.com/index.php/journal/article/view/1213">Mohsen 2021</a>), but those pauses "cannot be characterised by a single distribution" (<a href="https://eprints.soton.ac.uk/457616">University of Southampton</a>), so any fixed threshold would misplace breaks; pauses can at most suggest breaks during review, and their timing should stay in memory.</p>
+<p>Rule-based checkers go further but not far. NSSpellChecker is reachable from Rust through objc2 (<a href="https://docs.rs/objc2-app-kit/latest/objc2_app_kit/struct.NSSpellChecker.html">docs.rs</a>) and gives offline spelling and the user's own text replacements in many languages, though its grammar check returned nothing outside a standard text view in one developer's tests (<a href="https://forums.swift.org/t/how-does-nstextview-invoke-grammar-checking-internally/84832">Swift Forums</a>). Harper is an offline Apache-2.0 Rust crate that claims suggestions "in under 10ms", English only (<a href="https://writewithharper.com/">Harper</a>), and reviewers find it misses errors and has fewer rules than LanguageTool (<a href="https://itsfoss.com/harper-grammar-checker/">It's FOSS</a>). LanguageTool covers 30+ languages but means a Java server with optional multi-gigabyte n-gram data, and its premium rules are not in the open-source build (<a href="https://www.credativ.de/en/blog/credativ-inside/languagetool-powerful-language-checking-on-your-own-network/">credativ</a>); nlprule ports about 85% of LanguageTool 5.2's English and 90% of its German rules to Rust, with LGPL binaries (<a href="https://github.com/bminixhofer/nlprule">nlprule</a>). Harper Desktop already checks any text field on macOS, so a writer gets it without the tool integrating anything.</p>
+<p>Apple's tools are a hand-off, not a promise. Writing Tools needs an M1 or later and macOS 15.1 or later, and Apple's own example says proofreading an email may go to its Private Cloud Compute servers (<a href="https://apple.com/legal/privacy/data/en/intelligence-engine">Apple</a>), so the tool cannot promise the text stays on the Mac. Quality is mixed: it caught 3 of 5 planted errors in one review (<a href="https://sixcolors.com/post/2024/10/apple-intelligence-1-review-a-small-start-of-something-big/">Six Colors</a>), its edits are "an all-or-nothing affair" (<a href="https://www.androidauthority.com/apple-intelligence-vs-grammarly-feature-3466509">Android Authority</a>), and a 2026 user found it "worked surprisingly well" but saw it stall and fail on long documents and mangle Markdown footnotes (<a href="https://leancrew.com/all-this/2026/01/proofreading-with-writing-tools/">leancrew</a>). A custom-drawn view gets the basic Writing Tools panel by adopting <code>NSServicesMenuRequestor</code>, but inline marks need <code>NSWritingToolsCoordinator</code>, which must supply text contexts, outlines of each change and preview images (<a href="https://developer.apple.com/videos/play/wwdc2025/265/">WWDC25</a>), a heavy load for a minimal tool. Since the 26 releases Proofread is also a Shortcuts action, which allows a hand-off with no integration at all. Apple's Foundation Models framework (macOS 26) runs a 3-billion-parameter model quantised to 2 bits that is "not designed for world knowledge" and is callable only from Swift (<a href="https://developer.apple.com/videos/play/wwdc2025/286/">WWDC25</a>); its 4,096-token window covers input and output together (<a href="https://developer.apple.com/documentation/technotes/tn3193-managing-the-on-device-foundation-model-s-context-window">TN3193</a>), roughly 1,000–1,300 words per pass if it returns a full corrected copy, and no evaluation of its proofreading has been published.</p>
+<p>Language models fix what rules cannot and change what they should not. Prompted models "systematically overcorrect" by rewriting spans that were already correct, and a fixed list of allowed edit types plus batches of several sentences reduce that (<a href="https://arxiv.org/abs/2609.10810">Karpo &amp; Chernodub 2026</a>); small models "struggle with retaining meaning and hallucinations" (<a href="https://arxiv.org/abs/2601.03874">Lamelas 2026</a>). Speed depends on how much the model writes: at the community benchmark's 14 tokens per second for a 7B model on an M1 and 51 on an M4 Pro (<a href="https://github.com/ggml-org/llama.cpp/discussions/4167">llama.cpp</a>), a full corrected copy of 1,000 words takes about two minutes and about 30 s respectively, while asking only for the changed spans cuts that five to ten times and guarantees untouched text stays untouched. Cloud models cost a tenth of a cent to four cents per 1,000 words at current Claude list prices (<a href="https://platform.claude.com/docs/en/about-claude/pricing">Claude pricing</a>), but the draft leaves the Mac. Dictation apps have already tried silent clean-up at scale. Wispr Flow's documentation admits its Smart Formatting "can drop or rewrite words that mattered" (<a href="https://docs.wisprflow.ai/articles/6568835559-why-wispr-flow-sometimes-removes-or-changes-words-on-android-smart-formatting">Wispr</a>), Wispr traced complaints from more than 700 critics partly to an overly aggressive Auto Cleanup (<a href="https://www.digitaltrends.com/computing/wispr-flow-asked-its-haters-what-was-wrong-and-more-than-700-people-answered/">Digital Trends</a>), and one user reports "never merge a change like this" arriving as "merge a change like this" (<a href="https://digg.com/ai/ve5pkh0s">Digg</a>). In a writing tool, where the words are the product, that failure is worse. Writers are split: 61% of professionals use AI at least sometimes while fiction authors are "much more wary" (<a href="https://gothamghostwriters.com/wp-content/uploads/2025/11/AI-Writer-Survey.pdf">Gotham Ghostwriters</a>), and in another survey 60% distrust AI-supported writing, their own included (<a href="https://gamesbeat.com/?p=335175">GamesBeat on Medium's report</a>).</p>
+<div class="tw"><table class="keys">
+<thead>
+<tr>
+<th>ID</th>
+<th>Design</th>
+<th>Fixes</th>
+<th>Text leaves the Mac</th>
+<th>Cost to build</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0</td>
+<td>raw text out</td>
+<td>nothing; the target editor's checkers do the rest</td>
+<td>no</td>
+<td>none</td>
+<td>baseline</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>deterministic pass</td>
+<td>capitals, spacing, "I", paragraph marks</td>
+<td>no</td>
+<td>small</td>
+<td>always on</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>NSSpellChecker</td>
+<td>spelling, many languages</td>
+<td>no</td>
+<td>low to moderate</td>
+<td>optional at review</td>
+</tr>
+<tr>
+<td>P3</td>
+<td>Harper crate</td>
+<td>English spelling, grammar, capitals</td>
+<td>no</td>
+<td>low</td>
+<td>optional for English</td>
+</tr>
+<tr>
+<td>P4</td>
+<td>LanguageTool server</td>
+<td>30+ languages</td>
+<td>no if self-hosted</td>
+<td>high to bundle</td>
+<td>only "use my server"</td>
+</tr>
+<tr>
+<td>P5</td>
+<td>hand-off to Writing Tools (Services or Shortcuts)</td>
+<td>spelling, grammar, punctuation</td>
+<td>possibly (Apple's servers)</td>
+<td>very low</td>
+<td>optional hand-off</td>
+</tr>
+<tr>
+<td>P6</td>
+<td>Foundation Models</td>
+<td>punctuation, typos, edit list</td>
+<td>no</td>
+<td>moderate (Swift shim)</td>
+<td>only after a test</td>
+</tr>
+<tr>
+<td>P7</td>
+<td>local model, 3–8B parameters</td>
+<td>as P6, more languages</td>
+<td>no</td>
+<td>moderate to high</td>
+<td>only after a test</td>
+</tr>
+<tr>
+<td>P8</td>
+<td>cloud model</td>
+<td>best quality</td>
+<td>yes</td>
+<td>low</td>
+<td>opt-in only</td>
+</tr>
+<tr>
+<td>P9</td>
+<td>silent background correction</td>
+<td>as P3, P6 or P7</td>
+<td>depends</td>
+<td>moderate</td>
+<td>reject</td>
+</tr>
+<tr>
+<td>P9′</td>
+<td>background suggestions, shown only at review</td>
+<td>as P3, P6 or P7</td>
+<td>depends</td>
+<td>moderate</td>
+<td>the form for any AI</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>AI belongs in a separate tool, or in a visible, opt-in pass at the end.</strong> P1 always runs, in panel mode just before the paste; beyond that the tool hands raw text to editors whose checkers already run (P0), offers the Shortcuts hand-off (P5), and for English can show Harper's findings at review (P3). An AI pass inside the tool should wait for a test: run P3, P5, P6 and one P7 model on 5–10 real forward-only drafts of 500–2,000 words and count true fixes, missed errors and meaning-changing edits (a changed content word, a dropped negation, a changed number). Only if a model fixes what the hand-off misses, mostly missing full stops and run-on sentences, without changing meaning does it earn a place, and then in the P9′ form: suggestions computed during the session, shown only at review as a diff with accept per change and "accept all mechanical", returned as an edit list from a closed set of categories in paragraph-sized batches, with every edited span checked against the draft verbatim and any edit that drops a negation or number flagged. Silent correction (P9) never.</p>
+<h2 id="fourteen-decisions-each-with-a-default-and-a-reason-to-change-it">Fourteen decisions, each with a default and a reason to change it</h2>
+<div class="tw"><table class="keys">
+<thead>
+<tr>
+<th>#</th>
+<th>Decision</th>
+<th>Options</th>
+<th>Recommended default</th>
+<th>Revisit if</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Visible text</td>
+<td>V1 last word · V2 trailing words fading left · V3 sentence plus dimmed previous</td>
+<td>V2; V1 as "deep" option</td>
+<td>testing shows V1 faster without unease</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Layout</td>
+<td>H horizontal line · T vertical typewriter</td>
+<td>H only</td>
+<td>argumentative drafts stall without T</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Backspace</td>
+<td>B0 none · B1 current word · B2 unlimited, unseen · B3 strike out</td>
+<td>B1</td>
+<td>typo unease persists (try B3)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Pressure</td>
+<td>none · gentle fade on pause · deletion on pause</td>
+<td>none; never destroy text</td>
+<td>never</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Session framing</td>
+<td>free · time box · word target; intent line; live count</td>
+<td>free start; optional 10–25 min box and intent line; no live count; summary and private log at the end</td>
+<td>the log shows sessions never end</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Sound</td>
+<td>off · click · click plus ambience</td>
+<td>quiet varied click on, within 20–30 ms, window only; ambience off; warn on Bluetooth</td>
+<td>clicks annoy in testing</td>
+</tr>
+<tr>
+<td>7</td>
+<td>UI stack</td>
+<td>GPUI + objc2 + cpal · Swift + AppKit · winit, Tauri, Flutter, Electron</td>
+<td>GPUI, pinned snapshot</td>
+<td>few-MB target, App Store or VoiceOver from day one: Swift</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Output path</td>
+<td>keep · copy · paste via ⌘V · Unicode typing · input method</td>
+<td>copy always; ⌘V in panel mode after a Secure Input check; Unicode typing as fallback; no input method</td>
+<td>a class of target apps refuses both methods</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Distribution</td>
+<td>Mac App Store · Developer ID, notarised</td>
+<td>Developer ID</td>
+<td>App Review accepts posted ⌘V for writing tools</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Summon and dim</td>
+<td>hotkey with non-activating panel · overlay · full screen</td>
+<td>Carbon hotkey with ⌘ or ⌃; non-activating panel; overlay in panel mode only</td>
+<td>Stage Manager breaks the overlay</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Persistence</td>
+<td>D0 to D6</td>
+<td>D2 by default; D4 as per-session "never on disk"; quit never discards; silent restore</td>
+<td>stolen backup disks matter: add D3</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Hand-off hygiene</td>
+<td>plain copy · marked copy · clear after delay</td>
+<td>Concealed and Transient markers, this device only, optional clear; shred after confirmed hand-off with undo grace</td>
+<td>the writer wants clipboard history</td>
+</tr>
+<tr>
+<td>13</td>
+<td>Post-processing</td>
+<td>P0 to P9′</td>
+<td>P1 always; P5 hand-off; P3 optional; no in-tool AI before the 5–10 draft test</td>
+<td>the test shows clean fixes: build P9′</td>
+</tr>
+<tr>
+<td>14</td>
+<td>Other OSes</td>
+<td>GPUI on Windows and Linux · Swift ports</td>
+<td>Windows next; Linux copy only</td>
+<td>Wayland gains a standard way to insert text</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="conclusion">Conclusion</h2>
+<p>The two halves of the brief are one design. The panic that sinks the punitive tools came from deletion threats, not from hidden text; Ilys, Smashkey and AlphaSmart users describe hidden text as relief. The journal that survives a crash, an accidental ⌘Q and a power cut is therefore part of the psychology, because it is what lets a writer let go of words they can no longer see, and crypto-shredding is what lets the tool keep that promise without becoming one more plaintext archive. Keeping everything inside the tool's own window serves calm and trust at once: sounds in the window need no Input Monitoring and never fire outside writing, and the frontier of visible words needs no AI. Only paste-into-app breaks that containment, since it needs Accessibility, rules out the App Store, fails silently in some apps and moves the text into another app's storage. That argues for building it second, once the full-screen line, the journal and the copy hand-off have proved the core.</p>
+<p>What remains unknown is cheap to settle and personal: how many trailing words to show, whether backspace should reach into the current word, whether the click helps or grates. None has comparative evidence, and all can be measured over a few weeks of the writer's own sessions, provided the logging keeps only totals per session (words per minute, pause counts, backspace rate), because keystroke timing is itself the kind of record the privacy design exists to avoid. The tool should promise fluency and calm, never better prose: the evidence supports the first and says nothing about the second.</p>
+</article>
+</div>
+</html>

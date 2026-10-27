@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flow Writing Tool Design Options</title>
+<style>
+/* One page, twelve decisions for a separate macOS app, working name Flow: a forward-only writer whose caret stays put
+   while one line slides left. Same language as the existing design panels: one mono font, 1 px lines, glyph + colour.
+   Readable without scripts; the pick line updates where scripts run. */
+:root{
+  color-scheme:dark;
+  --bg:#0e1013; --surface:#14171b; --raise:#1b1f25; --line:#262b32; --line-2:#3a414c;
+  --fg:#d9dde3; --muted:#8d95a0; --faint:#5c646f;
+  --accent:#7aa7f0; --accent-soft:rgba(122,167,240,.13); --on-accent:#0e1013;
+  --work:#e2a03a; --need:#f06a43; --done:#52b87c;
+  --ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"CaskaydiaCove Nerd Font Mono","Cascadia Code","Cascadia Mono","Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --w-bg:#1a1b26; --w-raised:#16161e; --w-line:#3b4261; --w-fg:#c0caf5; --w-mid:#a9b1d6; --w-low:#7f88b2; --w-sel:#283457;
+  --w-accent:#7aa2f7; --w-work:#e0af68; --w-need:#f7768e; --w-done:#9ece6a; --w-idle:#6b7399;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--ui);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin-inline:auto;padding:32px clamp(16px,4vw,32px) 120px;display:flex;flex-direction:column;gap:52px}
+h1,h2,h3,p,ul,figure{margin:0}
+ul{padding:0;list-style:none}
+code{font:12.5px/1 var(--mono);white-space:nowrap}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font:600 clamp(24px,4vw,34px)/1.15 var(--mono);letter-spacing:-.02em}
+.lede{max-width:78ch;color:var(--muted);font-size:15px}
+.lede b{color:var(--fg);font-weight:600}
+.top{display:flex;flex-direction:column;gap:14px}
+.bundle{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.bundle-l{font:500 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:5px 9px;border-radius:6px;background:var(--accent-soft);text-decoration:none;font-size:13px;white-space:nowrap;color:inherit}
+.chip b{font:600 12px/1 var(--mono);color:var(--accent)}
+.sec{display:flex;flex-direction:column;gap:18px}
+.sec-h{display:flex;gap:14px;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:12px}
+.num{font:600 28px/1 var(--mono);color:var(--accent)}
+.sec-h h2{font:600 19px/1.2 var(--mono)}
+.sec-h p{color:var(--muted);margin-top:3px;max-width:80ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,500px),1fr));gap:16px}
+.card{min-width:0;display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.card.wide{grid-column:1/-1}
+.card:has(.pick input:checked){border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.card-h{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.oid{font:600 13px/1 var(--mono);padding:5px 7px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.card-h h3{font:600 16px/1.2 var(--ui)}
+.tag{font:500 11px/1 var(--mono);padding:4px 6px;border-radius:4px;border:1px solid var(--line-2);color:var(--muted);white-space:nowrap}
+.tag.rec{border-color:var(--done);color:var(--done)}
+.tag.ask{border-color:var(--work);color:var(--work)}
+.tag.no{border-color:var(--need);color:var(--need)}
+.pick{margin-left:auto;display:inline-flex;gap:6px;align-items:center;font:500 12px/1 var(--mono);color:var(--muted);cursor:pointer;padding:5px 8px;border:1px solid var(--line);border-radius:6px}
+.pick input{accent-color:var(--accent);margin:0}
+.pick:has(input:checked){color:var(--fg);border-color:var(--accent)}
+.pitch{font-size:15px;max-width:76ch}
+.how{display:flex;flex-direction:column;gap:5px;color:var(--muted)}
+.how li{padding-left:14px;position:relative;max-width:78ch}
+.how li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--faint)}
+.how b{color:var(--fg);font-weight:600}
+figcaption{font-size:12px;color:var(--muted);margin-top:6px;max-width:72ch}
+.risk{font-size:13px;color:var(--muted);border-left:2px solid var(--line-2);padding-left:10px;max-width:76ch}
+.risk b{color:var(--fg)}
+.ledger{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:10px}
+.ledger div{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13px;color:var(--muted)}
+.ledger b{display:block;color:var(--fg);font:600 12px/1.6 var(--mono)}
+.ledger .urgent{border-color:var(--need)} .ledger .urgent b{color:var(--need)}
+.ledger .ok b{color:var(--done)}
+.order{counter-reset:o;display:flex;flex-direction:column;gap:6px;padding:0;list-style:none}
+.order li{counter-increment:o;padding-left:28px;position:relative;max-width:84ch;color:var(--muted)}
+.order li::before{content:counter(o);position:absolute;left:0;top:0;font:600 13px/1.5 var(--mono);color:var(--accent)}
+.order b{color:var(--fg)}
+table.keys{border-collapse:collapse;font-size:13px;color:var(--muted)}
+table.keys td,table.keys th{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+table.keys th{font:500 12px/1.3 var(--mono);color:var(--fg)}
+table.keys code{color:var(--fg)}
+table.keys a{color:var(--accent)}
+
+/* ---------- the app, drawn at real size: 1 CSS px = 1 pt ---------- */
+.real{display:flex;flex-wrap:wrap;gap:22px 26px;padding:18px 20px;background:var(--w-bg);border:1px solid var(--line-2);overflow-x:auto}
+.real figure{display:flex;flex-direction:column;gap:8px}
+.real figcaption{margin:0;font:12px/1.4 var(--mono);color:var(--w-low);max-width:640px}
+.real figcaption b{color:var(--w-fg);font-weight:500}
+.mock{overflow-x:auto}
+
+/* picks bar */
+.picks{position:sticky;bottom:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-inline:calc(-1 * clamp(8px,2vw,16px));padding:10px clamp(8px,2vw,16px);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 -6px 24px rgba(0,0,0,.35)}
+.picks-l{font:500 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.picks code{font:600 14px/1.3 var(--mono);color:var(--fg);user-select:all;white-space:normal}
+.picks button{margin-left:auto;font:600 13px/1 var(--ui);padding:8px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);cursor:pointer}
+</style>
+<style>
+/* additions for this panel: links, a findings grid, refs, the figures, and the drawings at real size */
+.wrap a:not(.chip){color:var(--accent);text-decoration:none}
+.wrap a:not(.chip):hover{text-decoration:underline}
+.finding{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
+.finding div{padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13.5px;color:var(--muted)}
+.finding b{color:var(--fg);display:block;margin-bottom:4px;font-weight:600}
+.refs{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:13px;max-width:96ch}
+.refs li{padding-left:14px;position:relative}
+.refs li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--faint)}
+.refs b{color:var(--fg);font-weight:600}
+.mock table.keys{width:100%;min-width:760px}
+table.keys td:first-child{color:var(--fg)}
+.kind{font:500 11px/1.4 var(--mono);color:var(--muted)}
+/* cards: three to a row, so each figure shows at its drawn size */
+.grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))}
+.ledger.one{grid-template-columns:1fr;gap:6px}
+.ledger.one b{display:inline;margin-right:8px}
+.note{font-size:13px;color:var(--muted)}
+/* figures: inline SVG in the panel's language. 1 px lines in --line-2, text in --fg, --muted for dimmed text,
+   --accent only for the caret, status colours only on ✓ ✗ and their words. 1 viewBox unit = 1 CSS px at full size. */
+.fig{display:block;width:100%;max-width:320px;height:auto;font:11px var(--mono);font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}
+.fig.w{max-width:none;min-width:640px}
+.fig.fx{width:var(--w);max-width:100%}
+.figw,.figs{overflow-x:auto}
+.figs{display:flex;flex-wrap:wrap;gap:20px 32px;align-items:flex-start}
+.fig text{fill:var(--fg)}
+.fig .big{font-size:12px}
+.fig .b{font-weight:600}
+.fig .m{fill:var(--muted)} .fig .f{fill:var(--faint)}
+.fig .ok{fill:var(--done)} .fig .no{fill:var(--need)} .fig .wk{fill:var(--work)}
+.fig .bx{fill:var(--bg);stroke:var(--line-2)}
+.fig .bx2{fill:var(--raise);stroke:var(--line-2)}
+.fig .ln{fill:none;stroke:var(--line-2)}
+.fig .ar{fill:none;stroke:var(--muted)}
+.fig .sfg{fill:none;stroke:var(--fg)}
+.fig .sok{fill:none;stroke:var(--done)}
+.fig .sno{fill:none;stroke:var(--need)}
+.fig .swk{fill:none;stroke:var(--work)}
+.fig .cr{fill:var(--accent)}
+.fig .ip{fill:var(--fg)}
+.fig .dim{fill:var(--bg);opacity:.62}
+.fig .gs{stop-color:var(--fg)}
+/* the full-screen surface (S1 V2 M1) */
+.surface{position:relative;flex:none;width:1040px;height:340px;background:var(--w-raised);border:1px solid var(--line-2);overflow:hidden;font:22px/32px var(--mono);color:var(--w-fg);font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}
+.surface .fl{position:absolute;left:0;right:0;top:154px;height:32px;-webkit-mask-image:linear-gradient(90deg,transparent 25%,#000 45%);mask-image:linear-gradient(90deg,transparent 25%,#000 45%)}
+.surface .ln{position:absolute;right:40%;top:0;white-space:pre}
+.surface .ln i{font-style:normal}
+.surface .cr{position:absolute;left:60%;top:150px;width:2px;height:40px;background:var(--w-accent)}
+.prog{position:absolute;left:0;bottom:0;height:1px;width:38%;background:var(--w-low)}
+/* the line types one word and glides left per keystroke (7 keys, 144 ms apart, 72 ms glide), holds, fades, repeats */
+@media (prefers-reduced-motion:no-preference){
+  .surface .fl{animation:fw-fade 9s linear infinite}
+  .surface .ln{animation:fw-glide 9s cubic-bezier(.2,.7,.3,1) infinite}
+  .surface .ln i{animation:fw-key 9s linear infinite backwards}
+  .surface .ln i:nth-of-type(1){animation-delay:-.81s} .surface .ln i:nth-of-type(2){animation-delay:-.666s}
+  .surface .ln i:nth-of-type(3){animation-delay:-.522s} .surface .ln i:nth-of-type(4){animation-delay:-.378s}
+  .surface .ln i:nth-of-type(5){animation-delay:-.234s} .surface .ln i:nth-of-type(6){animation-delay:-.09s}
+  .surface .ln i:nth-of-type(7){animation-delay:.054s}
+}
+@keyframes fw-fade{0%,3%{opacity:0}8%,80%{opacity:1}90%,100%{opacity:0}}
+@keyframes fw-key{0%,19%{opacity:0}19.01%,100%{opacity:1}}
+@keyframes fw-glide{
+  0%,10%{transform:translateX(7ch)} 10.8%,11.6%{transform:translateX(6ch)} 12.4%,13.2%{transform:translateX(5ch)}
+  14%,14.8%{transform:translateX(4ch)} 15.6%,16.4%{transform:translateX(3ch)} 17.2%,18%{transform:translateX(2ch)}
+  18.8%,19.6%{transform:translateX(1ch)} 20.4%,100%{transform:translateX(0)}
+}
+/* the panel over a dimmed app (W2): one corner of a screen at real size */
+.scr{position:relative;flex:none;width:900px;height:420px;background:#0b0c10;border:1px solid var(--line-2);overflow:hidden;font:13px/18px var(--ui)}
+.scr .desk{position:absolute;inset:0;background:repeating-linear-gradient(135deg,#101218 0 6px,#0d0e13 6px 12px)}
+.scr .win{position:absolute;left:150px;top:56px;width:600px;height:336px;background:var(--w-bg);border:1px solid var(--w-line);color:var(--w-mid)}
+.scr .tb{height:28px;display:flex;align-items:center;gap:6px;padding:0 10px;border-bottom:1px solid var(--w-line);color:var(--w-low);font-size:12px}
+.scr .tb i{width:10px;height:10px;border-radius:50%;background:var(--w-line)}
+.scr .tb span{margin-left:auto;margin-right:auto}
+.scr .f{padding:6px 14px;border-bottom:1px solid var(--w-line);color:var(--w-low)}
+.scr .f b{color:var(--w-mid);font-weight:400}
+.scr .body{padding:12px 14px;white-space:pre-wrap}
+.scr .ip{display:inline-block;width:1px;height:16px;background:var(--w-fg);vertical-align:-3px}
+.scr .dim{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+.scr .panel{position:absolute;left:170px;top:236px;width:560px;height:64px;background:var(--w-raised);border:1px solid var(--w-line);box-shadow:0 10px 30px rgba(0,0,0,.6);overflow:hidden;font:17px/24px var(--mono);color:var(--w-fg);font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}
+.scr .panel .fl{position:absolute;left:0;right:0;top:20px;height:24px;-webkit-mask-image:linear-gradient(90deg,transparent 25%,#000 45%);mask-image:linear-gradient(90deg,transparent 25%,#000 45%)}
+.scr .panel .ln{position:absolute;right:40%;top:0;white-space:pre}
+.scr .panel .cr{position:absolute;left:60%;top:18px;width:2px;height:28px;background:var(--w-accent)}
+.scr .panel .prog{width:22%}
+/* review (R1 R2): the full text and Harper's suggestions, one per row */
+.rv{flex:none;width:900px;display:flex;flex-direction:column;background:var(--w-raised);border:1px solid var(--line-2);font:13px/16px var(--mono);color:var(--w-mid);font-variant-ligatures:none}
+.rv .hd,.rv .ft,.rv .r1{display:flex;justify-content:space-between;gap:12px;padding:7px 12px;color:var(--w-low)}
+.rv .hd{border-bottom:1px solid var(--w-line)}
+.rv .ft{border-top:1px solid var(--w-line)}
+.rv .r1{border-top:1px solid var(--w-line)}
+.rv b{color:var(--w-fg);font-weight:500}
+.rv .bd{display:grid;grid-template-columns:1fr 330px}
+.rv .doc{padding:14px 18px 18px;font:15px/24px var(--mono);color:var(--w-fg);white-space:pre-wrap;max-width:62ch}
+.rv .doc u{text-decoration:none;border-bottom:1px solid var(--w-work)}
+.rv .doc u.on{background:var(--w-sel)}
+.rv .ls{border-left:1px solid var(--w-line);padding:8px 0}
+.rv .lh{padding:2px 12px 6px;color:var(--w-low);letter-spacing:.04em}
+.rv .it{display:grid;grid-template-columns:18px 80px 1fr;gap:6px;padding:3px 12px;white-space:pre}
+.rv .it.on{background:var(--w-sel);color:var(--w-fg)}
+.rv .it s{color:var(--w-low)}
+.rv .ac{padding:8px 12px 0;color:var(--w-low)}
+.rv .k{display:inline-block;border:1px solid var(--w-line);padding:0 4px;line-height:14px;color:var(--w-fg);margin-right:4px}
+</style>
+
+<div class="wrap">
+<header class="top">
+<p class="eyebrow">Design panel · a separate app</p>
+<h1>Flow writing tool design options</h1>
+<p class="lede">No shipping tool has a horizontal line with a fixed caret; the parts exist separately. Hiding the text removes the urge to fix, not the ability to think: typists who could not see their output <b>corrected 9 % of their errors instead of 42 %</b>. Twelve decisions: <b>recommended</b> is the proposed pick, <b>ask</b> a matter of taste, <b>no</b> ruled out by evidence; the argument is in the <a href="../reports/Flow%20writing%20tool%20design%20options.html">full report</a>.</p>
+<div class="bundle"><span class="bundle-l">Picks</span><a class="chip" href="#opt-S1"><b>S1</b> one line, caret fixed</a><a class="chip" href="#opt-V2"><b>V2</b> last clause, fading</a><a class="chip" href="#opt-B1"><b>B1</b> backspace in the word</a><a class="chip" href="#opt-P0"><b>P0</b> no pressure</a><a class="chip" href="#opt-K1"><b>K1</b> clicks in the window</a><a class="chip" href="#opt-W1"><b>W1</b> own full-screen surface</a><a class="chip" href="#opt-O1"><b>O1</b> marked copy</a><a class="chip" href="#opt-O2"><b>O2</b> save as Markdown</a><a class="chip" href="#opt-E2"><b>E2</b> encrypted journal, deletable key</a><a class="chip" href="#opt-R1"><b>R1</b> mechanical pass</a><a class="chip" href="#opt-R2"><b>R2</b> Harper review</a><a class="chip" href="#opt-R3"><b>R3</b> Writing Tools hand-off</a><a class="chip" href="#opt-T1"><b>T1</b> Rust + GPUI</a><a class="chip" href="#opt-M1"><b>M1</b> free start, quiet end</a><a class="chip" href="#opt-X1"><b>X1</b> Developer ID</a></div>
+<p class="eyebrow">Pick line: <span id="pickline">S1 V2 B1 P0 K1 W1 O1+O2 E2 R1+R2+R3 T1 M1 X1</span></p>
+</header>
+
+<section class="sec" aria-labelledby="s0h">
+<header class="sec-h"><span class="num">0</span><div><h2 id="s0h">Build or buy</h2><p>The closest tools found on 2026-10-27, and what each lacks here.</p></div></header>
+<div class="mock"><table class="keys">
+<tr><th>tool</th><th>what it does</th><th>what it lacks here</th></tr>
+<tr><td><a href="https://thenextweb.com/news/write-drunk-edit-sober">Ilys</a> <span class="kind">web</span></td><td>Shows only the last character typed</td><td>Web only; no context, no sounds</td></tr>
+<tr><td><a href="https://smashkey.gumroad.com/l/smashkey-v1">Smashkey Freewriter</a> <span class="kind">macOS · CAD 8</span></td><td>Five rolling lines; delete off by default</td><td>Vertical; no sounds, no paste-out</td></tr>
+<tr><td><a href="https://getfreewrite.com/collections/all-devices">Freewrite Alpha</a> <span class="kind">hardware · $349</span></td><td>Two to six lines on an LCD</td><td>A second device; two lines felt "paranoid"</td></tr>
+<tr><td><a href="https://en.wikipedia.org/wiki/The_Most_Dangerous_Writing_App">The Most Dangerous Writing App</a> <span class="kind">web</span></td><td>Deletes everything after 5 s idle</td><td>The deletion threat causes panic</td></tr>
+<tr><td><a href="https://ia.net/writer/support/editor/focus-mode">iA Writer</a>, Calmly Writer <span class="kind">Mac and more</span></td><td>Typewriter scroll; focus dims other text</td><td>Vertical; full text visible and editable</td></tr>
+<tr><td><a href="https://github.com/kamillobinski/thock">Thock</a> <span class="kind">macOS · MIT</span></td><td>System-wide key clicks via event tap</td><td>Sounds only; Accessibility; clicks in every app</td></tr>
+</table></div>
+<div class="finding">
+<div><b>Build.</b>No tool has the horizontal fixed-caret line; every typewriter mode found is vertical.</div>
+<div><b>Cheapest now.</b>VS Code without word wrap, plus Thock: text stays editable, backups are plaintext, clicks fire in every app.</div>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s1h">
+<header class="sec-h"><span class="num">1</span><div><h2 id="s1h">S: the surface</h2><p>Where the eye rests and which way the text leaves.</p></div></header>
+<div class="grid">
+<article class="card" id="opt-S1">
+<svg class="fig" viewBox="0 0 320 100" role="img"><title>S1: one line, the caret fixed at 60 % of the width, the text sliding left</title>
+<defs><linearGradient id="gS1" gradientUnits="userSpaceOnUse" x1="20" x2="110"><stop offset="0" class="gs" stop-opacity="0"/><stop offset="1" class="gs"/></linearGradient></defs>
+<rect class="bx" x=".5" y=".5" width="319" height="71"/>
+<text class="big" x="189" y="36" text-anchor="end" style="fill:url(#gS1)">…down to the harbour, where the boats sat low and silent</text>
+<rect class="cr" x="191" y="22" width="2" height="20"/>
+<path class="ar" d="M176 56.5H104m5-4-5 4 5 4"/><text class="m" x="98" y="60" text-anchor="end">slides left</text>
+<text class="m" x="256" y="40" text-anchor="middle">empty</text>
+<path class="ln" d="M192.5 72v8"/><text x="192" y="96" text-anchor="middle">caret fixed · 60 %</text>
+</svg>
+<div class="card-h"><span class="oid">S1</span><h3>One line, caret fixed</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="S" value="S1" checked> pick</label></div>
+<p class="pitch">The caret stays at 60 % of the width; each key glides the line left in 50–80 ms.</p>
+<ul class="how">
+<li>Sliding text is hard to reread, so history stays behind you.</li>
+<li>Steady motion you cause does not capture attention (<a href="https://doi.org/10.1111/1467-9280.01458">Abrams &amp; Christ 2003</a>).</li>
+<li>Reduce Motion turns the glide into a jump.</li>
+</ul>
+<p class="risk"><b>Risk.</b> An argument may need more context than one line holds; then S3.</p>
+</article>
+<article class="card" id="opt-S2">
+<svg class="fig" viewBox="0 0 320 100" role="img"><title>S2: a vertical typewriter, the current line at one height, earlier lines dimmed above it</title>
+<rect class="bx" x=".5" y=".5" width="319" height="71"/>
+<text class="big" x="14" y="20" opacity=".3">The rain had stopped by noon, so we</text>
+<text class="big" x="14" y="40" opacity=".55">walked down to the harbour, where</text>
+<text class="big" x="14" y="60" textLength="201.6" lengthAdjust="spacing">the boats sat low and silent</text>
+<rect class="cr" x="217" y="47" width="2" height="18"/>
+<text class="m" x="226" y="60">◂ fixed</text>
+<path class="ar" d="M300.5 62V12m-4 5 4-5 4 5"/>
+<text x="160" y="96" text-anchor="middle">current line fixed · page scrolls up</text>
+</svg>
+<div class="card-h"><span class="oid">S2</span><h3>Vertical typewriter, earlier lines dimmed</h3><label class="pick"><input type="radio" name="S" value="S2"> pick</label></div>
+<p class="pitch">The current line stays at one height; earlier lines scroll up and dim, as in iA Writer.</p>
+<p class="risk"><b>Risk.</b> History stays legible, so the pull to review stays.</p></article>
+<article class="card" id="opt-S3">
+<svg class="fig" viewBox="0 0 320 100" role="img"><title>S3: S1 by default and S2 as a setting</title>
+<defs><linearGradient id="gS3" gradientUnits="userSpaceOnUse" x1="8" x2="50"><stop offset="0" class="gs" stop-opacity="0"/><stop offset="1" class="gs"/></linearGradient></defs>
+<rect class="bx" x=".5" y=".5" width="149" height="71"/>
+<text x="87" y="40" text-anchor="end" style="fill:url(#gS3)">boats sat low and silent</text>
+<rect class="cr" x="89" y="28" width="2" height="16"/>
+<text class="m" x="160" y="40" text-anchor="middle">or</text>
+<rect class="bx" x="170.5" y=".5" width="149" height="71"/>
+<text x="180" y="22" opacity=".3">The rain had stopped</text>
+<text x="180" y="40" opacity=".55">walked down to the</text>
+<text x="180" y="58" textLength="85.8" lengthAdjust="spacing">boats sat low</text>
+<rect class="cr" x="267" y="47" width="2" height="15"/>
+<text x="75" y="94" text-anchor="middle">S1 · default</text><text x="245" y="94" text-anchor="middle">S2 · setting</text>
+</svg>
+<div class="card-h"><span class="oid">S3</span><h3>Both, as a setting</h3><span class="tag">later</span><label class="pick"><input type="radio" name="S" value="S3"> pick</label></div>
+<p class="pitch">S1 by default, S2 as an option.</p>
+<p class="risk"><b>Risk.</b> Two layouts and every test run twice; only if S1 stalls.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s2h">
+<header class="sec-h"><span class="num">2</span><div><h2 id="s2h">V: the visible span</h2><p>How much of the line stays readable left of the caret.</p></div></header>
+<div class="grid">
+<article class="card" id="opt-V2">
+<svg class="fig" viewBox="0 0 320 90" role="img"><title>V2: the last words at full strength, the clause before them fading, older text gone</title>
+<defs><linearGradient id="gV2" gradientUnits="userSpaceOnUse" x1="80" x2="144"><stop offset="0" class="gs" stop-opacity="0"/><stop offset="1" class="gs"/></linearGradient></defs>
+<rect class="bx" x=".5" y=".5" width="319" height="56"/>
+<text class="big" x="189" y="34" text-anchor="end" style="fill:url(#gV2)">…walked down to the harbour, where the boats sat low and silent</text>
+<rect class="cr" x="191" y="20" width="2" height="20"/>
+<path class="ln" d="M2.5 62v5h76v-5M82.5 62v5h60v-5M146.5 62v5h42v-5"/>
+<text class="m" x="40" y="84" text-anchor="middle">gone</text><text class="m" x="112" y="84" text-anchor="middle">fading</text><text x="167" y="84" text-anchor="middle">full</text>
+</svg>
+<div class="card-h"><span class="oid">V2</span><h3>The last clause, fading left</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="V" value="V2" checked> pick</label></div>
+<p class="pitch">The last words at full strength; the clause before them fades out by a quarter of the width.</p>
+<ul class="how">
+<li>Writers look back 13 % of the time, to plan (<a href="https://irep.ntu.ac.uk/id/eprint/16307/">Torrance 2016</a>).</li>
+<li>At two visible lines one reviewer felt "paranoia".</li>
+<li>The fade is a per-glyph opacity: cheap in any stack.</li>
+</ul>
+<p class="risk"><b>Risk.</b> The right length is unknown; tune it on your sessions.</p>
+</article>
+<article class="card" id="opt-V1">
+<svg class="fig" viewBox="0 0 320 90" role="img"><title>V1: only the word being typed is visible</title>
+<rect class="bx" x=".5" y=".5" width="319" height="56"/>
+<text class="big" x="189" y="34" text-anchor="end" textLength="43.2" lengthAdjust="spacing">silent</text>
+<rect class="cr" x="191" y="20" width="2" height="20"/>
+<path class="ln" d="M2.5 62v5h140v-5M146.5 62v5h42v-5"/>
+<text class="m" x="72" y="84" text-anchor="middle">hidden</text><text x="167" y="84" text-anchor="middle">1 word</text>
+</svg>
+<div class="card-h"><span class="oid">V1</span><h3>The word being typed, nothing else</h3><label class="pick"><input type="radio" name="V" value="V1"> pick</label></div>
+<p class="pitch">Only the current word shows; a space clears it.</p>
+<p class="risk"><b>Risk.</b> The strongest block on rereading, and no support for planning the next sentence.</p></article>
+<article class="card" id="opt-V3">
+<svg class="fig" viewBox="0 0 320 90" role="img"><title>V3: the current sentence at full strength and the previous one dimmed</title>
+<rect class="bx" x=".5" y=".5" width="319" height="56"/>
+<text class="big" x="189" y="34" text-anchor="end" textLength="352.8" lengthAdjust="spacing"><tspan class="m">…the boats sat low and silent. </tspan>Nobody was out yet</text>
+<path class="ln" d="M.5 .5v56"/>
+<rect class="cr" x="191" y="20" width="2" height="20"/>
+<path class="ln" d="M2.5 62v5h53v-5M59.5 62v5h129v-5"/>
+<text class="m" x="30" y="84" text-anchor="middle">previous</text><text x="124" y="84" text-anchor="middle">sentence</text>
+</svg>
+<div class="card-h"><span class="oid">V3</span><h3>The sentence, previous one dimmed</h3><label class="pick"><input type="radio" name="V" value="V3"> pick</label></div>
+<p class="pitch">The current sentence at full strength, the previous one dimmed further left.</p>
+<p class="risk"><b>Risk.</b> The most planning support and the most pull to reread; close to S2.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s3h">
+<header class="sec-h"><span class="num">3</span><div><h2 id="s3h">B: backspace</h2><p>How far a correction can reach.</p></div></header>
+<div class="grid">
+<article class="card" id="opt-B1">
+<svg class="fig" viewBox="0 0 320 90" role="img"><title>B1: backspace reaches back to the last space; finished words, and the typo in them, are out of reach</title>
+<rect class="bx" x=".5" y=".5" width="319" height="56"/>
+<text class="big" x="189" y="34" text-anchor="end" textLength="180" lengthAdjust="spacing">teh boats sat low, sielnt</text>
+<path class="swk" d="M9 38.5h22M146 38.5h43"/>
+<rect class="cr" x="191" y="20" width="2" height="20"/>
+<path class="ln" d="M9.5 62v5h128v-5"/><path class="sfg" d="M146.5 62v5h42v-5"/>
+<text class="m" x="73" y="84" text-anchor="middle">out of reach</text><text x="167" y="84" text-anchor="middle">⌫ reaches</text>
+</svg>
+<div class="card-h"><span class="oid">B1</span><h3>Within the current word only</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="B" value="B1" checked> pick</label></div>
+<p class="pitch">Backspace works back to the last space; finished words are out of reach.</p>
+<ul class="how">
+<li>Planted errors: 88 % fixed only after the sentence ended (<a href="https://repository.uantwerpen.be/link/irua/100224">Quinlan 2012</a>).</li>
+<li>Hidden output: corrections fell from 42 % to 9 %.</li>
+</ul>
+<p class="risk"><b>Risk.</b> A typo noticed after the space waits for R1 and R2.</p>
+</article>
+<article class="card" id="opt-B0">
+<svg class="fig" viewBox="0 0 320 90" role="img"><title>B0: backspace does nothing</title>
+<rect class="bx" x=".5" y=".5" width="319" height="56"/>
+<text class="big" x="189" y="34" text-anchor="end" textLength="180" lengthAdjust="spacing">teh boats sat low, sielnt</text>
+<path class="swk" d="M9 38.5h22M146 38.5h43"/>
+<rect class="cr" x="191" y="20" width="2" height="20"/>
+<text x="192" y="84" text-anchor="middle"><tspan class="no">✗</tspan> ⌫ does nothing</text>
+</svg>
+<div class="card-h"><span class="oid">B0</span><h3>None, append-only</h3><label class="pick"><input type="radio" name="B" value="B0"> pick</label></div>
+<p class="pitch">Only forward, as in Draft's Hemingway Mode and Smashkey's default.</p>
+<p class="risk"><b>Risk.</b> A typo you feel but cannot fix becomes a repeated irritant.</p></article>
+<article class="card" id="opt-B2">
+<svg class="fig" viewBox="0 0 320 90" role="img"><title>B2: backspace reaches into text that is no longer visible</title>
+<rect class="bx" x=".5" y=".5" width="319" height="56"/>
+<text class="big" x="189" y="34" text-anchor="end" textLength="295.2" lengthAdjust="spacing"><tspan class="f">…harbour, where teh boats </tspan>sat low, sielnt</text>
+<path class="ln" d="M.5 .5v56"/>
+<rect class="cr" x="191" y="20" width="2" height="20"/>
+<path class="sfg" d="M2.5 67h186v-5"/><path class="ar" d="M8 67H2.5m4-4-4 4 4 4"/>
+<text x="96" y="84" text-anchor="middle">⌫ reaches all, unseen</text>
+</svg>
+<div class="card-h"><span class="oid">B2</span><h3>Unlimited, but blind</h3><label class="pick"><input type="radio" name="B" value="B2"> pick</label></div>
+<p class="pitch">Backspace deletes into text that is no longer visible.</p>
+<p class="risk"><b>Risk.</b> Deleting what you cannot see invites rereading it in your head.</p></article>
+<article class="card" id="opt-B3">
+<svg class="fig" viewBox="0 0 320 90" role="img"><title>B3: backspace strikes the last word out and keeps it for review</title>
+<rect class="bx" x=".5" y=".5" width="319" height="56"/>
+<text class="big" x="189" y="34" text-anchor="end" textLength="158.4" lengthAdjust="spacing">sat low, <tspan class="m">slient</tspan> silent</text>
+<path class="ar" d="M95 29.5h44"/>
+<rect class="cr" x="191" y="20" width="2" height="20"/>
+<path class="ln" d="M95.5 62v5h43v-5"/>
+<text x="117" y="84" text-anchor="middle">kept for review</text>
+</svg>
+<div class="card-h"><span class="oid">B3</span><h3>Strike out instead of delete</h3><span class="tag ask">ask</span><label class="pick"><input type="radio" name="B" value="B3"> pick</label></div>
+<p class="pitch">Backspace strikes the last word out; review offers each struck word to keep or drop.</p>
+<p class="risk"><b>Risk.</b> A new mark type in the journal and in review.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s4h">
+<header class="sec-h"><span class="num">4</span><div><h2 id="s4h">P: pressure</h2><p>What happens when you stop typing.</p></div></header>
+<div class="grid">
+<article class="card" id="opt-P0">
+<svg class="fig" viewBox="0 0 320 96" role="img"><title>P0: through a pause the visible words stay as they are</title>
+<rect class="bx" x=".5" y=".5" width="96" height="34"/><rect class="bx" x="112.5" y=".5" width="96" height="34"/><rect class="bx" x="223.5" y=".5" width="96" height="34"/>
+<text x="84" y="22" text-anchor="end">and silent</text><text x="196" y="22" text-anchor="end">and silent</text><text x="307" y="22" text-anchor="end">and silent</text>
+<rect class="cr" x="86" y="10" width="2" height="16"/><rect class="cr" x="198" y="10" width="2" height="16"/><rect class="cr" x="309" y="10" width="2" height="16"/>
+<path class="ln" d="M48.5 35v29M160.5 35v29M271.5 35v29M0 72.5h320"/>
+<path class="sfg" d="M8.5 64v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8M228.5 64v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8"/>
+<text class="m" x="52" y="90" text-anchor="middle">typing</text><text x="164" y="90" text-anchor="middle">pause: no change</text><text class="m" x="268" y="90" text-anchor="middle">next key</text>
+</svg>
+<div class="card-h"><span class="oid">P0</span><h3>None; text is never destroyed</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="P" value="P0" checked> pick</label></div>
+<p class="pitch">A pause is a pause: nothing fades, nothing is deleted, nothing locks.</p>
+<ul class="how">
+<li>Writing under threat tripled pages, cut ideas per page ~40 % (<a href="https://mail.sdkrashen.com/content/articles/optimal_levels.pdf">Boice</a>).</li>
+<li>Panic comes from deletion, not from hidden text.</li>
+</ul>
+<p class="risk"><b>Risk.</b> None from the evidence; P1 is the opt-in nudge.</p>
+</article>
+<article class="card" id="opt-P1">
+<svg class="fig" viewBox="0 0 320 96" role="img"><title>P1: during a pause the visible words dim; the next key brings them back</title>
+<rect class="bx" x=".5" y=".5" width="96" height="34"/><rect class="bx" x="112.5" y=".5" width="96" height="34"/><rect class="bx" x="223.5" y=".5" width="96" height="34"/>
+<text x="84" y="22" text-anchor="end">and silent</text><text class="f" x="196" y="22" text-anchor="end">and silent</text><text x="307" y="22" text-anchor="end">and silent</text>
+<rect class="cr" x="86" y="10" width="2" height="16"/><rect class="cr" x="198" y="10" width="2" height="16"/><rect class="cr" x="309" y="10" width="2" height="16"/>
+<path class="ln" d="M48.5 35v29M160.5 35v29M271.5 35v29M0 72.5h320"/>
+<path class="sfg" d="M8.5 64v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8M228.5 64v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8"/>
+<text class="m" x="52" y="90" text-anchor="middle">typing</text><text x="164" y="90" text-anchor="middle">pause: dims</text><text class="m" x="268" y="90" text-anchor="middle">next key: back</text>
+</svg>
+<div class="card-h"><span class="oid">P1</span><h3>A gentle fade, undone by typing</h3><span class="tag ask">ask</span><label class="pick"><input type="radio" name="P" value="P1"> pick</label></div>
+<p class="pitch">After a pause the visible words dim slowly; the next key brings them back.</p>
+<p class="risk"><b>Risk.</b> A change you did not cause draws the eye; off by default.</p></article>
+<article class="card" id="opt-P2">
+<svg class="fig" viewBox="0 0 320 96" role="img"><title>P2: after about 5 s idle the text is deleted</title>
+<rect class="bx" x=".5" y=".5" width="96" height="34"/><rect class="bx" x="112.5" y=".5" width="96" height="34"/><rect class="bx" x="223.5" y=".5" width="96" height="34"/>
+<text x="84" y="22" text-anchor="end">and silent</text><text class="no" x="196" y="22" text-anchor="end">and silent</text><path class="sno" d="M129 18.5h68"/>
+<rect class="cr" x="86" y="10" width="2" height="16"/><rect class="cr" x="198" y="10" width="2" height="16"/><rect class="cr" x="309" y="10" width="2" height="16"/>
+<path class="ln" d="M48.5 35v29M160.5 35v29M271.5 35v29M0 72.5h320"/>
+<path class="sfg" d="M8.5 64v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8M228.5 64v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8m8-8v8"/>
+<text class="m" x="52" y="90" text-anchor="middle">typing</text><text class="no" x="164" y="90" text-anchor="middle">~5 s: deleted</text><text class="m" x="268" y="90" text-anchor="middle">nothing left</text>
+</svg>
+<div class="card-h"><span class="oid">P2</span><h3>Deletion on pause</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="P" value="P2"> pick</label></div>
+<p class="pitch">The Most Dangerous Writing App deletes everything after about 5 s idle.</p>
+<p class="risk"><b>No.</b> Fewer ideas, panic, and it breaks never losing text.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s5h">
+<header class="sec-h"><span class="num">5</span><div><h2 id="s5h">K: key sound</h2><p>A click buys pleasure and rhythm, not speed; timing matters more than timbre.</p></div></header>
+<div class="grid">
+<article class="card" id="opt-K1">
+<svg class="fig" viewBox="0 0 320 110" role="img"><title>K1: a key-down in Flow's window plays a click in about 5 to 20 ms, with no permission</title>
+<defs><linearGradient id="gK1" gradientUnits="userSpaceOnUse" x1="80" x2="98"><stop offset="0" class="gs" stop-opacity="0"/><stop offset="1" class="gs"/></linearGradient></defs>
+<rect class="bx" x="4.5" y="34.5" width="34" height="30" rx="4"/><text class="big" x="21.5" y="54" text-anchor="middle">k</text>
+<text class="m" x="21.5" y="82" text-anchor="middle">key</text>
+<path class="ar" d="M42 49.5h32m-5-4 5 4-5 4"/>
+<text class="m" x="130.5" y="14" text-anchor="middle">Flow window</text>
+<rect class="bx" x="78.5" y="22.5" width="104" height="54"/>
+<text x="140" y="54" text-anchor="end" style="fill:url(#gK1)">low and silent</text><rect class="cr" x="142" y="42" width="2" height="16"/>
+<path class="ar" d="M186 49.5h50m-5-4 5 4-5 4"/><text x="211" y="40" text-anchor="middle">5–20 ms</text>
+<rect class="bx" x="240.5" y="34.5" width="75" height="30"/><text x="278" y="54" text-anchor="middle">speaker</text>
+<rect class="sok" x="84.5" y="88.5" width="92" height="18" rx="3"/><text class="ok" x="130.5" y="101" text-anchor="middle">no permission</text>
+</svg>
+<div class="card-h"><span class="oid">K1</span><h3>Clicks from the writing window only</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="K" value="K1" checked> pick</label></div>
+<p class="pitch">Each key-down in Flow's window plays a preloaded click through one audio stream kept open.</p>
+<ul class="how">
+<li>Feels simultaneous near 19 ms; worse by 70–100 ms (<a href="https://doi.org/10.1145/2611387">Kaaresoja 2014</a>).</li>
+<li>128-frame buffer: about 5–20 ms on built-in or wired output.</li>
+<li>Bluetooth adds 126–274 ms: warn once, offer to mute.</li>
+</ul>
+<p class="risk"><b>Risk.</b> Untested whether clicks on a real keyboard help; try on and off.</p>
+</article>
+<article class="card" id="opt-K2">
+<svg class="fig" viewBox="0 0 320 100" role="img"><title>K2: a system event tap clicks for keys in every app and needs a permission</title>
+<rect class="bx" x="4.5" y="34.5" width="34" height="30" rx="4"/><text class="big" x="21.5" y="54" text-anchor="middle">k</text>
+<path class="ar" d="M42 49.5h32m-5-4 5 4-5 4"/>
+<rect class="bx" x="78.5" y="34.5" width="84" height="30"/><text x="120.5" y="54" text-anchor="middle">event tap</text>
+<rect class="sno" x="78.5" y="74.5" width="84" height="18" rx="3"/><text class="no" x="120.5" y="87" text-anchor="middle">permission</text>
+<path class="ar" d="M163 49.5h14M177.5 15.5v68M177 15.5h19m-5-4 5 4-5 4M177 49.5h19m-5-4 5 4-5 4M177 83.5h19m-5-4 5 4-5 4"/>
+<rect class="bx" x="200.5" y="4.5" width="115" height="22"/><rect class="bx" x="200.5" y="38.5" width="115" height="22"/><rect class="bx" x="200.5" y="72.5" width="115" height="22"/>
+<text x="208" y="19.5">Mail <tspan class="m">· click</tspan></text><text x="208" y="53.5">Editor <tspan class="m">· click</tspan></text><text x="208" y="87.5">Flow <tspan class="m">· click</tspan></text>
+</svg>
+<div class="card-h"><span class="oid">K2</span><h3>System-wide clicks via an event tap</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="K" value="K2"> pick</label></div>
+<p class="pitch">Clicks for every key in every app, as Thock and Klack do.</p>
+<p class="risk"><b>No.</b> Needs Accessibility, and clicks outside writing annoy; Thock already does this.</p></article>
+<article class="card" id="opt-K0">
+<svg class="fig" viewBox="0 0 320 110" role="img"><title>K0: Flow plays nothing; only the keyboard's own sound</title>
+<defs><linearGradient id="gK0" gradientUnits="userSpaceOnUse" x1="80" x2="98"><stop offset="0" class="gs" stop-opacity="0"/><stop offset="1" class="gs"/></linearGradient></defs>
+<rect class="bx" x="4.5" y="34.5" width="34" height="30" rx="4"/><text class="big" x="21.5" y="54" text-anchor="middle">k</text>
+<text class="m" x="21.5" y="82" text-anchor="middle">key</text>
+<path class="ar" d="M42 49.5h32m-5-4 5 4-5 4"/>
+<text class="m" x="130.5" y="14" text-anchor="middle">Flow window</text>
+<rect class="bx" x="78.5" y="22.5" width="104" height="54"/>
+<text x="140" y="54" text-anchor="end" style="fill:url(#gK0)">low and silent</text><rect class="cr" x="142" y="42" width="2" height="16"/>
+<path class="ln" d="M186 49.5h50" stroke-dasharray="3 3"/>
+<rect class="ln" x="240.5" y="34.5" width="75" height="30"/><text class="m" x="278" y="54" text-anchor="middle">off</text>
+</svg>
+<div class="card-h"><span class="oid">K0</span><h3>No sound</h3><label class="pick"><input type="radio" name="K" value="K0"> pick</label></div>
+<p class="pitch">Only the keyboard's own sound.</p>
+<p class="risk"><b>Risk.</b> Drops the one cue the brief asks for; K1's toggle reaches it.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s6h">
+<header class="sec-h"><span class="num">6</span><div><h2 id="s6h">W: the window</h2><p>How Flow appears and what surrounds it.</p></div></header>
+<div class="grid">
+<article class="card" id="opt-W1">
+<svg class="fig" viewBox="0 0 320 96" role="img"><title>W1: Flow's own full screen with only the writing line on it</title>
+<defs><linearGradient id="gW1" gradientUnits="userSpaceOnUse" x1="80" x2="144"><stop offset="0" class="gs" stop-opacity="0"/><stop offset="1" class="gs"/></linearGradient></defs>
+<rect class="bx" x=".5" y=".5" width="319" height="95"/>
+<text class="m" x="10" y="18">full screen · nothing else</text>
+<text x="189" y="54" text-anchor="end" style="fill:url(#gW1)">…down to the harbour, where the boats sat low and</text>
+<rect class="cr" x="191" y="42" width="2" height="16"/>
+<path class="ar" d="M1 94.5h121"/>
+</svg>
+<div class="card-h"><span class="oid">W1</span><h3>Its own full-screen quiet surface</h3><span class="tag rec">recommended for v1</span><label class="pick"><input type="radio" name="W" value="W1" checked> pick</label></div>
+<p class="pitch">A hotkey or the menu-bar item opens Flow full screen; text leaves by copy or save.</p>
+<ul class="how">
+<li>Carbon hotkey: no permission, works in the sandbox.</li>
+<li>No Accessibility, no Input Monitoring in v1.</li>
+</ul>
+<p class="risk"><b>Risk.</b> Text still travels by hand (⌘V there); W2 removes that step.</p>
+</article>
+<article class="card" id="opt-W2">
+<svg class="fig" viewBox="0 0 320 104" role="img"><title>W2: a small panel over the dimmed app in use; at Done the text pastes at the app's insertion point</title>
+<defs><linearGradient id="gW2" gradientUnits="userSpaceOnUse" x1="158" x2="200"><stop offset="0" class="gs" stop-opacity="0"/><stop offset="1" class="gs"/></linearGradient></defs>
+<rect class="bx" x=".5" y=".5" width="319" height="103"/>
+<rect class="bx2" x="24.5" y="8.5" width="272" height="88"/><path class="ln" d="M24.5 22.5h272"/>
+<text class="m" x="160" y="19" text-anchor="middle">Mail</text>
+<text class="m" x="36" y="38">To: team</text><text x="36" y="54">Hi all,</text>
+<rect class="ip" x="40" y="59" width="1" height="12"/>
+<rect class="dim" x="1" y="1" width="318" height="102"/>
+<rect class="bx2" x="150.5" y="70.5" width="160" height="26"/>
+<text x="244" y="88" text-anchor="end" style="fill:url(#gW2)">keep the first version small</text>
+<rect class="cr" x="246" y="76" width="2" height="16"/>
+<path class="sfg" d="M150 83.5H40.5V75m-4 5 4-5 4 5"/>
+<text x="50" y="79">paste at Done</text>
+</svg>
+<div class="card-h"><span class="oid">W2</span><h3>Floating panel, paste at the end</h3><span class="tag">v2</span><label class="pick"><input type="radio" name="W" value="W2"> pick</label></div>
+<p class="pitch">A non-activating panel over the app you were in; at Done the text pastes there.</p>
+<ul class="how">
+<li>Paste needs Accessibility and Developer ID (X1).</li>
+<li>One overlay per screen dims the rest, with no permission.</li>
+</ul>
+<p class="risk"><b>Risk.</b> Paste fails silently in places (Secure Input, remote desktops); Flow keeps the text.</p></article>
+<article class="card" id="opt-W3">
+<svg class="fig" viewBox="0 0 320 96" role="img"><title>W3: the full-screen surface for long sessions and the panel for a paragraph</title>
+<defs><linearGradient id="gW3a" gradientUnits="userSpaceOnUse" x1="8" x2="50"><stop offset="0" class="gs" stop-opacity="0"/><stop offset="1" class="gs"/></linearGradient><linearGradient id="gW3b" gradientUnits="userSpaceOnUse" x1="200" x2="226"><stop offset="0" class="gs" stop-opacity="0"/><stop offset="1" class="gs"/></linearGradient></defs>
+<rect class="bx" x=".5" y=".5" width="149" height="70"/>
+<text x="88" y="40" text-anchor="end" style="fill:url(#gW3a)">boats sat low and</text><rect class="cr" x="90" y="29" width="2" height="15"/>
+<rect class="bx" x="170.5" y=".5" width="149" height="70"/>
+<rect class="bx2" x="180.5" y="8.5" width="129" height="54"/><path class="ln" d="M180.5 18.5h129"/>
+<rect class="dim" x="171" y="1" width="148" height="69"/>
+<rect class="bx2" x="196.5" y="40.5" width="100" height="18"/>
+<text x="254" y="53" text-anchor="end" style="fill:url(#gW3b)">first version small</text><rect class="cr" x="256" y="44" width="2" height="12"/>
+<text x="75" y="90" text-anchor="middle">W1 · long sessions</text><text x="245" y="90" text-anchor="middle">W2 · a paragraph</text>
+</svg>
+<div class="card-h"><span class="oid">W3</span><h3>Both</h3><span class="tag">later</span><label class="pick"><input type="radio" name="W" value="W3"> pick</label></div>
+<p class="pitch">W1 for long sessions, W2 for a paragraph into mail or chat.</p>
+<p class="risk"><b>Risk.</b> The likely end state; W1 first, then W2, reaches it.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s7h">
+<header class="sec-h"><span class="num">7</span><div><h2 id="s7h">O: output at the end of a session</h2><p>Where the text goes when you are done; several can be picked.</p></div></header>
+<div class="figw"><svg class="fig w" style="max-width:760px" viewBox="0 0 760 180" role="img"><title>O: the finished text goes to the clipboard, a Markdown file, the previous app, an input method or the share sheet</title>
+<rect class="bx" x=".5" y="56.5" width="180" height="64"/>
+<text class="m" x="10" y="74">finished text</text><text x="10" y="92">The rain had stopped</text><text x="10" y="108">by noon, so we walked</text>
+<path class="ar" d="M181 88.5h59M240.5 16.5v144M240 16.5h56m-5-4 5 4-5 4M240 52.5h56m-5-4 5 4-5 4M240 88.5h56m-5-4 5 4-5 4M240 160.5h56m-5-4 5 4-5 4"/>
+<path class="sno" d="M241 124.5h55m-5-4 5 4-5 4"/><text class="no" x="268" y="120" text-anchor="middle">✗</text>
+<rect class="bx" x="300.5" y="4.5" width="130" height="24"/><rect class="bx" x="300.5" y="40.5" width="130" height="24"/><rect class="bx" x="300.5" y="76.5" width="130" height="24"/><rect class="ln" x="300.5" y="112.5" width="130" height="24"/><rect class="bx" x="300.5" y="148.5" width="130" height="24"/>
+<text x="310" y="21">clipboard</text><text x="310" y="57">notes.md</text><text x="310" y="93">previous app</text><text class="m" x="310" y="129">input method</text><text x="310" y="165">share sheet</text>
+<text class="b" x="444" y="21">O1</text><text class="m" x="474" y="21">Concealed + Transient · this Mac</text><text class="ok" x="756" y="21" text-anchor="end">✓ always</text>
+<text class="b" x="444" y="57">O2</text><text class="m" x="474" y="57">folder you pick · atomic write</text><text class="ok" x="756" y="57" text-anchor="end">✓ v1</text>
+<text class="b" x="444" y="93">O3</text><text class="m" x="474" y="93">hide panel, post ⌘V</text><text class="wk" x="756" y="93" text-anchor="end">v2 · Accessibility</text>
+<text class="b" x="444" y="129">O4</text><text class="m" x="474" y="129">install, select as input source</text><text class="no" x="756" y="129" text-anchor="end">✗ no</text>
+<text class="b" x="444" y="165">O5</text><text class="m" x="474" y="165">Notes, Mail, a Shortcut</text><text class="m" x="756" y="165" text-anchor="end">ask</text>
+<text class="m" x="0" y="142">after a confirmed hand-off,</text><text class="m" x="0" y="158">Flow shreds its copy (E2);</text><text class="m" x="0" y="174">never on ⌘Q or close</text>
+</svg></div>
+<div class="grid">
+<article class="card" id="opt-O1"><div class="card-h"><span class="oid">O1</span><h3>Copy, marked private</h3><span class="tag rec">recommended, always</span><label class="pick"><input type="checkbox" name="O" value="O1" checked> pick</label></div>
+<p class="pitch">Clipboard with the <a href="https://nspasteboard.org/">Concealed and Transient markers</a>, kept off Universal Clipboard; no permission.</p>
+<p class="risk"><b>Risk.</b> The markers are a convention; macOS 26's clipboard history may ignore them.</p></article>
+<article class="card" id="opt-O2"><div class="card-h"><span class="oid">O2</span><h3>Save as Markdown</h3><span class="tag rec">recommended, v1</span><label class="pick"><input type="checkbox" name="O" value="O2" checked> pick</label></div>
+<p class="pitch">To a folder you pick, by atomic replace; no NSDocument Versions with hidden copies.</p>
+<p class="risk"><b>Risk.</b> A saved file is ordinary data: indexed, backed up, perhaps in iCloud.</p></article>
+<article class="card" id="opt-O3"><div class="card-h"><span class="oid">O3</span><h3>Paste into the previous app</h3><span class="tag">v2, with W2</span><label class="pick"><input type="checkbox" name="O" value="O3"> pick</label></div>
+<p class="pitch">Hide the panel, post ⌘V, restore the old clipboard; Unicode typing as fallback.</p>
+<p class="risk"><b>Risk.</b> Needs Accessibility, rules out the App Store; Flow keeps the text until confirmed.</p></article>
+<article class="card" id="opt-O4"><div class="card-h"><span class="oid">O4</span><h3>An input method</h3><span class="tag no">no</span><label class="pick"><input type="checkbox" name="O" value="O4"> pick</label></div>
+<p class="pitch">InputMethodKit inserts through each app's own text system, without the clipboard.</p>
+<p class="risk"><b>No.</b> Must be installed and selected; input-blocking bugs on macOS 15.2.</p></article>
+<article class="card" id="opt-O5"><div class="card-h"><span class="oid">O5</span><h3>Share sheet or Services</h3><span class="tag ask">ask</span><label class="pick"><input type="checkbox" name="O" value="O5"> pick</label></div>
+<p class="pitch">Hand the text to Notes, Mail or a Shortcut.</p>
+<p class="risk"><b>Risk.</b> The text lands in the receiver's storage; not researched in depth.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s8h">
+<header class="sec-h"><span class="num">8</span><div><h2 id="s8h">E: never lose, and privacy</h2><p>Where the text lives while you write; surviving a power loss means a key or plaintext on disk.</p></div></header>
+<div class="figs">
+<svg class="fig w fx" style="--w:656px" viewBox="0 0 656 262" role="img"><title>E: what survives what, for E0 plaintext, E2 keychain key, E4 key in memory and E6 memory only</title>
+<rect class="sfg" x="268.5" y="4.5" width="127" height="232"/>
+<text class="b" x="204" y="22" text-anchor="middle">E0 plaintext</text><text class="b" x="332" y="22" text-anchor="middle">E2 keychain key</text><text class="b" x="460" y="22" text-anchor="middle">E4 RAM key</text><text class="b" x="588" y="22" text-anchor="middle">E6 RAM only</text>
+<path class="ln" d="M0 32.5h652M0 166.5h652"/>
+<text class="m" x="0" y="50">text survives</text>
+<text x="0" y="70">app crash</text><text class="ok" x="204" y="70" text-anchor="middle">✓</text><text class="ok" x="332" y="70" text-anchor="middle">✓</text><text class="ok" x="460" y="70" text-anchor="middle">✓</text><text class="no" x="588" y="70" text-anchor="middle">✗</text>
+<text x="0" y="92">Force Quit</text><text class="ok" x="204" y="92" text-anchor="middle">✓</text><text class="ok" x="332" y="92" text-anchor="middle">✓</text><text class="ok" x="460" y="92" text-anchor="middle">✓</text><text class="no" x="588" y="92" text-anchor="middle">✗</text>
+<text x="0" y="114">⌘Q, ⌘W</text><text class="ok" x="204" y="114" text-anchor="middle">✓</text><text class="ok" x="332" y="114" text-anchor="middle">✓</text><text class="ok" x="460" y="114" text-anchor="middle">✓</text><text class="no" x="588" y="114" text-anchor="middle">✗</text>
+<text x="0" y="136">power loss</text><text x="204" y="136" text-anchor="middle"><tspan class="ok">✓</tspan><tspan class="m"> last flush</tspan></text><text x="332" y="136" text-anchor="middle"><tspan class="ok">✓</tspan><tspan class="m"> last flush</tspan></text><text x="460" y="136" text-anchor="middle"><tspan class="no">✗</tspan><tspan class="m"> fails closed</tspan></text><text class="no" x="588" y="136" text-anchor="middle">✗</text>
+<text x="0" y="158">logout, reboot</text><text class="ok" x="204" y="158" text-anchor="middle">✓</text><text class="ok" x="332" y="158" text-anchor="middle">✓</text><text class="no" x="460" y="158" text-anchor="middle">✗</text><text class="no" x="588" y="158" text-anchor="middle">✗</text>
+<text class="m" x="0" y="186">a copy holds</text>
+<text x="0" y="206">snapshot ≤ 24 h</text><text class="no" x="204" y="206" text-anchor="middle">exposed</text><text class="wk" x="332" y="206" text-anchor="middle">ciphertext + key ?</text><text class="ok" x="460" y="206" text-anchor="middle">ciphertext</text><text class="ok" x="588" y="206" text-anchor="middle">nothing</text>
+<text x="0" y="228">backup disk</text><text class="no" x="204" y="228" text-anchor="middle">exposed</text><text class="ok" x="332" y="228" text-anchor="middle">ciphertext</text><text class="ok" x="460" y="228" text-anchor="middle">ciphertext</text><text class="ok" x="588" y="228" text-anchor="middle">nothing</text>
+<text class="m" x="0" y="256">? the snapshot also holds the keychain database; recovering a deleted key is open (§15)</text>
+</svg>
+<svg class="fig fx" style="--w:330px" viewBox="0 0 330 200" role="img"><title>E2: a ciphertext journal on disk and its key in the keychain; at Done the key is deleted and the journal becomes noise</title>
+<text class="m" x="0" y="14">E2 · while writing</text>
+<rect class="bx" x=".5" y="24.5" width="190" height="40"/><text class="m" x="8" y="40">journal on disk</text><text x="8" y="57">a7 3f 91 0c e2 5b …</text>
+<path class="ln" d="M191 44.5h19"/>
+<rect class="bx" x="210.5" y="24.5" width="119" height="40"/><text class="m" x="218" y="40">keychain</text><text x="218" y="57">key · this Mac</text>
+<text class="m" x="0" y="96">at Done or Discard</text>
+<rect class="bx" x=".5" y="106.5" width="190" height="40"/><text class="m" x="8" y="122">journal on disk</text><text class="f" x="8" y="139">a7 3f 91 0c e2 5b …</text><text class="m" x="182" y="139" text-anchor="end">noise</text>
+<rect class="bx" x="210.5" y="106.5" width="119" height="40"/><text class="m" x="218" y="122">keychain</text><text x="218" y="139">key <tspan class="no">✗ deleted</tspan></text>
+<text class="m" x="0" y="176">⌘Q, crash, logout: the key stays,</text><text class="m" x="0" y="192">the next launch restores silently</text>
+</svg>
+</div>
+<div class="grid">
+<article class="card" id="opt-E2"><div class="card-h"><span class="oid">E2</span><h3>Encrypted journal, key deleted at Done</h3><span class="tag rec">recommended</span><label class="pick"><input type="checkbox" name="E" value="E2" checked> pick</label></div>
+<p class="pitch">An AES-GCM journal per session, its key in the keychain; Done deletes the key, leaving noise.</p>
+<ul class="how">
+<li>write() per edit survives a crash; full flush 1 s after typing.</li>
+<li>Records batched into 50 ms windows: no typing rhythm leaks.</li>
+<li>Needs a signed bundle with a provisioning profile (<a href="https://developer.apple.com/documentation/technotes/tn3137-on-mac-keychains">TN3137</a>).</li>
+</ul>
+<p class="risk"><b>Residual.</b> Local snapshots hold journal and keychain for up to 24 h.</p>
+</article>
+<article class="card" id="opt-E0"><div class="card-h"><span class="oid">E0</span><h3>A plaintext journal, as editors keep</h3><span class="tag no">no</span><label class="pick"><input type="checkbox" name="E" value="E0"> pick</label></div>
+<p class="pitch">VS Code and Vim back unsaved text up in plaintext.</p>
+<p class="risk"><b>No.</b> Plaintext in snapshots, backups and Spotlight, readable by any process.</p></article>
+<article class="card" id="opt-E4"><div class="card-h"><span class="oid">E4</span><h3>Key only in a helper's memory</h3><span class="tag ask">ask</span><label class="pick"><input type="checkbox" name="E" value="E4"> pick</label></div>
+<p class="pitch">A helper process holds the key, never on disk: a per-session switch beside E2.</p>
+<p class="risk"><b>Risk.</b> Power loss or logout loses the session; the helper must verify callers.</p></article>
+<article class="card" id="opt-E3"><div class="card-h"><span class="oid">E3</span><h3>E2, key wrapped by Secure Enclave</h3><span class="tag">later</span><label class="pick"><input type="checkbox" name="E" value="E3"> pick</label></div>
+<p class="pitch">A stolen backup is useless on another Mac; restoring can require Touch ID.</p>
+<p class="risk"><b>Risk.</b> Does not shorten the snapshot window; add if stolen backups matter.</p></article>
+<article class="card" id="opt-E6"><div class="card-h"><span class="oid">E6</span><h3>Memory only</h3><span class="tag no">no</span><label class="pick"><input type="checkbox" name="E" value="E6"> pick</label></div>
+<p class="pitch">Nothing on disk.</p>
+<p class="risk"><b>No.</b> A crash loses everything; hidden text must never become lost text.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s9h">
+<header class="sec-h"><span class="num">9</span><div><h2 id="s9h">R: review and post-processing</h2><p>What happens to the raw draft; several can be picked.</p></div></header>
+<div class="figw"><svg class="fig w" style="max-width:812px" viewBox="0 0 812 162" role="img"><title>R: the raw draft passes R1's rules and R2's review inside Flow, then R3 hands it to Writing Tools; R4 and R5 are ruled out</title>
+<rect class="ln" x=".5" y=".5" width="566" height="160" stroke-dasharray="3 3"/>
+<text class="m" x="10" y="16">inside Flow</text>
+<rect class="bx" x="10.5" y="24.5" width="96" height="40"/><text x="20" y="49">raw draft</text>
+<path class="ar" d="M107 44.5h30m-5-4 5 4-5 4M311 44.5h30m-5-4 5 4-5 4M545 44.5h70m-5-4 5 4-5 4"/>
+<rect class="bx" x="140.5" y="24.5" width="170" height="40"/><text x="150" y="40">R1 rules</text><text class="m" x="150" y="56">capitals, spaces, i → I</text>
+<rect class="bx" x="344.5" y="24.5" width="200" height="40"/><text x="354" y="40">R2 review · Harper</text><text class="m" x="354" y="56">accept or skip each change</text>
+<text x="590" y="36" text-anchor="middle">R3</text>
+<rect class="bx" x="618.5" y="24.5" width="190" height="40"/><text x="628" y="40">Writing Tools</text><text class="m" x="628" y="56">or Shortcuts' Proofread</text>
+<text class="m" x="713" y="82" text-anchor="middle">outside Flow</text>
+<path class="sno" d="M122.5 44.5v96M122 100.5h14m-5-4 5 4-5 4M122 140.5h14m-5-4 5 4-5 4"/>
+<rect class="ln" x="140.5" y="86.5" width="230" height="28"/><text class="m" x="150" y="105">R4 language model in Flow</text><text class="no" x="362" y="105" text-anchor="end">✗</text>
+<rect class="ln" x="140.5" y="126.5" width="230" height="28"/><text class="m" x="150" y="145">R5 silent fix in background</text><text class="no" x="362" y="145" text-anchor="end">✗</text>
+</svg></div>
+<div class="grid">
+<article class="card" id="opt-R1"><div class="card-h"><span class="oid">R1</span><h3>A deterministic pass, always</h3><span class="tag rec">recommended</span><label class="pick"><input type="checkbox" name="R" value="R1" checked> pick</label></div>
+<p class="pitch">Capitals after sentence ends, double spaces collapsed, lone i to I; predictable and undoable.</p>
+<p class="risk"><b>Risk.</b> Cannot add missing full stops or split run-ons.</p></article>
+<article class="card" id="opt-R2"><div class="card-h"><span class="oid">R2</span><h3>Harper review, one per change</h3><span class="tag rec">recommended, v1.5</span><label class="pick"><input type="checkbox" name="R" value="R2" checked> pick</label></div>
+<p class="pitch">After the session: the full text, <a href="https://writewithharper.com/">Harper</a>'s suggestions in a list, accept or skip each; offline.</p>
+<p class="risk"><b>Risk.</b> Fewer rules than LanguageTool, English only; other languages go to R3.</p></article>
+<article class="card" id="opt-R3"><div class="card-h"><span class="oid">R3</span><h3>Hand-off to Writing Tools</h3><span class="tag rec">recommended, the AI path</span><label class="pick"><input type="checkbox" name="R" value="R3" checked> pick</label></div>
+<p class="pitch">Flow does no AI; Writing Tools or Shortcuts' Proofread does it outside Flow.</p>
+<p class="risk"><b>Risk.</b> Caught 3 of 5 planted errors; may use Private Cloud Compute.</p></article>
+<article class="card" id="opt-R4"><div class="card-h"><span class="oid">R4</span><h3>A language model inside Flow</h3><span class="tag no">no, for v1</span><label class="pick"><input type="checkbox" name="R" value="R4"> pick</label></div>
+<p class="pitch">A local or cloud model returns an edit list, accepted per change.</p>
+<p class="risk"><b>No, for v1.</b> Prompted models "systematically overcorrect" (<a href="https://arxiv.org/abs/2609.10810">Karpo 2026</a>); test on 5–10 drafts first.</p></article>
+<article class="card" id="opt-R5"><div class="card-h"><span class="oid">R5</span><h3>Silent correction in the background</h3><span class="tag no">no</span><label class="pick"><input type="checkbox" name="R" value="R5"> pick</label></div>
+<p class="pitch">Fix the text after it slides away, unseen.</p>
+<p class="risk"><b>No.</b> Wispr's own clean-up "can drop or rewrite words that mattered" (<a href="https://docs.wisprflow.ai/articles/6568835559-why-wispr-flow-sometimes-removes-or-changes-words-on-android-smart-formatting">Wispr</a>).</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s10h">
+<header class="sec-h"><span class="num">10</span><div><h2 id="s10h">T: the stack</h2><p>What Flow is built in; the hard requirement is correct text input, not speed.</p></div></header>
+<div class="grid">
+<article class="card" id="opt-T1">
+<svg class="fig" viewBox="0 0 320 116" role="img"><title>T1: Flow on GPUI, objc2 and cpal, over AppKit, Metal and CoreAudio</title>
+<rect class="bx" x=".5" y=".5" width="319" height="22"/><text x="160" y="16" text-anchor="middle">Flow · Rust</text>
+<rect class="bx" x=".5" y="30.5" width="150" height="36"/><text x="8" y="45">GPUI</text><text class="m" x="8" y="60">window, input, paint</text>
+<rect class="bx" x="156.5" y="30.5" width="78" height="36"/><text x="164" y="45">objc2</text><text class="m" x="164" y="60">OS hooks</text>
+<rect class="bx" x="240.5" y="30.5" width="79" height="36"/><text x="248" y="45">cpal</text><text class="m" x="248" y="60">clicks</text>
+<rect class="bx2" x=".5" y="74.5" width="234" height="20"/><text class="m" x="117.5" y="88" text-anchor="middle">AppKit · Metal</text>
+<rect class="bx2" x="240.5" y="74.5" width="79" height="20"/><text class="m" x="280" y="88" text-anchor="middle">CoreAudio</text>
+<text x="160" y="110" text-anchor="middle"><tspan class="ok">✓</tspan> dead keys, input methods</text>
+</svg>
+<div class="card-h"><span class="oid">T1</span><h3>Rust + GPUI, objc2, cpal</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="T" value="T1" checked> pick</label></div>
+<p class="pitch">GPUI for window, text input and 120 Hz paint; objc2 for OS hooks; cpal for clicks.</p>
+<ul class="how">
+<li>GPUI implements <a href="https://docs.rs/crate/gpui-pre-macos/0.3.8/source/src/window.rs">NSTextInputClient</a>; pin it, test dead keys per bump.</li>
+<li>Glyphs at 4 subpixel offsets: the line moves in 0.25 px.</li>
+<li>Pre-1.0 with breaking changes; a binary of tens of MB.</li>
+</ul>
+<p class="risk"><b>Flips to T2</b> on a few-MB limit, an App Store edition, or a slower spike.</p>
+</article>
+<article class="card" id="opt-T2">
+<svg class="fig" viewBox="0 0 320 112" role="img"><title>T2: Flow in Swift on Core Text, Core Animation and AVAudioEngine</title>
+<rect class="bx" x=".5" y=".5" width="319" height="22"/><text x="160" y="16" text-anchor="middle">Flow · Swift</text>
+<rect class="bx" x=".5" y="30.5" width="100" height="30"/><text x="8" y="50">Core Text</text>
+<rect class="bx" x="106.5" y="30.5" width="106" height="30"/><text x="114" y="50">Core Animation</text>
+<rect class="bx" x="218.5" y="30.5" width="101" height="30"/><text x="226" y="50">AVAudioEngine</text>
+<rect class="bx2" x=".5" y="68.5" width="212" height="20"/><text class="m" x="106.5" y="82" text-anchor="middle">AppKit · Metal</text>
+<rect class="bx2" x="218.5" y="68.5" width="101" height="20"/><text class="m" x="269" y="82" text-anchor="middle">CoreAudio</text>
+<text x="160" y="108" text-anchor="middle"><tspan class="ok">✓</tspan> dead keys · <tspan class="m">UI rewritten per OS</tspan></text>
+</svg>
+<div class="card-h"><span class="oid">T2</span><h3>Swift + AppKit</h3><span class="tag">strong alternative</span><label class="pick"><input type="radio" name="T" value="T2"> pick</label></div>
+<p class="pitch">A custom NSView with Core Text, moved by Core Animation; AVAudioEngine for clicks.</p>
+<p class="risk"><b>Trade-off.</b> A few-MB binary and the best App Store story; UI rewritten for other systems.</p></article>
+<article class="card" id="opt-T3">
+<svg class="fig" viewBox="0 0 320 112" role="img"><title>T3: Flow on winit and wgpu, where dead keys break on macOS</title>
+<rect class="bx" x=".5" y=".5" width="319" height="22"/><text x="160" y="16" text-anchor="middle">Flow · Rust</text>
+<rect class="bx" x=".5" y="30.5" width="150" height="30"/><text x="8" y="50">winit</text><text class="no" x="144" y="50" text-anchor="end">✗ dead keys</text>
+<rect class="bx" x="156.5" y="30.5" width="163" height="30"/><text x="164" y="50">wgpu · egui · iced</text>
+<rect class="bx2" x=".5" y="68.5" width="319" height="20"/><text class="m" x="160" y="82" text-anchor="middle">AppKit · Metal</text>
+<text x="160" y="108" text-anchor="middle"><tspan class="no">✗</tspan> compose and dead keys, open since 2021</text>
+</svg>
+<div class="card-h"><span class="oid">T3</span><h3>winit, egui, iced; web shells</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="T" value="T3"> pick</label></div>
+<p class="pitch">Other Rust UI stacks, or Tauri, Flutter, Electron.</p>
+<p class="risk"><b>No.</b> winit's dead keys break on macOS, open since 2021 (<a href="https://github.com/rust-windowing/winit/issues/2040">winit#2040</a>).</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s11h">
+<header class="sec-h"><span class="num">11</span><div><h2 id="s11h">M: the shape of a session</h2><p>What a session is: feedback that informs, never rewards.</p></div></header>
+<div class="figw"><svg class="fig w" style="max-width:870px" viewBox="0 0 870 136" role="img"><title>M: M1's session from intent line to review, against M0's bare surface</title>
+<text class="b" x="0" y="40">M1</text>
+<rect class="bx" x="36.5" y="10.5" width="150" height="50"/><text x="46" y="31">intent, time box</text><text class="m" x="46" y="49">optional · hidden</text>
+<rect class="bx" x="206.5" y="10.5" width="150" height="50"/><text x="216" y="31">writing</text><text class="m" x="216" y="49">no live count</text><path class="ar" d="M207 60.5h60"/>
+<rect class="bx" x="376.5" y="10.5" width="150" height="50"/><text x="386" y="31">soft end</text><text class="m" x="386" y="49">a tone, line stops</text>
+<rect class="bx" x="546.5" y="10.5" width="150" height="50"/><text x="556" y="31">summary + log</text><text class="m" x="556" y="49">minutes · words</text>
+<rect class="bx" x="716.5" y="10.5" width="150" height="50"/><text x="726" y="31">review</text><text class="m" x="726" y="49">later, when asked</text>
+<path class="ar" d="M187 35.5h16m-5-4 5 4-5 4M357 35.5h16m-5-4 5 4-5 4M527 35.5h16m-5-4 5 4-5 4M697 35.5h16m-5-4 5 4-5 4"/>
+<text class="b" x="0" y="113">M0</text>
+<rect class="bx" x="206.5" y="88.5" width="150" height="40"/><text x="216" y="105">writing</text><text class="m" x="216" y="121">open, type, copy</text>
+<text class="m" x="376" y="113">no start, no end, no log</text>
+</svg></div>
+<div class="grid">
+<article class="card" id="opt-M1"><div class="card-h"><span class="oid">M1</span><h3>Free start, optional frame, quiet end</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="M" value="M1" checked> pick</label></div>
+<p class="pitch">Typing starts it; optional time box and hidden intent; a soft tone, a summary, a private log.</p>
+<ul class="how">
+<li>Informing feedback raised motivation; expected rewards lowered it (<a href="https://doi.org/10.1037/0033-2909.125.6.627">Deci 1999</a>).</li>
+<li>No live word count: watching your own typing slows it.</li>
+</ul>
+<p class="risk"><b>Risk.</b> None known; the log keeps totals, never keystroke timing.</p>
+</article>
+<article class="card" id="opt-M0"><div class="card-h"><span class="oid">M0</span><h3>A bare surface, no sessions</h3><span class="tag ask">ask</span><label class="pick"><input type="radio" name="M" value="M0"> pick</label></div>
+<p class="pitch">Open, type, copy: no time box, no summary, no log.</p>
+<p class="risk"><b>Risk.</b> The simplest; loses the ending and the log that make it a routine.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s12h">
+<header class="sec-h"><span class="num">12</span><div><h2 id="s12h">X: distribution and other systems</h2><p>How Flow ships and where it goes after the Mac.</p></div></header>
+<div class="grid">
+<article class="card" id="opt-X1">
+<svg class="fig" viewBox="0 0 320 110" role="img"><title>X1: bundle, sign with Developer ID, notarize; the keychain key and paste both work</title>
+<rect class="bx" x=".5" y=".5" width="88" height="40"/><text x="8" y="18">bundle</text><text class="m" x="8" y="33">.app</text>
+<path class="ar" d="M89 20.5h24m-5-4 5 4-5 4M205 20.5h23m-5-4 5 4-5 4"/>
+<rect class="bx" x="116.5" y=".5" width="88" height="40"/><text x="122" y="18">sign</text><text class="m" x="122" y="33">Developer ID</text>
+<rect class="bx" x="231.5" y=".5" width="88" height="40"/><text x="239" y="18">notarize</text><text class="m" x="239" y="33">Apple</text>
+<text x="8" y="66"><tspan class="ok">✓</tspan> keychain key <tspan class="m">E2</tspan></text>
+<text x="8" y="86"><tspan class="ok">✓</tspan> ⌘V paste <tspan class="m">W2, O3</tspan></text>
+<text x="8" y="106"><tspan class="ok">✓</tspan> Accessibility grant stays valid</text>
+</svg>
+<div class="card-h"><span class="oid">X1</span><h3>Developer ID, outside the App Store</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="X" value="X1" checked> pick</label></div>
+<p class="pitch">A signed, notarized bundle with a provisioning profile: E2's keychain and W2's paste need it.</p>
+<p class="risk"><b>Risk.</b> A bundle, sign and notarize step outside cargo, set up once.</p></article>
+<article class="card" id="opt-X2">
+<svg class="fig" viewBox="0 0 320 100" role="img"><title>X2: beside the Developer ID build, a sandboxed App Store edition that can copy and save but not paste</title>
+<rect class="bx" x=".5" y=".5" width="150" height="96"/><text x="10" y="18">Developer ID</text>
+<text x="10" y="42"><tspan class="ok">✓</tspan> copy</text><text x="10" y="60"><tspan class="ok">✓</tspan> save</text><text x="10" y="78"><tspan class="ok">✓</tspan> ⌘V paste</text>
+<rect class="bx" x="168.5" y=".5" width="151" height="96"/><text x="178" y="18">App Store</text>
+<rect class="ln" x="176.5" y="26.5" width="135" height="62" stroke-dasharray="3 3"/>
+<text class="m" x="184" y="42">sandbox</text>
+<text x="184" y="60"><tspan class="ok">✓</tspan> copy <tspan class="ok">✓</tspan> save</text>
+<text x="184" y="78"><tspan class="no">✗</tspan> ⌘V paste</text>
+</svg>
+<div class="card-h"><span class="oid">X2</span><h3>X1, plus copy-only App Store</h3><span class="tag">later</span><label class="pick"><input type="radio" name="X" value="X2"> pick</label></div>
+<p class="pitch">W1, O1 and O2 only, sandboxed; App Review rejected a ⌘V-posting tool (<a href="https://developer.apple.com/forums/thread/820594">2026</a>).</p>
+<p class="risk"><b>Risk.</b> GPUI under the sandbox not researched; later, if reach matters.</p></article>
+</div>
+<div class="figw"><svg class="fig w" style="max-width:762px" viewBox="0 0 762 56" role="img"><title>X: macOS now, Windows next through GPUI, Linux copy only</title>
+<rect class="bx" x=".5" y=".5" width="230" height="50"/><text x="10" y="21">macOS · now</text><text class="m" x="10" y="39"><tspan class="ok">✓</tspan> all of v1</text>
+<path class="ar" d="M231 25.5h30m-5-4 5 4-5 4M496 25.5h30m-5-4 5 4-5 4"/>
+<rect class="bx" x="265.5" y=".5" width="230" height="50"/><text x="275" y="21">Windows · next</text><text class="m" x="275" y="39">GPUI runs; OS hooks rewritten</text>
+<rect class="bx" x="530.5" y=".5" width="230" height="50"/><text x="540" y="21">Linux · copy only</text><text class="m" x="540" y="39">Wayland: hotkeys, dead keys weak</text>
+</svg></div>
+</section>
+
+<section class="sec" aria-labelledby="s13h">
+<header class="sec-h"><span class="num">13</span><div><h2 id="s13h">Drawn at real size</h2><p>With the picks; 1 CSS px = 1 pt.</p></div></header>
+<div class="real">
+<figure><div class="surface"><div class="fl"><span class="ln">…the rain had stopped by noon, so we walked down to the harbour, where the boats sat low and<i> </i><i>s</i><i>i</i><i>l</i><i>e</i><i>n</i><i>t</i></span></div><i class="cr"></i><i class="prog"></i></div>
+<figcaption><b>The surface (S1 V2 M1).</b> Caret at 60 %, fade by 25 %, the bottom line fills over the time box; it types one word unless you ask for reduced motion.</figcaption></figure>
+<figure><div class="scr"><div class="desk"></div><div class="win"><div class="tb"><i></i><i></i><i></i><span>New Message</span></div><div class="f">To: <b>team</b></div><div class="f">Subject: <b>Notes from Tuesday</b></div><div class="body">Hi all,
+
+<i class="ip"></i></div></div><div class="dim"></div><div class="panel"><div class="fl"><span class="ln">…we agreed to keep the first version small, ship it to</span></div><i class="cr"></i><i class="prog"></i></div></div>
+<figcaption><b>The panel (W2), v2.</b> Over the app you were in, the rest dimmed; at Done the text pastes at its insertion point.</figcaption></figure>
+<figure><div class="rv"><div class="hd"><span><b>review</b>  4 min · 64 words</span><span>R1 applied · Harper: 3</span></div>
+<div class="bd"><div class="doc">The rain had stopped by noon, so we walked down to the harbour, where the boats sat low and silent. Nobody was out yet <u>becuase</u> the tide was still turning.
+
+I had <u class="on">a idea</u> about the letter I never sent: write it again, from the end, and see what is left when <u>the the</u> apology is gone.
+
+Tomorrow I will try it before breakfast.</div>
+<div class="ls"><div class="lh">HARPER · ENGLISH · OFFLINE</div>
+<div class="it"><span>1</span><span>spelling</span><span><s>becuase</s> → because</span></div>
+<div class="it on"><span>2</span><span>a / an</span><span><s>a idea</s> → an idea</span></div>
+<div class="it"><span>3</span><span>repeated</span><span><s>the the</s> → the</span></div>
+<div class="ac"><span class="k">accept</span><span class="k">skip</span><span class="k">accept all</span></div></div></div>
+<div class="r1"><span>R1 · 7 fixes: 5 capitals, 1 double space, 1 i → I</span><span class="k">undo R1</span></div>
+<div class="ft"><span><span class="k">copy</span><span class="k">save .md</span><span class="k">done</span></span><span>done shreds Flow's copy after the undo grace</span></div></div>
+<figcaption><b>Review (R1 R2).</b> R1's fixes already in, undone in one line; Harper's suggestions one per row, the selected one lit in text and list.</figcaption></figure>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s14h">
+<header class="sec-h"><span class="num">14</span><div><h2 id="s14h">Numbers the decisions rest on</h2><p>Kind as the researchers labelled it; "this research" means one Mac, no public source.</p></div></header>
+<div class="mock"><table class="keys">
+<tr><th>figure</th><th>value</th><th>kind</th><th>source</th></tr>
+<tr><td>Errors corrected, output visible → hidden</td><td>42 % → 9 %; 54 % still noticed</td><td class="kind">study</td><td><a href="https://www.cmu.edu/dietrich/psychology/nozarilab/papers/2020PinetNozari.pdf">Pinet &amp; Nozari 2020</a></td></tr>
+<tr><td>Inter-key interval without visual feedback</td><td>125 → 134 ms (+9 ms); accuracy unchanged</td><td class="kind">study</td><td><a href="https://www.cmu.edu/dietrich/psychology/nozarilab/papers/2020PinetNozari.pdf">Pinet &amp; Nozari 2020</a></td></tr>
+<tr><td>Text quality without visual feedback</td><td>"little, if at all, affected" (handwriting)</td><td class="kind">study</td><td><a href="https://doi.org/10.1080/00207590244000089">Olive &amp; Piolat 2002</a></td></tr>
+<tr><td>Writing time spent looking back</td><td>about 13 %, mostly before a new sentence</td><td class="kind">study (eye-tracking)</td><td><a href="https://irep.ntu.ac.uk/id/eprint/16307/">Torrance et al. 2016</a></td></tr>
+<tr><td>Corrections put off to the sentence's end</td><td>88 % of trials</td><td class="kind">study (abstract)</td><td><a href="https://repository.uantwerpen.be/link/irua/100224">Quinlan et al. 2012</a></td></tr>
+<tr><td>Ideas per page: spontaneous · regular · forced</td><td>0.8 · 0.7 · 0.43 (pages a day 0.3–0.4 · 0.9 · 3.2)</td><td class="kind">study, re-analysed</td><td><a href="https://mail.sdkrashen.com/content/articles/optimal_levels.pdf">Krashen 2002 on Boice</a></td></tr>
+<tr><td>Attention to one's own typing mechanics</td><td>+20 % inter-key interval, errors doubled</td><td class="kind">study</td><td><a href="https://doi.org/10.1111/j.1467-9280.2009.02442.x">Logan &amp; Crump 2009</a></td></tr>
+<tr><td>Informational feedback · expected rewards</td><td>d = 0.33 · d = −0.28 to −0.40</td><td class="kind">meta-analysis</td><td><a href="https://doi.org/10.1037/0033-2909.125.6.627">Deci et al. 1999</a></td></tr>
+<tr><td>Flat keyboard: none · beep · haptic · real keyboard</td><td>43.1 · 51.1 · 55.6 · 65.6 wpm</td><td class="kind">study</td><td><a href="https://microsoft.com/en-us/research/wp-content/uploads/2014/08/C63_JRKimTan_HS2014.pdf">Kim &amp; Tan 2014</a></td></tr>
+<tr><td>Audio feels simultaneous · quality drops</td><td>about 19 ms · between 70 and 100 ms</td><td class="kind">study</td><td><a href="https://doi.org/10.1145/2611387">Kaaresoja et al. 2014</a></td></tr>
+<tr><td>CoreAudio default I/O buffer</td><td>512 frames ≈ 10.7 ms at 48 kHz; 4,096 under power saving</td><td class="kind">docs</td><td><a href="https://developer.apple.com/library/mac/technotes/tn2321/_index.html">Apple TN2321</a></td></tr>
+<tr><td>Click latency at 128 frames, built-in or wired</td><td>about 5–20 ms</td><td class="kind">inference (buffer arithmetic)</td><td><a href="../research_notes/Flow%20writing%20tool%20design%20options/macos_implementation.md">implementation note</a></td></tr>
+<tr><td>AirPods output latency</td><td>126–274 ms</td><td class="kind">measured, third party</td><td><a href="https://stephencoyle.net/airpods">Stephen Coyle</a></td></tr>
+<tr><td>One 120 Hz frame · GPUI frame in Zed</td><td>8.3 ms · "consistently under 4 ms"</td><td class="kind">arithmetic · vendor blog</td><td><a href="https://zed.dev/blog/120fps">Zed</a></td></tr>
+<tr><td>64-byte journal append, M2 Pro, macOS 26.5, FileVault</td><td><code>write</code> 3 µs · <code>fsync</code> 24 µs · <code>F_BARRIERFSYNC</code> 190 µs · <code>F_FULLFSYNC</code> 2 ms (p99 4–5 ms)</td><td class="kind">measured, this research</td><td><a href="../research_notes/Flow%20writing%20tool%20design%20options/never_lose_text_privacy.md">never-lose note</a></td></tr>
+<tr><td>Older full-flush figures (conflict with the row above)</td><td>24 ms per <code>F_FULLFSYNC</code>, Intel 2021 · 46 flushes/s, M1 2022</td><td class="kind">measured, third party</td><td><a href="https://www.postgresql.org/message-id/1673109.1610733352@sss.pgh.pa.us">Tom Lane</a> · <a href="https://www.eevblog.com/forum/general-computing/apples-ssd-milking-machine/25/">Hector Martin</a></td></tr>
+<tr><td>AES-GCM seal of a 64-byte record</td><td>1.5 µs</td><td class="kind">measured, this research</td><td><a href="../research_notes/Flow%20writing%20tool%20design%20options/never_lose_text_privacy.md">never-lose note</a></td></tr>
+<tr><td>Local APFS snapshots</td><td>about hourly, kept up to 24 h, plus one before each macOS update; nothing excludable</td><td class="kind">docs</td><td><a href="https://support.apple.com/en-ca/102154">Apple</a> · <a href="https://eclecticlight.co/2026/01/06/exclude-or-include-items-in-backup-search-icloud-drive-and-quicklook-preview/">Eclectic Light</a></td></tr>
+<tr><td>Data protection keychain from an unsigned build</td><td><code>-34018</code> "A required entitlement isn't present."</td><td class="kind">measured, this research</td><td><a href="../research_notes/Flow%20writing%20tool%20design%20options/never_lose_text_privacy.md">never-lose note</a> · <a href="https://developer.apple.com/documentation/technotes/tn3137-on-mac-keychains">TN3137</a></td></tr>
+<tr><td>Sandboxed tool posting ⌘V at App Review</td><td>rejected twice under 2.4.5, 2026</td><td class="kind">forum report</td><td><a href="https://developer.apple.com/forums/thread/820594">Apple forums</a></td></tr>
+<tr><td>GPUI app binary</td><td>52 MB for a large production app; a minimal app not measured</td><td class="kind">measured, this research</td><td><a href="../research_notes/Flow%20writing%20tool%20design%20options/macos_implementation.md">implementation note</a></td></tr>
+<tr><td>Harper, time to suggest</td><td>"under 10ms"</td><td class="kind">vendor claim</td><td><a href="https://writewithharper.com/">writewithharper.com</a></td></tr>
+<tr><td>Writing Tools Proofread, planted errors</td><td>3 of 5 caught (2024)</td><td class="kind">review</td><td><a href="https://sixcolors.com/post/2024/10/apple-intelligence-1-review-a-small-start-of-something-big/">Six Colors</a></td></tr>
+</table></div>
+</section>
+
+<section class="sec" aria-labelledby="s15h">
+<header class="sec-h"><span class="num">15</span><div><h2 id="s15h">Prototype first, open questions</h2><p>Cheap to settle; none settled by the research.</p></div></header>
+<div class="ledger one">
+<div class="urgent"><b>1 · GPUI or AppKit spike before T is final</b>Build the line in both; measure key to photon, launch and binary size.</div>
+<div><b>2 · Typewriter samples</b>No permissive pack found; record one or buy a royalty-free pack.</div>
+<div><b>3 · The 5–10 draft test, before any AI</b>Harper, Writing Tools and local models on real drafts; count meaning changes.</div>
+<div><b>4 · 120 Hz and Reduce Motion</b>The glide holds 120 Hz at 10+ keys a second; Reduce Motion jumps.</div>
+<div><b>5 · A deleted keychain item in a snapshot</b>Recoverable or not; decides the wording of the discard message.</div>
+<div><b>6 · The name</b>Flow is a working name; a later decision.</div>
+<div><b>7 · Stage Manager</b>Panel and overlays untested under Stage Manager; matters for W2.</div>
+<div><b>8 · Tune V, B and K on your sessions</b>Totals per session while switching V1/V2, B0/B1 and sound on/off.</div>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s16h">
+<header class="sec-h"><span class="num">16</span><div><h2 id="s16h">Sources</h2><p>Researched 2026-10-27.</p></div></header>
+<ul class="refs">
+<li><b>Report</b>: <a href="../reports/Flow%20writing%20tool%20design%20options.html">Flow writing tool design options</a> (<a href="../reports/Flow%20writing%20tool%20design%20options.md">Markdown</a>).</li>
+<li><b>Notes</b> (<a href="../research_notes/Flow%20writing%20tool%20design%20options/">folder</a>): <a href="../research_notes/Flow%20writing%20tool%20design%20options/flow_psychology.md">flow psychology</a>, <a href="../research_notes/Flow%20writing%20tool%20design%20options/prior_art_tools.md">prior art</a>, <a href="../research_notes/Flow%20writing%20tool%20design%20options/macos_implementation.md">macOS implementation</a>, <a href="../research_notes/Flow%20writing%20tool%20design%20options/never_lose_text_privacy.md">never lose and privacy</a>, <a href="../research_notes/Flow%20writing%20tool%20design%20options/post_processing.md">post-processing</a>.</li>
+</ul>
+<p class="note">The long report uses its own IDs; the panel's are authoritative.</p>
+</section>
+
+<div class="picks"><span class="picks-l">Picks</span><code id="picks">S1 V2 B1 P0 K1 W1 O1+O2 E2 R1+R2+R3 T1 M1 X1</code><button type="button" id="copy" hidden>Copy picks</button></div>
+</div>
+<script>function picks(){const v=n=>[...document.querySelectorAll(`input[name="${n}"]:checked`)].map(i=>i.value).join('+')||'–';const s=['S','V','B','P','K','W','O','E','R','T','M','X'].map(v).join(' ');document.getElementById('pickline').textContent=s;document.getElementById('picks').textContent=s;}document.querySelectorAll('.pick input').forEach(i=>i.addEventListener('change',picks));const cb=document.getElementById('copy');if(navigator.clipboard){cb.hidden=false;cb.addEventListener('click',()=>navigator.clipboard.writeText(document.getElementById('picks').textContent).then(()=>{cb.textContent='Copied';setTimeout(()=>{cb.textContent='Copy picks'},1200)},()=>{}));}picks();</script>
+</html>

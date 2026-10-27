@@ -1,0 +1,28 @@
+[package]
+name = "gpui-line"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Spike: the sliding line in GPUI (see ../SPEC.md)"
+license = "Apache-2.0"
+
+[dependencies]
+# GPUI as the the terminal app app resolves it through gpui-kit 0.7.1. gpui-pre has no platform of its own:
+# gpui-pre-platform supplies `application()` (MacPlatform). font-kit: the macOS text system;
+# runtime_shaders: Metal shaders compiled at launch, since the Command Line Tools have no `metal` compiler.
+gpui = { package = "gpui-pre", version = "=0.3.8" }
+gpui_platform = { package = "gpui-pre-platform", version = "=0.3.8", features = ["font-kit", "runtime_shaders"] }
+# Already in GPUI's tree; used for what GPUI does not expose (event timestamp, Reduce Motion, presented time).
+objc2 = "0.6"
+block2 = "0.6"
+objc2-foundation = { version = "0.3.2", features = ["NSString", "NSGeometry", "NSArray"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = [
+    "NSAccessibility", "NSApplication", "NSEvent", "NSGraphicsContext", "NSResponder", "NSScreen",
+    "NSWindow", "NSWorkspace",
+] }
+
+[profile.dev.package."*"]
+debug = false
+
+[profile.release]
+debug = "line-tables-only"

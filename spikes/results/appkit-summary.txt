@@ -1,0 +1,17 @@
+stack: AppKit (NSTextInputClient, Core Text, CAMetalLayer), Apple Swift version 6.2.1
+n: 319
+present-key ms p50/p95/max: 42.21 / 60.56 / 69.96
+handled-key ms p50/p95/max: 11.73 / 18.37 / 20.53
+glide fps: 59.9 (1530 intervals, p50 16.68 ms, 2 over 1.5x p50; display max 60 Hz)
+main-to-first-frame ms: 124532.0
+binary bytes (stripped): 139480
+dependencies: 0 (system frameworks only: AppKit, Metal, QuartzCore, CoreText)
+cold release build s: 35.4
+present_ts methods: metal-presentedTime for all 319
+key_ts: NSEvent.timestamp (synthetic: the time the event was posted to the app's queue)
+exact: present-key, handled-key and glide fps (NSEvent.timestamp, CACurrentMediaTime, MTLDrawable.presentedTime, all host time); under --bench key_ts leaves out the keyboard and WindowServer part of a real keystroke
+approximate: main-to-first-frame starts at main(), not at exec (time --quit-after-first-frame for the whole launch); binary size and build time are from build.sh
+frames rendered/presented: 1535/1533
+bench text intact: NO (315 characters)
+reduce motion: off
+clock check: systemUptime - CACurrentMediaTime = -0.000000 s

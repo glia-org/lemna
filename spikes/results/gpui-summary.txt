@@ -1,0 +1,16 @@
+stack: GPUI (gpui-pre 0.3.8), Rust
+n: 300
+present-key ms p50/p95/max: 49.96 / 56.45 / 86.02
+handled-key ms p50/p95/max: 0.92 / 2.40 / 8.83
+glide fps: 60.0 (1499 intervals, p50 16.68 ms, 0 over 1.5x p50; display max 60 Hz)
+main-to-first-frame ms: 422.0
+binary bytes (stripped): 6730840
+dependencies: 360
+cold release build s: 59.9
+present_ts methods: {"presentedTime": 300}
+key_ts: NSEvent.timestamp (NSApp.currentEvent in the handler) for 300 of 300; others: handler entry
+exact: key_ts, handled_ts, present_ts where method=presentedTime (MTLDrawable presented handler, hooked on -[CAMetalLayer nextDrawable]), glide fps (from presentedTime), all on the mach host clock
+approximate: present_ts where method=nextDrawable or paint (earlier than the real present); main-to-first-frame starts at main(), not at exec (time --quit-after-first-frame for the whole launch); under --bench key_ts is when the event was posted to the app's queue, without the keyboard and WindowServer part of a real keystroke
+frames rendered/presented: 1505/1503
+bench text intact: yes
+reduce motion: off

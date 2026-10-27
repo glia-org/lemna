@@ -1,0 +1,4 @@
+cold_release_build_s=35.4
+stripped_binary_bytes=139480
+unstripped_binary_bytes=194088
+swift=Apple Swift version 6.2.1
