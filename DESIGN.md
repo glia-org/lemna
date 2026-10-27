@@ -43,7 +43,8 @@ Later: R2 Harper (v1.5), W2 panel + O3 paste (v2), the name, Developer ID.
 
 ## Open
 
-1. Typewriter samples: no permissively licensed pack found; record or buy (v1 ships a CC0 mechanical pack).
+1. Typewriter samples: no permissively licensed pack found; record or buy. v1 ships a CC0 mechanical pack (Keychron K10 linear, Freesound, cut from the lossy previews; `lib/FlowClicks/THIRD_PARTY.md`).
+6. AirPods: AVAudioEngine created an aggregate device on this Mac; an old report says that switches AirPods to call quality when they are the default input. Untested (no AirPods here). Fallback if it shows: an output-only DefaultOutput audio unit driving the same mixer (changes the audio choice in T2; the user decides).
 2. The 5–10 draft post-processing test before any AI.
 3. The name.
 4. Tiling window managers: verify under AeroSpace that the window is tiled and keeps focus (the spike's AppKit bench waited for activation under it, 2026-10-27).

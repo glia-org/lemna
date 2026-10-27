@@ -1,0 +1,11 @@
+{
+  "name": "Keychron K10, linear switches",
+  "licence": "CC0-1.0",
+  "source": "https://freesound.org/people/Sadiquecat/packs/38565/",
+  "files": {
+    "letter": ["letter-1.wav", "letter-2.wav", "letter-3.wav", "letter-4.wav", "letter-5.wav", "letter-6.wav"],
+    "space": ["space-1.wav", "space-2.wav"],
+    "paragraph": ["paragraph-1.wav", "paragraph-2.wav"],
+    "backspace": ["backspace-1.wav", "backspace-2.wav"]
+  }
+}
