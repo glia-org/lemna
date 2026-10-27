@@ -56,3 +56,4 @@ Later: the name, Developer ID.
 5. Dead keys by hand (´ then e → é on the German layout, ⌥U then o → ö).
 7. Hotkey: the user keeps ⌃⌥Space (2026-10-27; it also collides with macOS's input-source chord, off here, and with OmniFocus's quick entry). Reconsider only before a build goes to others; the constant is in `app/Sources/Flow/Summon.swift`.
 8. Soft-end tone is silent while Sound is off; decide whether it should play regardless.
+9. Harper (R2): dialect is American (one constant in `lib/FlowHarper/rust/src/lib.rs`; British spellings get flagged); harper-core 3.0.0 pulls ~200 crates and adds ~9.5 MB to the binary, accepted for R2 on 2026-10-27; SCOWL's notice must ship with any distributed build (`lib/FlowHarper/THIRD_PARTY.md`).

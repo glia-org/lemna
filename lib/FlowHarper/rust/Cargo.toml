@@ -1,0 +1,22 @@
+[package]
+name = "flow_harper"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+description = "Harper's English lints behind a C ABI, for Flow's review (DESIGN.md R2)"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+# `concurrent` makes the lint group Send, so one instance can live in a static. The default `thesaurus` feature is
+# left out: only the BoringWords rule uses it, which the curated config turns off, and it adds ~4 MB of data.
+harper-core = { version = "=3.0.0", default-features = false, features = ["concurrent"] }
+serde_json = "1"
+
+[profile.release]
+# One optimisation unit across Harper and std: the static library shrinks from 56 to 17 MB and a dead-stripped
+# binary that links it from 12.0 to 9.4 MB, for about 40 s more per cold build.
+lto = true
+codegen-units = 1
