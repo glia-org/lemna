@@ -1,13 +1,14 @@
 # Flow app
 
-The writing surface (DESIGN.md S1 V2 B1 P0, W1's window), kept in the journal (E2), with the end of a session (O1 O2
-R1), as a macOS app: Swift + AppKit, SwiftPM with the Command Line Tools only (no Xcode), one package dependency
-(`../lib/FlowJournal`, by path), ad-hoc signed (there is no Developer ID yet).
+The writing surface (DESIGN.md S1 V2 B1 P0), kept in the journal (E2), with key clicks (K1), the session frame (M1),
+summoning (W1) and the end of a session (O1 O2 R1), as a macOS app: v1 as planned. Swift + AppKit, SwiftPM with the
+Command Line Tools only (no Xcode), two package dependencies by path (`../lib/FlowJournal`, `../lib/FlowClicks`),
+ad-hoc signed (there is no Developer ID yet).
 
 ## Build, run, test
 
 ```sh
-app/make-app.sh            # release build, assembles and ad-hoc signs app/build/Flow.app, prints its path
+app/make-app.sh            # release build, assembles, ad-hoc signs and verifies app/build/Flow.app, prints its path
 open app/build/Flow.app
 
 cd app
@@ -21,6 +22,10 @@ overlay without a module, so no test file imports Foundation and Testing togethe
 '_Testing_Foundation'"). `JournalReplayTests` gets by without it: the journal's `URL` is built from the parameter's
 own type (`.init(fileURLWithPath:)`), the temporary folder comes from Darwin's `mkdtemp`.
 
+`make-app.sh` copies the click pack (`lib/FlowClicks/Sources/FlowClicks/DefaultPack`, `pack.json` and its WAVs) into
+`Contents/Resources/DefaultPack`, where `SoundPack.bundled()` loads it, and checks the signature with
+`codesign --verify --deep --strict`.
+
 The tests need no window and no keychain (the journal test keeps its key in memory). `offscreenRenders` draws the
 window's content as the app does (1200 × 700 pt at 2×) and writes `app/renders/idle.png`, `glide-0.png`,
 `glide-70ms.png`, `glide-140ms.png` (after a new key) and `marked.png` (a pending `´` at the caret). `app/build/` and
@@ -32,14 +37,19 @@ window's content as the app does (1200 × 700 pt at 2×) and writes `app/renders
   word, `plainText`, the line's tail with ` ¶ `, a journal edit applied, the replay), `Line.swift` the geometry and
   drawing (Core Text shaping, fade, clip at the caret, caret, the band), `Glide.swift` the glide, `Mechanical.swift`
   the deterministic pass R1 and the word count, `Session.swift` the end of a session as a state machine and the
-  duration's wording.
-- `Sources/Flow`: `main.swift` the app, window, menus and the end of a session (Done, Back, Copy, Save, Discard, the
-  grace); `Keeper.swift` the journal in the app (open and restore, append, the flushes); `Review.swift` the review
-  sheet; `LineView.swift` the view (text input, edits as journal edits, display link); `Strip.swift` the Metal band
-  (Core Graphics into a shared buffer, blitted into the drawable).
+  duration's wording, `Frame.swift` the session frame (the time box's fill and end, the soft end's tone as WAV bytes,
+  the private log's line and append), `Summoning.swift` the menu-bar mark, when the Bluetooth notice shows, and what a
+  key does in the review sheet.
+- `Sources/Flow`: `main.swift` the app, window, menus, clicks and the sound toggle, the session frame, and the end of
+  a session (Done, Back, Copy, Save, Discard, the grace, the log line); `Keeper.swift` the journal in the app (open
+  and restore, append, the flushes); `Review.swift` the review sheet; `LineView.swift` the view (text input, edits as
+  journal edits and clicks, display link); `Strip.swift` the Metal band (Core Graphics into a shared buffer, blitted
+  into the drawable); `Frame.swift` the surface's bottom edge (the time box's line, the Bluetooth notice) and the
+  Time box… and Intent… sheets; `Summon.swift` the hotkey (Carbon) and the menu-bar item.
 - `Tests/FlowCoreTests`: the model, the glide, the fade, nothing drawn right of the caret, the renders (`CoreTests`,
   `RenderTests`); R1's rules, counts and idempotence (`MechanicalTests`); the state machine (`SessionTests`); the
-  journal round trip through the app's replay (`JournalReplayTests`).
+  journal round trip through the app's replay (`JournalReplayTests`); the time box, the tone, the log's line and file,
+  the menu-bar mark, the Bluetooth notice, the review's keys (`FrameTests`).
 
 ## What it covers
 
@@ -76,13 +86,15 @@ Milestone 2 in the app, the journal (E2):
 
 Milestone 3, the end of a session (O1 O2 R1):
 
-- Menus: Flow (About Flow, a placeholder; Quit ⌘Q), Session (Done ⌘⏎, Discard…), View (Enter Full Screen ⌃⌘F).
-  Done is off while the text is blank or a review or question is up.
+- Menus: Flow (About Flow, a placeholder; Quit ⌘Q), Session (Done ⌘⏎, Discard…, Time box…, Intent…, Sound ⌘K, Show
+  Log), View (Enter Full Screen ⌃⌘F). Done is off while the text is blank or a review or question is up.
 - Done stops the surface (keys do nothing; the line keeps its last frame) and opens the review sheet: the text with R1
   applied, read-only, selectable, scrollable (system font 15 pt, `#d9dde3` on `#14171b`, at most 72 characters a
   line); a footer with `R1 · N fixes: … · Undo` (Undo shows the raw text, Redo the fixed one), the duration and word
   count, the hand-off's line, and the journal's note if there is no journal; the buttons Discard… (left, set apart),
-  Back (Esc), Save… (⌘S), Copy (Return, the default).
+  Back (Esc), Save… (⌘S), Copy (⌘⏎, Done's chord, so ⌘⏎ twice is done and copied; its auto-repeat does not copy).
+  Plain Return does nothing (a reflexive Return used to replace the clipboard and start the grace), so Copy is not
+  drawn as the default button. The intent, if one was set, heads the sheet in one muted line (13 pt, `#5c646f`).
 - Copy: `prepareForNewContents(with: .currentHostOnly)`, then one pasteboard item with `public.utf8-plain-text` and
   the empty markers `org.nspasteboard.ConcealedType` and `org.nspasteboard.TransientType`. The footer says
   `Copied · Undo (10 s)`; after 10 s without Undo the journal is finished (key destroyed, file deleted), the sheet
@@ -101,11 +113,64 @@ Milestone 3, the end of a session (O1 O2 R1):
   with another period in it (`e.g.`, `z.B.`, an ellipsis), after one letter (`z. B.`, an initial) or after digits
   alone (`3.`, an ordinal). No full stops added, no spelling. Idempotent (tested).
 
+Milestone 4 in the app, the clicks (K1):
+
+- One `ClickPlayer(pack: .bundled())` at launch. If it cannot start (no output device, the pack missing), Flow is
+  silent and writes one line to the system log (`Flow: no key clicks: …`).
+- A click on each key that changes the text, played before the edit is laid out and drawn: `.letter` for typed
+  characters (and a dead key's pending mark, a key that shows), `.space` for white space, `.paragraph` for Return,
+  `.backspace` for a backspace that deletes. A blocked backspace (after a space, at a paragraph's start) is silent, as
+  are keys while the review is up and ⌘ chords. Volume stays at the library's default.
+- Session › Sound (⌘K, and in the menu-bar item) with a check mark, kept in UserDefaults as `sound` (default on). Off
+  pauses the engine and also silences the soft end's tone.
+- Bluetooth: when the output is Bluetooth at launch, after the output device changes, or when the sound is turned on,
+  the surface's bottom edge says `Bluetooth output: clicks arrive late · ⌘K mutes` (12 pt system font, `#5c646f`,
+  centred, 12 pt above the bottom), once per output, only while the sound is on; it fades out over 1 s after 5 s.
+
+Milestone 5, summoning (W1) and the session frame (M1):
+
+- Hotkey ⌃⌥Space (`Hotkey` in `Summon.swift`, the one place the chord is defined), registered with Carbon's
+  `RegisterEventHotKey`: no permission prompt, works ad-hoc signed. It brings the window to the front and makes it
+  key (unhiding the app, restoring a minimised or closed window) or, when Flow's window or a sheet on it is already
+  key, hides the app so the app before it comes back. If the chord cannot be registered, one line in the system log;
+  the menu-bar item still works.
+- Menu-bar item: a template image drawn in code (16 × 16 pt; a 1.5 pt line from x 2 to 14 with a 1.5 × 8.5 pt caret
+  bar centred at 60 % of it), so it follows the menu bar's appearance; its menu: Show Flow (⌃⌥Space shown as its
+  key equivalent), Done ⌘⏎, Sound ✓ ⌘K, Quit Flow ⌘Q. Done from there brings the window forward first.
+- The app keeps the regular activation policy (Dock icon): tiling window managers expect it.
+- Session › Time box…: a sheet with Off, 10, 15, 25 minutes (radio buttons), Set / Cancel. The box starts when it is
+  set; Set on the running box leaves it running; Set on an ended one starts it again. It lasts for this session only
+  (in memory; gone at the session's end or a quit).
+- The progress line: with a box, a 1 pt line along the very bottom edge of the surface, track `#262b32`, fill
+  `#5c646f`, filling left to right over the box, moved twice a second (a 0.5 s timer, in the common run-loop modes);
+  no numbers.
+- Soft end: when the box elapses, once, a 440 Hz sine, 300 ms, peak −18 dBFS, 50 ms raised-cosine fades, generated at
+  launch as WAV bytes in memory (`Tone.wav`) and played by `NSSound(data:)`; the click player takes only its pack's
+  samples, so it cannot play an ad-hoc buffer. No tone while the sound is off or the review is up. The line stays
+  full; typing goes on.
+- Session › Intent…: a sheet with one text field, at most 120 characters (cut as typed or pasted; newlines become
+  spaces). Shown nowhere while writing; heads the review sheet. In memory only: never journaled, never logged, gone at
+  the session's end or a quit.
+- Private log: when a session is finished (a Copy's or Save's grace ran out; not Discard), one line
+  `YYYY-MM-DD\tHH:MM\tminutes\twords\n` is appended to `~/Library/Application Support/Flow/log.tsv` (made 0600, one
+  `write` with `O_APPEND`): the session's start in local time, its whole minutes and words as the review showed them
+  at Done. Totals only: no text, no timing per key. Session › Show Log reveals the file in Finder (off until it
+  exists).
+
 ## Known gaps
 
 - Not tried with the window shown (the builder does not open windows): typing feel and latency, 120 Hz on ProMotion,
   live resize, full screen, AeroSpace tiling, dead keys and the accent menu, the review sheet's look and keys, the
-  save panel on the sheet, the restore. DESIGN.md Open 4 and 5 stay open.
+  save panel on the sheet, the restore; nor anything of milestones 4 and 5 (clicks in the app, the hotkey, the
+  menu-bar item, the sheets, the bottom edge, the tone, the log). DESIGN.md Open 4 and 5 stay open.
+- `NSApp.activate()` (macOS 14's cooperative activation) does not promise to activate; whether the hotkey brings
+  Flow forward from another app is untried. If it does not, the deprecated `activate(ignoringOtherApps: true)` is the
+  fallback.
+- ⌃⌥Space is also macOS's default for "Select next source in Input menu" (System Settings › Keyboard › Keyboard
+  Shortcuts › Input Sources); where that shortcut is on, it takes the chord.
+- The time box runs on the media clock, which stands still while the Mac sleeps: a box resumes after a wake rather
+  than ending under a closed lid. The fill's first and last points hide under the window's rounded bottom corners.
+- The radio buttons of the Time box sheet are reached by mouse, or by Tab with keyboard navigation on.
 - An ad-hoc signed rebuild changes the app's signature, so macOS may ask once whether Flow may use its keychain item
   when a session is restored. Deny: the "not kept" alert, the old session stays on disk for the next launch.
 - The duration is wall-clock time since the session's first edit (a restored session: since its journal file was
@@ -120,5 +185,4 @@ Milestone 3, the end of a session (O1 O2 R1):
 - Pending text from multi-stage input methods (Japanese, Chinese) is drawn as plain text, without the underline or
   the selected clause.
 - No accessibility: VoiceOver does not see the text yet.
-- No sound yet (`lib/FlowClicks` is not wired in), no hotkey or menu-bar item (milestone 5).
 - No icon; the bundle identifier `org.flow.app` is a placeholder until the name is chosen.

@@ -9,7 +9,7 @@ let package = Package(
     targets: [
         // C11 atomics for the key-to-audio-thread hand-off: Swift's own Atomic needs macOS 15.
         .target(name: "ClickRing"),
-        .target(name: "FlowClicks", dependencies: ["ClickRing"], resources: [.copy("DefaultPack")]),
+        .target(name: "FlowClicks", dependencies: ["ClickRing"], exclude: ["DefaultPack"]),
         .testTarget(name: "FlowClicksTests", dependencies: ["FlowClicks"]),
     ],
     swiftLanguageModes: [.v5]

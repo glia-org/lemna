@@ -1,6 +1,8 @@
 // Flow (working name): the writing surface in an ordinary window (DESIGN.md S1 V2 B1 P0 W1), kept in the journal (E2),
+// with key clicks (K1), the session frame (M1: time box, intent, private log), summoning (W1: hotkey, menu-bar item),
 // and the end of a session: Done → review → copy, save or discard (O1 O2 R1).
 import AppKit
+import FlowClicks
 import FlowCore
 import FlowJournal
 import QuartzCore
@@ -12,14 +14,27 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     private let keeper = Keeper()
     private var session = Session()
     private var review: ReviewSheet?
-    private var asking = false  // the Discard question is up
+    private var asking = false  // a question is up: Discard, Time box, Intent
+    private let edge = EdgeView()
+    private var clicks: ClickPlayer?
+    private var notice = BluetoothNotice()
+    private var hotkey: Hotkey?
+    private var statusItem: NSStatusItem?
+    // The session frame (M1), this session's only: in memory, gone when it ends or Flow quits; never journaled or
+    // logged.
+    private var box: TimeBox?, boxTimer: Timer?, intent: String?
+    /// What the review showed at Done, for the log line when the session is finished.
+    private var totals: (start: Date, seconds: Double, words: Int)?
+    private let tone = NSSound(data: Data(Tone.wav()))
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UserDefaults.standard.register(defaults: [Self.soundKey: true])
         let font = (NSFont(name: "Menlo", size: 28) ?? .monospacedSystemFont(ofSize: 28, weight: .regular)) as CTFont
         let style = Style(font: font)
         view = LineView(style: style)
         view.load(keeper.open())  // the silent restore: the last session's text, or an empty one
         view.onEdit = { [unowned self] in self.keeper.append($0) }
+        view.addSubview(edge)  // at the view's zero size, so the edge's autoresizing keeps it across the bottom
         // Titled, with its standard buttons, so tiling window managers (AeroSpace, yabai) treat it as a normal window.
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1200, height: 700),
                           styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -41,7 +56,132 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         window.makeFirstResponder(view)
         NSApp.activate()
         warnIfNotKept()
+        startClicks()
+        hotkey = Hotkey { [unowned self] in self.hotkeyPressed() }
+        if hotkey == nil { NSLog("Flow: the hotkey could not be registered; the menu-bar item shows Flow") }
+        statusItem = makeStatusItem(target: self)
     }
+
+    // MARK: Clicks (K1)
+
+    private static let soundKey = "sound"
+    private var sound: Bool { UserDefaults.standard.bool(forKey: Self.soundKey) }
+
+    /// The player is made once; if it cannot start (no output device, the pack missing) Flow is silent and says so
+    /// once, in the system log.
+    private func startClicks() {
+        do {
+            let c = try ClickPlayer(pack: .bundled())
+            c.enabled = sound
+            c.onOutputChanged = { [unowned self] in
+                self.notice.outputChanged()
+                self.warnIfBluetooth()
+            }
+            clicks = c
+            view.clicks = c
+            warnIfBluetooth()
+        } catch {
+            NSLog("Flow: no key clicks: %@", String(describing: error))
+        }
+    }
+
+    /// Bluetooth output plays every click late: the surface's bottom edge says so once per output, while sound is on.
+    private func warnIfBluetooth() {
+        guard let clicks, notice.check(bluetooth: clicks.isBluetoothOutput, sound: sound) else { return }
+        edge.showNotice()
+    }
+
+    /// Session › Sound (⌘K), also in the menu-bar item: clicks and the soft end's tone on or off, kept across launches.
+    @objc func toggleSound(_ sender: Any?) {
+        UserDefaults.standard.set(!sound, forKey: Self.soundKey)
+        clicks?.enabled = sound
+        warnIfBluetooth()  // turned on over Bluetooth: said once for this output
+    }
+
+    // MARK: Summoning (W1)
+
+    /// Show Flow, and the hotkey while Flow is not in front: the window, wherever it went (hidden, minimised, closed),
+    /// in front and key.
+    @objc func summon(_ sender: Any?) {
+        if NSApp.isHidden { NSApp.unhide(nil) }
+        if window.isMiniaturized { window.deminiaturize(nil) }
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate()
+    }
+
+    /// The hotkey toggles: Flow in front goes away (the app hides, so the app before it comes back), else it comes.
+    private func hotkeyPressed() {
+        var key = NSApp.isActive ? NSApp.keyWindow : nil
+        while let w = key, w !== window { key = w.sheetParent }  // a sheet on the window, or on its review, counts
+        if key != nil { NSApp.hide(nil) } else { summon(nil) }
+    }
+
+    // MARK: The session frame (M1)
+
+    /// Session › Time box…: the box starts when it is set; setting the running box again leaves it running, setting
+    /// an ended one again starts it afresh.
+    @objc func setTimeBox(_ sender: Any?) {
+        guard session.phase == .writing, !asking, window.attachedSheet == nil else { return }
+        asking = true
+        askTimeBox(current: box?.minutes, for: window) { [unowned self] set, minutes in
+            self.asking = false
+            if set { self.startBox(minutes) }
+        }
+    }
+
+    private func startBox(_ minutes: Int?) {
+        if let minutes, let box, box.minutes == minutes, !box.over { return }
+        boxTimer?.invalidate()
+        boxTimer = nil
+        box = minutes.map { TimeBox(minutes: $0, start: CACurrentMediaTime()) }
+        edge.progress = box == nil ? nil : 0
+        guard box != nil else { return }
+        // Twice a second: the fill moves a point or two at a time at most, and nothing else wakes for it.
+        let t = Timer(timeInterval: 0.5, repeats: true) { [unowned self] _ in self.tickBox() }
+        t.tolerance = 0.1
+        RunLoop.main.add(t, forMode: .common)  // fills during a live resize and with a menu open too
+        boxTimer = t
+    }
+
+    /// The soft end: once, the tone (unless the sound is off, or the review is already up), and the line stays full.
+    /// Typing goes on (P0).
+    private func tickBox() {
+        guard var b = box else { return }
+        let now = CACurrentMediaTime()
+        edge.progress = b.fraction(at: now)
+        if b.ends(at: now) {
+            boxTimer?.invalidate()
+            boxTimer = nil
+            if sound && session.phase == .writing { tone?.play() }
+        }
+        box = b
+    }
+
+    /// Session › Intent…: one line, shown only in the review's header.
+    @objc func setIntent(_ sender: Any?) {
+        guard session.phase == .writing, !asking, window.attachedSheet == nil else { return }
+        asking = true
+        askIntent(current: intent, for: window) { [unowned self] set, line in
+            self.asking = false
+            if set { self.intent = line }
+        }
+    }
+
+    /// The private log: one line of totals per finished session, beside the sessions' folder.
+    private static let log = Keeper.directory.deletingLastPathComponent().appendingPathComponent("log.tsv")
+
+    private func logFinished() {
+        guard let t = totals else { return }
+        let folder = Self.log.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true,
+                                                 attributes: [.posixPermissions: 0o700])
+        let line = PrivateLog.line(start: t.start.timeIntervalSince1970, offset: TimeZone.current.secondsFromGMT(for: t.start),
+                                   seconds: t.seconds, words: t.words)
+        if !PrivateLog.append(line, to: Self.log.path) { NSLog("Flow: the log could not be written") }
+    }
+
+    /// Session › Show Log: the file in Finder.
+    @objc func showLog(_ sender: Any?) { NSWorkspace.shared.activateFileViewerSelecting([Self.log]) }
 
     // MARK: Keeping (E2): the session outlives a close, ⌘Q and a crash; only a hand-off's grace and Discard end it.
 
@@ -82,6 +222,12 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         switch item.action {
         case #selector(done(_:)): return session.phase == .writing && !asking && !blank
         case #selector(discard(_:)): return !asking && session.phase != .cleared && !(session.phase == .writing && blank)
+        case #selector(setTimeBox(_:)), #selector(setIntent(_:)):
+            return session.phase == .writing && !asking && window.attachedSheet == nil
+        case #selector(toggleSound(_:)):
+            item.state = sound ? .on : .off
+            return true
+        case #selector(showLog(_:)): return FileManager.default.fileExists(atPath: Self.log.path)
         default: return true
         }
     }
@@ -93,8 +239,10 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         keeper.flushSoon()
         let raw = view.text.plainText, words = Mechanical.words(raw)
         let seconds = keeper.started.map { Date().timeIntervalSince($0) } ?? 0
+        totals = (keeper.started ?? Date(), seconds, words)
         let r = ReviewSheet(raw: raw, stats: "\(Session.duration(seconds)) · \(words) \(words == 1 ? "word" : "words")",
-                            note: keeper.problem.map { "Not kept on disk: \($0)." }, room: window.contentLayoutRect.size)
+                            note: keeper.problem.map { "Not kept on disk: \($0)." }, intent: intent,
+                            room: window.contentLayoutRect.size)
         r.onCopy = { [unowned self] in self.copyOut() }
         r.onSave = { [unowned self] in self.saveOut() }
         r.onBack = { [unowned self] in self.back() }
@@ -103,7 +251,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             if self.session.undo() { self.review?.showHandoff(nil, undoable: false) }
         }
         review = r
-        window.makeKeyAndOrderFront(nil)  // the close button may have hidden it
+        summon(nil)  // the close button may have hidden it; the menu-bar item's Done comes from another app
         window.beginSheet(r.panel)
     }
 
@@ -211,8 +359,11 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             a.messageText = why
             return a.beginSheetModal(for: window)
         }
+        if !discard { logFinished() }
         if let r = review { window.endSheet(r.panel) }
         review = nil
+        startBox(nil)
+        intent = nil
         view.load(keeper.open())
         session.started()
         window.makeFirstResponder(view)
@@ -220,8 +371,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     }
 }
 
-/// Flow: About, Quit; Session: Done, Discard…; View: Enter Full Screen. No Edit menu yet, so no ⌘ shortcut but these
-/// reaches the text.
+/// Flow: About, Quit; Session: Done, Discard…, Time box…, Intent…, Sound, Show Log; View: Enter Full Screen. No Edit
+/// menu yet, so no ⌘ shortcut but these reaches the text.
 func mainMenu() -> NSMenu {
     let bar = NSMenu(), app = NSMenu(title: "Flow"), session = NSMenu(title: "Session"), view = NSMenu(title: "View")
     app.addItem(withTitle: "About Flow", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
@@ -230,6 +381,12 @@ func mainMenu() -> NSMenu {
     app.addItem(withTitle: "Quit Flow", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     session.addItem(withTitle: "Done", action: #selector(App.done(_:)), keyEquivalent: "\r")  // ⌘⏎
     session.addItem(withTitle: "Discard…", action: #selector(App.discard(_:)), keyEquivalent: "")
+    session.addItem(.separator())
+    session.addItem(withTitle: "Time box…", action: #selector(App.setTimeBox(_:)), keyEquivalent: "")
+    session.addItem(withTitle: "Intent…", action: #selector(App.setIntent(_:)), keyEquivalent: "")
+    session.addItem(.separator())
+    session.addItem(withTitle: "Sound", action: #selector(App.toggleSound(_:)), keyEquivalent: "k")  // ⌘K
+    session.addItem(withTitle: "Show Log", action: #selector(App.showLog(_:)), keyEquivalent: "")
     view.addItem(withTitle: "Enter Full Screen", action: #selector(NSWindow.toggleFullScreen(_:)), keyEquivalent: "f")
         .keyEquivalentModifierMask = [.control, .command]
     for menu in [app, session, view] { bar.addItem(withTitle: menu.title, action: nil, keyEquivalent: "").submenu = menu }
@@ -238,6 +395,8 @@ func mainMenu() -> NSMenu {
 
 let app = NSApplication.shared
 NSWindow.allowsAutomaticWindowTabbing = false  // keeps the tab items out of the View menu
+// A regular app with a Dock icon, the menu-bar item notwithstanding: tiling window managers (AeroSpace, yabai) expect
+// one and place its window; an accessory app's window is easily left out of the layout (W1).
 app.setActivationPolicy(.regular)
 app.mainMenu = mainMenu()
 let delegate = App()

@@ -5,8 +5,20 @@ import Testing
 
 // MARK: The default pack
 
+/// The default pack from the source tree: `SoundPack.bundled()` reads an app's Contents/Resources, which a test lacks.
+private func defaultPack() throws -> SoundPack {
+    let package = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent()
+    return try SoundPack(folder: package.appendingPathComponent("Sources/FlowClicks/DefaultPack"))
+}
+
+@Test func bundledThrowsWithoutThePackInTheApp() {
+    // The test runner is not an app: no DefaultPack in its resources.
+    #expect(throws: ClickError.self) { try SoundPack.bundled() }
+}
+
 @Test func defaultPackMeetsTheFormat() throws {
-    let pack = try SoundPack.bundled()
+    let pack = try defaultPack()
     #expect(pack.licence == "CC0-1.0")
     #expect((3...6).contains(pack.files[.letter]?.count ?? 0))
     for kind in [KeyKind.space, .paragraph, .backspace] {
@@ -142,7 +154,7 @@ private var hasOutput: Bool { OutputDevice.defaultID() != nil }
 @Suite(.serialized) struct Engine {
     @Test(.enabled(if: hasOutput, "no audio output device: engine test skipped"))
     func playReturnsInMicroseconds() throws {
-        let player = try ClickPlayer(pack: .bundled())
+        let player = try ClickPlayer(pack: defaultPack())
         player.volume = 0.3
         // What the main mixer sends out: proof the clicks are not only taken but heard.
         let lock = NSLock()
@@ -192,7 +204,7 @@ private var hasOutput: Bool { OutputDevice.defaultID() != nil }
         let bluetooth = OutputDevice.defaultIsBluetooth()
         print("FlowClicks default output is Bluetooth: \(bluetooth)")
         if hasOutput {
-            #expect(try ClickPlayer(pack: .bundled()).isBluetoothOutput == bluetooth)
+            #expect(try ClickPlayer(pack: defaultPack()).isBluetoothOutput == bluetooth)
         }
     }
 }

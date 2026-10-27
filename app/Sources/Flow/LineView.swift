@@ -1,7 +1,8 @@
 // The writing surface (DESIGN.md S1 V2 B1 P0): the view fills the window, its layer paints the background, and the
 // line is drawn into the strip across its middle on each key and, while a glide runs, on each display refresh. Every
-// change to the text leaves as a journal edit (E2).
+// change to the text leaves as a journal edit (E2) and, ahead of the drawing, as a click (K1).
 import AppKit
+import FlowClicks
 import FlowCore
 import FlowJournal
 import QuartzCore
@@ -13,6 +14,9 @@ final class LineView: NSView, NSTextInputClient {
     private var marked = ""
     /// Each change to the text, as the journal records it; called on the key event.
     var onEdit: (Edit) -> Void = { _ in }
+    /// Clicks on the keys that change the text, played before the edit is laid out and drawn so the sound leaves
+    /// first; nil when the player could not start.
+    var clicks: ClickPlayer?
     /// False from Done until Back: keys do nothing and the line keeps its last frame.
     private(set) var accepting = true
     private var shaped = Shaped(), glide = Glide()
@@ -140,9 +144,11 @@ final class LineView: NSView, NSTextInputClient {
         guard accepting else { return }
         switch selector {
         case #selector(NSStandardKeyBindingResponding.insertNewline(_:)):
+            clicks?.play(.paragraph)
             edited(width(record(.paragraphEnd).added))
         case #selector(NSStandardKeyBindingResponding.deleteBackward(_:)):
-            guard let c = text.backspace() else { return }  // B1 decides here, so not through `record`
+            guard let c = text.backspace() else { return }  // B1 decides here, so not through `record`; blocked: silent
+            clicks?.play(.backspace)
             onEdit(.deleteBackward(String(c).utf16.count))  // which `Text.apply` replays as the same cut
             edited(-width(String(c)))
         default:
@@ -153,6 +159,7 @@ final class LineView: NSView, NSTextInputClient {
     func insertText(_ string: Any, replacementRange r: NSRange) {
         guard accepting else { return }
         let s = (string as? NSAttributedString)?.string ?? (string as? String) ?? ""
+        if !s.isEmpty { clicks?.play(s.allSatisfy(\.isWhitespace) ? .space : .letter) }
         let pressAndHold = marked.isEmpty && r.location != NSNotFound && NSMaxRange(r) == text.utf16Count
         let removed = pressAndHold && r.length > 0 ? record(.deleteBackward(r.length)).removed : ""
         let added = s.isEmpty ? "" : record(.insert(s)).added, old = marked
@@ -163,6 +170,7 @@ final class LineView: NSView, NSTextInputClient {
         guard accepting else { return }
         let old = marked
         marked = (string as? NSAttributedString)?.string ?? (string as? String) ?? ""
+        if !marked.isEmpty && marked != old { clicks?.play(.letter) }  // a dead key: a key pressed, and the line shows it
         edited(width(marked) - width(old))
     }
     func unmarkText() {  // the pending text stays as it is shown, so the line does not move

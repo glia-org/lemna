@@ -33,6 +33,8 @@ Both wait for the display-link tick and then for vsync. Known cuts for the app: 
 
 ## Plan (v1), one milestone at a time, each with tests and a try by the user
 
+All five built on 2026-10-27 (`app/`, `lib/FlowJournal`, `lib/FlowClicks`); none tried by the user yet. `HANDOFF.md` lists what to try.
+
 1. **Surface** (S1 V2 B1 P0, W1's window): the app bundle skeleton (`app/`, SwiftPM, `make-app.sh` assembles `Flow.app` and ad-hoc signs it), an ordinary resizable window, the line from the spike with clip, fade and glide, real paragraphs in the model (shown as `¶` on the line), dead keys, Reduce Motion, 120 Hz hold, draw-on-key. Tests: layout core, offscreen render to PNG.
 2. **Journal** (E2): AES-GCM append-only journal, key store (login keychain now), write/barrier/flush policy, silent restore, Done/Discard destroys the key. Tests: round trip, kill -9 mid-session then restore, discard leaves noise.
 3. **Output and the mechanical pass** (O1 O2 R1): Done → summary → copy (markers, host only) / save Markdown (atomic, chosen folder) / discard; R1 with one-line undo; shred after a confirmed hand-off with an undo grace.
@@ -49,3 +51,5 @@ Later: R2 Harper (v1.5), W2 panel + O3 paste (v2), the name, Developer ID.
 3. The name.
 4. Tiling window managers: verify under AeroSpace that the window is tiled and keeps focus (the spike's AppKit bench waited for activation under it, 2026-10-27).
 5. Dead keys by hand (´ then e → é on the German layout, ⌥U then o → ö).
+7. Hotkey: ⌃⌥Space is macOS's default chord for "Select next source in Input menu" (off on this Mac, on by default elsewhere); change the default before anyone else gets a build.
+8. Soft-end tone is silent while Sound is off; decide whether it should play regardless.

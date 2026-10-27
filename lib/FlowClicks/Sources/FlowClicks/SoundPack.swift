@@ -60,15 +60,12 @@ public struct SoundPack: Sendable {
         self.files = files
     }
 
-    /// The pack shipped inside this library (see THIRD_PARTY.md for its source and licence).
+    /// The default pack (see THIRD_PARTY.md for its source and licence), which an app carries in
+    /// `Contents/Resources/DefaultPack`.
     public static func bundled() throws -> SoundPack {
-        // SwiftPM's Bundle.module looks for FlowClicks_FlowClicks.bundle at the app bundle's root,
-        // where codesign refuses it, then at the absolute build path. An app assembled by a script
-        // copies it into Contents/Resources, so look there first.
-        let inApp = Bundle.main.resourceURL?.appendingPathComponent("FlowClicks_FlowClicks.bundle")
-        let bundle = inApp.flatMap { Bundle(url: $0) } ?? Bundle.module
-        guard let folder = bundle.url(forResource: "DefaultPack", withExtension: nil) else {
-            throw ClickError("the default pack is missing from the resource bundle")
+        guard let folder = Bundle.main.resourceURL?.appendingPathComponent("DefaultPack"),
+              FileManager.default.fileExists(atPath: folder.path) else {
+            throw ClickError("the default pack is missing from the app's Contents/Resources")
         }
         return try SoundPack(folder: folder)
     }

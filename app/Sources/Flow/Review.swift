@@ -1,21 +1,23 @@
-// The review (DESIGN.md O1 O2 R1): a sheet on the window with the whole text, the mechanical pass already applied (one
-// toggle back to the raw text), the duration and word count, and the hand-off: Copy, Save…, Back, and Discard set
-// apart. The app owns what the buttons do; this only shows and reports.
+// The review (DESIGN.md O1 O2 R1 M1): a sheet on the window with the session's intent, if one was set, the whole text,
+// the mechanical pass already applied (one toggle back to the raw text), the duration and word count, and the
+// hand-off: Copy, Save…, Back, and Discard set apart. The app owns what the buttons do; this only shows and reports.
 import AppKit
 import FlowCore
 
-/// Sends Return to Copy and Esc to Back wherever the focus is in the sheet: the read-only text view would otherwise
-/// take both keys and do nothing with them.
+/// Sends ⌘⏎ to Copy and Esc to Back wherever the focus is in the sheet, and swallows plain Return (`ReviewKey`): the
+/// read-only text view would otherwise take these keys and do nothing with them.
 final class ReviewPanel: NSPanel {
-    var onReturn: () -> Void = {}, onEscape: () -> Void = {}
+    var onCopy: () -> Void = {}, onEscape: () -> Void = {}
 
     override func sendEvent(_ e: NSEvent) {
-        let plain = e.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty
-        if e.type == .keyDown && plain {
-            switch e.keyCode {
-            case 36, 76: return onReturn()  // Return, Enter
-            case 53: return onEscape()  // Esc
-            default: break
+        if e.type == .keyDown {
+            let flags = e.modifierFlags
+            switch ReviewKey.route(keyCode: e.keyCode, command: flags.contains(.command),
+                                   others: !flags.intersection([.option, .control, .shift]).isEmpty, isRepeat: e.isARepeat) {
+            case .copy: return onCopy()
+            case .back: return onEscape()
+            case .nothing: return
+            case .pass: break
             }
         }
         super.sendEvent(e)
@@ -40,8 +42,8 @@ final class ReviewSheet: NSObject {
     private let copyButton = NSButton(title: "Copy", target: nil, action: nil)
 
     /// `raw`: the text as typed; `stats`: "12 min · 834 words"; `note`: why the session is not kept, if it is not;
-    /// `room`: the window's content size, which the sheet fits in.
-    init(raw: String, stats: String, note: String?, room: NSSize) {
+    /// `intent`: the session's intent line, if one was set; `room`: the window's content size, which the sheet fits in.
+    init(raw: String, stats: String, note: String?, intent: String?, room: NSSize) {
         self.raw = raw
         fixed = Mechanical.apply(raw)
         let scroll = NSTextView.scrollableTextView()
@@ -62,7 +64,7 @@ final class ReviewSheet: NSObject {
         panel.appearance = NSAppearance(named: .darkAqua)
         panel.backgroundColor = Self.background
         panel.hidesOnDeactivate = false  // NSPanel's default would take the sheet off the window on a switch of app
-        panel.onReturn = { [unowned self] in self.copyButton.performClick(nil) }
+        panel.onCopy = { [unowned self] in self.copyButton.performClick(nil) }
         panel.onEscape = { [unowned self] in self.onBack() }
 
         scroll.borderType = .noBorder
@@ -105,8 +107,7 @@ final class ReviewSheet: NSObject {
         let save = button("Save…", #selector(pressSave))
         copyButton.target = self
         copyButton.action = #selector(pressCopy)
-        copyButton.bezelStyle = .push
-        copyButton.keyEquivalent = "\r"  // drawn as the default button; the panel sends it Return
+        copyButton.bezelStyle = .push  // not the default button: Return does not copy; the panel sends it ⌘⏎
         back.keyEquivalent = "\u{1b}"
         save.keyEquivalent = "s"
         save.keyEquivalentModifierMask = .command
@@ -121,8 +122,24 @@ final class ReviewSheet: NSObject {
             v.translatesAutoresizingMaskIntoConstraints = false
             content.addSubview(v)
         }
+        // The header: the intent, one line in the muted colour above the text's left edge; nothing without one.
+        var top = content.topAnchor, gap = margin
+        if let intent {
+            let header = Self.label(intent)
+            header.font = .systemFont(ofSize: 13)
+            header.textColor = color(0x5c646f)
+            header.toolTip = intent
+            header.translatesAutoresizingMaskIntoConstraints = false
+            content.addSubview(header)
+            NSLayoutConstraint.activate([
+                header.topAnchor.constraint(equalTo: content.topAnchor, constant: margin),
+                header.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: margin + inset),
+                header.trailingAnchor.constraint(lessThanOrEqualTo: content.trailingAnchor, constant: -margin - inset),
+            ])
+            (top, gap) = (header.bottomAnchor, 8)
+        }
         NSLayoutConstraint.activate([
-            scroll.topAnchor.constraint(equalTo: content.topAnchor, constant: margin),
+            scroll.topAnchor.constraint(equalTo: top, constant: gap),
             scroll.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: margin),
             scroll.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -margin),
             footer.topAnchor.constraint(equalTo: scroll.bottomAnchor, constant: 12),

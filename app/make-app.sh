@@ -4,10 +4,13 @@
 set -eu
 cd "${0:A:h}"
 swift build -c release
+bin="$(swift build -c release --show-bin-path)"
 app=build/Flow.app
 rm -rf "$app"
-mkdir -p "$app/Contents/MacOS"
-cp "$(swift build -c release --show-bin-path)/Flow" "$app/Contents/MacOS/Flow"
+mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+cp "$bin/Flow" "$app/Contents/MacOS/Flow"
+# The click pack (lib/FlowClicks, pack.json and its WAVs): SoundPack.bundled() loads it from Contents/Resources.
+cp -R ../lib/FlowClicks/Sources/FlowClicks/DefaultPack "$app/Contents/Resources/DefaultPack"
 cat > "$app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -34,4 +37,5 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 PLIST
 plutil -lint -s "$app/Contents/Info.plist"
 codesign --force --sign - --deep "$app"
+codesign --verify --deep --strict "$app"
 echo "$PWD/$app"

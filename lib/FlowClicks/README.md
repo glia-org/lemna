@@ -76,8 +76,10 @@ converted), but keep to the default pack's format: 48 kHz mono 16-bit, at most 1
 file; see its header). Load a pack with `SoundPack(folder:)`; record where its sounds came from and their
 licence in `THIRD_PARTY.md`.
 
-The default pack is a package resource. An app bundle must carry `FlowClicks_FlowClicks.bundle` (built next
-to the executable) in `Contents/Resources`, where `SoundPack.bundled()` looks first.
+The default pack (`Sources/FlowClicks/DefaultPack`) is not a SwiftPM resource: the generated `Bundle.module`
+writes the absolute build path into every binary that links the library and stops the process when the bundle
+is missing. An app copies the folder into `Contents/Resources/DefaultPack`, where `SoundPack.bundled()` loads
+it; without it, `bundled()` throws `ClickError`. The tests load it from the source tree with `SoundPack(folder:)`.
 
 ## Tests
 
