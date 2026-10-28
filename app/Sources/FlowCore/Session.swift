@@ -1,79 +1,57 @@
 // The end of a session (DESIGN.md O1 O2 O3 E2) as a state machine, free of AppKit and of clocks so the tests drive it:
-// writing → review (Done) → graced (copied, saved or pasted: finished at `until` unless undone) → cleared → writing.
-// Each event returns whether it applied; the app acts only on true, so a stale timer or a second click does nothing.
-
-public enum Handoff: Equatable {
-    case copied
-    case saved(name: String)
-    /// Pasted into the app behind the box (O3); the box is hidden, so the grace runs out of sight.
-    case pasted
-}
+// writing → handing off (Done, Copy or Save…: the keys stop) → cleared (pasted, copied or saved: finished at once; or
+// discarded) → writing. Each event returns whether it applied; the app acts only on true, so a second ⌘⏎ or a late
+// callback does nothing.
 
 public enum Phase: Equatable {
     /// The surface takes keys.
     case writing
-    /// The review is up; the surface keeps its last frame.
-    case review
-    /// Copied, saved or pasted: the session is finished at `until` unless Undo comes first.
-    case graced(Handoff, until: Double)
+    /// Done, Copy or Save… is under way (Paste waits for Return to come up, the save panel is up); the surface keeps
+    /// its last frame.
+    case handingOff
     /// Finished or discarded: the key is gone, the surface clears and a new session starts.
     case cleared
 }
 
 public struct Session: Equatable {
-    /// How long a hand-off can be undone before the session is finished (the plan's "shred after a confirmed hand-off
-    /// with an undo grace").
-    public static let grace = 10.0
     public private(set) var phase = Phase.writing
 
     public init() {}
 
-    /// Done: the review opens.
-    @discardableResult public mutating func done() -> Bool {
+    /// Done, Copy or Save…: the hand-off begins.
+    @discardableResult public mutating func handOff() -> Bool {
         guard phase == .writing else { return false }
-        phase = .review
+        phase = .handingOff
         return true
     }
 
-    /// Back: writing goes on and nothing is destroyed, a running grace included.
+    /// The hand-off did not happen (the save panel cancelled, the pasteboard refused): writing goes on and nothing is
+    /// destroyed.
     @discardableResult public mutating func back() -> Bool {
-        guard phase == .review || isGraced else { return false }
+        guard phase == .handingOff else { return false }
         phase = .writing
         return true
     }
 
-    /// Copied, saved or pasted at `t`. Another hand-off during a grace starts it again.
-    @discardableResult public mutating func handedOff(_ how: Handoff, at t: Double) -> Bool {
-        guard phase == .review || isGraced else { return false }
-        phase = .graced(how, until: t + Self.grace)
-        return true
-    }
-
-    /// Undo within the grace: the review stays and the session is kept.
-    @discardableResult public mutating func undo() -> Bool {
-        guard isGraced else { return false }
-        phase = .review
-        return true
-    }
-
-    /// The clock at `t`: true once, when the grace has run out; the app then finishes the journal and clears.
-    @discardableResult public mutating func tick(at t: Double) -> Bool {
-        guard case .graced(_, let until) = phase, t >= until else { return false }
+    /// Pasted, copied or saved: the session is finished at once, with no grace (2026-10-28); the app finishes the
+    /// journal and clears.
+    @discardableResult public mutating func handedOff() -> Bool {
+        guard phase == .handingOff else { return false }
         phase = .cleared
         return true
     }
 
-    /// Discard, once confirmed: from the surface (Session › Discard…) or the review.
+    /// Discard, once confirmed (the menu-bar item's Discard…), while writing.
     @discardableResult public mutating func discard() -> Bool {
-        guard phase != .cleared else { return false }
+        guard phase == .writing else { return false }
         phase = .cleared
         return true
     }
 
-    /// The key store refused to let go of the key: the session stays, and the review shows why.
+    /// The key store refused to let go of the key: the session stays and writing goes on; an alert says why.
     @discardableResult public mutating func kept() -> Bool {
         guard phase == .cleared else { return false }
-        phase = .review
+        phase = .writing
         return true
     }
 
@@ -82,18 +60,5 @@ public struct Session: Equatable {
         guard phase == .cleared else { return false }
         phase = .writing
         return true
-    }
-
-    private var isGraced: Bool {
-        if case .graced = phase { return true }
-        return false
-    }
-
-    /// A duration for the review: "< 1 min", "12 min", "1 h 5 min", "2 h"; minutes rounded down.
-    public static func duration(_ seconds: Double) -> String {
-        let m = Int(max(seconds, 0) / 60)
-        if m < 1 { return "< 1 min" }
-        if m < 60 { return "\(m) min" }
-        return m % 60 == 0 ? "\(m / 60) h" : "\(m / 60) h \(m % 60) min"
     }
 }

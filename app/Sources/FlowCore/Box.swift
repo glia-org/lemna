@@ -1,14 +1,11 @@
-// The box (DESIGN.md W2): where it sits on the screen, how the review grows it in place, which of the two containers
-// holds the line, and when a click outside hides it. Free of AppKit, so the tests check them.
+// The box (DESIGN.md W2): where it sits on the screen, which of the two containers holds the line, and when a click
+// outside hides it. Free of AppKit, so the tests check them.
 import CoreGraphics
 
 /// The box's frame in screen points (origin at the bottom left, as AppKit's).
 public enum BoxFrame {
-    /// The box's share of the visible frame's width, and its narrowest: v1's window was at least 600 pt wide, which the
-    /// review's 72-character column fits.
+    /// The box's share of the visible frame's width, and its narrowest: v1's window was at least 600 pt wide.
     public static let share: CGFloat = 0.6, narrowest: CGFloat = 600
-    /// The review grows the box to this share of the visible frame's height, and to at least v1's shortest sheet.
-    public static let grownShare: CGFloat = 0.6, grownLeast: CGFloat = 240
 
     /// One line tall plus margins: the line's band (two em, `Line.band`) with one em above and below it.
     public static func height(fontSize: CGFloat) -> CGFloat { 4 * fontSize }
@@ -20,18 +17,6 @@ public enum BoxFrame {
         let w = min(max((share * visible.width).rounded(), narrowest), visible.width), h = min(height, visible.height)
         let x = (visible.midX - w / 2).rounded(), y = (visible.minY + visible.height / 3 - h / 2).rounded()
         return CGRect(x: max(x, visible.minX), y: min(max(y, visible.minY), visible.maxY - h), width: w, height: h)
-    }
-
-    /// The review's box: `box` grown upward with its bottom edge where it was, to 60 % of the visible height (at least
-    /// 240 pt), its top kept inside `visible`, never shorter than the box was.
-    public static func grown(_ box: CGRect, in visible: CGRect) -> CGRect {
-        let want = max((grownShare * visible.height).rounded(), grownLeast)
-        return CGRect(x: box.minX, y: box.minY, width: box.width, height: max(min(want, visible.maxY - box.minY), box.height))
-    }
-
-    /// Back from the review: the line's box again, from the same bottom edge up.
-    public static func shrunk(_ box: CGRect, height: CGFloat) -> CGRect {
-        CGRect(x: box.minX, y: box.minY, width: box.width, height: height)
     }
 }
 
@@ -65,10 +50,10 @@ public struct Surface: Equatable {
 /// A click outside the box (into another app, also through the dim) takes the keys from it, and then the box goes, as
 /// with Esc; the session stays. But the box loses the keys for other reasons too, so this guards the hide: when it is
 /// already going or not on screen (Esc, the hotkey, a paste, window mode), when a question of Flow's is up or a sheet
-/// hangs on it (Discard…, Time box…, Intent…, Save…, the journal's alert: the sheet took the keys), when the review is
-/// in a hand-off's grace (its Undo stays in reach), and when another window of Flow's has the keys.
+/// hangs on it (Discard…, Save…, the journal's alert: the sheet took the keys), and when another window of Flow's has
+/// the keys.
 public enum ClickOutside {
-    public static func hides(boxOnScreen: Bool, asking: Bool, sheet: Bool, graced: Bool, flowHasKeys: Bool) -> Bool {
-        boxOnScreen && !asking && !sheet && !graced && !flowHasKeys
+    public static func hides(boxOnScreen: Bool, asking: Bool, sheet: Bool, flowHasKeys: Bool) -> Bool {
+        boxOnScreen && !asking && !sheet && !flowHasKeys
     }
 }

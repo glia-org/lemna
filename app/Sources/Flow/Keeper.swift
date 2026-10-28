@@ -10,10 +10,8 @@ final class Keeper {
         .appendingPathComponent("Flow/sessions.noindex", isDirectory: true)
 
     private(set) var journal: Journal?
-    /// Why the session is not kept, when it is not: for the alert and the review's footer.
+    /// Why the session is not kept, when it is not: for the alert.
     private(set) var problem: String?
-    /// When the session began: a restored one when its file was made, a new one at its first edit.
-    private(set) var started: Date?
 
     private let queue = DispatchQueue(label: "org.flow.flush", qos: .utility)
     private let idle: DispatchSourceTimer
@@ -33,20 +31,16 @@ final class Keeper {
             let j = try Journal.open(directory: Self.directory, keyStore: KeychainKeyStore())
             use(j)
             problem = nil
-            started = j.replay.isEmpty ? nil
-                : (try? j.fileURL.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date()
             return Text(replaying: j.replay)
         } catch {
             use(nil)
             problem = describe(error)
-            started = nil
             return Text()
         }
     }
 
     /// One edit, on the key event: queued in the journal (written within 50 ms), and the idle flush moved to 1 s on.
     func append(_ e: Edit) {
-        if started == nil { started = Date() }
         guard let journal else { return }
         journal.append(e)
         idle.schedule(deadline: .now() + 1)

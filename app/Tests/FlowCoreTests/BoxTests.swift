@@ -1,6 +1,5 @@
-// The box (W2) and paste at Done (O3): the box's frame on a screen and its clamps, the review growing it upward from
-// its bottom edge, which container is on screen, the paste's decision table, when the old clipboard comes back, and
-// when a click outside hides the box.
+// The box (W2) and paste at Done (O3): the box's frame on a screen and its clamps, which container is on screen, the
+// paste's decision table, when the old clipboard comes back, and when a click outside hides the box.
 import CoreGraphics
 import Testing
 @testable import FlowCore
@@ -33,25 +32,6 @@ private let laptop = CGRect(x: 0, y: 80, width: 1512, height: 868)
     let low = CGRect(x: 0, y: 0, width: 1000, height: 150)  // a third up is 50 pt: the box would hang below
     let l = BoxFrame.line(in: low, height: 112)
     #expect(l.minY == 0 && low.contains(l))
-}
-
-@Test func reviewGrowsUpwardFromTheBottomEdge() {
-    let b = BoxFrame.line(in: laptop, height: 112)
-    let g = BoxFrame.grown(b, in: laptop)
-    #expect(g.minY == b.minY && g.minX == b.minX && g.width == b.width)  // in place: the bottom edge stays
-    #expect(g.height == 521)  // 60 % of 868 is 520.8
-    #expect(laptop.contains(g))
-    #expect(BoxFrame.shrunk(g, height: 112) == b)  // Back: the line's box again
-    // Dragged up high: the top stops at the visible frame's top.
-    let high = CGRect(x: 100, y: 700, width: 907, height: 112)
-    #expect(BoxFrame.grown(high, in: laptop) == CGRect(x: 100, y: 700, width: 907, height: 248))
-    // A short screen: at least 240 pt while there is room.
-    let short = CGRect(x: 0, y: 0, width: 1024, height: 350)
-    let s = BoxFrame.grown(BoxFrame.line(in: short, height: 112), in: short)
-    #expect(s.height == 240 && short.contains(s))
-    // No room above at all: never shorter than the box.
-    let top = CGRect(x: 0, y: 900, width: 907, height: 112)
-    #expect(BoxFrame.grown(top, in: laptop).height == 112)
 }
 
 @Test func oneContainerOnScreenAtATime() {
@@ -97,32 +77,16 @@ private let laptop = CGRect(x: 0, y: 80, width: 1512, height: 868)
     #expect(!Paste.restores(written: 41, now: 40))
 }
 
-@Test func pastedGraceEndsAsCopyDoes() {
-    var s = Session()
-    s.done()
-    let pasted = s.handedOff(.pasted, at: 100)
-    #expect(pasted && s.phase == .graced(.pasted, until: 110))
-    let copied = s.handedOff(.copied, at: 100.12)  // Secure Input came on before the ⌘V: copied instead
-    #expect(copied && s.phase == .graced(.copied, until: 110.12))
-    let stale = s.tick(at: 110)
-    #expect(!stale)  // the paste's grace end is stale
-    #expect(s.undo() && s.phase == .review)  // Undo within the grace keeps the text
-}
-
 @Test func clickOutsideHidesOnlyAnUnguardedBox() {
-    // Every combination: only a box on screen with no question, no sheet, no grace, and the keys gone to another app.
-    for bits in 0..<32 {
-        let (onScreen, asking, sheet, graced, flow) = (bits & 1 != 0, bits & 2 != 0, bits & 4 != 0, bits & 8 != 0,
-                                                       bits & 16 != 0)
-        let hides = ClickOutside.hides(boxOnScreen: onScreen, asking: asking, sheet: sheet, graced: graced,
-                                       flowHasKeys: flow)
+    // Every combination: only a box on screen with no question, no sheet, and the keys gone to another app.
+    for bits in 0..<16 {
+        let (onScreen, asking, sheet, flow) = (bits & 1 != 0, bits & 2 != 0, bits & 4 != 0, bits & 8 != 0)
+        let hides = ClickOutside.hides(boxOnScreen: onScreen, asking: asking, sheet: sheet, flowHasKeys: flow)
         #expect(hides == (bits == 1), "\(bits)")
     }
-    #expect(ClickOutside.hides(boxOnScreen: true, asking: false, sheet: false, graced: false, flowHasKeys: false))
+    #expect(ClickOutside.hides(boxOnScreen: true, asking: false, sheet: false, flowHasKeys: false))
     // The save panel or a question opened on the box: its sheet has the keys.
-    #expect(!ClickOutside.hides(boxOnScreen: true, asking: false, sheet: true, graced: false, flowHasKeys: true))
+    #expect(!ClickOutside.hides(boxOnScreen: true, asking: false, sheet: true, flowHasKeys: true))
     // Esc, the hotkey, a paste, Open Window: the box is already going.
-    #expect(!ClickOutside.hides(boxOnScreen: false, asking: false, sheet: false, graced: false, flowHasKeys: false))
-    // Copied, within the grace: the review and its Undo stay.
-    #expect(!ClickOutside.hides(boxOnScreen: true, asking: false, sheet: false, graced: true, flowHasKeys: false))
+    #expect(!ClickOutside.hides(boxOnScreen: false, asking: false, sheet: false, flowHasKeys: false))
 }

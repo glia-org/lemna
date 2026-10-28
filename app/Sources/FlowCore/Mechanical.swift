@@ -1,6 +1,6 @@
-// The deterministic pass (DESIGN.md R1): only fixes that are mechanical and safe to apply unasked, because the review
-// shows the text with them already applied and one undo. No full stops added, no spelling, no style. Where a rule
-// cannot tell, it leaves the text alone: a missed capital costs less than a wrong one.
+// The deterministic pass (DESIGN.md R1): only fixes that are mechanical and safe to apply unasked, because Done, Copy
+// and Save… apply them silently, with no review and no undo (2026-10-28). No full stops added, no spelling, no style.
+// Where a rule cannot tell, it leaves the text alone: a missed capital costs less than a wrong one.
 
 public enum Mechanical {
     public struct Result: Equatable {
@@ -16,13 +16,6 @@ public enum Mechanical {
         public var lone = 0
 
         public var count: Int { capitals + spaces + trailing + lone }
-
-        /// The kinds with their counts, for the review's footer: "3 capitals, 1 double space, 1 i → I".
-        public var summary: String {
-            [(capitals, "capital", "capitals"), (spaces, "double space", "double spaces"),
-             (trailing, "trailing space", "trailing spaces"), (lone, "i → I", "i → I")]
-                .filter { $0.0 > 0 }.map { "\($0.0) \($0.0 == 1 ? $0.1 : $0.2)" }.joined(separator: ", ")
-        }
     }
 
     /// Applies R1 to plain text (paragraphs split at newlines): per paragraph, strips trailing spaces, collapses runs
@@ -46,11 +39,6 @@ public enum Mechanical {
         }
         r.text = out.joined(separator: "\n\n")
         return r
-    }
-
-    /// Words: runs between white space that hold a letter or a digit, so a dash or a lone ¶ is not one.
-    public static func words(_ text: String) -> Int {
-        text.split(whereSeparator: \.isWhitespace).filter { $0.contains { $0.isLetter || $0.isNumber } }.count
     }
 
     /// Runs of U+0020 to one space. Only that space: a no-break space (⌥Space) is typed on purpose.

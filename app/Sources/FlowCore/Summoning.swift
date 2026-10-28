@@ -1,5 +1,5 @@
-// What the app shows around the surface (DESIGN.md W1 K1 O1): the menu-bar mark, when the Bluetooth notice shows,
-// and what a key does in the review. Free of AppKit, so the tests check them.
+// What the app shows around the surface (DESIGN.md W1 K1): the menu-bar mark and when the Bluetooth notice shows. Free
+// of AppKit, so the tests check them.
 import CoreGraphics
 
 /// The menu-bar mark (W1): the surface in 16 pt, a 1.5 pt line with the caret's bar at 60 % of its width. Drawn in
@@ -35,29 +35,5 @@ public struct BluetoothNotice {
         guard bluetooth, sound, !shown else { return false }
         shown = true
         return true
-    }
-}
-
-/// What a key does in the review sheet. Plain Return does nothing: a reflexive Return after Done replaced the
-/// clipboard and started the grace. ⌘⏎, Done's own chord, copies, so ⌘⏎ twice is done and copied; its auto-repeat
-/// does not, so ⌘⏎ held a little long after Done does not copy. Esc is Back.
-public enum ReviewKey: Equatable {
-    case copy, back
-    /// Swallowed: the read-only text would otherwise take it and do nothing.
-    case nothing
-    /// Not the sheet's: the panel handles it as usual.
-    case pass
-
-    /// `keyCode`: 36 Return, 76 keypad Enter, 53 Esc. `command`: ⌘ is down; `others`: ⌥, ⌃ or ⇧ is.
-    public static func route(keyCode: UInt16, command: Bool, others: Bool, isRepeat: Bool) -> ReviewKey {
-        switch keyCode {
-        case 36, 76:
-            if others { return .pass }
-            return command && !isRepeat ? .copy : .nothing
-        case 53:
-            return command || others ? .pass : .back
-        default:
-            return .pass
-        }
     }
 }

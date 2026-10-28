@@ -1,13 +1,12 @@
 // Flow (working name): the writing surface (DESIGN.md S1 V2 B4 P0) in a small floating box over whatever the user is
-// doing, or in an ordinary window for long sessions (W2), kept in the journal (E2), with key clicks (K1), the session
-// frame (M1: time box, intent, private log), summoning (hotkey, menu-bar item), and the end of a session: Done → review
-// → paste into the app behind the box, copy, save or discard (O1 O2 O3 R1).
+// doing, or in an ordinary window for long sessions (W2), kept in the journal (E2), with key clicks (K1), summoning
+// (hotkey, menu-bar item), and the end of a session: Done pastes into the app behind the box, or Copy, Save… or
+// Discard…, with R1 applied silently and the session finished at once (O1 O2 O3 R1).
 import AppKit
 import Carbon.HIToolbox
 import FlowClicks
 import FlowCore
 import FlowJournal
-import QuartzCore
 import UniformTypeIdentifiers
 
 final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemValidation {
@@ -20,10 +19,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     private var target: NSRunningApplication?
     private let keeper = Keeper()
     private var session = Session()
-    private var review: Review?
-    /// The review's host in window mode; in the box the box holds the review itself.
-    private var sheet: ReviewPanel?
-    private var asking = false  // a question is up: Discard, Time box, Intent
+    private var asking = false  // a question is up: Discard
     /// The journal could not open: said on the first container to come on screen (at launch nothing shows).
     private var notKept = false
     /// ⌃⌘F or the close button in full screen: back to the box once the window has left full screen.
@@ -33,12 +29,6 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     private var notice = BluetoothNotice()
     private var hotkey: Hotkey?
     private var statusItem: NSStatusItem?
-    // The session frame (M1), this session's only: in memory, gone when it ends or Flow quits; never journaled or
-    // logged.
-    private var timeBox: TimeBox?, boxTimer: Timer?, intent: String?
-    /// What the review showed at Done, for the log line when the session is finished.
-    private var totals: (start: Date, seconds: Double, words: Int)?
-    private let tone = NSSound(data: Data(Tone.wav()))
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.register(defaults: [Self.soundKey: true])
@@ -48,6 +38,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         view.load(keeper.open())  // the silent restore: the last session's text, or an empty one
         view.onEdit = { [unowned self] in self.keeper.append($0) }
         view.onEscape = { [unowned self] in self.escape() }
+        view.onKey = { [unowned self] in self.edge.clearNote() }  // the next key, Esc included
         view.addSubview(edge)  // at the view's zero size, so the edge's autoresizing keeps it across the bottom
         box = Box(lineHeight: BoxFrame.height(fontSize: style.size))
         // Window mode (W2 keeps v1's window for long sessions): titled, with its standard buttons, so tiling window
@@ -108,7 +99,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         edge.showNotice()
     }
 
-    /// Session › Sound (⌘K), also in the menu-bar item: clicks and the soft end's tone on or off, kept across launches.
+    /// Session › Sound (⌘K), also in the menu-bar item: clicks on or off, kept across launches.
     @objc func toggleSound(_ sender: Any?) {
         UserDefaults.standard.set(!sound, forKey: Self.soundKey)
         clicks?.enabled = sound
@@ -133,7 +124,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         if surface.onScreen == nil { handBack() }
     }
 
-    /// `w`, or a sheet on it (a question, the review, the save panel on the review), has the keys.
+    /// `w`, or a sheet on it (a question, the save panel), has the keys.
     private func hasKeys(_ w: NSWindow) -> Bool {
         var key = NSApp.keyWindow
         while let k = key, k !== w { key = k.sheetParent }
@@ -156,20 +147,16 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     }
 
     /// The box stopped being the key window. A click outside it (into another app, through the dim) hides it as Esc
-    /// does, the review included; the session stays. The guard (`ClickOutside`) exists because the box also loses the
-    /// keys to Flow itself, and hiding then would pull the box from under its own sheet or question: a sheet on the box
-    /// (Save…, Discard…, Time box…, Intent…, an alert) takes the keys as it opens, and the box is going anyway on Esc,
-    /// the hotkey, a paste and Open Window. In a hand-off's grace the review stays, so its Undo stays in reach. Decided
-    /// a turn later, once AppKit has made the new key window key: `NSApp.keyWindow` then names it when it is Flow's,
-    /// and is nil when another app has the keys.
+    /// does; the session stays. The guard (`ClickOutside`) exists because the box also loses the keys to Flow itself,
+    /// and hiding then would pull the box from under its own sheet or question: a sheet on the box (Save…, Discard…, an
+    /// alert) takes the keys as it opens, and the box is going anyway on Esc, the hotkey, a paste and Open Window.
+    /// Decided a turn later, once AppKit has made the new key window key: `NSApp.keyWindow` then names it when it is
+    /// Flow's, and is nil when another app has the keys.
     private func boxLostKeys() {
         DispatchQueue.main.async { [self] in
             guard !box.panel.isKeyWindow else { return }  // it has them back already
-            var graced = false
-            if case .graced = session.phase { graced = true }
             guard ClickOutside.hides(boxOnScreen: surface.onScreen == .box, asking: asking,
-                                     sheet: box.panel.attachedSheet != nil, graced: graced,
-                                     flowHasKeys: NSApp.keyWindow != nil)
+                                     sheet: box.panel.attachedSheet != nil, flowHasKeys: NSApp.keyWindow != nil)
             else { return }
             surface.hide()
             apply()
@@ -178,7 +165,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     }
 
     /// Open Window (⌃⌘F, also from the box) and back: the line moves to the other container. Only while writing, so
-    /// the review and the questions stay with the container they opened on.
+    /// a hand-off and the questions stay with the container they opened on.
     @objc func toggleWindow(_ sender: Any?) {
         guard session.phase == .writing, !asking, container.attachedSheet == nil else { return }
         if surface.mode == .window, window.styleMask.contains(.fullScreen) { return leaveFullScreen() }
@@ -202,7 +189,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// Where the line lives now: the box's panel or the window. Questions are sheets on it.
     private var container: NSWindow { surface.mode == .box ? box.panel : window }
 
-    /// Makes the screen match `surface`: at most one container on screen, the line (or the box's review) in it.
+    /// Makes the screen match `surface`: at most one container on screen, the line in it. Off screen, a hand-off's note
+    /// goes: the next summon shows the line alone.
     private func apply() {
         let on = surface.onScreen
         if on != .box, box.isVisible {
@@ -218,7 +206,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
                 target = front  // after the window or a question Flow is in front itself: the target stays
             }
             if NSApp.isHidden { NSApp.unhideWithoutActivation() }
-            box.show(view, review: review)
+            box.show(view)
         case .window?:
             if NSApp.isHidden { NSApp.unhide(nil) }
             if window.isMiniaturized { window.deminiaturize(nil) }
@@ -233,7 +221,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             if window.attachedSheet == nil { window.makeFirstResponder(view) }
             activateFlow()
         case nil:
-            return
+            return edge.clearNote()
         }
         warnIfBluetooth()
         if notKept {
@@ -260,79 +248,12 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         if NSApp.isActive { NSApp.hide(nil) }
     }
 
-    // MARK: The session frame (M1)
+    // MARK: Keeping (E2): the session outlives a close, ⌘Q and a crash; only a hand-off and Discard end it.
 
-    /// Session › Time box…: the box starts when it is set; setting the running box again leaves it running, setting
-    /// an ended one again starts it afresh.
-    @objc func setTimeBox(_ sender: Any?) {
-        guard session.phase == .writing, !asking, container.attachedSheet == nil else { return }
-        asking = true
-        askTimeBox(current: timeBox?.minutes, for: questionHost()) { [unowned self] set, minutes in
-            self.asking = false
-            if set { self.startBox(minutes) }
-        }
-    }
-
-    private func startBox(_ minutes: Int?) {
-        if let minutes, let timeBox, timeBox.minutes == minutes, !timeBox.over { return }
-        boxTimer?.invalidate()
-        boxTimer = nil
-        timeBox = minutes.map { TimeBox(minutes: $0, start: CACurrentMediaTime()) }
-        edge.progress = timeBox == nil ? nil : 0
-        guard timeBox != nil else { return }
-        // Twice a second: the fill moves a point or two at a time at most, and nothing else wakes for it.
-        let t = Timer(timeInterval: 0.5, repeats: true) { [unowned self] _ in self.tickBox() }
-        t.tolerance = 0.1
-        RunLoop.main.add(t, forMode: .common)  // fills during a live resize and with a menu open too
-        boxTimer = t
-    }
-
-    /// The soft end: once, the tone (unless the sound is off, or the review is already up), and the line stays full.
-    /// Typing goes on (P0).
-    private func tickBox() {
-        guard var b = timeBox else { return }
-        let now = CACurrentMediaTime()
-        edge.progress = b.fraction(at: now)
-        if b.ends(at: now) {
-            boxTimer?.invalidate()
-            boxTimer = nil
-            if sound && session.phase == .writing { tone?.play() }
-        }
-        timeBox = b
-    }
-
-    /// Session › Intent…: one line, shown only in the review's header.
-    @objc func setIntent(_ sender: Any?) {
-        guard session.phase == .writing, !asking, container.attachedSheet == nil else { return }
-        asking = true
-        askIntent(current: intent, for: questionHost()) { [unowned self] set, line in
-            self.asking = false
-            if set { self.intent = line }
-        }
-    }
-
-    /// The private log: one line of totals per finished session, beside the sessions' folder.
-    private static let log = Keeper.directory.deletingLastPathComponent().appendingPathComponent("log.tsv")
-
-    private func logFinished() {
-        guard let t = totals else { return }
-        let folder = Self.log.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true,
-                                                 attributes: [.posixPermissions: 0o700])
-        let line = PrivateLog.line(start: t.start.timeIntervalSince1970, offset: TimeZone.current.secondsFromGMT(for: t.start),
-                                   seconds: t.seconds, words: t.words)
-        if !PrivateLog.append(line, to: Self.log.path) { NSLog("Flow: the log could not be written") }
-    }
-
-    /// Session › Show Log: the file in Finder.
-    @objc func showLog(_ sender: Any?) { NSWorkspace.shared.activateFileViewerSelecting([Self.log]) }
-
-    // MARK: Keeping (E2): the session outlives a close, ⌘Q and a crash; only a hand-off's grace and Discard end it.
-
-    /// The close button returns to the box, as ⌃⌘F does; with the review or a question up it only hides the window
+    /// The close button returns to the box, as ⌃⌘F does; with a question or the save panel up it only hides the window
     /// (they stay with it, and the hotkey brings it back). Quitting is ⌘Q, which keeps the session.
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        if review != nil || asking || window.attachedSheet != nil {
+        if asking || window.attachedSheet != nil {
             surface.hide()
             apply()
             handBack()
@@ -360,7 +281,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     }
 
     /// One plain alert when the journal could not be opened, on the container on screen (or the first to come); the
-    /// surface stays quiet, the review's footer repeats it.
+    /// surface stays quiet.
     private func warnIfNotKept() {
         guard let problem = keeper.problem else { return }
         guard surface.onScreen != nil else { return notKept = true }
@@ -379,96 +300,42 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         return container
     }
 
-    // MARK: The end of a session (O1 O2 R1)
+    // MARK: The end of a session (O1 O2 O3 R1): R1 applied silently, finished at once (no review, no grace)
 
     private var blank: Bool { view.text.plainText.allSatisfy(\.isWhitespace) }
 
     func validateMenuItem(_ item: NSMenuItem) -> Bool {
         switch item.action {
-        case #selector(done(_:)): return session.phase == .writing && !asking && !blank
-        case #selector(discard(_:)): return !asking && session.phase != .cleared && !(session.phase == .writing && blank)
-        case #selector(setTimeBox(_:)), #selector(setIntent(_:)):
-            return session.phase == .writing && !asking && container.attachedSheet == nil
+        case #selector(done(_:)), #selector(copyText(_:)), #selector(saveText(_:)):
+            return session.phase == .writing && !asking && !blank
+        case #selector(discard(_:)): return !asking && session.phase == .writing && !blank
         case #selector(toggleWindow(_:)):
             item.title = surface.mode == .window ? "Close Window" : "Open Window"
             return session.phase == .writing && !asking && container.attachedSheet == nil
         case #selector(toggleSound(_:)):
             item.state = sound ? .on : .off
             return true
-        case #selector(showLog(_:)): return FileManager.default.fileExists(atPath: Self.log.path)
         default: return true
         }
     }
 
-    /// Done (⌘⏎): the surface stops with its last frame, and the review opens: in the box, which grows upward in place;
-    /// in the window, as a sheet.
-    @objc func done(_ sender: Any?) {
-        guard !asking, !blank, session.done() else { return }
+    /// Done, Copy and Save… begin alike: the keys stop (a pending dead key joins the text, as the line shows it) and the
+    /// text to hand off is R1's, applied silently (no toggle, no undo). Nil when there is nothing to hand off, or a
+    /// hand-off or a question is already up.
+    private func handOff() -> String? {
+        guard !asking, !blank, session.handOff() else { return nil }
         view.stop()
         keeper.flushSoon()
-        let raw = view.text.plainText, words = Mechanical.words(raw)
-        let seconds = keeper.started.map { Date().timeIntervalSince($0) } ?? 0
-        totals = (keeper.started ?? Date(), seconds, words)
-        let r = Review(raw: raw, stats: "\(Session.duration(seconds)) · \(words) \(words == 1 ? "word" : "words")",
-                       note: keeper.problem.map { "Not kept on disk: \($0)." }, intent: intent,
-                       paste: surface.mode == .box)  // the window has no app behind it to paste into
-        r.onCopy = { [unowned self] in self.copyOut() }
-        r.onPaste = { [unowned self] in self.pasteOut() }
-        r.onSave = { [unowned self] in self.saveOut() }
-        r.onBack = { [unowned self] in self.back() }
-        r.onDiscard = { [unowned self] in self.discard(nil) }
-        r.onUndoHandoff = { [unowned self] in
-            if self.session.undo() { self.review?.showHandoff(nil, undoable: false) }
-        }
-        // R1 toggled after a hand-off: what was copied, saved or pasted is no longer the text shown, so the grace
-        // stops, as under the save panel, and the session is not finished with the older text.
-        r.onTextChange = { [unowned self] in
-            if self.session.undo() { self.review?.showHandoff(nil, undoable: false) }
-        }
+        return Mechanical.apply(view.text.plainText).text
+    }
+
+    /// Done (⌘⏎): into the app that was in front when the box was summoned (O3). Decided first (`Paste.decide`); when
+    /// it cannot paste, and always in the window (no app behind it), it copies and the bottom edge says why. Either way
+    /// the session is finished at once.
+    @objc func done(_ sender: Any?) {
+        guard let text = handOff() else { return }
         showSurface()  // the hotkey may have hidden it; the menu-bar item's Done comes from another app
-        review = r
-        switch surface.mode {
-        case .box:
-            box.hold(view, review: r)
-        case .window:
-            let s = ReviewPanel(review: r, room: window.contentLayoutRect.size)
-            sheet = s
-            window.beginSheet(s)
-        }
-    }
-
-    /// The review goes: the box shrinks back to the line, or the sheet ends; the line has the keys again.
-    private func closeReview() {
-        review = nil
-        if let s = sheet {
-            window.endSheet(s)
-            sheet = nil
-            window.makeFirstResponder(view)
-        } else {
-            box.hold(view, review: nil)
-        }
-    }
-
-    /// Back: the sheet closes and writing goes on; nothing is destroyed, a running grace included.
-    private func back() {
-        guard review != nil, session.back() else { return }
-        closeReview()
-        view.resume()
-    }
-
-    /// Copy (O1), and Paste's fallback with `note` saying why it copied instead.
-    private func copyOut(note: String? = nil) {
-        guard let r = review else { return }
-        guard Clipboard.write(r.text) != nil else { return r.showHandoff("Not copied.", undoable: false) }
-        handedOff(.copied, note: note)
-    }
-
-    // MARK: Paste (O3)
-
-    /// ⌘⏎ in the box's review, and its Paste button: into the app that was in front when the box was summoned. Decided
-    /// first (`Paste.decide`); when it cannot paste it copies and the footer says why.
-    private func pasteOut() {
-        guard let r = review else { return }
+        guard surface.mode == .box else { return copyOut(text, note: Paste.noTargetNote) }
         let app = target.flatMap { $0.isTerminated ? nil : $0 }
         switch Paste.decide(secureInput: IsSecureEventInputEnabled(), mayPost: CGPreflightPostEventAccess(),
                             hasTarget: app != nil) {
@@ -476,37 +343,52 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             // macOS's Accessibility prompt, once (seen 2026-10-28: CGRequestPostEventAccess brought none, this does; the
             // Accessibility grant covers posting events too)
             if ask { _ = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary) }
-            copyOut(note: note)
+            copyOut(text, note: note)
         case .paste:
-            afterReturnIsUp { [unowned self] in
-                guard self.review === r, let app else { return }
-                self.paste(r.text, into: app)
-            }
+            afterReturnIsUp { [unowned self] in self.paste(text, into: app!) }  // `decide` pastes only with a target
         }
     }
 
-    /// The pasteboard as Copy writes it, the box and the dim gone, the app behind in front, ⌘V posted 120 ms later, and
-    /// 250 ms after that the old clipboard back if the pasteboard still holds Flow's item. The grace runs while the box
-    /// is hidden: a summon within it shows the review with `Pasted · Undo (10 s)` (Undo keeps the text in Flow); after
-    /// it the session is finished as after Copy and the next summon shows an empty line.
+    /// Copy (⌘⇧C, O1): R1's text on the clipboard; the session is finished and the box (or the window) goes, as after a
+    /// paste.
+    @objc func copyText(_ sender: Any?) {
+        guard let text = handOff() else { return }
+        copyOut(text, note: nil)
+    }
+
+    /// The pasteboard as Copy writes it, then the session is finished. `note`: ⌘⏎ copied instead of pasting, and why;
+    /// the container then stays with the note at its bottom edge, until the next key or Esc. Without one the container
+    /// goes, as after a paste.
+    private func copyOut(_ text: String, note: String?) {
+        guard Clipboard.write(text) != nil else { return notHandedOff("Not copied.") }
+        guard finished() else { return }
+        if let note { return edge.showNote(note) }
+        surface.hide()
+        apply()
+        handBack()
+    }
+
+    // MARK: Paste (O3)
+
+    /// The pasteboard as Copy writes it, the session finished, the box and the dim gone, the app behind in front, ⌘V
+    /// posted 120 ms later, and 250 ms after that the old clipboard back if the pasteboard still holds Flow's item. The
+    /// next summon shows an empty line.
     private func paste(_ text: String, into app: NSRunningApplication) {
-        guard let keys = CommandV() else { return copyOut(note: "Copied · ⌘V could not be made") }
+        guard let keys = CommandV() else { return copyOut(text, note: "Copied · ⌘V could not be made") }
         let old = Clipboard.save()  // before Flow's write replaces it
-        guard let mine = Clipboard.write(text) else {
-            review?.showHandoff("Not pasted.", undoable: false)
-            return
-        }
-        handedOff(.pasted)
+        guard let mine = Clipboard.write(text) else { return notHandedOff("Not pasted.") }
+        guard finished() else { return }
         surface.hide()
         apply()
         bringForward(app)
         DispatchQueue.main.asyncAfter(deadline: .now() + Paste.settle) { [weak self] in
             guard let self else { return }
             // Again, now that the app has its keys back: a password field turns Secure Input on only while its window
-            // is key, and the box had taken that. The text stays on the pasteboard, as a copy.
+            // is key, and the box had taken that. The text stays on the pasteboard, as a copy, and the box comes back
+            // saying so.
             if IsSecureEventInputEnabled() {
-                self.handedOff(.copied, note: Paste.secureNote)
-                return self.showSurface()
+                self.showSurface()
+                return self.edge.showNote(Paste.secureNote)
             }
             keys.post()
             DispatchQueue.main.asyncAfter(deadline: .now() + Paste.restoreAfter) {
@@ -525,8 +407,9 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     }
 
     /// Runs `then` once Return (or Enter) is up again, at most a second on: ⌘⏎ held into the app behind would reach it
-    /// as auto-repeated ⌘⏎ (which sends a message in many apps) once the box is gone. While the box waits, its review
-    /// swallows the repeats. A click on Paste runs `then` at once.
+    /// as auto-repeated ⌘⏎ (which sends a message in many apps) once the box is gone. While the box waits, the repeats
+    /// find Done off (the hand-off is under way) and the line not taking keys. Done from the menu-bar item runs `then`
+    /// at once.
     private func afterReturnIsUp(_ then: @escaping () -> Void) {
         guard let e = NSApp.currentEvent, e.type == .keyDown, [36, 76].contains(e.keyCode) else { return then() }
         var ran = false
@@ -540,27 +423,29 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { once() }
     }
 
-    /// Save… (O2): Markdown, written atomically, to a folder the panel remembers. A grace already running stops while
-    /// the panel is up, so the session is never finished under it; the save starts a new one.
-    private func saveOut() {
-        guard let r = review else { return }
-        if session.undo() { r.showHandoff(nil, undoable: false) }
+    /// Save… (⌘S, O2): R1's text as Markdown, written atomically, to a folder the panel remembers; the session is then
+    /// finished and the box (or the window) goes, as after a paste. Cancel: writing goes on.
+    @objc func saveText(_ sender: Any?) {
+        guard let text = handOff() else { return }
         let panel = NSSavePanel()
         panel.allowedContentTypes = [UTType(filenameExtension: "md") ?? .plainText]
         panel.nameFieldStringValue = "flow-\(stamp.string(from: Date())).md"
         if let folder = UserDefaults.standard.string(forKey: Self.folderKey) {
             panel.directoryURL = URL(fileURLWithPath: folder, isDirectory: true)
         }
-        if surface.mode == .box { activateFlow() }  // the save panel is a sheet: it takes keys only in the active app
-        panel.beginSheetModal(for: sheet ?? box.panel) { [unowned self] response in
-            guard response == .OK, let url = panel.url, let r = self.review else { return }
+        // A sheet on the container; on the box Flow comes forward first, since a sheet takes keys only in the active app.
+        panel.beginSheetModal(for: questionHost()) { [unowned self] response in
+            guard response == .OK, let url = panel.url else { return self.notHandedOff(nil) }
             do {
-                try Data((r.text + "\n").utf8).write(to: url, options: .atomic)
+                try Data((text + "\n").utf8).write(to: url, options: .atomic)
             } catch {
-                return r.showHandoff("Not saved: \(describe(error)).", undoable: false)
+                return self.notHandedOff("Not saved: \(describe(error)).")
             }
             UserDefaults.standard.set(url.deletingLastPathComponent().path, forKey: Self.folderKey)
-            self.handedOff(.saved(name: url.lastPathComponent))
+            guard self.finished() else { return }
+            self.surface.hide()
+            self.apply()
+            self.handBack()
         }
     }
 
@@ -572,36 +457,32 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         return f
     }()
 
-    /// A hand-off happened: the session is finished after the grace unless Undo or Back comes first. `note`: a copy
-    /// made in Paste's place says why.
-    private func handedOff(_ how: Handoff, note: String? = nil) {
-        let now = CACurrentMediaTime(), until = now + Session.grace
-        guard session.handedOff(how, at: now) else { return }
-        switch how {
-        case .copied: review?.showHandoff((note ?? "Copied") + " ·", undoable: true)
-        case .saved(let name): review?.showHandoff("Saved \(name) ·", undoable: true)
-        case .pasted: review?.showHandoff("Pasted ·", undoable: true)
-        }
-        // Ticks at the grace's own end rather than the clock's reading when the timer fires, so rounding cannot make
-        // it early; a stale timer (undone, or a later hand-off that started the grace again) finds the phase moved on.
-        DispatchQueue.main.asyncAfter(deadline: .now() + Session.grace) { [weak self] in
-            guard let self, self.session.tick(at: until) else { return }
-            self.end(discard: false)
-        }
+    /// Pasted, copied or saved: the session is finished at once. False when the key store refused (`end` says so).
+    private func finished() -> Bool {
+        guard session.handedOff() else { return false }
+        return end(discard: false)
     }
 
-    /// Discard… (the menu, or the review's button): asks once, then destroys the key and clears.
+    /// The hand-off did not happen: writing goes on with the text as it was. `why`: the pasteboard refused or the file
+    /// could not be written, said at the bottom edge; nil: the save panel was cancelled.
+    private func notHandedOff(_ why: String?) {
+        session.back()
+        view.resume()
+        guard let why else { return }
+        showSurface()
+        edge.showNote(why)
+    }
+
+    /// Discard… (the menu-bar item): asks once, then destroys the key and clears.
     @objc func discard(_ sender: Any?) {
-        guard !asking, session.phase != .cleared else { return }
-        if session.undo() { review?.showHandoff(nil, undoable: false) }  // no grace runs out under the question
+        guard !asking, session.phase == .writing else { return }
         let a = NSAlert()
         a.messageText = "Discard this session's text?"
         a.informativeText = "It cannot be recovered."
         a.addButton(withTitle: "Discard").hasDestructiveAction = true
         a.addButton(withTitle: "Cancel")
         asking = true
-        let host = questionHost()
-        a.beginSheetModal(for: sheet ?? host) { [unowned self] response in
+        a.beginSheetModal(for: questionHost()) { [unowned self] response in
             self.asking = false
             guard response == .alertFirstButtonReturn, self.session.discard() else { return }
             self.end(discard: true)
@@ -609,30 +490,26 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     }
 
     /// The session is over: key destroyed, file deleted, the surface cleared, a new session begun. If the key store
-    /// refuses, the session stays and the review (or an alert, from the surface) says why.
-    private func end(discard: Bool) {
+    /// refuses, the session stays, writing goes on and an alert says why; false then.
+    @discardableResult private func end(discard: Bool) -> Bool {
         do {
             try keeper.end(discard: discard)
         } catch {
             session.kept()
-            let why = "Not finished: \(describe(error)). The session stays."
-            if let r = review { return r.showHandoff(why, undoable: false) }
-            session.back()
+            view.resume()
             let a = NSAlert()
-            a.messageText = why
-            return a.beginSheetModal(for: questionHost())
+            a.messageText = "Not finished: \(describe(error)). The session stays."
+            a.beginSheetModal(for: questionHost())
+            return false
         }
-        if !discard { logFinished() }
-        if review != nil { closeReview() }
-        startBox(nil)
-        intent = nil
         view.load(keeper.open())
         session.started()
         warnIfNotKept()
+        return true
     }
 }
 
-/// Flow: About, Quit; Session: Done, Discard…, Time box…, Intent…, Sound, Show Log; View: Open Window. As an accessory
+/// Flow: About, Quit; Session: Done, Copy, Save…, Discard…, Sound; View: Open Window. As an accessory
 /// app Flow shows no menu bar, so this is where the key equivalents live (the menu-bar item's menu shows the items).
 /// No Edit menu yet, so no ⌘ shortcut but these reaches the text. Full screen: the window's green button.
 func mainMenu() -> NSMenu {
@@ -642,13 +519,12 @@ func mainMenu() -> NSMenu {
     app.addItem(.separator())
     app.addItem(withTitle: "Quit Flow", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     session.addItem(withTitle: "Done", action: #selector(App.done(_:)), keyEquivalent: "\r")  // ⌘⏎
+    session.addItem(withTitle: "Copy", action: #selector(App.copyText(_:)), keyEquivalent: "c")
+        .keyEquivalentModifierMask = [.command, .shift]  // ⌘⇧C
+    session.addItem(withTitle: "Save…", action: #selector(App.saveText(_:)), keyEquivalent: "s")  // ⌘S
     session.addItem(withTitle: "Discard…", action: #selector(App.discard(_:)), keyEquivalent: "")
     session.addItem(.separator())
-    session.addItem(withTitle: "Time box…", action: #selector(App.setTimeBox(_:)), keyEquivalent: "")
-    session.addItem(withTitle: "Intent…", action: #selector(App.setIntent(_:)), keyEquivalent: "")
-    session.addItem(.separator())
     session.addItem(withTitle: "Sound", action: #selector(App.toggleSound(_:)), keyEquivalent: "k")  // ⌘K
-    session.addItem(withTitle: "Show Log", action: #selector(App.showLog(_:)), keyEquivalent: "")
     view.addItem(withTitle: "Open Window", action: #selector(App.toggleWindow(_:)), keyEquivalent: "f")
         .keyEquivalentModifierMask = [.control, .command]
     for menu in [app, session, view] { bar.addItem(withTitle: menu.title, action: nil, keyEquivalent: "").submenu = menu }

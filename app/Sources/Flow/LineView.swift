@@ -20,7 +20,9 @@ final class LineView: NSView, NSTextInputClient {
     var clicks: ClickPlayer?
     /// Esc while writing: the box hides (the app decides; in the window Esc does nothing).
     var onEscape: () -> Void = {}
-    /// False from Done until Back: keys do nothing and the line keeps its last frame.
+    /// Each key the line takes (not a ⌘ chord, which is the menu's), Esc included: a hand-off's note goes.
+    var onKey: () -> Void = {}
+    /// False during a hand-off (Done, Copy, Save…): keys do nothing and the line keeps its last frame.
     private(set) var accepting = true
     /// `glide` moves the text before the caret (an edit there), `slide` the whole text (a caret move): S1, B4.
     private var shaped = Shaped(), glide = Glide(), slide = Glide()
@@ -78,7 +80,7 @@ final class LineView: NSView, NSTextInputClient {
         render(at: CACurrentMediaTime())
     }
 
-    /// Draws again as the view now stands: its container came on screen, or the line came back from under the review.
+    /// Draws again as the view now stands: its container came on screen.
     func redraw() { relayout() }
 
     // MARK: Frames
@@ -150,8 +152,8 @@ final class LineView: NSView, NSTextInputClient {
         if window != nil { render(at: CACurrentMediaTime()) }
     }
 
-    /// Done: keys stop. Pending input (a dead key) joins the text, as the line already shows it, so the review and the
-    /// journal hold what was on screen.
+    /// A hand-off: keys stop. Pending input (a dead key) joins the text, as the line already shows it, so the hand-off
+    /// and the journal hold what was on screen.
     func stop() {
         accepting = false
         if !marked.isEmpty {
@@ -162,7 +164,7 @@ final class LineView: NSView, NSTextInputClient {
         inputContext?.discardMarkedText()
     }
 
-    /// Back: keys again.
+    /// The hand-off did not happen (the save panel cancelled, the pasteboard refused, the key kept): keys again.
     func resume() { accepting = true }
 
     // MARK: Input
@@ -173,6 +175,7 @@ final class LineView: NSView, NSTextInputClient {
         if event.modifierFlags.contains(.command), event.specialKey != .leftArrow, event.specialKey != .rightArrow {
             return
         }
+        onKey()
         interpretKeyEvents([event])
     }
 

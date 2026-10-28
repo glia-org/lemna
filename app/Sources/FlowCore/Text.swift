@@ -5,7 +5,7 @@ import FlowJournal
 import Foundation
 
 public struct Text: Equatable {
-    /// The text, a paragraph end as "\n": for the journal, the review and the output.
+    /// The text, a paragraph end as "\n": for the journal and the output.
     public private(set) var plainText: String
     /// Characters before the caret, 0 … `count`.
     public private(set) var caret: Int

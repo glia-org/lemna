@@ -60,12 +60,11 @@ private func fix(_ s: String) -> String { Mechanical.apply(s).text }
     #expect(fix("Ok,fine;  done") == "Ok,fine; done")
 }
 
-@Test func countsAndSummary() {
+@Test func counts() {
     let r = Mechanical.apply("hello  world, i said so \nnext")
     #expect((r.capitals, r.spaces, r.trailing, r.lone) == (2, 1, 1, 1))  // "Hello", "Next"; one run; one end; "I"
     #expect(r.count == 5)
-    #expect(r.summary == "2 capitals, 1 double space, 1 trailing space, 1 i → I")
-    #expect(Mechanical.apply("Fine.").summary == "")
+    #expect(Mechanical.apply("Fine.").count == 0)
 }
 
 @Test func secondPassChangesNothing() {
@@ -76,9 +75,4 @@ private func fix(_ s: String) -> String { Mechanical.apply(s).text }
         #expect(twice.text == once.text, "\(s)")
         #expect(twice.count == 0, "\(s)")
     }
-}
-
-@Test func wordCount() {
-    #expect(Mechanical.words("Hello, world — 3 times.\nAnd i'm here") == 7)  // the dash is not a word
-    #expect(Mechanical.words("  ") == 0)
 }

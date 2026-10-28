@@ -40,8 +40,8 @@ final class Hotkey {
 
 /// The menu-bar item: the mark (a template, so the menu bar tints it) and Flow's menu. As an accessory app Flow has no
 /// menu bar of its own, so this menu carries the main menu's items too: Show Flow (with the hotkey's chord), Open
-/// Window, Done, Discard…, Time box…, Intent…, Sound, Show Log, Quit. The App validates them: Done's state, Sound's
-/// check mark, Open Window's title.
+/// Window, Done, Copy, Save…, Discard…, Sound, Quit. The App validates them: the hand-offs' state, Sound's check mark,
+/// Open Window's title.
 func makeStatusItem(target: AnyObject) -> NSStatusItem {
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)  // retained by the caller
     let mark = NSImage(size: StatusMark.size, flipped: false) { _ in
@@ -59,13 +59,12 @@ func makeStatusItem(target: AnyObject) -> NSStatusItem {
         .keyEquivalentModifierMask = [.control, .command]
     menu.addItem(.separator())
     menu.addItem(withTitle: "Done", action: #selector(App.done(_:)), keyEquivalent: "\r")
+    menu.addItem(withTitle: "Copy", action: #selector(App.copyText(_:)), keyEquivalent: "c")
+        .keyEquivalentModifierMask = [.command, .shift]
+    menu.addItem(withTitle: "Save…", action: #selector(App.saveText(_:)), keyEquivalent: "s")
     menu.addItem(withTitle: "Discard…", action: #selector(App.discard(_:)), keyEquivalent: "")
     menu.addItem(.separator())
-    menu.addItem(withTitle: "Time box…", action: #selector(App.setTimeBox(_:)), keyEquivalent: "")
-    menu.addItem(withTitle: "Intent…", action: #selector(App.setIntent(_:)), keyEquivalent: "")
-    menu.addItem(.separator())
     menu.addItem(withTitle: "Sound", action: #selector(App.toggleSound(_:)), keyEquivalent: "k")
-    menu.addItem(withTitle: "Show Log", action: #selector(App.showLog(_:)), keyEquivalent: "")
     for i in menu.items where i.action != nil { i.target = target }  // the app may not be active: no key window
     menu.addItem(.separator())
     menu.addItem(withTitle: "Quit Flow", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
