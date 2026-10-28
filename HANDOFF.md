@@ -342,8 +342,52 @@
     border; the dim over a light and a dark app.
   - Reduce Motion on: the box comes and goes at once, no pop-in, no sheens, those four items grey; the paragraph fade
     and Border warms still play. Increase Contrast on: the ` ¶ ` and a bottom-edge note lighter (#8d95a0).
-- Next: the user quits Flow and tries pass 14b (its list replaces pass 14's), pass 13, then pass 12, pass 11 and pass
-  10, and what of v1, pass 6, pass 7b's click outside and pass 8 is still untried; then DESIGN.md's Open items.
+- App, pass 15 (2026-10-28; the ambience, DESIGN.md A1 amending F0, Plan item 12; the user: "something like the
+  omarchy-screensaver like ambient animations when typing. Some different modes that just make it look a bit cooler",
+  then `M1+M2+M3+M4+M5+M6+M7 D0 R1 S1 C1 I1` of `docs/design-panel-lemna-ambience.html`): seven modes that play on the
+  dim around the box while you type, each gone 4 s after the last key (its last second fading), never on the line:
+  Drift (the line's own glyphs leave the box's left edge and drift off), Rain, Rings, Beams, Grid, Fireworks, Swarm.
+  Session › Ambience ▸ (and the menu-bar item's) beside Sound and Effects: the seven, then Off, radio ticks, Off at
+  first, kept as `ambience`; Reduce Motion greys the modes and plays none. Drift, Rings, Grid, Fireworks and Swarm play
+  on the box's screen, Rain and Return's beam on every screen; nothing in window mode (⌃⌘F), which has no dim. Built as
+  R1: a clear `CAMetalLayer` over each screen's shade, its own `CAMetalDisplayLink` at 60 Hz on one scene thread,
+  paused and shrunk to one clear pixel when nothing plays; CPU particles in LemnaCore (`Ambience.Scene`, at most 2,000
+  sprites), one Metal pipeline of instanced quads with a glyph atlas of the line's font, the shader compiled from
+  source at runtime, once, at the box's show. The line's display link and band are untouched; the key handler hands
+  the key on after its frame as a value (a lock and an append). Every magnitude is in `Ambience.Tuning` (the panel's
+  I1 values; Drift's departure at the line's speed and Rain's 0.6 trail falloff added after the renders showed Drift
+  bunching at the edge). Tests: the app's 76 (58 before, 18 new: the choice's default, round trip and Reduce Motion,
+  the tuning, the sprite layout, the stage, the typing rate, the run's 4 s and its close, the glyph that leaves the
+  box's edge, each mode's coupling, the cap in every mode, the shader compiled and one frame drawn offscreen, and
+  `app/renders/ambience-<mode>.png`: each mode after 10 s of typing over a dimmed dark app with the box, drawn by the
+  Metal pipeline); LemnaJournal 16 (the login-keychain test skipped), LemnaClicks 14 (`--skip
+  playReturnsInMicroseconds`), both untouched. Measured (release, this Mac, 2×): a scene's step 1.6–24 µs a frame at the
+  cap (Drift 24, Rings 17, Beams 10, Rain 9), encode, copy and commit 11 µs, the GPU 0.39 ms a frame for 2,000 glyphs
+  over the screen; the shader's compile 53–361 ms uncached, 1–2 ms from the system's cache. The key's latency with a
+  scene playing (the panel's budget: p50/p90 no worse than 42/60 ms) was not measured: nothing was launched.
+  `make-app.sh` builds, signs with "Lemna Dev" (`Authority=Lemna Dev`) and verifies; the executable is 1.20 MB
+  (1,202,384 bytes, was 907,200), with no `/Users/` path in it. `app/README.md` (Pass 15) says what each part does.
+  Not tried: nothing was launched. Try, after `app/make-app.sh` and `open app/build/Lemna.app`, with Reduce Motion off:
+  - The renders first, for the look: `app/renders/ambience-drift.png` and the six others.
+  - Each mode at speed: the menu-bar item's Ambience ▸ Drift, summon over a dark app, type a long sentence at your
+    pace (about 6 keys/s) for half a minute, then the same with Rain, Rings, Beams, Grid, Fireworks (Return now and
+    then) and Swarm. Plainly visible without staring? Too much? Each is one row of `Ambience.Tuning`. Drift needs about
+    32 characters on the line before the first glyph reaches the box's left edge.
+  - Idle: stop typing: nothing new comes, the last second fades and by 4 s the dim is plain; Esc while it plays: the
+    scene fades with the dim.
+  - Over a light app (a white page in Safari or TextEdit) and a dark one (a terminal): over the light one the scenes
+    nearly vanish (the panel's C1 risk); say whether that matters.
+  - CPU: Activity Monitor (CPU tab, Lemna) while typing steadily with Rain: it should stay low (a few per cent); idle
+    after 4 s: back to nothing. With a second screen, Rain falls there too.
+  - Latency: does the line feel as quick as with Ambience ▸ Off? Type a burst at 12 keys/s with Rain or Rings, then Off.
+  - The first scene after a launch: it starts with the first key (the shader compiles at the summon, off the main
+    thread); if the very first keys show nothing for a moment, say so.
+  - The menu: one tick at a time, Off last; another mode while typing takes over at the next key; relaunch keeps it.
+    Window mode (⌃⌘F): no ambience. Reduce Motion on: the seven are grey, Off ticked, nothing plays; off again: the
+    pick plays at the next summon.
+- Next: the user quits Flow and tries pass 15, pass 14b (its list replaces pass 14's), pass 13, then pass 12, pass 11
+  and pass 10, and what of v1, pass 6, pass 7b's click outside and pass 8 is still untried; then DESIGN.md's Open
+  items.
 
 ## Build and run
 

@@ -1,8 +1,8 @@
 // Lemna: the writing surface (DESIGN.md S1 V2 B4 P0) in a small floating box over whatever the user is
 // doing, or in an ordinary window for long sessions (W2), kept in the journal (E2), with key clicks (K1), summoning
 // (hotkey, menu-bar item), and the end of a session: Done pastes into the app behind the box, or Copy, Save… or
-// Discard…, with R1 applied silently and the session finished at once (O1 O2 O3 R1); and the effects, switched in the
-// Effects submenu (F1).
+// Discard…, with R1 applied silently and the session finished at once (O1 O2 O3 R1); the effects, switched in the
+// Effects submenu (F1); and the ambience on the dim, chosen in the Ambience submenu (A1).
 import AppKit
 import Carbon.HIToolbox
 import LemnaClicks
@@ -36,6 +36,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         choice = SoundChoice(pack: UserDefaults.standard.string(forKey: Self.packKey),
                              on: UserDefaults.standard.bool(forKey: Self.soundKey))
         effects = Effects(kept: UserDefaults.standard.dictionary(forKey: Self.effectsKey) as? [String: Bool])
+        ambience = Ambience(kept: UserDefaults.standard.string(forKey: Self.ambienceKey))
         let font = (NSFont(name: "Menlo", size: 28) ?? .monospacedSystemFont(ofSize: 28, weight: .regular)) as CTFont
         let style = Style(font: font)
         view = LineView(style: style)
@@ -44,10 +45,12 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         view.onEscape = { [unowned self] in self.escape() }
         view.onKey = { [unowned self] in self.edge.clearNote() }  // the next key, Esc included
         view.onShown = { [unowned self] in self.box.keyShown($0) }  // B2, K3, after the key's frame
+        view.onAmbient = { [unowned self] in self.box.ambientKey($0) }  // A1, after the key's frame
         view.addSubview(edge)  // at the view's zero size, so the edge's autoresizing keeps it across the bottom
         box = Box(lineHeight: BoxFrame.height(fontSize: style.size), style: style)
         view.effects = effects
         box.effects = effects
+        box.ambience = ambience
         // Window mode (W2 keeps v1's window for long sessions): titled, with its standard buttons, so tiling window
         // managers (AeroSpace, yabai) treat it as a normal window.
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1200, height: 700),
@@ -156,6 +159,19 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         UserDefaults.standard.set(effects.kept, forKey: Self.effectsKey)
         view.effects = effects
         box.effects = effects
+    }
+
+    // MARK: Ambience (A1)
+
+    private static let ambienceKey = "ambience"
+    /// Session › Ambience: the mode that plays on the dim, or Off; kept across launches (read at launch).
+    private var ambience = Ambience()
+
+    /// A mode from Session › Ambience (the item's tag is its place in `Ambience.Mode.allCases`), or Off (tag −1).
+    @objc func chooseAmbience(_ sender: NSMenuItem) {
+        ambience.choose(Ambience.Mode.allCases.indices.contains(sender.tag) ? Ambience.Mode.allCases[sender.tag] : nil)
+        UserDefaults.standard.set(ambience.kept, forKey: Self.ambienceKey)
+        box.ambience = ambience
     }
 
     // MARK: Summoning (W2)
@@ -392,6 +408,11 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         case #selector(toggleEffects(_:)):
             item.state = effects.on ? .off : .on  // Off is ticked while the effects are off
             return true
+        case #selector(chooseAmbience(_:)):  // Reduce Motion greys the modes and ticks Off, read as the menu opens
+            let still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+            let mode = Ambience.Mode.allCases.indices.contains(item.tag) ? Ambience.Mode.allCases[item.tag] : nil
+            item.state = ambience.playing(reduceMotion: still) == mode ? .on : .off
+            return mode == nil || Ambience.available(reduceMotion: still)
         default: return true
         }
     }
@@ -614,9 +635,25 @@ func effectsMenu(target: AnyObject?) -> NSMenu {
     return menu
 }
 
-/// Lemna: About, Quit; Session: Done, Copy, Save…, Discard…, Sound ▸, Effects ▸; View: Open Window. As an accessory
-/// app Lemna shows no menu bar, so this is where the key equivalents live (the menu-bar item's menu shows the items).
-/// No Edit menu yet, so no ⌘ shortcut but these reaches the text. Full screen: the window's green button.
+/// Session › Ambience and the menu-bar item's Ambience (A1 S1): the modes as radio items, then Off (last, as Sound and
+/// Effects have theirs; the default, D0); no key (chosen once, not muted for a call). `target` as for Sound.
+func ambienceMenu(target: AnyObject?) -> NSMenu {
+    let menu = NSMenu(title: "Ambience")
+    for (i, mode) in Ambience.Mode.allCases.enumerated() {
+        let item = menu.addItem(withTitle: mode.title, action: #selector(App.chooseAmbience(_:)), keyEquivalent: "")
+        item.tag = i
+        item.target = target
+    }
+    menu.addItem(.separator())
+    let off = menu.addItem(withTitle: "Off", action: #selector(App.chooseAmbience(_:)), keyEquivalent: "")
+    off.tag = -1
+    off.target = target
+    return menu
+}
+
+/// Lemna: About, Quit; Session: Done, Copy, Save…, Discard…, Sound ▸, Effects ▸, Ambience ▸; View: Open Window. As an
+/// accessory app Lemna shows no menu bar, so this is where the key equivalents live (the menu-bar item's menu shows the
+/// items). No Edit menu yet, so no ⌘ shortcut but these reaches the text. Full screen: the window's green button.
 func mainMenu() -> NSMenu {
     let bar = NSMenu(), app = NSMenu(title: "Lemna"), session = NSMenu(title: "Session"), view = NSMenu(title: "View")
     app.addItem(withTitle: "About Lemna", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
@@ -631,6 +668,7 @@ func mainMenu() -> NSMenu {
     session.addItem(.separator())
     session.addItem(withTitle: "Sound", action: nil, keyEquivalent: "").submenu = soundMenu(target: nil)  // Off ⌘K
     session.addItem(withTitle: "Effects", action: nil, keyEquivalent: "").submenu = effectsMenu(target: nil)
+    session.addItem(withTitle: "Ambience", action: nil, keyEquivalent: "").submenu = ambienceMenu(target: nil)
     view.addItem(withTitle: "Open Window", action: #selector(App.toggleWindow(_:)), keyEquivalent: "f")
         .keyEquivalentModifierMask = [.control, .command]
     for menu in [app, session, view] { bar.addItem(withTitle: menu.title, action: nil, keyEquivalent: "").submenu = menu }

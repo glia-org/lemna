@@ -11,7 +11,8 @@ paste, the box opaque under Reduce Transparency and the muted grey lighter under
 the menu-bar mark M3 and the app icon (L1); then pass 13: the name, Lemna (N; Flow was the working name); then pass 14:
 the effects (F1): Tokyo Night's colours, the box's pop, accent border and theme dim, the glide on easeOutQuint, the
 glyph pop-in, the sheens, the paragraph fade and Session › Effects ▸; then pass 14b: the effects made plain to see,
-their magnitudes in one table, and the colours back to Lemna's own. Swift +
+their magnitudes in one table, and the colours back to Lemna's own; then pass 15: the ambience (A1), seven scenes on the
+dim around the box fed by the keys, on a Metal layer of their own, and Session › Ambience ▸. Swift +
 AppKit, SwiftPM with the Command Line Tools only (no Xcode), two package dependencies by path (`../lib/LemnaJournal`,
 `../lib/LemnaClicks`), signed with a self-signed certificate or ad-hoc (there is no Developer ID yet).
 
@@ -50,7 +51,9 @@ window's content as the app does (1200 × 700 pt at 2×) and writes `app/renders
 `glide-70ms.png`, `glide-140ms.png` (after a new key), `marked.png` (a pending `´` at the caret), `editing.png` (the caret
 back in the text, the text after it shown) and `move-left-70ms.png` (70 ms into a ← there), and since pass 14
 `glide-8ms.png` and `pop-in-8ms.png` (the first 120 Hz frame after a key, without and with the glyph pop-in) and
-`paragraph-25ms.png` and `paragraph-fade-25ms.png` (25 ms after a Return, without and with the ` ¶ `'s fade); the mark test writes
+`paragraph-25ms.png` and `paragraph-fade-25ms.png` (25 ms after a Return, without and with the ` ¶ `'s fade), and since
+pass 15 `ambience-<mode>.png` for each of the seven modes (after 10 s of typing, 0.6 s after a Return, Fireworks 1 s,
+drawn by the Metal pipeline over a dimmed dark app with the box; skipped without a Metal device); the mark test writes
 `mark-M3-1x.png` and `mark-M3-2x.png` (16 and 32 px, black on clear). `app/build/` and `app/renders/` are
 git-ignored.
 
@@ -61,7 +64,10 @@ git-ignored.
   around the caret with ` ¶ `), `Line.swift` the geometry and drawing (Core Text shaping around the caret, the two
   fades, the clips at the caret, caret, the band, the newest glyphs' look, the colours), `Glide.swift` the glide, the curve
   (`Curve.easeOutQuint`) and the newest glyphs' entrance (`Entrance`), `Effects.swift` the Effects submenu's choice and
-  every effect's magnitude (`Effects.Tuning`),
+  every effect's magnitude (`Effects.Tuning`), `Ambience.swift` the Ambience submenu's choice, every magnitude of the
+  ambience (`Ambience.Tuning`), what the line sends and a scene is told, the stage, the sprite, the atlas's index and the
+  run of a scene (`Ambience.Run`), `Scenes.swift` the seven scenes, `Particles.swift` the Metal pipeline that draws them
+  (`Ambience.Renderer`: the shader's source, the glyph atlas, an offscreen frame for the tests),
   `Mechanical.swift`
   the deterministic pass R1, `Session.swift` the end of a session as a state machine, `Summoning.swift` the menu-bar
   mark and when the Bluetooth notice shows, `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
@@ -73,7 +79,9 @@ git-ignored.
   face, the border and the sheen, its open and close, the last look that fades, the warming border); `Paste.swift`
   the pasteboard (Copy's item; since pass 11 nothing is read from it) and the posted ⌘V; `Keeper.swift` the journal in
   the app (open and restore, append, the flushes); `LineView.swift` the view (text input, the keys of B4, edits as
-  journal edits and clicks, the two glides, display link); `Strip.swift` the Metal band (Core Graphics into a shared
+  journal edits and clicks, the two glides, display link; since pass 15 each key handed on to the ambience after its
+  frame); `Ambient.swift` the ambience on each dim (the scene thread, the Metal layer and its display link);
+  `Strip.swift` the Metal band (Core Graphics into a shared
   buffer, blitted into the drawable); `Frame.swift` the surface's bottom edge (the Bluetooth notice, a hand-off's
   note); `Summon.swift` the hotkey (Carbon) and the menu-bar item with Lemna's menu.
 - `Tests/LemnaCoreTests`: the model, the glide, the fades, nothing before the caret drawn right of it, the text after it
@@ -83,7 +91,10 @@ git-ignored.
   the Bluetooth notice, the muted colour's contrast (`FrameTests`); the box's frame and its clamps, one container at a
   time, the paste's decision table, the click-outside guard's table (`BoxTests`); the Sound submenu's default, a
   pack's choice and ⌘K (`SoundTests`); the Effects submenu's defaults, Off, Reduce Motion and its round trip through a
-  dictionary, the entrance on the curve, the newest glyph's fade and scale (`EffectsTests`).
+  dictionary, the entrance on the curve, the newest glyph's fade and scale (`EffectsTests`); the Ambience submenu's
+  default, round trip and Reduce Motion, the tuning, the sprite's layout, the stage, the typing rate, a run's 4 s and its
+  close, the glyph that leaves the box's edge, each mode's coupling, the cap, the shader and one frame offscreen, the
+  renders (`AmbienceTests`).
 
 ## What it covers
 
@@ -448,7 +459,68 @@ better before."):
   the old loop, 41.5–42.2 at rest, 41.7–42.1 during a pop-in, 43.3–43.5 during the ` ¶ `'s fade.
 - Build: the executable is 0.91 MB (907,200 bytes; 896,288 in pass 14), signed with "Lemna Dev".
 
+Pass 15, the ambience (DESIGN.md A1 amending F0, Plan item 12, 2026-10-28; the picks `M1+M2+M3+M4+M5+M6+M7 D0 R1 S1
+C1 I1` of `docs/design-panel-lemna-ambience.html`):
+
+- Session › Ambience ▸ (`ambienceMenu`, in the main menu and the menu-bar item's menu, after Effects): Drift, Rain,
+  Rings, Beams, Grid, Fireworks, Swarm (tags = `Ambience.Mode.allCases`), then Off (tag −1), radio ticks, no key.
+  `Ambience` (LemnaCore): the mode or Off (the default), `playing(reduceMotion:)` (none under Reduce Motion),
+  `available` (Reduce Motion greys the modes; Off stays), kept in UserDefaults as `ambience` (the mode's raw value or
+  `off`). The menu reads Reduce Motion as it opens, the box at each show and at a change in the submenu.
+- The key path (`LineView`): after a key's frame (after `onShown`), `onAmbient` gets an `Ambience.Key`: the key's time,
+  its kind (a glyph, Space, Return, ⌫ for every delete key that deleted), the line as shaped (`Shaped`, a reference to
+  its glyphs) and how far the edit moved the text before the caret. The box hands it to each playing screen's
+  `Ambient.key`: a lock (`OSAllocatedUnfairLock`) and an append; the first key after a pause also wakes the scene
+  thread. Caret moves and dead keys send nothing. Nothing else changes on the line: its display link, its band, its
+  draw. Window mode (⌃⌘F) has no dim, so no ambience: `Box.ambientKey` drops the keys while the box is not up.
+- The layers (`Ambient.swift`): each dim window's content is now a root layer with the shade and, once a mode has played
+  on that screen, a clear `CAMetalLayer` over it (bgra8, sRGB, not opaque), the screen's size at its scale. Its
+  `CAMetalDisplayLink` (macOS 14) runs at 60 Hz on one `SceneThread` (a `Thread` with its own run loop) from the first
+  key until the run is over (`Ambience.Run.frame` returns nil: 4 s after the last key, or at the end of a close), then
+  pauses; the layer's drawable is then 1 × 1 px and cleared, so the screen-sized drawables go. At each show `begin`
+  hands it the mode (none on a screen without the box for the box-bound modes) and the stage (`Ambience.Stage`: the
+  screen's size, the box and the line's band, baseline and caret in the screen's points); a new show or mode starts a
+  new scene at the next key. At the box's close each scene fades out over the dim's wait and fade (`close`), and
+  stops when the dim is gone (`stop`).
+- The run (`Ambience.Run`, on the scene thread): the keys become the scene's events, with what left the box's edge
+  found from each key's push (the glyphs before the caret whose middle passed the band's left edge, from the line's own
+  font, not the paragraph marks); the typing rate (`Ambience.Typing`: the keys of the last 2 s); the alpha every sprite
+  is drawn at (1, then the last second before 4 s after the last key, times a close's fade). The scene steps once a
+  frame (`Ambience.Scene.step(dt:events:rate:into:)`) and appends `Sprite`s (32 bytes: centre, size, rotation, alpha,
+  colour, kind and parameter); a scene spawns nothing that would take it past 2,000 (`Tuning.cap`), and the run cuts
+  at it too.
+- The scenes (`Scenes.swift`), each with its coupling and magnitudes in `Ambience.Tuning` (DESIGN.md A1 lists them):
+  Drift, Rain, Rings (the box's outline grown by r: four sides as thin rectangles, four corners as quarter rings of
+  radius 10 + r), Beams, Grid, Fireworks, Swarm. Seeded (`Ambience.Random`, SplitMix64), so the tests step them the
+  same way each time.
+- The renderer (`Particles.swift`, `Ambience.Renderer`): one pipeline, instanced quads as a triangle strip of four
+  corners per sprite, shapes a pixel larger for their soft edge; the fragment shader covers each by its kind (an atlas
+  glyph, a rectangle, a disc, a circle's stroke, a quarter ring, a beam rising to a white head) and writes premultiplied
+  colour; the colours add, the alpha lays over. The atlas: the line's font at 2×, 16 cells a row, ASCII, Latin-1's
+  letters and the common German and English punctuation, white on black in an 8-bit texture with two mipmap levels.
+  **The shader is a Swift string compiled at runtime** (`device.makeLibrary(source:)`): the Command Line Tools have no
+  Metal compiler, and the system's compiles it. Once per device and pixel format, cached in the process; the app makes
+  the renderer on the scene thread at the first show with a mode, so the first key finds it compiled. No device or a
+  failed compile: one line in the system log, and no ambience.
+- Measured (release, this Mac, the box's screen at 2×, scratch timing): a scene's step at the cap 24 µs a frame for
+  Drift (2,000 glyphs), 17 for Rings, 10 for Beams, 9 for Rain (2,000 cells), 6.5 for Swarm, 1.6 for Grid; a run with
+  a key a frame 7 µs; encode, copy and commit of 2,000 sprites 11 µs; the GPU 0.39 ms a frame for 2,000 glyph sprites
+  over a 3024 × 1964 drawable. The shader: 53–361 ms uncached (the first compile in a process the slowest), 1–2 ms
+  when the system's shader cache has it.
+- Build: the executable is 1.20 MB (1,202,384 bytes; 907,200 in pass 14b), no `/Users/` path in it; signed with
+  "Lemna Dev".
+
 ## Known gaps
+
+- Pass 15 is not tried: nothing was launched. Untried: that `CAMetalDisplayLink` fires on the scene thread's run loop
+  and keeps off the main thread (the panel's "to verify"); the key's latency with a scene playing (the budget: p50/p90
+  no worse than the spike's 42/60 ms, measured with os_signpost; not done); whether Core Animation composites the
+  layer's added light where a pixel's colour passes its alpha (overlapping sprites) or clamps it (either way it shows);
+  the scenes over a light app (C1: they nearly vanish there); the GPU memory of a playing screen (up to three
+  screen-sized drawables, about 24 MB each at 2× on a 14-inch screen, let go at the pause); Rain and Return's beam on a
+  second screen. The renders (`app/renders/ambience-*.png`) are the Metal pipeline's own frames over a drawn dim.
+- A box dragged to another place keeps its scene where the box was until the next summon (the stage is taken at each
+  show). Reduce Motion turned on while the box is up stops the ambience only at the next summon.
 
 - Pass 14b is not tried: nothing was launched. Whether the new magnitudes are now plain without being too much (the
   knobs are `Effects.Tuning`'s), and whether the 3 pt rise makes the line look jittery at speed.

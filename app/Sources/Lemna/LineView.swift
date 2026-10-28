@@ -2,7 +2,8 @@
 // between them, W2), its layer paints the background, and the line is drawn into the strip across its middle on each
 // key and, while a glide or an entrance runs, on each display refresh. The caret moves through the text and edits
 // anywhere (B4); every change to the text leaves as a journal edit (E2) and, ahead of the drawing, as a click (K1). The
-// newest glyph pops in and a Return's ` ¶ ` fades in, in the same frames (F1: K1, E2).
+// newest glyph pops in and a Return's ` ¶ ` fades in, in the same frames (F1: K1, E2). After each key's frame the key
+// goes on to the ambience as a value (A1).
 import AppKit
 import LemnaClicks
 import LemnaCore
@@ -31,6 +32,11 @@ final class LineView: NSView, NSTextInputClient {
     /// After a key's frame is on screen: what the key added before the caret ("" for a delete, a move, a dead key), for
     /// the box's border (B2) and the word sheen (K3). Called after the frame, so they never delay it.
     var onShown: (String) -> Void = { _ in }
+    /// Each key that changes the text, for the ambience (A1), handed on as a value after the key's frame, with the line
+    /// as now shaped and how far the edit moved the text before the caret; the box passes it to the scene thread.
+    var onAmbient: (Ambience.Key) -> Void = { _ in }
+    /// How far the last edit moved the text before the caret.
+    private var pushed = 0.0
     /// The newest glyphs' entrance (K1, E2): one at a time.
     private var entrance = Entrance()
     /// `glide` moves the text before the caret (an edit there), `slide` the whole text (a caret move): S1, B4.
@@ -120,6 +126,7 @@ final class LineView: NSView, NSTextInputClient {
     private func edited(before dw: CGFloat = 0, moved ds: CGFloat = 0, typed: String? = nil) {
         let now = CACurrentMediaTime(), still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         shaped = Line.shape(text, marked: marked, font: style.font)
+        pushed = Double(dw)
         glide.add(Double(dw), at: now, reduceMotion: still)
         slide.add(Double(ds), at: now, reduceMotion: still, cap: max(abs(Double(ds)), Double(word)),
                   limit: Double(bounds.width))
@@ -154,6 +161,11 @@ final class LineView: NSView, NSTextInputClient {
 
     private func width(_ s: String) -> CGFloat { Line.width(s, font: style.font) }
 
+    /// After a key's frame: the key as the ambience takes it (A1). A value, nothing drawn or computed here.
+    private func ambient(_ kind: Ambience.Key.Kind) {
+        onAmbient(Ambience.Key(t: keyFrame, kind: kind, line: shaped, pushed: pushed))
+    }
+
     /// A key's change: its edits to the journal, then on screen as its motion says.
     private func take(_ change: Change) {
         for e in change.edits { onEdit(e) }
@@ -171,6 +183,7 @@ final class LineView: NSView, NSTextInputClient {
         guard !change.edits.isEmpty else { return }
         clicks?.play(.backspace)
         take(change)
+        ambient(.backspace)
     }
 
     // MARK: Session
@@ -224,6 +237,7 @@ final class LineView: NSView, NSTextInputClient {
         case #selector(K.insertNewline(_:)):
             clicks?.play(.paragraph)
             take(text.insert("\n"))
+            ambient(.paragraph)
         case #selector(K.deleteBackward(_:)): delete(text.deleteBackward())
         case #selector(K.deleteWordBackward(_:)): delete(text.deleteWordBackward())
         case #selector(K.deleteForward(_:)): delete(text.deleteForward())
@@ -257,6 +271,7 @@ final class LineView: NSView, NSTextInputClient {
         var dw = -width(old), typed: String?  // the pending text it takes the place of
         if case .before(let added, let removed) = change.motion { (dw, typed) = (dw + width(added) - width(removed), added) }
         edited(before: dw, typed: typed)
+        if let last = s.last { ambient(s.allSatisfy(\.isWhitespace) ? .space : .glyph(last)) }
     }
     func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
         guard accepting else { return }

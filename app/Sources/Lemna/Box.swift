@@ -1,8 +1,9 @@
-// The box (DESIGN.md W2, F1): a small floating panel over whatever the user is doing, with the rest of every screen
+// The box (DESIGN.md W2, F1, A1): a small floating panel over whatever the user is doing, with the rest of every screen
 // dimmed. It takes the keys without activating Lemna, so the app behind stays the active one (and is where Paste goes,
 // O3). The line moves into it from the window and back (one LineView). Its effects (F1) run on layers of its own
 // through Core Animation, off the main thread: the open and the close (P1, the dim with them, D1), the accent border
-// (B1) and its warmth (B2), the sheens (E1, K3). Nothing runs at rest or while it is hidden.
+// (B1) and its warmth (B2), the sheens (E1, K3). The ambience (A1) plays on the dims, on a Metal layer over each shade
+// (Ambient.swift). Nothing runs at rest or while it is hidden.
 import AppKit
 import LemnaCore
 import QuartzCore
@@ -144,12 +145,22 @@ final class Box {
     /// once and the keys (and a paste's ⌘V) reach the app behind from the first instant.
     private let ghost: NSPanel
     private let ghostFace = Face()
-    /// One overlay per screen, under the box: the box's background at 0.5 (D1), the opacity on a layer of Lemna's own.
-    private var dims: [(window: NSWindow, shade: CALayer)] = []
+    /// One overlay per screen, under the box: the box's background at 0.5 (D1), the opacity on a layer of Lemna's own,
+    /// and over it, once a mode has played there, the ambience's layer (A1).
+    private final class Dim {
+        let window: NSWindow, shade: CALayer
+        var ambient: Ambient?
+        init(window: NSWindow, shade: CALayer) { (self.window, self.shade) = (window, shade) }
+    }
+    private var dims: [Dim] = []
     private let lineHeight: CGFloat, style: Style
     private weak var line: LineView?
     /// The Effects submenu (F1), set by the app; Reduce Motion is read with it at each show, hide and key.
     var effects = Effects() { didSet { effectsChanged() } }
+    /// The Ambience submenu (A1), set by the app; Reduce Motion is read with it at each show and change.
+    var ambience = Ambience() { didSet { if panel.isVisible { stageAmbience(on: panel.screen) } } }
+    /// The dims' ambiences that play in this show: the ones the line's keys go to.
+    private var ambients: [Ambient] = []
     /// Moved on at each show and hide: a fade's end or the border's cooling that finds a later one does nothing.
     private var turn = 0
     /// B2: when the line last took a key, whether the border has the accent, and the one timer that cools it.
@@ -222,6 +233,7 @@ final class Box {
                 coolLater(T.coolAfter)
             }
             dim(over: open)
+            stageAmbience(on: screen)
             panel.alphaValue = open > 0 ? 0 : 1
             panel.orderFrontRegardless()  // Lemna is not active: plain orderFront may leave it behind the active app's
             hold(line)  // once the panel is on screen, so the strip's first frames reach a shown layer
@@ -244,6 +256,7 @@ final class Box {
         turn += 1
         cooling?.invalidate()
         cooling = nil
+        for a in ambients { a.close(over: wait + fade) }  // the scene fades with the dim
         if panel.isVisible, fade + sweep > 0 { leaveLook(waiting: wait, fading: fade, sweep: sweep) }
         panel.orderOut(nil)
         content.layer?.removeAnimation(forKey: "pop")
@@ -269,6 +282,12 @@ final class Box {
         if let last = typed.last, last.isWhitespace, !last.isNewline, effects.plays(.wordSheen, reduceMotion: still) {
             face.sweep(peak: CGFloat(T.wordPeak), borderOnly: true, over: T.wordSheen)
         }
+    }
+
+    /// A key the line took, after its frame (A1): to the ambience of each screen where a mode plays, as a value.
+    func ambientKey(_ k: Ambience.Key) {
+        guard panel.isVisible else { return }  // window mode has no dim and no ambience
+        for a in ambients { a.key(k) }
     }
 
     /// E1 on a box that stays: ⌘⏎ copied instead of pasting and says why at its bottom edge.
@@ -364,34 +383,67 @@ final class Box {
             w.collectionBehavior = Self.behavior
             w.isReleasedWhenClosed = false
             w.animationBehavior = .none
-            let shade = CALayer(), v = NSView()
+            let root = CALayer(), shade = CALayer(), v = NSView()
             shade.backgroundColor = style.background
             shade.opacity = 0
-            v.layer = shade  // layer-hosting: AppKit leaves its opacity alone
+            root.addSublayer(shade)  // the ambience's layer goes over it (A1)
+            v.layer = root  // layer-hosting: AppKit leaves the shade's opacity alone
             v.wantsLayer = true
             w.contentView = v
-            dims.append((w, shade))
+            dims.append(Dim(window: w, shade: shade))
         }
         for (dim, s) in zip(dims, screens) {
             dim.window.setFrame(s.frame, display: false)
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            dim.shade.frame = CGRect(origin: .zero, size: s.frame.size)
+            CATransaction.commit()
             fade(dim.shade, from: dim.window.isVisible ? nil : 0, to: T.dim, over: d)  // off screen: from nothing
             dim.window.orderFrontRegardless()
         }
         for dim in dims.dropFirst(screens.count) { dim.window.orderOut(nil) }
     }
 
-    /// The dim goes with the box: after `waiting`, fading over `fading`; at once without a fade.
+    /// The dim goes with the box: after `waiting`, fading over `fading`; at once without a fade. The ambience stops with
+    /// it.
     private func undim(waiting: Double, fading: Double) {
         guard fading > 0 else {
             for dim in dims { dim.window.orderOut(nil) }
-            return
+            return stopAmbience()
         }
         for dim in dims where dim.window.isVisible { fade(dim.shade, to: 0, after: waiting, over: fading) }
         let mine = turn
         DispatchQueue.main.asyncAfter(deadline: .now() + waiting + fading) { [weak self] in
             guard let self, self.turn == mine else { return }
             for dim in self.dims { dim.window.orderOut(nil) }
+            self.stopAmbience()
         }
+    }
+
+    /// The ambience on the dims (A1): this show's mode, none under Reduce Motion, on the box's screen, and on the other
+    /// screens for the modes that play on every one (Rain, Beams); each dim's layer gets its screen's stage, the box and
+    /// its line where they are on it. A dim gets its layer the first time a mode plays on it.
+    private func stageAmbience(on boxScreen: NSScreen?) {
+        let mode = ambience.playing(reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+        ambients = []
+        for (dim, s) in zip(dims, NSScreen.screens) {
+            let here = s == boxScreen, m = here || mode?.everyScreen == true ? mode : nil
+            guard m != nil || dim.ambient != nil else { continue }
+            let a = dim.ambient ?? Ambient(font: style.font)
+            if dim.ambient == nil {
+                dim.ambient = a
+                dim.window.contentView?.layer?.addSublayer(a.layer)
+            }
+            let box = here ? panel.frame.offsetBy(dx: -s.frame.minX, dy: -s.frame.minY) : nil
+            a.begin(m, on: Ambience.Stage(size: s.frame.size, box: box, inset: 1, corner: Face.cornerRadius, style: style),
+                    scale: s.backingScaleFactor)
+            if m != nil { ambients.append(a) }
+        }
+    }
+
+    private func stopAmbience() {
+        for a in ambients { a.stop() }
+        ambients = []
     }
 
     /// A layer's opacity to `value` from `start` (nil: wherever it stands), after `delay`, over `d` on the curve (0: at
