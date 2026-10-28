@@ -68,13 +68,7 @@ private let laptop = CGRect(x: 0, y: 80, width: 1512, height: 868)
     #expect(P.secureNote == "Secure input is on: copied instead")
     #expect(P.permissionNote == "Copied · allow Flow under Privacy & Security › Accessibility to paste")
     #expect(P.noTargetNote == "Copied · no app to paste into")
-    #expect(P.settle == 0.12 && P.restoreAfter == 0.25)
-}
-
-@Test func oldClipboardReturnsOnlyOverFlowsOwnItem() {
-    #expect(Paste.restores(written: 41, now: 41))  // still Flow's item: the old one comes back
-    #expect(!Paste.restores(written: 41, now: 42))  // copied again since (the user, a clipboard manager): it stays
-    #expect(!Paste.restores(written: 41, now: 40))
+    #expect(P.settle == 0.12)
 }
 
 @Test func clickOutsideHidesOnlyAnUnguardedBox() {

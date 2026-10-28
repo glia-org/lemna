@@ -1,5 +1,5 @@
-// Paste at Done (DESIGN.md O3): whether ⌘⏎ in the box's review pastes into the app behind or copies instead, what the
-// footer then says, and when the old clipboard comes back. Free of AppKit, so the tests check them.
+// Paste at Done (DESIGN.md O3): whether ⌘⏎ in the box's review pastes into the app behind or copies instead, and what
+// the footer then says. Free of AppKit, so the tests check them. After a paste Flow's text stays on the clipboard.
 
 public enum Paste {
     public enum Step: Equatable {
@@ -24,10 +24,6 @@ public enum Paste {
         return .paste
     }
 
-    /// From the app's activation to the posted ⌘V, and from the ⌘V to the restore, in seconds.
-    public static let settle = 0.12, restoreAfter = 0.25
-
-    /// The old clipboard comes back only while the pasteboard still holds Flow's item, that is while its change count
-    /// is the one Flow's write left: anything newer (the user copied, a clipboard manager rewrote it) stays.
-    public static func restores(written: Int, now: Int) -> Bool { written == now }
+    /// From the app's activation to the posted ⌘V, in seconds.
+    public static let settle = 0.12
 }

@@ -384,7 +384,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// the container then stays with the note at its bottom edge, until the next key or Esc. Without one the container
     /// goes, as after a paste.
     private func copyOut(_ text: String, note: String?) {
-        guard Clipboard.write(text) != nil else { return notHandedOff("Not copied.") }
+        guard Clipboard.write(text) else { return notHandedOff("Not copied.") }
         guard finished() else { return }
         if let note { return edge.showNote(note) }
         surface.hide()
@@ -394,13 +394,12 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
 
     // MARK: Paste (O3)
 
-    /// The pasteboard as Copy writes it, the session finished, the box and the dim gone, the app behind in front, ⌘V
-    /// posted 120 ms later, and 250 ms after that the old clipboard back if the pasteboard still holds Flow's item. The
-    /// next summon shows an empty line.
+    /// The pasteboard as Copy writes it, the session finished, the box and the dim gone, the app behind in front, and ⌘V
+    /// posted 120 ms later. The text stays on the clipboard: a ⌘V that did not land is one more ⌘V away, and Flow
+    /// never reads the clipboard. The next summon shows an empty line.
     private func paste(_ text: String, into app: NSRunningApplication) {
         guard let keys = CommandV() else { return copyOut(text, note: "Copied · ⌘V could not be made") }
-        let old = Clipboard.save()  // before Flow's write replaces it
-        guard let mine = Clipboard.write(text) else { return notHandedOff("Not pasted.") }
+        guard Clipboard.write(text) else { return notHandedOff("Not pasted.") }
         guard finished() else { return }
         surface.hide()
         apply()
@@ -415,9 +414,6 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
                 return self.edge.showNote(Paste.secureNote)
             }
             keys.post()
-            DispatchQueue.main.asyncAfter(deadline: .now() + Paste.restoreAfter) {
-                if let old, Paste.restores(written: mine, now: NSPasteboard.general.changeCount) { Clipboard.restore(old) }
-            }
         }
     }
 
