@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flow Sounds, Visuals, Name</title>
+<style>
+/* One page, ten decisions for Flow, round 2: which key sounds ship beside the click, whether anything else sounds,
+   moves or glows while typing, the clipboard after a paste, and a name. Same language as the first Flow panel:
+   one mono font, 1 px lines, glyph + colour. Readable without scripts; the pick line updates where scripts run. */
+:root{
+  color-scheme:dark;
+  --bg:#0e1013; --surface:#14171b; --raise:#1b1f25; --line:#262b32; --line-2:#3a414c;
+  --fg:#d9dde3; --muted:#8d95a0; --faint:#5c646f;
+  --accent:#7aa7f0; --accent-soft:rgba(122,167,240,.13); --on-accent:#0e1013;
+  --work:#e2a03a; --need:#f06a43; --done:#52b87c;
+  --ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"CaskaydiaCove Nerd Font Mono","Cascadia Code","Cascadia Mono","Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --w-bg:#1a1b26; --w-raised:#16161e; --w-line:#3b4261; --w-fg:#c0caf5; --w-mid:#a9b1d6; --w-low:#7f88b2; --w-sel:#283457;
+  --w-accent:#7aa2f7; --w-work:#e0af68; --w-need:#f7768e; --w-done:#9ece6a; --w-idle:#6b7399;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--ui);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin-inline:auto;padding:32px clamp(16px,4vw,32px) 120px;display:flex;flex-direction:column;gap:52px}
+h1,h2,h3,p,ul,figure{margin:0}
+ul{padding:0;list-style:none}
+code{font:12.5px/1 var(--mono);white-space:nowrap}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font:600 clamp(24px,4vw,34px)/1.15 var(--mono);letter-spacing:-.02em}
+.lede{max-width:78ch;color:var(--muted);font-size:15px}
+.lede b{color:var(--fg);font-weight:600}
+.top{display:flex;flex-direction:column;gap:14px}
+.bundle{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.bundle-l{font:500 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:5px 9px;border-radius:6px;background:var(--accent-soft);text-decoration:none;font-size:13px;white-space:nowrap;color:inherit}
+.chip b{font:600 12px/1 var(--mono);color:var(--accent)}
+.sec{display:flex;flex-direction:column;gap:18px}
+.sec-h{display:flex;gap:14px;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:12px}
+.num{font:600 28px/1 var(--mono);color:var(--accent)}
+.sec-h h2{font:600 19px/1.2 var(--mono)}
+.sec-h p{color:var(--muted);margin-top:3px;max-width:80ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,500px),1fr));gap:16px}
+.card{min-width:0;display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.card.wide{grid-column:1/-1}
+.card:has(.pick input:checked){border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.card-h{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.oid{font:600 13px/1 var(--mono);padding:5px 7px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.card-h h3{font:600 16px/1.2 var(--ui)}
+.tag{font:500 11px/1 var(--mono);padding:4px 6px;border-radius:4px;border:1px solid var(--line-2);color:var(--muted);white-space:nowrap}
+.tag.rec{border-color:var(--done);color:var(--done)}
+.tag.ask{border-color:var(--work);color:var(--work)}
+.tag.no{border-color:var(--need);color:var(--need)}
+.pick{margin-left:auto;display:inline-flex;gap:6px;align-items:center;font:500 12px/1 var(--mono);color:var(--muted);cursor:pointer;padding:5px 8px;border:1px solid var(--line);border-radius:6px}
+.pick input{accent-color:var(--accent);margin:0}
+.pick:has(input:checked){color:var(--fg);border-color:var(--accent)}
+.pitch{font-size:15px;max-width:76ch}
+.how{display:flex;flex-direction:column;gap:5px;color:var(--muted)}
+.how li{padding-left:14px;position:relative;max-width:78ch}
+.how li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--faint)}
+.how b{color:var(--fg);font-weight:600}
+figcaption{font-size:12px;color:var(--muted);margin-top:6px;max-width:72ch}
+.risk{font-size:13px;color:var(--muted);border-left:2px solid var(--line-2);padding-left:10px;max-width:76ch}
+.risk b{color:var(--fg)}
+.ledger{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:10px}
+.ledger div{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13px;color:var(--muted)}
+.ledger b{display:block;color:var(--fg);font:600 12px/1.6 var(--mono)}
+.ledger .urgent{border-color:var(--need)} .ledger .urgent b{color:var(--need)}
+.ledger .ok b{color:var(--done)}
+.order{counter-reset:o;display:flex;flex-direction:column;gap:6px;padding:0;list-style:none}
+.order li{counter-increment:o;padding-left:28px;position:relative;max-width:84ch;color:var(--muted)}
+.order li::before{content:counter(o);position:absolute;left:0;top:0;font:600 13px/1.5 var(--mono);color:var(--accent)}
+.order b{color:var(--fg)}
+table.keys{border-collapse:collapse;font-size:13px;color:var(--muted)}
+table.keys td,table.keys th{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+table.keys th{font:500 12px/1.3 var(--mono);color:var(--fg)}
+table.keys code{color:var(--fg)}
+table.keys a{color:var(--accent)}
+
+/* ---------- the app, drawn at real size: 1 CSS px = 1 pt ---------- */
+.real{display:flex;flex-wrap:wrap;gap:22px 26px;padding:18px 20px;background:var(--w-bg);border:1px solid var(--line-2);overflow-x:auto}
+.real figure{display:flex;flex-direction:column;gap:8px}
+.real figcaption{margin:0;font:12px/1.4 var(--mono);color:var(--w-low);max-width:640px}
+.real figcaption b{color:var(--w-fg);font-weight:500}
+.mock{overflow-x:auto}
+
+/* picks bar */
+.picks{position:sticky;bottom:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-inline:calc(-1 * clamp(8px,2vw,16px));padding:10px clamp(8px,2vw,16px);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 -6px 24px rgba(0,0,0,.35)}
+.picks-l{font:500 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.picks code{font:600 14px/1.3 var(--mono);color:var(--fg);user-select:all;white-space:normal}
+.picks button{margin-left:auto;font:600 13px/1 var(--ui);padding:8px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);cursor:pointer}
+</style>
+<style>
+/* additions for this panel: links, a findings grid, refs, the figures */
+.wrap a:not(.chip){color:var(--accent);text-decoration:none}
+.wrap a:not(.chip):hover{text-decoration:underline}
+.finding{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
+.finding div{padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13.5px;color:var(--muted)}
+.finding b{color:var(--fg);display:block;margin-bottom:4px;font-weight:600}
+.refs{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:13px;max-width:96ch}
+.refs li{padding-left:14px;position:relative}
+.refs li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--faint)}
+.refs b{color:var(--fg);font-weight:600}
+.mock table.keys{width:100%;min-width:760px}
+table.keys td:first-child{color:var(--fg)}
+.kind{font:500 11px/1.4 var(--mono);color:var(--muted)}
+/* cards: three to a row, so each figure shows at its drawn size */
+.grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))}
+.ledger.one{grid-template-columns:1fr;gap:6px}
+.ledger.one b{display:inline;margin-right:8px}
+.note{font-size:13px;color:var(--muted)}
+/* figures: inline SVG in the panel's language. 1 px lines in --line-2, text in --fg, --muted for dimmed text,
+   --accent only for the caret, status colours only on ✓ ✗ and their words. 1 viewBox unit = 1 CSS px at full size. */
+.fig{display:block;width:100%;max-width:320px;height:auto;font:11px var(--mono);font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}
+.fig.w{max-width:none;min-width:640px}
+.fig.fx{width:var(--w);max-width:100%}
+.figw,.figs{overflow-x:auto}
+.figs{display:flex;flex-wrap:wrap;gap:20px 32px;align-items:flex-start}
+.fig text{fill:var(--fg)}
+.fig .big{font-size:12px}
+.fig .b{font-weight:600}
+.fig .m{fill:var(--muted)} .fig .f{fill:var(--faint)}
+.fig .ok{fill:var(--done)} .fig .no{fill:var(--need)} .fig .wk{fill:var(--work)}
+.fig .bx{fill:var(--bg);stroke:var(--line-2)}
+.fig .bx2{fill:var(--raise);stroke:var(--line-2)}
+.fig .ln{fill:none;stroke:var(--line-2)}
+.fig .ar{fill:none;stroke:var(--muted)}
+.fig .sfg{fill:none;stroke:var(--fg)}
+.fig .sok{fill:none;stroke:var(--done)}
+.fig .sno{fill:none;stroke:var(--need)}
+.fig .swk{fill:none;stroke:var(--work)}
+.fig .cr{fill:var(--accent)}
+.fig .ip{fill:var(--fg)}
+.fig .dim{fill:var(--bg);opacity:.62}
+.fig .gs{stop-color:var(--fg)}
+/* data marks: today's and the recommended in --fg, the rest in --muted; a menu's selected row in --line-2 */
+.fig .bar{fill:var(--muted)} .fig .barf{fill:var(--fg)} .fig .sel{fill:var(--line-2)}
+</style>
+
+<div class="wrap">
+<header class="top">
+<p class="eyebrow">Design panel · a separate app · round 2</p>
+<h1>Flow: sounds, visuals, name</h1>
+<p class="lede">The click works; the question was what to add beside it. The evidence says: <b>two more CC0 packs</b>, no ambient sound, <b>no visual effects</b>, and a name. Ten decisions: <b>recommended</b> is the proposed pick, <b>ask</b> a matter of taste, <b>no</b> ruled out by evidence; the argument is in three <a href="../research_notes/Flow%20sounds%20and%20ambience/">notes</a> of 2026-10-28.</p>
+<div class="bundle"><span class="bundle-l">Picks</span><a class="chip" href="#opt-A0"><b>A0</b> Keychron stays</a><a class="chip" href="#opt-A1"><b>A1</b> typewriter</a><a class="chip" href="#opt-A2"><b>A2</b> soft laptop</a><a class="chip" href="#opt-P1"><b>P1</b> a Sound submenu</a><a class="chip" href="#opt-C1"><b>C1</b> no bell</a><a class="chip" href="#opt-D1"><b>D1</b> no ambience</a><a class="chip" href="#opt-U1"><b>U1</b> no key-up</a><a class="chip" href="#opt-F0"><b>F0</b> no visual effects</a><a class="chip" href="#opt-G1"><b>G1</b> glide as is</a><a class="chip" href="#opt-H1"><b>H1</b> box as is</a><a class="chip" href="#opt-I1"><b>I1</b> text stays on the clipboard</a><a class="chip" href="#opt-N1"><b>N1</b> Hypha</a></div>
+<p class="eyebrow">Pick line: <span id="pickline">A0+A1+A2 P1 C1 D1 U1 F0 G1 H1 I1 N1</span></p>
+</header>
+
+<section class="sec" aria-labelledby="s0h">
+<header class="sec-h"><span class="num">0</span><div><h2 id="s0h">What the research changed</h2><p>Four findings; the rest of the panel follows from them.</p></div></header>
+<div class="finding">
+<div><b>Open 1 was wrong.</b>Freesound has CC0 typewriter recordings with one file per key class: moodyfingers' Silver Typewriter Pack.</div>
+<div><b>Ambient sound: lean no.</b>Noise slightly harms writers without ADHD (g −0.21); speech in a bed lowers writing fluency.</div>
+<div><b>Visual ambience: none.</b>No candidate has evidence of benefit; four have evidence of cost; nobody reported a lack.</div>
+<div><b>Name: Hypha.</b>A filament that grows only at its tip; Greek "web", from "to weave".</div>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s1h">
+<header class="sec-h"><span class="num">1</span><div><h2 id="s1h">A: sound packs</h2><p>What ships beside today's pack; several can be picked. Short, dark strikes survive 10–14 keys/s; long, bright ones pile up.</p></div></header>
+<div class="figs">
+<figure><svg class="fig fx" style="--w:400px" viewBox="0 0 400 224" role="img"><title>Time for a strike to fall 30 dB below its peak: Keychron cuts 70 to 123 ms, typewriters 64 to 190 ms; one key at 12 per second is 83 ms</title>
+<text class="m" x="0" y="12">ring · peak to −30 dB</text>
+<path class="ln" d="M223.5 26V182" stroke-dasharray="3 3"/><text class="m" x="224" y="22" text-anchor="middle">12 keys/s · 83 ms</text>
+<text x="0" y="36">Keychron · today</text><rect class="barf" x="124" y="27" width="84" height="10"/><rect class="sfg" x="208.5" y="27.5" width="63" height="9"/><text class="m" x="276" y="36">cut 70–123</text>
+<text class="m" x="0" y="56">membrane laptop</text><rect class="bar" x="124" y="47" width="45.6" height="10"/><text class="m" x="174" y="56">38</text>
+<text class="m" x="0" y="76">nvmbky</text><rect class="bar" x="124" y="67" width="76.8" height="10"/><text class="m" x="205" y="76">64</text>
+<text class="m" x="0" y="96">Nox_Sound</text><rect class="bar" x="124" y="87" width="85.2" height="10"/><text class="m" x="213" y="96">71</text>
+<text x="0" y="116">Silver space bar</text><rect class="barf" x="124" y="107" width="140.4" height="10"/><text class="m" x="268" y="116">117</text>
+<text x="0" y="136">Silver keystroke</text><rect class="barf" x="124" y="127" width="186" height="10"/><text class="m" x="314" y="136">155</text>
+<text class="m" x="0" y="156">Garuda1982</text><rect class="bar" x="124" y="147" width="198" height="10"/><text class="m" x="326" y="156">165</text>
+<text class="m" x="0" y="176">Selectric II · hum</text><rect class="bar" x="124" y="167" width="228" height="10"/><text class="m" x="356" y="176">190</text>
+<path class="ln" d="M124 186.5H364M124.5 186v4m60-4v4m60-4v4m60-4v4m60-4v4"/>
+<text class="m" x="124" y="200" text-anchor="middle">0</text><text class="m" x="184" y="200" text-anchor="middle">50</text><text class="m" x="244" y="200" text-anchor="middle">100</text><text class="m" x="304" y="200" text-anchor="middle">150</text><text class="m" x="364" y="200" text-anchor="middle">200 ms</text>
+<path class="sfg" d="M232.5 205v5h36v-5"/><text x="250" y="222" text-anchor="middle">A1 cut</text>
+</svg>
+<figcaption>Median per recording, measured on Freesound's lossy previews; for the Keychron, the cut's length with its 25 ms fade. Rows below the first two are typewriters. Nothing was listened to. <a href="../research_notes/Flow%20sounds%20and%20ambience/sounds.md">sounds.md</a> §1, §4; <a href="https://freesound.org/people/moodyfingers/packs/40966/">Silver Typewriter</a>, <a href="https://freesound.org/people/nvmbky/sounds/801121/">nvmbky</a>, <a href="https://freesound.org/people/secretmojo/sounds/224012/">Selectric II</a>.</figcaption></figure>
+<figure><svg class="fig fx" style="--w:400px" viewBox="0 0 400 160" role="img"><title>Share of energy above 5 kHz: Keychron 0 to 1 percent, typewriters 36 to 81 percent</title>
+<text class="m" x="0" y="12">brightness · energy above 5 kHz</text><text class="m" x="398" y="12" text-anchor="end">centroid</text>
+<text x="0" y="36">Keychron · today</text><rect class="barf" x="124" y="27" width="1.6" height="10"/><text class="m" x="130" y="36">0–1 %</text><text x="398" y="36" text-anchor="end">2.7–3.1 kHz</text>
+<text class="m" x="0" y="56">membrane key</text><rect class="bar" x="124" y="47" width="3.2" height="10"/><text class="m" x="132" y="56">2 %</text><text class="m" x="398" y="56" text-anchor="end">4.0 kHz</text>
+<text class="m" x="0" y="76">Kenney tick</text><rect class="bar" x="124" y="67" width="70.4" height="10"/><text class="m" x="198" y="76">44 %</text><text class="m" x="398" y="76" text-anchor="end">7.8 kHz</text>
+<text class="m" x="0" y="96">3 typewriters</text><rect class="bar" x="124" y="87" width="57.6" height="10"/><rect class="ar" x="181.5" y="87.5" width="72" height="9"/><text class="m" x="258" y="96">36–81 %</text><text class="m" x="398" y="96" text-anchor="end">6.7–10 kHz</text>
+<text x="0" y="116">Silver keystroke</text><rect class="barf" x="124" y="107" width="129.6" height="10"/><text class="m" x="258" y="116">81 %</text><text x="398" y="116" text-anchor="end">8.8–10.5 kHz</text>
+<path class="ln" d="M124 126.5H284M124.5 126v4m80-4v4m79.5-4v4"/>
+<text class="m" x="124" y="140" text-anchor="middle">0</text><text class="m" x="204" y="140" text-anchor="middle">50</text><text class="m" x="284" y="140" text-anchor="middle">100 %</text>
+<text x="0" y="158">A1: high shelf −6 dB from 4–5 kHz</text>
+</svg>
+<figcaption>First 40 ms after each strike's peak. The pack you like is dark; every typewriter is bright. <a href="../research_notes/Flow%20sounds%20and%20ambience/sounds.md">sounds.md</a> §1.</figcaption></figure>
+</div>
+<figure class="figw"><svg class="fig w" style="max-width:760px" viewBox="0 0 760 196" role="img"><title>At 12 keys per second, one key every 83 ms: Keychron cuts fit the gap, a raw typewriter strike rings under the next key, a cut one overlaps by its fade, a carriage return is rare and long</title>
+<path class="ln" d="M150.5 8V160M250.5 8V160M350.5 8V160M450.5 8V160M550.5 8V160M650.5 8V160M749.5 8V160" stroke-dasharray="2 4"/>
+<text x="0" y="18">keys · 12/s</text><text class="m" x="0" y="30">83 ms apart</text>
+<path class="sfg" d="M150.5 8v16M250.5 8v16M350.5 8v16M450.5 8v16M550.5 8v16M650.5 8v16M749.5 8v16"/>
+<text x="0" y="54">Keychron · today</text><text class="m" x="0" y="66">70–92 ms: fits</text>
+<rect class="barf" x="151" y="46" width="96" height="12"/><rect class="barf" x="251" y="46" width="96" height="12"/><rect class="barf" x="351" y="46" width="96" height="12"/><rect class="barf" x="451" y="46" width="96" height="12"/><rect class="barf" x="551" y="46" width="96" height="12"/><rect class="barf" x="651" y="46" width="96" height="12"/>
+<text x="0" y="96">Silver, raw</text><text class="m" x="0" y="108">155 ms: 2 at once</text>
+<rect class="bar" x="151" y="84" width="186" height="10"/><rect class="bar" x="351" y="84" width="186" height="10"/><rect class="bar" x="551" y="84" width="186" height="10"/>
+<rect class="bar" x="251" y="98" width="186" height="10"/><rect class="bar" x="451" y="98" width="186" height="10"/><rect class="bar" x="651" y="98" width="98" height="10"/>
+<text x="0" y="138">A1 cut</text><text class="m" x="0" y="150">90–120 ms: fades overlap</text>
+<rect class="barf" x="151" y="126" width="126" height="10"/><rect class="barf" x="351" y="126" width="126" height="10"/><rect class="barf" x="551" y="126" width="126" height="10"/>
+<rect class="barf" x="251" y="140" width="126" height="10"/><rect class="barf" x="451" y="140" width="126" height="10"/><rect class="barf" x="651" y="140" width="98" height="10"/>
+<text x="0" y="176">Return</text><text class="m" x="0" y="188">0.3–1 s, once per ¶</text>
+<rect class="bx" x="451.5" y="166.5" width="297" height="16"/><text x="460" y="179">lever: ratchet, slide, margin stop →</text>
+</svg>
+<figcaption>10–14 keys/s is burst speed for a fast typist, 71–100 ms between onsets (<a href="https://doi.org/10.1145/3173574.3174220">Dhakal 2018</a>, 168,960 typists). Flow's mixer has 16 voices; a Return holds one for its length. <a href="../research_notes/Flow%20sounds%20and%20ambience/sounds.md">sounds.md</a> §1, §5.</figcaption></figure>
+<div class="grid">
+<article class="card" id="opt-A0"><div class="card-h"><span class="oid">A0</span><h3>Keychron K10, as today</h3><span class="tag">stays</span><label class="pick"><input type="checkbox" name="A" value="A0" checked> pick</label></div>
+<p class="pitch">The CC0 linear pack: 12 cuts, 102 KB, dark and short.</p>
+<p class="risk"><b>Open.</b> More letter takes and a second Space and Return from the uploader's 61–66 WPM runs; originals instead of the lossy previews.</p></article>
+<article class="card" id="opt-A1"><div class="card-h"><span class="oid">A1</span><h3>Manual typewriter</h3><span class="tag rec">recommended</span><label class="pick"><input type="checkbox" name="A" value="A1" checked> pick</label></div>
+<p class="pitch"><a href="https://freesound.org/people/moodyfingers/packs/40966/">Silver Typewriter Pack</a>, CC0, one machine: keystroke, space bar, shift, carriage-return lever.</p>
+<ul class="how">
+<li>Cut to <b>90–120 ms</b>, high shelf <b>−6 dB above 4–5 kHz</b>: raw strikes ring 155 ms with 81 % of their energy above 5 kHz.</li>
+<li>Backspace: a keystroke at −6 dB, shortened, rate 0.9; Return: the lever, rare enough not to pile up.</li>
+<li>Capitals +1–2 dB and −3 % rate, no Shift sound (<a href="https://github.com/winchxyz/platen/blob/main/dev/AUDIO_NOTES.md">platen</a>); ≈ 0.3 MB.</li>
+</ul>
+<p class="risk"><b>Risk.</b> Unheard; licence read on 3 of its 9 files (each page counts). Even shelved it stays brighter than the Keychron; if too bright, nvmbky's distant machine.</p></article>
+<article class="card" id="opt-A2"><div class="card-h"><span class="oid">A2</span><h3>Soft laptop</h3><span class="tag rec">recommended</span><label class="pick"><input type="checkbox" name="A" value="A2" checked> pick</label></div>
+<p class="pitch"><a href="https://freesound.org/people/Sadiquecat/sounds/799111/">MacBook Air M2 single keys</a>, CC0, today's uploader and recorder; Enter and Delete from the <a href="https://freesound.org/people/Sadiquecat/sounds/799116/">FUJITSU set</a>.</p>
+<ul class="how"><li>Membrane keys fall 30 dB in 38 ms: the least intrusive family.</li></ul>
+<p class="risk"><b>Risk.</b> On a MacBook it doubles the key under your fingers, and any lag becomes a flam; try it there.</p></article>
+<article class="card" id="opt-A3"><div class="card-h"><span class="oid">A3</span><h3>Electric typewriter</h3><span class="tag ask">ask</span><label class="pick"><input type="checkbox" name="A" value="A3"> pick</label></div>
+<p class="pitch"><a href="https://freesound.org/people/magedu/packs/17107/">magedu's electric set</a>, CC BY 4.0: typing, space bar, Return, power on and off.</p>
+<p class="risk"><b>Risk.</b> A credit line in THIRD_PARTY.md. Electric machines hum: the CC0 IBM Selectric II run sits on a −55 dBFS floor, and per-key cuts gate it on and off; magedu's is the one clean per-class set found, not measured.</p></article>
+<article class="card" id="opt-A4"><div class="card-h"><span class="oid">A4</span><h3>Synthesised soft tick</h3><span class="tag ask">ask</span><label class="pick"><input type="checkbox" name="A" value="A4"> pick</label></div>
+<p class="pitch">A 1–3 ms noise burst into one or two resonators, made in the mixer: 0 bytes, no licence.</p>
+<p class="risk"><b>Risk.</b> Can sound sterile, like UI; the recipe is tuned by measurement, never by ear.</p></article>
+<article class="card" id="opt-A5"><div class="card-h"><span class="oid">A5</span><h3>Musical notes, water drops</h3><span class="tag no">no</span><label class="pick"><input type="checkbox" name="A" value="A5"> pick</label></div>
+<p class="pitch">A note or a drop per key, as Typatone does.</p>
+<p class="risk"><b>No.</b> Changing pitches disrupt verbal memory more than a repeated sound (<a href="https://www.frontiersin.org/journals/psychology/articles/10.3389/fpsyg.2020.00346/full">changing-state effect</a>); at 12/s drops sound like boiling.</p></article>
+<article class="card" id="opt-A6"><div class="card-h"><span class="oid">A6</span><h3>Pencil, fountain pen</h3><span class="tag no">no</span><label class="pick"><input type="checkbox" name="A" value="A6"> pick</label></div>
+<p class="pitch">Paper friction per key.</p>
+<p class="risk"><b>No.</b> Friction, not impact: one grain per key reads as tapping.</p></article>
+<article class="card" id="opt-A7"><div class="card-h"><span class="oid">A7</span><h3>Clicky switches as default</h3><span class="tag no">no</span><label class="pick"><input type="checkbox" name="A" value="A7"> pick</label></div>
+<p class="pitch">MX Blue or buckling spring.</p>
+<p class="risk"><b>No.</b> A sharp high transient, a rattle at 12/s; the classic shared-office complaint.</p></article>
+<article class="card" id="opt-A8"><div class="card-h"><span class="oid">A8</span><h3>Mechvibes or Thock packs</h3><span class="tag no">no</span><label class="pick"><input type="checkbox" name="A" value="A8"> pick</label></div>
+<p class="pitch">The packs the key-sound apps ship.</p>
+<p class="risk"><b>No.</b> No licence for the recordings; an <a href="https://github.com/hainguyents13/mechvibes-dx/issues/120">open issue</a> asks whether MIT covers them.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s2h">
+<header class="sec-h"><span class="num">2</span><div><h2 id="s2h">B: choosing a pack</h2><p>A new setting, so the smallest that lets more than one pack be used.</p></div></header>
+<div class="grid">
+<article class="card" id="opt-P1">
+<svg class="fig" viewBox="0 0 320 186" role="img"><title>P1: the menu-bar item's Sound item opens a submenu: Keychron, Typewriter, Soft, Off with Command-K</title>
+<rect class="bx2" x=".5" y=".5" width="170" height="136"/>
+<text x="10" y="18">Show Flow</text><text class="m" x="162" y="18" text-anchor="end">⌃⌥Space</text>
+<text x="10" y="36">Done</text><text class="m" x="162" y="36" text-anchor="end">⌘⏎</text>
+<text x="10" y="54">Copy</text><text class="m" x="162" y="54" text-anchor="end">⌘⇧⏎</text>
+<text x="10" y="72">Save…</text><text class="m" x="162" y="72" text-anchor="end">⌘S</text>
+<text x="10" y="90">Discard…</text>
+<rect class="sel" x="4" y="96" width="163" height="17" rx="3"/><text x="10" y="108">Sound</text><text x="162" y="108" text-anchor="end">▸</text>
+<text x="10" y="126">Quit Flow</text><text class="m" x="162" y="126" text-anchor="end">⌘Q</text>
+<rect class="bx2" x="172.5" y="95.5" width="146" height="86"/>
+<text x="180" y="113">✓ Keychron</text><text x="193" y="131">Typewriter</text><text x="193" y="149">Soft</text>
+<path class="ln" d="M176 156.5h139"/>
+<text x="193" y="173">Off</text><text class="m" x="312" y="173" text-anchor="end">⌘K</text>
+</svg>
+<div class="card-h"><span class="oid">P1</span><h3>Sound becomes a submenu</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="P" value="P1" checked> pick</label></div>
+<p class="pitch">Keychron, Typewriter, Soft, Off; ⌘K still toggles Off and the last pack.</p>
+<ul class="how"><li>One setting, where the toggle already is; ⌘K's meaning unchanged.</li></ul>
+<p class="risk"><b>Risk.</b> A setting to keep; the menu gains a level.</p></article>
+<article class="card" id="opt-P2">
+<svg class="fig" viewBox="0 0 320 96" role="img"><title>P2: Command-K steps from Keychron to Typewriter to Soft to Off and back</title>
+<rect class="bx" x=".5" y="20.5" width="68" height="26"/><text x="34.5" y="38" text-anchor="middle">Keychron</text>
+<rect class="bx" x="88.5" y="20.5" width="84" height="26"/><text x="130.5" y="38" text-anchor="middle">Typewriter</text>
+<rect class="bx" x="192.5" y="20.5" width="52" height="26"/><text x="218.5" y="38" text-anchor="middle">Soft</text>
+<rect class="bx" x="264.5" y="20.5" width="52" height="26"/><text x="290.5" y="38" text-anchor="middle">Off</text>
+<path class="ar" d="M69 33.5h17m-5-4 5 4-5 4M173 33.5h17m-5-4 5 4-5 4M245 33.5h17m-5-4 5 4-5 4M290.5 47v16.5H34.5V49m-4 5 4-5 4 5"/>
+<text class="m" x="78" y="14" text-anchor="middle">⌘K</text><text class="m" x="182" y="14" text-anchor="middle">⌘K</text><text class="m" x="254" y="14" text-anchor="middle">⌘K</text><text class="m" x="162" y="78" text-anchor="middle">⌘K</text>
+<text x="160" y="94" text-anchor="middle">muting: up to 3 presses</text>
+</svg>
+<div class="card-h"><span class="oid">P2</span><h3>⌘K cycles the packs</h3><label class="pick"><input type="radio" name="P" value="P2"> pick</label></div>
+<p class="pitch">Each ⌘K steps to the next pack, then Off.</p>
+<p class="risk"><b>Risk.</b> Muting takes up to three presses; the current pack is invisible until you type.</p></article>
+<article class="card" id="opt-P3">
+<svg class="fig" viewBox="0 0 320 70" role="img"><title>P3: one pack chosen when the app is built; no menu item</title>
+<rect class="bx" x=".5" y="10.5" width="130" height="30"/><text x="10" y="30">make-app.sh</text>
+<path class="ar" d="M131 25.5h44m-5-4 5 4-5 4"/>
+<rect class="bx" x="178.5" y="10.5" width="140" height="30"/><text x="188" y="30">Flow.app · 1 pack</text>
+<text class="m" x="160" y="64" text-anchor="middle">no menu item, no setting</text>
+</svg>
+<div class="card-h"><span class="oid">P3</span><h3>No picker: chosen at build time</h3><label class="pick"><input type="radio" name="P" value="P3"> pick</label></div>
+<p class="pitch">One pack in the bundle.</p>
+<p class="risk"><b>Risk.</b> Trying a pack means a rebuild: fine for one person, not for others.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s3h">
+<header class="sec-h"><span class="num">3</span><div><h2 id="s3h">C: the typewriter bell</h2><p>Flow has no line ends, so a bell has no natural moment.</p></div></header>
+<figure class="figw"><svg class="fig w" style="max-width:760px" viewBox="0 0 760 128" role="img"><title>A session: typing bursts, the longest pauses after a sentence or paragraph, Done at the end; C1 rings never, C2 once at Done, C3 at each paragraph</title>
+<text x="0" y="20">typing</text>
+<path class="sfg" d="M150.5 12v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10M318.5 12v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10M480.5 12v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10M626.5 12v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10m8-10v10"/>
+<text x="400" y="21" text-anchor="middle">¶</text><text x="590" y="21" text-anchor="middle">¶</text><text x="726" y="21" text-anchor="middle">⌘⏎</text>
+<path class="ln" d="M410.5 28v5h66v-5M600.5 28v5h22v-5"/><text class="m" x="443" y="44" text-anchor="middle">planning pause</text>
+<text x="0" y="68">C1 never</text><text class="m" x="100" y="68">the keys only</text>
+<text x="0" y="92">C2 on ⌘⏎</text><circle class="sfg" cx="726" cy="88" r="4.5"/><text class="m" x="714" y="92" text-anchor="end">ding + carriage return, the box already gone</text>
+<text x="0" y="116">C3 on Return</text><circle class="sfg" cx="400" cy="112" r="4.5"/><circle class="sfg" cx="590" cy="112" r="4.5"/><text class="m" x="100" y="116">ding at each ¶, in the planning pause</text>
+</svg>
+<figcaption>Writers' longest pauses fall at sentence and paragraph starts, where the next one is planned (<a href="../research_notes/Flow%20sounds%20and%20ambience/visuals.md">visuals.md</a> §2.1, §2.8); a bell there is an onset at that moment. Bell: <a href="https://freesound.org/people/_stubb/sounds/406243/">_stubb</a>, CC0, 1.06 s, clean.</figcaption></figure>
+<div class="grid">
+<article class="card" id="opt-C1"><div class="card-h"><span class="oid">C1</span><h3>Never</h3><span class="tag rec">recommended, weakly</span><label class="pick"><input type="radio" name="C" value="C1" checked> pick</label></div>
+<p class="pitch">No bell in any pack.</p>
+<p class="risk"><b>Risk.</b> Loses the most typewriter-like sound; C2 is the harmless place for it.</p></article>
+<article class="card" id="opt-C2"><div class="card-h"><span class="oid">C2</span><h3>Once on ⌘⏎, typewriter only</h3><span class="tag ask">ask</span><label class="pick"><input type="radio" name="C" value="C2"> pick</label></div>
+<p class="pitch">Ding and carriage return as the hand-off cue, after writing ends.</p>
+<p class="risk"><b>Risk.</b> A bright 1 s ring in the app you return to, perhaps on a call.</p></article>
+<article class="card" id="opt-C3"><div class="card-h"><span class="oid">C3</span><h3>On Return</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="C" value="C3"> pick</label></div>
+<p class="pitch">A ding at each paragraph.</p>
+<p class="risk"><b>No.</b> A bright onset in the pause where the next paragraph is planned.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s4h">
+<header class="sec-h"><span class="num">4</span><div><h2 id="s4h">D: ambient sound</h2><p>Rain, café or noise under the clicks.</p></div></header>
+<figure class="figw"><svg class="fig w" style="max-width:760px" viewBox="0 0 760 106" role="img"><title>Noise against silence: g −0.21 without ADHD, +0.25 with ADHD; speech lowers fluency; macOS already ships rain and noise</title>
+<path class="ln" d="M300.5 16V68" stroke-dasharray="3 3"/>
+<text x="0" y="32">without ADHD</text><rect class="barf" x="217" y="24" width="8" height="8"/><text x="212" y="32" text-anchor="end"><tspan class="no">✗ harm</tspan> −0.21</text>
+<text x="0" y="56">ADHD or symptoms</text><path class="sfg" d="M350.6 52.5H436.1M350.6 48.5v8M436.1 48.5v8"/><rect class="barf" x="389.4" y="48.5" width="8" height="8"/><text class="m" x="300" y="44" text-anchor="middle">0</text><text x="444" y="56">+0.25</text>
+<path class="ln" d="M150 72.5H450M150.5 72v4m75-4v4m75-4v4m75-4v4m74.5-4v4"/>
+<text class="m" x="150" y="88" text-anchor="middle">−0.4</text><text class="m" x="225" y="88" text-anchor="middle">−0.2</text><text class="m" x="375" y="88" text-anchor="middle">+0.2</text><text class="m" x="450" y="88" text-anchor="middle">+0.4</text>
+<text class="m" x="300" y="102" text-anchor="middle">white or pink noise vs silence · Hedges' g</text>
+<text x="500" y="32">speech in a bed: fluency down</text>
+<text x="500" y="56">macOS: Background Sounds</text>
+<text class="m" x="500" y="80">D2: 0 bytes; a rain loop 0.7–1.9 MB</text>
+</svg>
+<figcaption>Meta-analysis, 13 studies with ADHD (N = 335, CI 0.14–0.36), minutes of almost only white noise: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11283987/">Nigg 2024</a>. Background speech lowered writing fluency, not quality: <a href="https://nsuworks.nova.edu/hpd_hs_facarticles/259">Ransdell 2002</a>. Rain, ocean, stream, noise: <a href="https://support.apple.com/guide/mac-help/mchl3061cdc6">Accessibility › Audio</a>. <a href="../research_notes/Flow%20sounds%20and%20ambience/sounds.md">sounds.md</a> §8.</figcaption></figure>
+<div class="grid">
+<article class="card" id="opt-D1"><div class="card-h"><span class="oid">D1</span><h3>None</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="D" value="D1" checked> pick</label></div>
+<p class="pitch">No bed; macOS's Background Sounds plays rain or noise beside Flow at no cost to the app.</p>
+<ul class="how"><li>No study shows a bed helps a typical writer; a café is out (speech).</li></ul>
+<p class="risk"><b>Risk.</b> The small benefit with ADHD; Background Sounds covers it.</p></article>
+<article class="card" id="opt-D2"><div class="card-h"><span class="oid">D2</span><h3>Brown or pink noise in code</h3><span class="tag ask">ask</span><label class="pick"><input type="radio" name="D" value="D2"> pick</label></div>
+<p class="pitch">Procedural noise, ~40 lines, off by default, one level: 0 bytes, &lt; 0.04 % CPU.</p>
+<p class="risk"><b>Risk.</b> A second sound setting for a benefit shown only with ADHD; a recorded loop would double the app.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s5h">
+<header class="sec-h"><span class="num">5</span><div><h2 id="s5h">E: key-up sounds</h2><p>A second sound as the key comes up.</p></div></header>
+<div class="grid">
+<article class="card" id="opt-U1">
+<svg class="fig" viewBox="0 0 320 112" role="img"><title>E: key-downs every 83 ms, each held about 116 ms, so every key-up lands between two presses and the sound rate doubles</title>
+<text x="0" y="24">down</text><path class="sfg" d="M40.5 12v16M115.5 12v16M190.5 12v16M265.5 12v16"/>
+<text class="m" x="0" y="50">up</text><path class="ln" d="M144.5 38v16M219.5 38v16M294.5 38v16" stroke-dasharray="2 2"/>
+<path class="ln" d="M40.5 60v5h104v-5"/><text class="m" x="92" y="78" text-anchor="middle">held ≈ 116 ms</text>
+<text x="0" y="98">12 → 24 sounds/s</text>
+<text class="m" x="0" y="110">a typebar falls on felt: silent</text>
+</svg>
+<div class="card-h"><span class="oid">U1</span><h3>None</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="U" value="U1" checked> pick</label></div>
+<p class="pitch">Key-down only, as now.</p>
+<ul class="how">
+<li>A typebar's rest is damped to be silent (<a href="https://patents.google.com/patent/DE698373C/en">DE698373C</a>); Mechvibes' "key-up" is usually the press cut in half.</li>
+<li>Keys are held 116 ms on average (<a href="https://doi.org/10.1145/3173574.3174220">Dhakal 2018</a>): each release lands between presses.</li>
+</ul>
+<p class="risk"><b>Risk.</b> None found.</p></article>
+<article class="card" id="opt-U2"><div class="card-h"><span class="oid">U2</span><h3>Key-up for the mechanical pack</h3><label class="pick"><input type="radio" name="U" value="U2"> pick</label></div>
+<p class="pitch">Quiet release takes for the Keychron only; switches do make a second sound.</p>
+<p class="risk"><b>Risk.</b> Doubles the event rate; the pack has no release takes, so they would be cut from its runs.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s6h">
+<header class="sec-h"><span class="num">6</span><div><h2 id="s6h">F: visual ambience</h2><p>Anything that glows, moves or breathes while you type, beyond the glide and the fade.</p></div></header>
+<figure class="figw"><svg class="fig w" style="max-width:870px" viewBox="0 0 870 244" role="img"><title>Seven candidate effects rated by attention cost, each with its main reason: all no; nothing beyond the glide and the fade: yes</title>
+<text class="m" x="18" y="14">candidate</text><text class="m" x="210" y="14">driven by</text><text class="m" x="300" y="14">cost</text><text class="m" x="356" y="14">main reason</text><text class="m" x="866" y="14" text-anchor="end">verdict</text>
+<path class="ln" d="M0 22.5h866"/>
+<text class="m" x="0" y="40">a</text><text x="18" y="40">glow under the caret</text><text class="m" x="210" y="40">each key</text>
+<rect class="barf" x="300" y="31" width="10" height="10"/><rect class="barf" x="314" y="31" width="10" height="10"/><rect class="ln" x="328.5" y="31.5" width="9" height="9"/>
+<text x="356" y="40">an onset at the fixation point at 3–8 Hz; never decays between keys</text><text class="no" x="866" y="40" text-anchor="end">✗</text>
+<text class="m" x="0" y="62">b</text><text x="18" y="62">breathing background</text><text class="m" x="210" y="62">clock</text>
+<rect class="sfg" x="300.5" y="53.5" width="9" height="9"/><rect class="sfg" x="314.5" y="53.5" width="9" height="9"/><rect class="ln" x="328.5" y="53.5" width="9" height="9"/>
+<text x="356" y="62">a few % on #0e1013 is one 8-bit step: a blink; no unattended entrainment</text><text class="no" x="866" y="62" text-anchor="end">✗</text>
+<text class="m" x="0" y="84">c</text><text x="18" y="84">rhythm trace</text><text class="m" x="210" y="84">typing</text>
+<rect class="barf" x="300" y="75" width="10" height="10"/><rect class="sfg" x="314.5" y="75.5" width="9" height="9"/><rect class="sfg" x="328.5" y="75.5" width="9" height="9"/>
+<text x="356" y="84">pause pressure: +20 % output, "stressed" (Dux Speltz 2021); against P0</text><text class="no" x="866" y="84" text-anchor="end">✗</text>
+<text class="m" x="0" y="106">d</text><text x="18" y="106">particles, ink</text><text class="m" x="210" y="106">each key</text>
+<rect class="barf" x="300" y="97" width="10" height="10"/><rect class="barf" x="314" y="97" width="10" height="10"/><rect class="barf" x="328" y="97" width="10" height="10"/>
+<text x="356" y="106">travelling motion, the most distracting class (Bartram 2003)</text><text class="no" x="866" y="106" text-anchor="end">✗</text>
+<text class="m" x="0" y="128">e</text><text x="18" y="128">paper texture</text><text class="m" x="210" y="128">none</text>
+<rect class="ln" x="300.5" y="119.5" width="9" height="9"/><rect class="ln" x="314.5" y="119.5" width="9" height="9"/><rect class="ln" x="328.5" y="119.5" width="9" height="9"/>
+<text x="356" y="128">does nothing; only as dither, if the V2 fade bands</text><text class="no" x="866" y="128" text-anchor="end">✗</text>
+<text class="m" x="0" y="150">f</text><text x="18" y="150">colour drift</text><text class="m" x="210" y="150">clock</text>
+<rect class="ln" x="300.5" y="141.5" width="9" height="9"/><rect class="ln" x="314.5" y="141.5" width="9" height="9"/><rect class="ln" x="328.5" y="141.5" width="9" height="9"/>
+<text x="356" y="150">unseen when slow; 3 orders below a circadian dose; stacks on Night Shift</text><text class="no" x="866" y="150" text-anchor="end">✗</text>
+<text class="m" x="0" y="172">g</text><text x="18" y="172">ripple on Return</text><text class="m" x="210" y="172">each ¶</text>
+<rect class="barf" x="300" y="163" width="10" height="10"/><rect class="sfg" x="314.5" y="163.5" width="9" height="9"/><rect class="ln" x="328.5" y="163.5" width="9" height="9"/>
+<text x="356" y="172">a looming onset at the planning pause; the ¶ already marks it</text><text class="no" x="866" y="172" text-anchor="end">✗</text>
+<path class="ln" d="M0 180.5h866"/>
+<text class="m" x="0" y="198">h</text><text class="b" x="18" y="198">glide + fade only</text><text class="m" x="210" y="198">your keys</text><text class="m" x="300" y="198">glide</text>
+<text x="356" y="198">calm writing apps ship still visuals and instant dims; zero cost</text><text class="ok" x="866" y="198" text-anchor="end">✓</text>
+<text class="m" x="0" y="222">what calm apps ship: still images, colour themes, instant dims (Typora, FocusWriter, Obsidian's typewriter mode).</text>
+<text class="m" x="0" y="238">clock-driven effects draw the complaints: OmmWriter's "can get old pretty quickly", Noisli's colours that "can't be fixed".</text>
+</svg>
+<figcaption>Attention cost 0–3 (filled; outlined: the top of a range) and verdicts from <a href="../research_notes/Flow%20sounds%20and%20ambience/visuals.md">visuals.md</a> §0. Beside a text task, continuous motion cut corrections by 43 %, discrete updates by 26 % (<a href="https://www.interruptions.net/literature/Maglio-CHI00-p241-maglio.pdf">Maglio &amp; Campbell 2000</a>); travel the most distracting motion (<a href="https://www.interruptions.net/literature/Bartram-IJHCS03.pdf">Bartram 2003</a>); a pause-tied fade made "stressed" the most common feeling (<a href="https://www.jowr.org/jowr/article/view/790">Dux Speltz 2021</a>). Reviews: <a href="https://www.macworld.com/article/217142/ommwriter_dana_helps_you_focus_when_writing.html">OmmWriter</a>, <a href="https://mwm.ai/de/apps/noisli/862773459">Noisli</a>.</figcaption></figure>
+<figure class="figw"><svg class="fig fx" style="--w:330px" viewBox="0 0 330 160" role="img"><title>The layers: an effect would be its own Core Animation layer above the opaque line band, never drawn in the key path</title>
+<rect class="bx" x=".5" y="64.5" width="44" height="28" rx="4"/><text x="22.5" y="83" text-anchor="middle">key</text>
+<path class="ar" d="M45 74.5h22m-5-4 5 4-5 4"/>
+<path class="ar" d="M22.5 64V22.5H67m-5-4 5 4-5 4" stroke-dasharray="3 3"/>
+<rect class="ln" x="70.5" y="4.5" width="259" height="40" stroke-dasharray="3 3"/><text x="78" y="20">an effect: its own CALayer above</text><text class="m" x="78" y="36">Core Animation, after the frame</text>
+<rect class="bx" x="70.5" y="52.5" width="259" height="40"/><text x="78" y="68">line band: CAMetalLayer, opaque</text><text class="m" x="78" y="84">CPU-drawn at each key: nothing else here</text>
+<rect class="bx2" x="70.5" y="100.5" width="259" height="24"/><text class="m" x="78" y="117">box: NSPanel, alpha 0.97</text>
+<rect class="bx2" x="70.5" y="132.5" width="259" height="24"/><text class="m" x="78" y="149">dim: a window per screen, α 0.35</text>
+</svg>
+<figcaption>Read from app/Sources (<a href="../research_notes/Flow%20sounds%20and%20ambience/visuals.md">visuals.md</a> §5). Under the opaque band an effect is hidden; above it, it tints the text.</figcaption></figure>
+<div class="grid">
+<article class="card" id="opt-F0"><div class="card-h"><span class="oid">F0</span><h3>Nothing beyond glide and fade</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="F" value="F0" checked> pick</label></div>
+<p class="pitch">The line glides and fades; nothing else glows, moves or breathes.</p>
+<ul class="how">
+<li><a href="https://developer.apple.com/design/human-interface-guidelines/motion">HIG</a>: "avoid adding motion to UI interactions that occur frequently"; typing is the most frequent.</li>
+<li>No lack reported that an effect would solve.</li>
+</ul>
+<p class="risk"><b>Risk.</b> If the box ever "feels dead", the smallest answer is a still colour theme, not motion.</p></article>
+<article class="card" id="opt-F1"><div class="card-h"><span class="oid">F1</span><h3>(a) Glow under the caret</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="F" value="F1"> pick</label></div>
+<p class="risk"><b>No.</b> Redundant with key and click; "juice" raised liking, not performance, and only in games.</p></article>
+<article class="card" id="opt-F2"><div class="card-h"><span class="oid">F2</span><h3>(b) Breathing background</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="F" value="F2"> pick</label></div>
+<p class="risk"><b>No.</b> Invisible, it does nothing; visible, it is a pacer: adherence fell to 27.5 % under a hard task.</p></article>
+<article class="card" id="opt-F3"><div class="card-h"><span class="oid">F3</span><h3>(c) Rhythm trace</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="F" value="F3"> pick</label></div>
+<p class="risk"><b>No.</b> A progress line by another name: the one you removed.</p></article>
+<article class="card" id="opt-F4"><div class="card-h"><span class="oid">F4</span><h3>(d) Particles or ink</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="F" value="F4"> pick</label></div>
+<p class="risk"><b>No.</b> Every power-mode project turned shake off by default; gamification.</p></article>
+<article class="card" id="opt-F5"><div class="card-h"><span class="oid">F5</span><h3>(e) Paper texture</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="F" value="F5"> pick</label></div>
+<p class="risk"><b>No, as ambience.</b> Dither inside the line only if the fade bands on an 8-bit screen.</p></article>
+<article class="card" id="opt-F6"><div class="card-h"><span class="oid">F6</span><h3>(f) Colour drift</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="F" value="F6"> pick</label></div>
+<p class="risk"><b>No.</b> When noticed, the box looks different for no reason.</p></article>
+<article class="card" id="opt-F7"><div class="card-h"><span class="oid">F7</span><h3>(g) Ripple on Return</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="F" value="F7"> pick</label></div>
+<p class="risk"><b>No.</b> If ever wanted: the ¶ fading to muted over ~300 ms, not a ring.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s7h">
+<header class="sec-h"><span class="num">7</span><div><h2 id="s7h">G, H: two side findings</h2><p>Optional tries, not recommendations; found while researching F.</p></div></header>
+<div class="figs">
+<figure><svg class="fig fx" style="--w:320px" viewBox="0 0 320 200" role="img"><title>G: share of one step done over time: the 140 ms cubic ease-out against a 70 ms one; the next key at 12 per second comes at 83 ms</title>
+<text class="m" x="32" y="33" text-anchor="end">100 %</text><text class="m" x="32" y="123" text-anchor="end">0</text>
+<path class="ln" d="M36 120.5H292M36.5 30v90M36.5 120v4m64-4v4m64-4v4m64-4v4m63.5-4v4"/>
+<path class="ln" d="M168.5 24V120" stroke-dasharray="3 3"/><text class="m" x="170" y="20" text-anchor="middle">next key · 12/s</text>
+<path class="sfg" d="M36 120L47.2 107.2L58.4 95.6L69.6 85.3L80.8 76.1L92 68L103.2 60.9L114.4 54.7L125.6 49.4L136.8 45L148 41.2L159.2 38.2L170.4 35.8L181.6 33.9L192.8 32.4L204 31.4L215.2 30.7L226.4 30.3L237.6 30.1L248.8 30L260 30L292 30"/>
+<path class="ar" d="M36 120L41.6 107.2L47.2 95.6L52.8 85.3L58.4 76.1L64 68L69.6 60.9L75.2 54.7L80.8 49.4L86.4 45L92 41.2L97.6 38.2L103.2 35.8L108.8 33.9L114.4 32.4L120 31.4L125.6 30.7L131.2 30.3L136.8 30.1L142.4 30L148 30L292 30" stroke-dasharray="4 3"/>
+<circle class="ip" cx="49.3" cy="104.9" r="2.5"/><text x="56" y="112">17 %</text><circle class="ip" cx="80.8" cy="76.1" r="2.5"/><text x="88" y="84">49 %</text><circle class="ip" cx="148" cy="41.2" r="2.5"/><text x="154" y="56">88 %</text>
+<text class="m" x="36" y="136" text-anchor="middle">0</text><text class="m" x="100" y="136" text-anchor="middle">40</text><text class="m" x="164" y="136" text-anchor="middle">80</text><text class="m" x="228" y="136" text-anchor="middle">120</text><text class="m" x="292" y="136" text-anchor="middle">160 ms</text>
+<path class="ln" d="M36 150.5H292M36.5 146v8M100.5 146v8M164.5 146v8M196.5 146v8M276.5 146v8"/>
+<text class="m" x="36" y="166">tape·0</text><text class="m" x="164" y="166" text-anchor="middle">VS Code·80</text><text class="m" x="276" y="166" text-anchor="middle">Neovide·150</text>
+<text class="m" x="100" y="180" text-anchor="middle">Neovide·40</text><text class="m" x="196" y="180" text-anchor="middle">keybr·100</text>
+<path class="sfg" d="M36 194.5h18"/><text x="58" y="198">G1 · 140 ms</text><path class="ar" d="M150 194.5h18" stroke-dasharray="4 3"/><text x="172" y="198">G2 · 70 ms</text>
+</svg>
+<figcaption>Cubic ease-out (Line.ease), from <a href="../research_notes/Flow%20sounds%20and%20ambience/visuals.md">visuals.md</a> §6.1. Below: other tools' text or caret motion; <a href="https://github.com/monkeytypegame/monkeytype">Monkeytype</a>'s tape mode, the closest precedent, scrolls instantly by default; <a href="https://neovide.dev/features.html">Neovide</a> uses 40 ms for short moves.</figcaption></figure>
+<figure><svg class="fig fx" style="--w:320px" viewBox="0 0 320 124" role="img"><title>H: over a light app the dimmed surround is about 130 times brighter than the box</title>
+<rect x=".5" y=".5" width="319" height="80" style="fill:#d3d3d3;stroke:var(--line-2)"/>
+<text x="10" y="18" style="fill:#0e1013">surround 0.65 · light app, 35 % dim</text>
+<rect x="40.5" y="30.5" width="240" height="30" rx="6" style="fill:#0e1013;stroke:#262b32"/>
+<text x="56" y="50">box 0.0051</text><rect class="cr" x="183" y="37" width="2" height="16"/>
+<text x="0" y="100">≈ 130× brighter around the task</text>
+<text class="m" x="0" y="118">EN 12464-1 wants the task brighter: ≤ 3:1 near</text>
+</svg>
+<figcaption>Relative luminance, computed in <a href="../research_notes/Flow%20sounds%20and%20ambience/visuals.md">visuals.md</a> §2.6; ratios from <a href="https://www.fagerhult.com/knowledge-hub/EN-12464-1/luminance-ratios/ratios-for-working-areas--room-surfaces/">EN 12464-1</a>.</figcaption></figure>
+</div>
+<div class="grid">
+<article class="card" id="opt-G1"><div class="card-h"><span class="oid">G1</span><h3>Glide stays 140 ms</h3><span class="tag rec">recommended until tried</span><label class="pick"><input type="radio" name="G" value="G1" checked> pick</label></div>
+<p class="pitch">As picked in S1 after the spike.</p>
+<p class="risk"><b>Risk.</b> The largest motion in the design: at ~240 ms between keys the line moves 58 % of the time.</p></article>
+<article class="card" id="opt-G2"><div class="card-h"><span class="oid">G2</span><h3>60–80 ms for one-character steps</h3><span class="tag ask">try</span><label class="pick"><input type="radio" name="G" value="G2"> pick</label></div>
+<p class="pitch">Longer moves keep 140 ms.</p>
+<p class="risk"><b>Risk.</b> The evidence is about motion you did not cause; judge by feel.</p></article>
+<article class="card" id="opt-H1"><div class="card-h"><span class="oid">H1</span><h3>Box as it is</h3><span class="tag rec">recommended until tried</span><label class="pick"><input type="radio" name="H" value="H1" checked> pick</label></div>
+<p class="pitch">#0e1013 under a 35 % dim.</p>
+<p class="risk"><b>Risk.</b> The ratio lighting standards ask for, inverted; no study of this setup.</p></article>
+<article class="card" id="opt-H2"><div class="card-h"><span class="oid">H2</span><h3>Lighter box or deeper dim</h3><span class="tag ask">try</span><label class="pick"><input type="radio" name="H" value="H2"> pick</label></div>
+<p class="pitch">A lighter box, or the dim at α 0.5–0.6.</p>
+<p class="risk"><b>Risk.</b> A deeper dim hides more of the app you write for.</p></article>
+</div>
+<div class="ledger one"><div class="ok"><b>Will fix without a pick</b>Reduce Transparency: the box's alpha 0.97 → 1. Increase Contrast: muted #5c646f, 3.2:1 on the box, → at least 4.5:1 (<a href="https://developer.apple.com/design/human-interface-guidelines/dark-mode">HIG</a>).</div></div>
+</section>
+
+<section class="sec" aria-labelledby="s8h">
+<header class="sec-h"><span class="num">8</span><div><h2 id="s8h">I: the clipboard after a paste</h2><p>Open since pass 10: the session is finished before ⌘V lands, which conflicts with P0, text never destroyed.</p></div></header>
+<figure class="figw"><svg class="fig w" style="max-width:760px" viewBox="0 0 760 200" role="img"><title>At Done Flow shreds its copy, puts its text on the clipboard, posts Command-V 120 ms later and restores the old clipboard at 370 ms; a missed paste loses the text</title>
+<path class="ln" d="M210.5 20V140M330.5 20V140M580.5 20V140" stroke-dasharray="3 3"/>
+<text class="m" x="210" y="14" text-anchor="middle">⌘⏎ · 0</text><text class="m" x="330" y="14" text-anchor="middle">120 ms</text><text class="m" x="580" y="14" text-anchor="middle">370 ms</text>
+<text x="0" y="40">journal + key</text><rect class="bx" x="150.5" y="27.5" width="60" height="18"/><text class="m" x="158" y="40">kept</text><text class="no" x="218" y="40">✗ shredded at once</text>
+<text x="0" y="68">clipboard</text><rect class="bx" x="150.5" y="55.5" width="60" height="18"/><text class="m" x="158" y="68">old</text><rect class="bx2" x="210.5" y="55.5" width="370" height="18"/><text x="218" y="68">Flow's text</text><rect class="bx" x="580.5" y="55.5" width="160" height="18"/><text class="m" x="588" y="68">old again</text>
+<text x="0" y="96">target app</text><text class="m" x="218" y="96">in front</text><text x="338" y="96">⌘V posted</text>
+<text x="0" y="124">if ⌘V misses</text><text class="m" x="338" y="124">no text field has the keys</text><text class="no" x="588" y="124">✗ in neither: lost</text>
+<path class="ln" d="M0 140.5h740"/>
+<text x="0" y="164">I1 clipboard</text><rect class="bx" x="150.5" y="151.5" width="60" height="18"/><text class="m" x="158" y="164">old</text><rect class="bx2" x="210.5" y="151.5" width="530" height="18"/><text x="218" y="164">Flow's text stays: ⌘V again <tspan class="ok">✓</tspan></text>
+<text x="0" y="192">I2 journal</text><rect class="bx" x="150.5" y="179.5" width="60" height="18"/><text class="m" x="158" y="192">kept</text><rect class="ln" x="210.5" y="179.5" width="530" height="18" stroke-dasharray="3 3"/><text x="218" y="192">kept a few seconds: a summon brings it back</text>
+</svg>
+<figcaption>From app/Sources (Paste.swift, the paste in main.swift) and app/README.md, Known gaps. Before pass 10 the 10 s grace's Undo covered a missed ⌘V.</figcaption></figure>
+<div class="grid">
+<article class="card" id="opt-I1"><div class="card-h"><span class="oid">I1</span><h3>Leave Flow's text on the clipboard</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="I" value="I1" checked> pick</label></div>
+<p class="pitch">No restore. A missed ⌘V is one more ⌘V away.</p>
+<ul class="how"><li>No clipboard read either, so macOS 15.4's paste alert cannot come up.</li></ul>
+<p class="risk"><b>Risk.</b> The clipboard you had before is gone, as after any copy.</p></article>
+<article class="card" id="opt-I2"><div class="card-h"><span class="oid">I2</span><h3>Keep the journal a few seconds</h3><label class="pick"><input type="radio" name="I" value="I2"> pick</label></div>
+<p class="pitch">Silently: a summon within them shows the text again.</p>
+<p class="risk"><b>Risk.</b> A hidden rule; the next summon is not always empty.</p></article>
+<article class="card" id="opt-I3"><div class="card-h"><span class="oid">I3</span><h3>Accept the risk</h3><label class="pick"><input type="radio" name="I" value="I3"> pick</label></div>
+<p class="pitch">As now.</p>
+<p class="risk"><b>Risk.</b> The one way left to break P0.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s9h">
+<header class="sec-h"><span class="num">9</span><div><h2 id="s9h">N: the name</h2><p>Short, calm, a biology word used plain like the terminal app and the brief app. Every plain word in this field is held somewhere; the question is where.</p></div></header>
+<div class="mock"><table class="keys">
+<tr><th>name</th><th>meaning</th><th>fit</th><th>held by (apps · domains · marks)</th><th>say EN · DE</th><th>icon motif</th></tr>
+<tr><td>Hypha</td><td>fungal filament that grows only at its tip; Greek "web"</td><td>text emerges at the caret, the rest stays as laid; the terminal app's sibling in sound</td><td>no Mac app; iOS mushroom grower, DAO wallet; <a href="https://www.opentech.fund/news/otf-conducts-security-audit-of-hypha/">OTF's grant platform</a> on hypha.app; hyphawriter.app free; marks outside text software</td><td>HY-fuh · HÜ-fe</td><td>a filament running left, a bright tip at the caret</td></tr>
+<tr><td>Raphe</td><td>the slit a diatom glides on; the raphe nuclei make serotonin</td><td>gliding and calm, both biology</td><td>no apps; <b>raphe.app free</b>; one pharma filing</td><td>RAY-fee or RAF-ee · RA-fe</td><td>a diatom: the slit as the line, the nodule as the caret</td></tr>
+<tr><td>Ductus</td><td>the flow of a hand's strokes; a duct</td><td>German <a href="https://www.duden.de/rechtschreibung/Duktus">Duktus</a>: exactly the flow of writing</td><td>no apps, no software mark; ductus.app taken; HVAC firms</td><td>DUK-tus · DUK-tus</td><td>a broad-nib stroke tapering left into the caret</td></tr>
+<tr><td>Lotic</td><td>of flowing water</td><td>the calmest sound</td><td><a href="https://trademarks.justia.com/972/88/wisdom-97288229.html">LOTIC filed</a> for app software, 2022</td><td>LOH-tik · LO-tik</td><td>streamlines parting around a stone</td></tr>
+<tr><td>Kinesin</td><td>motor protein: one 8 nm step per ATP, one way</td><td>one key, one step, one click</td><td>a reading app on kinesin.app, launching next month; Kinesis keyboards</td><td>kih-NEE-sin · ki-ne-ZIN</td><td>a two-footed walker on a dashed track</td></tr>
+<tr><td>Schwann</td><td>peripheral glia that make myelin; German Schwan, swan</td><td>a third glial name</td><td>reads as <a href="https://www.schwan-stabilo.com/en/170-years-schwan-stabilo">Schwan-STABILO</a> in German; schwann.app free</td><td>shwahn · shvan</td><td>a myelinated line with nodes</td></tr>
+<tr><td>Hillock</td><td>where the axon leaves the cell</td><td>the clean fallback</td><td>hillock.app, .dev free; a brewery</td><td>HIL-uhk · readable</td><td>a low cone, one line running left</td></tr>
+</table></div>
+<figure class="figw"><svg class="fig w" style="max-width:640px" viewBox="0 0 640 112" role="img"><title>Icon motifs for the top three names, at icon size and at menu-bar size</title>
+<rect class="bx2" x=".5" y="4.5" width="64" height="64" rx="14"/>
+<path class="sfg" d="M8 40c8-1 14-5 22-6s8-1 10-1M20 37.5c-2-5-5-8-10-10" stroke-width="2.5"/><circle class="cr" cx="42" cy="33" r="4"/>
+<rect class="ln" x="84.5" y="28.5" width="16" height="16" rx="3"/><g transform="translate(84.5 28.5) scale(.25)"><path class="sfg" d="M8 40c8-1 14-5 22-6s8-1 10-1" stroke-width="10"/><circle class="cr" cx="42" cy="33" r="7"/></g>
+<text class="b" x="0" y="88">N1 Hypha</text><text class="m" x="0" y="104">nearly today's glyph</text>
+<rect class="bx2" x="215.5" y="4.5" width="64" height="64" rx="14"/>
+<ellipse class="sfg" cx="247.5" cy="36.5" rx="26" ry="10" stroke-width="2"/><path class="sfg" d="M227 36.5h17m7 0h17" stroke-width="1.5"/><rect class="cr" x="246.5" y="31" width="2" height="11"/>
+<rect class="ln" x="299.5" y="28.5" width="16" height="16" rx="3"/><g transform="translate(299.5 28.5) scale(.25)"><ellipse class="sfg" cx="32" cy="32" rx="26" ry="11" stroke-width="7"/><rect class="cr" x="29" y="22" width="6" height="20"/></g>
+<text class="b" x="215" y="88">N2 Raphe</text><text class="m" x="215" y="104">most distinct when small</text>
+<rect class="bx2" x="430.5" y="4.5" width="64" height="64" rx="14"/>
+<path class="ip" d="M436 37.5L470 32.5L470 41.5Z"/><rect class="cr" x="473" y="26" width="2.5" height="22"/>
+<rect class="ln" x="514.5" y="28.5" width="16" height="16" rx="3"/><g transform="translate(514.5 28.5) scale(.25)"><path class="ip" d="M6 33L40 26L40 40Z"/><rect class="cr" x="44" y="18" width="6" height="28"/></g>
+<text class="b" x="430" y="88">N3 Ductus</text><text class="m" x="430" y="104">a stroke into the caret</text>
+</svg>
+<figcaption>Motifs from <a href="../research_notes/Flow%20sounds%20and%20ambience/name.md">name.md</a> §4, §6, drawn roughly; an icon round comes after the pick. Sources: <a href="https://www.etymonline.com/word/hypha">etymonline</a>, <a href="https://archive.bio.ed.ac.uk/jdeacon/microbes/apical.htm">tip growth</a>, <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11962607/">diatom gliding</a>, <a href="https://en.wikipedia.org/wiki/Raphe_nuclei">raphe nuclei</a>.</figcaption></figure>
+<div class="grid">
+<article class="card" id="opt-N1"><div class="card-h"><span class="oid">N1</span><h3>Hypha</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="N" value="N1" checked> pick</label></div>
+<p class="pitch">A filament that grows only at its tip: the line itself.</p>
+<ul class="how">
+<li>Greek <i>hyphē</i> "web", from "to weave"; <i>text</i> is from <i>texere</i>, also "to weave".</li>
+<li>the terminal app's closest sibling: Greek, cell-scale, two syllables ending in -a.</li>
+<li>No conflict in writing, focus or reading software.</li>
+</ul>
+<p class="risk"><b>Costs.</b> hypha.app, .com, .dev taken; German readers may say "HÜ-fa"; mushroom and DAO namesakes on iOS.</p></article>
+<article class="card" id="opt-N2"><div class="card-h"><span class="oid">N2</span><h3>Raphe</h3><span class="tag">second</span><label class="pick"><input type="radio" name="N" value="N2"> pick</label></div>
+<p class="pitch">The seam a diatom glides on, and the brain's main source of serotonin.</p>
+<ul class="how"><li>The most mindful reading of the three; raphe.app free.</li></ul>
+<p class="risk"><b>Costs.</b> RAY-fee or RAF-ee: people will say it differently; "median raphe" in anatomy. The note ranks it third, behind Ductus.</p></article>
+<article class="card" id="opt-N3"><div class="card-h"><span class="oid">N3</span><h3>Ductus</h3><span class="tag">third</span><label class="pick"><input type="radio" name="N" value="N3"> pick</label></div>
+<p class="pitch">The flow of a hand's strokes; a duct carries flow one way.</p>
+<p class="risk"><b>Costs.</b> Plosive, not calm; HVAC and "duck"; the cleanest conflict record.</p></article>
+<article class="card" id="opt-N4"><div class="card-h"><span class="oid">N4</span><h3>Lotic</h3><span class="tag ask">if the filing is dead</span><label class="pick"><input type="radio" name="N" value="N4"> pick</label></div>
+<p class="risk"><b>Blocked</b> by a 2022 LOTIC filing for app software, status unverified.</p></article>
+<article class="card" id="opt-N5"><div class="card-h"><span class="oid">N5</span><h3>Kinesin</h3><label class="pick"><input type="radio" name="N" value="N5"> pick</label></div>
+<p class="risk"><b>Costs.</b> Three syllables, not calm; a reading app of that name launches next month.</p></article>
+<article class="card" id="opt-N6"><div class="card-h"><span class="oid">N6</span><h3>Schwann</h3><label class="pick"><input type="radio" name="N" value="N6"> pick</label></div>
+<p class="risk"><b>Costs.</b> In German, a writing tool called Schwann reads as a STABILO product.</p></article>
+<article class="card" id="opt-N7"><div class="card-h"><span class="oid">N7</span><h3>Hillock</h3><label class="pick"><input type="radio" name="N" value="N7"> pick</label></div>
+<p class="risk"><b>Costs.</b> Most people hear only "small hill".</p></article>
+</div>
+<p class="note">Dropped: Fovea (two Mac apps and an iOS speed reader on the same fixed-gaze idea), Calamus (iCalamus, a live Mac publishing app), Rill (a BI company), mindfulness words such as sati, mushin, zazen (held by meditation apps; naming a product after a practice invites the commodification critique), Flow itself (Flowstate, Flowwrite).</p>
+<div class="ledger one">
+<div class="urgent"><b>Before committing</b>A trademark search in USPTO (TSDR), EUIPO and DPMA, classes 9 and 42; the note's checks were aggregators only.</div>
+<div><b>Rename once</b>Bundle id <code>dev.&lt;name&gt;.app</code> like the siblings (now <code>org.flow.app</code>); the Accessibility grant and the keychain item reset with it.</div>
+<div><b>When</b>Before any build goes to others, after finishing or discarding open sessions.</div>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s10h">
+<header class="sec-h"><span class="num">10</span><div><h2 id="s10h">Sources</h2><p>Researched 2026-10-28. Nothing was listened to; trademarks unverified.</p></div></header>
+<ul class="refs">
+<li><b>Notes</b> (<a href="../research_notes/Flow%20sounds%20and%20ambience/">folder</a>): <a href="../research_notes/Flow%20sounds%20and%20ambience/sounds.md">key sounds and ambience</a>, <a href="../research_notes/Flow%20sounds%20and%20ambience/visuals.md">visual ambience</a>, <a href="../research_notes/Flow%20sounds%20and%20ambience/name.md">the name</a>.</li>
+<li><b>Round 1</b>: <a href="design-panel-flow-writer.html">Flow writing tool design options</a>; the decisions in DESIGN.md.</li>
+</ul>
+<p class="note">This panel's IDs are its own; DESIGN.md's rows keep theirs.</p>
+</section>
+
+<div class="picks"><span class="picks-l">Picks</span><code id="picks">A0+A1+A2 P1 C1 D1 U1 F0 G1 H1 I1 N1</code><button type="button" id="copy" hidden>Copy picks</button></div>
+</div>
+<script>function picks(){const v=n=>[...document.querySelectorAll(`input[name="${n}"]:checked`)].map(i=>i.value).join('+')||'–';const s=['A','B','C','D','E','F','G','H','I','N'].map(v).join(' ');document.getElementById('pickline').textContent=s;document.getElementById('picks').textContent=s;}document.querySelectorAll('.pick input').forEach(i=>i.addEventListener('change',picks));const cb=document.getElementById('copy');if(navigator.clipboard){cb.hidden=false;cb.addEventListener('click',()=>navigator.clipboard.writeText(document.getElementById('picks').textContent).then(()=>{cb.textContent='Copied';setTimeout(()=>{cb.textContent='Copy picks'},1200)},()=>{}));}picks();</script>
+</html>
