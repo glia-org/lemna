@@ -317,16 +317,18 @@ Pass 11, sounds and the clipboard (DESIGN.md K1 amended, F0, G1 H1, I1 in O1+O2+
 Pass 12, the mark and the icon (DESIGN.md L1, 2026-10-28):
 
 - The menu-bar mark is M3 of `docs/design-panel-hypha-logo.html`, the tapered line (`StatusMark` in
-  `Summoning.swift`): right of the caret's left edge the line is 1.5 pt (y 7.5 to 9); left of it the bottom edge rises
-  to y 8 at x 4, and the last 2 pt are 1 pt tall against the top edge, so on a 1× display the left end is one whole
-  row of pixels. M3's SVG narrows to a point on the line's middle instead (a grey wisp at 1×); Q of
-  `docs/design-panel-icon-round-2.html` asks whether to draw that at 2× (Q2). The caret as before.
+  `Summoning.swift`), drawn per scale (Q2 of `docs/design-panel-icon-round-2.html`): `draw(in:)` reads the scale from
+  the context, and the menu-bar image's drawing handler runs once for each scale. Right of the caret's left edge the
+  line is 1.5 pt (y 7.5 to 9). Left of it, at 2× and up, it narrows to a point on the line's middle (y 8.25), as
+  M3's SVG; at 1× the bottom edge rises to y 8 at x 4 and the last 2 pt are 1 pt tall against the top edge
+  (`StatusMark.tip`), so the left end is one whole row of pixels instead of a grey wisp. The caret as before.
 - The app icon: `CFBundleIconFile` `AppIcon`, from `assets/logo/icon-I1-M3-b.svg` (J2: I1's body, M3 at 70 % of it,
   the line fading to 35 % at its point) through `make-icon.swift`. macOS shows it in Finder and System Settings (no
   Dock icon, LSUIElement); macOS 26's IconServices draws it in its own body, not in a grey tile.
-- Tests: the mark's test asserts its pixels at 2× (three rows right of the caret, the straight top edge, two rows
-  along the last 2 pt, the lowest row filling monotonically between them, the caret at 60 % and 1.5 pt wide) and at
-  1× (the top row whole from end to end, the tip that row alone).
+- Tests: the mark's test asserts its pixels at 2× (three rows right of the caret; left of it the rows above and
+  below the middle alike, each filling steadily toward the caret from nothing at the point; the caret at 60 % and
+  1.5 pt wide) and at 1× (the top row whole from end to end, the tip that row alone). The 2× render is pixel for
+  pixel AppKit's rendering of `assets/logo/mark-M3.svg`.
 - Build: `Contents/Resources` 1,020 KB (624 before: `AppIcon.icns` 393 KB); signed with "Flow Dev".
 
 ## Known gaps

@@ -24,18 +24,16 @@ func drawMark(scale: Int, name: String) -> (CGFloat, CGFloat) -> UInt8 {
         #expect(ink(x, 7.75) == 255 && ink(x, 8.25) == 255 && ink(x, 8.75) == 255)
         #expect(ink(x, 7.25) == 0 && ink(x, 9.25) == 0)
     }
-    // The top edge is straight from end to end.
-    for x in stride(from: CGFloat(2.25), through: 13.75, by: 0.5) { #expect(ink(x, 8.75) == 255) }
-    // The last 2 pt are 1 pt tall: the two upper rows, the lowest empty.
-    for x: CGFloat in [2.25, 2.75, 3.25, 3.75] {
-        #expect(ink(x, 8.25) == 255 && ink(x, 8.75) == 255)
-        #expect(ink(x, 7.75) == 0 && ink(x, 9.25) == 0)
-    }
-    // The taper: between the tip and the caret the lowest row fills from nothing to full.
-    let taper = stride(from: CGFloat(4.25), through: 8.25, by: 0.5).map { ink($0, 7.75) }
-    #expect(zip(taper, taper.dropFirst()).allSatisfy { $0 < $1 })
-    #expect(taper.first! < 64 && taper.last! > 192)
-    #expect(ink(1.75, 8.75) == 0 && ink(14.25, 8.75) == 0)  // the line ends at 2 and 14
+    // Left of the caret M3's taper: from the caret's left edge to a point on the line's middle, the rows above and
+    // below the middle alike, each filling steadily toward the caret.
+    let xs = Array(stride(from: CGFloat(2.25), through: 8.25, by: 0.5))
+    let below = xs.map { ink($0, 7.75) }, centre = xs.map { ink($0, 8.25) }, above = xs.map { ink($0, 8.75) }
+    #expect(zip(below, above).allSatisfy { abs(Int($0) - Int($1)) <= 2 })
+    #expect(zip(below, below.dropFirst()).allSatisfy { $0 <= $1 } && zip(centre, centre.dropFirst()).allSatisfy { $0 <= $1 })
+    #expect(below.first! == 0 && below.last! > 192 && centre.last! == 255)
+    #expect(centre.first! < 64)  // the point: under a tenth of a point tall in its first half point
+    #expect(ink(5.25, 8.25) == 255 && ink(5.25, 7.75) < 128)  // halfway the middle row is full, the others not
+    #expect(ink(1.75, 8.25) == 0 && ink(14.25, 8.75) == 0)  // the line ends at 2 and 14
     // The caret's bar, above and below the line, and nothing beyond its 8.5 pt.
     #expect(ink(9.25, 11) == 255 && ink(9.25, 5) == 255)
     #expect(ink(9.25, 12.75) == 0 && ink(9.25, 3.75) == 0)
@@ -46,7 +44,7 @@ func drawMark(scale: Int, name: String) -> (CGFloat, CGFloat) -> UInt8 {
     #expect(abs((middle - StatusMark.line.minX) / StatusMark.line.width - 0.6) < 0.01)
     #expect(columns.count == 3)
 
-    // At 1× the line's top row is one whole row of pixels from end to end: the thin end does not fade out.
+    // At 1× the 1 pt end instead: the line's top row is one whole row of pixels from end to end.
     let ink1 = drawMark(scale: 1, name: "mark-M3-1x.png")
     for x in stride(from: CGFloat(2.5), through: 13.5, by: 1) { #expect(ink1(x, 8.5) == 255) }
     #expect(ink1(2.5, 7.5) == 0 && ink1(3.5, 7.5) == 0)  // the tip: that row alone
