@@ -62,6 +62,9 @@ extension Ambience {
         /// Nothing new after the last key, and the scene is gone `linger` after it, fading out over the last `fadeOut`;
         /// then the display link pauses.
         public static let linger = 4.0, fadeOut = 1.0
+        /// At the box's close the scene fades out over the dim's wait and fade less `closeAhead`, so its cleared frames
+        /// are out and the link pauses while the dim is still on screen (a window gone gets no more frames).
+        public static let closeAhead = 0.05
         /// The typing rate is the keys of the last `rateWindow`; magnitudes set by it reach their top at `fastRate`
         /// keys a second (about 100 words a minute).
         public static let rateWindow = 2.0, fastRate = 10.0
@@ -401,6 +404,104 @@ extension Ambience {
             events.removeAll(keepingCapacity: true)
             if out.count > Tuning.cap { out.removeLast(out.count - Tuning.cap) }
             return a
+        }
+    }
+}
+
+// MARK: One screen's lifecycle on the scene thread
+
+extension Ambience {
+    /// What a show hands a screen's ambience: the mode on it (nil: none), its stage, the drawable's size in pixels and
+    /// the scale; `turn` moves on with each show, so the scene thread sees a new one.
+    public struct Plan: Equatable {
+        public var mode: Mode?, stage: Stage, pixels: CGSize, scale: CGFloat, turn: Int
+        public init(mode: Mode?, stage: Stage, pixels: CGSize, scale: CGFloat, turn: Int) {
+            (self.mode, self.stage, self.pixels, self.scale, self.turn) = (mode, stage, pixels, scale, turn)
+        }
+    }
+
+    /// One screen's ambience as the scene thread runs it, frame by frame of its CAMetalDisplayLink (pass 15b): which
+    /// scene plays, what each frame draws into the drawable the link hands it, when the drawable parks at one pixel and
+    /// the link pauses, and when the layer may be shown again. Every frame draws into the link's own drawable and
+    /// nothing else ever does: `-[CAMetalLayer nextDrawable]` raises on a layer a CAMetalDisplayLink drives ("should not
+    /// be called when using CAMetalDisplayLink"), which pass 15 called to clear the layer at a scene's end and so died
+    /// at Esc. The layer is hidden at a close (its opacity fades with the dim, on the main thread) and shown again only
+    /// after a cleared frame is on screen, so the last frame of a scene cut short never shows at the next summon.
+    /// Free of Metal: the tests drive whole sequences.
+    public struct Lifecycle {
+        public enum Phase: Equatable {
+            /// The link is paused; the app's start runs it again at a key.
+            case idle
+            /// Frames come: a scene plays, or is waited for.
+            case playing
+            /// A cleared frame is out and the drawable parked; the next frame clears again and pauses.
+            case parking
+        }
+
+        /// What one frame does: the sprites drawn at `alpha` into the link's drawable, or (nil) that drawable cleared;
+        /// `resize` the drawable's size from the next frame on, set once this frame is committed; `show` the turn
+        /// whose layer may be shown again (a cleared frame of it is already out); `pause` the link after this frame.
+        public struct Step: Equatable {
+            public var alpha: Double?, resize: CGSize?, show: Int?, pause = false
+        }
+
+        /// The drawable while nothing plays: one pixel, so the screen-sized ones go.
+        public static let parked = CGSize(width: 1, height: 1)
+
+        public private(set) var phase = Phase.idle
+        public private(set) var run: Run?
+        private var plan: Plan?, fresh = false, showNext = false, last: Double?
+
+        public init() {}
+
+        /// The first key after a pause: frames again, the drawable at the screen's size (the caller sets it, then runs
+        /// the link).
+        public mutating func start(_ plan: Plan?) -> CGSize? {
+            (phase, last) = (.playing, nil)
+            return plan?.pixels
+        }
+
+        /// The dim is gone: the scene ends here; the next frame, if one comes, clears and parks.
+        public mutating func stop() {
+            if phase == .playing { run = nil }
+        }
+
+        /// One frame at `t`: the plan as the last show made it, the keys since the last frame, the close if the box
+        /// went; the sprites in `out`.
+        public mutating func frame(at t: Double, plan p: Plan?, keys: [Key], closing: (at: Double, over: Double)?,
+                                   glyphs: Glyphs, into out: inout [Sprite]) -> Step {
+            out.removeAll(keepingCapacity: true)
+            var step = Step()
+            let dt = last.map { min(max(t - $0, 0), 0.05) } ?? 1 / Tuning.frameRate
+            last = t
+            if p?.turn != plan?.turn { (plan, run) = (p, nil) }  // a new show, or another mode: a new scene
+            if run == nil, let plan, let mode = plan.mode, !keys.isEmpty, closing == nil {
+                run = Run(mode: mode, stage: plan.stage, glyphs: glyphs, seed: UInt64(max(t, 0) * 1000))
+                (fresh, showNext, phase) = (true, false, .playing)
+                step.resize = plan.pixels
+            }
+            if let c = closing { run?.close(at: c.at, over: c.over) }
+            run?.take(keys)
+            if showNext {
+                (step.show, showNext) = (plan?.turn, false)
+            }
+            if let a = run?.frame(at: t, dt: dt, into: &out) {
+                guard fresh else {
+                    step.alpha = a
+                    return step
+                }
+                (fresh, showNext) = (false, true)  // a new scene's first frame: cleared, the layer shown after it
+                out.removeAll(keepingCapacity: true)
+                return step
+            }
+            run = nil  // nothing plays: clear and park, then clear again and pause
+            if phase == .playing {
+                phase = .parking
+                step.resize = Self.parked
+            } else {
+                (phase, step.pause) = (.idle, true)
+            }
+            return step
         }
     }
 }

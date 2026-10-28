@@ -2,9 +2,6 @@
 
 `DESIGN.md` holds the decisions and the plan. This file says what is done and what is next.
 
-
-**Known crash (2026-10-28, pass 15 as pushed): Esc while a session is open kills Lemna** when an ambience mode is on (three crash reports; thread `dev.lemna.ambience`, an Objective-C exception out of the `CAMetalDisplayLink` callback during the dim layer's teardown, from `SceneThread.main` at `Ambient.swift:31`). Workaround: Session › Ambience › Off. The fix is in progress on branch `wip/esc-crash` (lifecycle type + tests done, the scene-thread rewrite of `Ambient.swift` not); the user stopped work to shut the machine down. Resume there: finish the teardown order (pause and invalidate the link on the scene thread before any layer or drawable change, callbacks ignored after invalidation, `nextDrawable` nil handled), reproduce with the lifecycle tests, build, then merge to main.
-
 ## State (2026-10-28)
 
 - Research, panel, report: done (`docs/`, `reports/`, `research_notes/`).
@@ -388,7 +385,41 @@
   - The menu: one tick at a time, Off last; another mode while typing takes over at the next key; relaunch keeps it.
     Window mode (⌃⌘F): no ambience. Reduce Motion on: the seven are grey, Off ticked, nothing plays; off again: the
     pick plays at the next summon.
-- Next: the user quits Flow and tries pass 15, pass 14b (its list replaces pass 14's), pass 13, then pass 12, pass 11
+- App, pass 15b (2026-10-28; the Esc crash; DESIGN.md A1's R1 amended): the user, trying pass 15: "When I hit escape
+  while editing it kills Lemna" (three crash reports at 15:13, thread `dev.lemna.ambience`). Cause, from the system
+  log: `CAMetalLayerInvalidOperation: -nextDrawable should not be called when using CAMetalDisplayLink.` Pass 15 ended
+  every scene by shrinking the dim's layer to a pixel and clearing it with a drawable of its own, `nextDrawable()`
+  (`Ambient.halt`, from the display link's callback), and Core Animation refuses that on a layer a CAMetalDisplayLink
+  drives, paused or not, on any thread; the exception crossed the callback and aborted Lemna. Esc ended the scene with
+  the close's fade, so Lemna died about a fifth of a second after Esc whenever a mode was on and a key had been typed
+  since the summon; 4 s of silence would have ended it too. With Ambience ▸ Off no scene runs and Esc was safe. Fix:
+  the scene thread follows one lifecycle (`Ambience.Lifecycle`, LemnaCore): every frame, cleared or not, is drawn into
+  the drawable the link hands its callback and into no other; at a scene's end it draws a cleared frame, parks the
+  drawable at one pixel once that frame is committed, clears once more and pauses the link. The dim's layer belongs to
+  the main thread for its geometry and opacity: it fades out with the shade at a close and is shown again only after
+  the next scene's first cleared frame is out, so a scene cut short never shows its last frame at the next summon. The
+  close ends the scene 50 ms before the dim goes (`Tuning.closeAhead`), so it clears and pauses while still on screen.
+  The callback's body runs inside `LemnaCatch` (a new one-function Objective-C target; Swift cannot catch an
+  Objective-C exception): should anything raise there again, Lemna logs it, invalidates that link on the scene thread,
+  ignores its callbacks and goes on without ambience. Tests: the app's 82 (76 before; 6 new: a real layer driven by a
+  CAMetalDisplayLink refuses `nextDrawable` with that very message, while resizing and pausing are allowed; Esc during
+  the close's fade ends on the link's own drawables; a hand-off and a close at once leave nothing stale for the next
+  show; 4 s after the last key it parks and pauses, Off draws nothing; Esc during typing and during the close's and
+  the dim's fades, re-summoned during the fade and Esc again, in all seven modes and Off; the Esc sequence on a real
+  layer and link raises nothing); LemnaJournal 16 (the keychain test skipped) and LemnaClicks 14 (`--skip
+  playReturnsInMicroseconds`), untouched. Not tried: nothing was launched. Try, after `app/make-app.sh` and
+  `open app/build/Lemna.app`:
+  - Esc with each mode while typing: Ambience ▸ Rain, summon, type a few words, Esc mid-word: the box and the dim fade,
+    Lemna stays (its menu-bar item is still there); summon again: an empty dim, the line as it was, the scene starts
+    with the next key. Then Drift (type past 32 characters first), Rings, Beams (with spaces), Grid, Fireworks (Return,
+    then Esc while it bursts), Swarm.
+  - Esc during the fade: Esc, then the hotkey at once while the dim is still fading, type, Esc again.
+  - A hand-off while a scene plays: ⌘⏎ into TextEdit: the sheen, the paste, and Lemna stays.
+  - Silence: type, then wait 5 s with the box up: the scene dies out, Lemna stays; type again: it comes back.
+  - Off: Ambience ▸ Off, type, Esc: as before pass 15.
+  - Console (Lemna's process): no line `Lemna: the ambience stopped: …`; if one shows, it names what Core Animation
+    refused, and the ambience is off until the next launch.
+- Next: the user quits Flow and tries pass 15b with pass 15, pass 14b (its list replaces pass 14's), pass 13, then pass 12, pass 11
   and pass 10, and what of v1, pass 6, pass 7b's click outside and pass 8 is still untried; then DESIGN.md's Open
   items.
 

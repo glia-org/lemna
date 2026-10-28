@@ -1,10 +1,13 @@
 // The ambience on the dim (DESIGN.md A1, R1): over each screen's shade, a clear CAMetalLayer that its own
 // CAMetalDisplayLink draws at 60 Hz on the scene thread, from the first key until the scene has died out (4 s after the
 // last key, the last second fading, or with the dim as the box goes); then the link pauses and the layer holds one
-// clear pixel, so idle costs nothing. The line's key path only hands it the key as a value (`key(_:)`: a lock and an
-// append, after the key's frame); the scene is stepped and drawn off the main thread (`Ambience.Run` and
-// `Ambience.Renderer` in LemnaCore). The line's own display link and its band are untouched.
+// cleared pixel, so idle costs nothing. The line's key path only hands it the key as a value (`key(_:)`: a lock and an
+// append, after the key's frame); the scene is stepped and drawn off the main thread (`Ambience.Run`,
+// `Ambience.Lifecycle` and `Ambience.Renderer` in LemnaCore). The line's own display link and its band are untouched.
+// Every frame is drawn into the drawable the link hands its callback and into no other: `-[CAMetalLayer nextDrawable]`
+// raises on a layer a CAMetalDisplayLink drives, and pass 15, which cleared the layer with it, died at Esc (pass 15b).
 import AppKit
+import LemnaCatch
 import LemnaCore
 import Metal
 import QuartzCore
@@ -39,30 +42,37 @@ final class SceneThread: Thread {
     }
 }
 
-/// One screen's ambience: its layer over the shade, its display link, its scene.
+/// One screen's ambience: its layer over the shade, its display link, its scene. The layer's geometry and opacity are
+/// the main thread's (the opacity fades with the dim at a close and comes back only once the scene thread has a
+/// cleared frame out); the link, the drawable's size and everything drawn are the scene thread's.
 final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
-    /// Over the shade, the screen's size: clear, and one pixel large while nothing plays.
+    /// Over the shade, the screen's size: clear, one pixel large while nothing plays, hidden after a close.
     let layer = CAMetalLayer()
     private let font: CTFont
 
-    /// What a show hands the scene thread: the mode on this screen (nil: none), its stage, the drawable's size and
-    /// scale; `turn` moves on with each, so the scene thread sees a new one.
-    private struct Plan { var mode: Ambience.Mode?, stage: Ambience.Stage, pixels: CGSize, scale: CGFloat, turn: Int }
-    /// Between the main thread and the scene thread, under one lock: the plan, the keys since the last frame, a close
-    /// (the box went: when and over how long), whether the link runs, and whether Metal failed (then nothing plays).
+    /// Between the main thread and the scene thread, under one lock: the plan (from each show), the keys since the
+    /// last frame, a close (the box went: when, and over how long the scene fades), whether the link runs, and whether
+    /// the ambience is shut down for this launch (Metal failed, or an exception was caught).
     private struct Mail {
-        var plan: Plan?, keys: [Ambience.Key] = [], closing: (at: Double, over: Double)?, running = false, dead = false
+        var plan: Ambience.Plan?, keys: [Ambience.Key] = [], closing: (at: Double, over: Double)?, running = false
+        var dead = false
     }
     private let mail = OSAllocatedUnfairLock(uncheckedState: Mail())
 
+    /// The main thread's: the show whose layer may be shown again; nil once the box has closed.
+    private var open: Int?
+
     // The scene thread's own.
     private var link: CAMetalDisplayLink?
-    private var plan: Plan?, run: Ambience.Run?, keys: [Ambience.Key] = [], sprites: [Sprite] = []
+    private var life = Ambience.Lifecycle(), keys: [Ambience.Key] = [], sprites: [Sprite] = []
     /// Three instance buffers, one per frame in flight.
     private var instances: [MTLBuffer] = [], next = 0
     private let inFlight = DispatchSemaphore(value: 3)
-    private var last: Double?, live = false
-    /// Made once on the scene thread (the shader's one compile), shared by every screen; nil until then, or when it failed.
+    /// What an Objective-C exception caught in the callback said.
+    private var message = [CChar](repeating: 0, count: Ambient.messageSize)
+    private static let messageSize = 512
+    /// Made once on the scene thread (the shader's one compile), shared by every screen; nil until then, or when it
+    /// failed.
     private static var renderer: Ambience.Renderer?, failed = false
 
     init(font: CTFont) {
@@ -73,7 +83,7 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
         layer.colorspace = CGColorSpace(name: CGColorSpace.sRGB)
         layer.isOpaque = false
         layer.framebufferOnly = true
-        layer.drawableSize = CGSize(width: 1, height: 1)
+        layer.drawableSize = Ambience.Lifecycle.parked
         SceneThread.shared.perform { [self] in
             let l = CAMetalDisplayLink(metalLayer: layer)
             l.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 60, preferred: 60)
@@ -87,18 +97,22 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
     // MARK: From the main thread
 
     /// At each show: the mode on this screen (nil: none) on `stage`, at the screen's `scale`. A scene still playing
-    /// gives way to a new one at the next key; with a mode, the renderer is made now on the scene thread, so the first
-    /// key finds the shader compiled.
+    /// gives way to a new one, which starts at the next key with a cleared frame; with a mode, the renderer is made
+    /// now on the scene thread, so the first key finds the shader compiled.
     func begin(_ mode: Ambience.Mode?, on stage: Ambience.Stage, scale: CGFloat) {
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        layer.frame = CGRect(origin: .zero, size: stage.size)
-        layer.contentsScale = scale
-        CATransaction.commit()
+        let frame = CGRect(origin: .zero, size: stage.size)
+        if layer.frame != frame || layer.contentsScale != scale {  // a screen changed: else nothing to commit
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            (layer.frame, layer.contentsScale) = (frame, scale)
+            CATransaction.commit()
+        }
         let pixels = CGSize(width: (stage.size.width * scale).rounded(), height: (stage.size.height * scale).rounded())
-        mail.withLockUnchecked { m in
-            m.plan = Plan(mode: mode, stage: stage, pixels: pixels, scale: scale, turn: (m.plan?.turn ?? 0) + 1)
+        open = mail.withLockUnchecked { m -> Int in
+            let turn = (m.plan?.turn ?? 0) + 1
+            m.plan = Ambience.Plan(mode: mode, stage: stage, pixels: pixels, scale: scale, turn: turn)
             m.closing = nil
+            return turn
         }
         if mode != nil { SceneThread.shared.perform { [self] in _ = prepare() } }
     }
@@ -115,14 +129,29 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
         if wake { SceneThread.shared.perform { [self] in start() } }
     }
 
-    /// The box goes: the scene fades out over `d`, with the dim; `stop` follows once the dim is gone.
+    /// The box goes: the scene fades out over `d` (less `Tuning.closeAhead`, so it clears and pauses while the dim is
+    /// still up) and the layer stays hidden until the next show's first cleared frame. Its opacity fades with the
+    /// shade (the box does that); `stop` follows once the dim is gone.
     func close(over d: Double) {
+        open = nil
         let t = CACurrentMediaTime()
-        mail.withLockUnchecked { $0.closing = (t, d) }
+        mail.withLockUnchecked { $0.closing = (t, max(d - Ambience.Tuning.closeAhead, 0)) }
     }
 
-    /// The dim is gone: whatever still plays stops, and the layer is cleared.
-    func stop() { SceneThread.shared.perform { [self] in halt() } }
+    /// The dim is gone: whatever still plays ends; the next frame, if one comes, clears and parks.
+    func stop() { SceneThread.shared.perform { [self] in life.stop() } }
+
+    /// The scene thread has a cleared frame of `turn` out: the layer shows again, unless the box closed since.
+    private func show(_ turn: Int) {
+        DispatchQueue.main.async { [self] in
+            guard open == turn else { return }
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            layer.removeAnimation(forKey: "fade")
+            layer.opacity = 1
+            CATransaction.commit()
+        }
+    }
 
     // MARK: On the scene thread
 
@@ -139,65 +168,69 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
 
     /// The first key after a pause: the drawable back at the screen's size, the link running.
     private func start() {
-        guard let renderer = prepare(), let link else {
-            mail.withLockUnchecked { $0.dead = true }
-            return halt()
-        }
-        if instances.isEmpty { instances = (0..<3).compactMap { _ in renderer.makeInstances() } }
-        if let pixels = mail.withLockUnchecked({ $0.plan?.pixels }) { layer.drawableSize = pixels }
-        (last, live) = (nil, true)
+        guard prepare() != nil, let link, !mail.withLockUnchecked({ $0.dead }) else { return shutDown(nil) }
+        if instances.isEmpty, let renderer = Self.renderer { instances = (0..<3).compactMap { _ in renderer.makeInstances() } }
+        if let size = life.start(mail.withLockUnchecked({ $0.plan })) { layer.drawableSize = size }
         link.isPaused = false
     }
 
-    /// One frame: the mail taken, the scene made at the first key of a show (and anew for another mode), stepped with
-    /// the keys, drawn into the link's drawable; when it is over, the link pauses.
+    /// One frame of the link, its body guarded: an Objective-C exception must not cross Core Animation's callback (it
+    /// aborts the app, as pass 15's did); if one comes, the ambience shuts down for this launch and Lemna goes on.
     func metalDisplayLink(_ link: CAMetalDisplayLink, needsUpdate update: CAMetalDisplayLink.Update) {
-        let t = update.targetTimestamp
-        let (newest, closing) = mail.withLockUnchecked { m -> (Plan?, (at: Double, over: Double)?) in
+        guard link === self.link else { return }  // a link invalidated after an exception: nothing more from it
+        if LemnaCatch({ self.frame(link, update) }, &message, UInt(Self.messageSize)) == 1 {
+            shutDown(String(cString: message))
+        }
+    }
+
+    /// The mail taken, the lifecycle's step drawn into the link's own drawable and committed, then the drawable's
+    /// size changed, the layer shown or the link paused, as the step says.
+    private func frame(_ link: CAMetalDisplayLink, _ update: CAMetalDisplayLink.Update) {
+        guard let renderer = Self.renderer else { return link.isPaused = true }
+        let (plan, closing) = mail.withLockUnchecked { m -> (Ambience.Plan?, (at: Double, over: Double)?) in
             swap(&m.keys, &keys)
             return (m.plan, m.closing)
         }
-        if newest?.turn != plan?.turn {
-            (plan, run) = (newest, nil)
-            if let p = plan, layer.drawableSize != p.pixels { layer.drawableSize = p.pixels }
-        }
-        if run == nil, let p = plan, let mode = p.mode, !keys.isEmpty, closing == nil, let renderer = Self.renderer {
-            run = Ambience.Run(mode: mode, stage: p.stage, glyphs: renderer.glyphs, seed: UInt64(t * 1000))
-        }
-        if let c = closing { run?.close(at: c.at, over: c.over) }
-        run?.take(keys)
+        let step = life.frame(at: update.targetTimestamp, plan: plan, keys: keys, closing: closing,
+                              glyphs: renderer.glyphs, into: &sprites)
         keys.removeAll(keepingCapacity: true)
-        let dt = last.map { min(max(t - $0, 0), 0.05) } ?? 1 / Ambience.Tuning.frameRate
-        last = t
-        guard let alpha = run?.frame(at: t, dt: dt, into: &sprites) else {  // stepped in place: no copy of the scene
-            run = nil
-            return halt()
-        }
-        draw(sprites.count, alpha: alpha, into: update.drawable)
+        draw(step.alpha == nil ? 0 : sprites.count, alpha: step.alpha ?? 0, plan: plan, into: update.drawable)
+        if let size = step.resize { layer.drawableSize = size }  // after the frame is committed
+        if let turn = step.show { show(turn) }
+        if step.pause { pause(link) }
     }
 
-    /// Nothing plays: the link pauses and the layer shows one clear pixel, so the screen-sized drawables go; unless keys
-    /// came meanwhile, and then it goes on.
-    private func halt() {
-        let resume = mail.withLockUnchecked { m -> Bool in
-            if !m.keys.isEmpty, m.plan?.mode != nil, m.closing == nil, !m.dead { return true }
+    /// The lifecycle pauses: unless keys came since this frame took them, and then it goes on.
+    private func pause(_ link: CAMetalDisplayLink) {
+        let plan = mail.withLockUnchecked { m -> Ambience.Plan?? in
+            if !m.keys.isEmpty, m.plan?.mode != nil, m.closing == nil, !m.dead { return .some(m.plan) }
             m.running = false
-            return false
+            return nil
         }
-        if resume {
-            if !live { start() }
-            return
-        }
-        guard live else { return }
-        (live, run, last) = (false, nil, nil)
-        link?.isPaused = true
-        layer.drawableSize = CGSize(width: 1, height: 1)
-        if let d = layer.nextDrawable() { draw(0, alpha: 0, into: d) }
+        guard let plan else { return link.isPaused = true }
+        if let size = life.start(plan) { layer.drawableSize = size }
     }
 
-    /// The first `count` of `sprites` into `drawable`, at `alpha`, presented; at most three frames in flight.
-    private func draw(_ count: Int, alpha: Double, into drawable: CAMetalDrawable) {
-        guard let renderer = Self.renderer, let plan, let commands = renderer.queue.makeCommandBuffer() else { return }
+    /// No more ambience this launch: the link paused and invalidated here, on its own thread, so it calls back no
+    /// more; keys dropped from now on; the layer hidden by the main thread. `why`: the exception's text, logged once.
+    private func shutDown(_ why: String?) {
+        if let why { NSLog("Lemna: the ambience stopped: %@", why) }
+        mail.withLockUnchecked { m in (m.dead, m.running, m.keys) = (true, false, []) }
+        if let l = link {
+            link = nil
+            l.isPaused = true
+            l.invalidate()
+        }
+        DispatchQueue.main.async { [self] in
+            open = nil
+            layer.opacity = 0
+        }
+    }
+
+    /// The first `count` of `sprites` into the link's `drawable` at `alpha` (none: it is cleared), committed and
+    /// presented; at most three frames in flight.
+    private func draw(_ count: Int, alpha: Double, plan: Ambience.Plan?, into drawable: CAMetalDrawable) {
+        guard let renderer = Self.renderer, let commands = renderer.queue.makeCommandBuffer() else { return }
         inFlight.wait()
         let buffer = instances.isEmpty ? nil : instances[next]
         next = (next + 1) % max(instances.count, 1)
@@ -207,8 +240,9 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
                 buffer.contents().copyMemory(from: $0.baseAddress!, byteCount: n * MemoryLayout<Sprite>.stride)
             }
         }
-        renderer.encode(commands, instances: buffer, count: n, into: drawable.texture, viewport: plan.stage.size,
-                        scale: plan.scale, alpha: alpha)
+        renderer.encode(commands, instances: buffer, count: n, into: drawable.texture,
+                        viewport: plan?.stage.size ?? layer.bounds.size, scale: plan?.scale ?? layer.contentsScale,
+                        alpha: alpha)
         commands.addCompletedHandler { [inFlight] _ in inFlight.signal() }
         commands.present(drawable)
         commands.commit()

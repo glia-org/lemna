@@ -12,9 +12,10 @@ the menu-bar mark M3 and the app icon (L1); then pass 13: the name, Lemna (N; Fl
 the effects (F1): Tokyo Night's colours, the box's pop, accent border and theme dim, the glide on easeOutQuint, the
 glyph pop-in, the sheens, the paragraph fade and Session › Effects ▸; then pass 14b: the effects made plain to see,
 their magnitudes in one table, and the colours back to Lemna's own; then pass 15: the ambience (A1), seven scenes on the
-dim around the box fed by the keys, on a Metal layer of their own, and Session › Ambience ▸. Swift +
+dim around the box fed by the keys, on a Metal layer of their own, and Session › Ambience ▸; then pass 15b: the crash at
+Esc with a mode on fixed. Swift +
 AppKit, SwiftPM with the Command Line Tools only (no Xcode), two package dependencies by path (`../lib/LemnaJournal`,
-`../lib/LemnaClicks`), signed with a self-signed certificate or ad-hoc (there is no Developer ID yet).
+`../lib/LemnaClicks`) and one Objective-C function of its own (`Sources/LemnaCatch`), signed with a self-signed certificate or ad-hoc (there is no Developer ID yet).
 
 ## Build, run, test
 
@@ -81,6 +82,8 @@ git-ignored.
   the app (open and restore, append, the flushes); `LineView.swift` the view (text input, the keys of B4, edits as
   journal edits and clicks, the two glides, display link; since pass 15 each key handed on to the ambience after its
   frame); `Ambient.swift` the ambience on each dim (the scene thread, the Metal layer and its display link);
+  `Sources/LemnaCatch` one Objective-C function that catches an Objective-C exception, which Swift cannot (the display
+  link's callback runs inside it);
   `Strip.swift` the Metal band (Core Graphics into a shared
   buffer, blitted into the drawable); `Frame.swift` the surface's bottom edge (the Bluetooth notice, a hand-off's
   note); `Summon.swift` the hotkey (Carbon) and the menu-bar item with Lemna's menu.
@@ -94,7 +97,10 @@ git-ignored.
   dictionary, the entrance on the curve, the newest glyph's fade and scale (`EffectsTests`); the Ambience submenu's
   default, round trip and Reduce Motion, the tuning, the sprite's layout, the stage, the typing rate, a run's 4 s and its
   close, the glyph that leaves the box's edge, each mode's coupling, the cap, the shader and one frame offscreen, the
-  renders (`AmbienceTests`).
+  renders (`AmbienceTests`); since pass 15b the display link's lifecycle: a real layer driven by a link refuses
+  `nextDrawable`, Esc during typing and during the close's and the dim's fades in every mode and Off, a hand-off, a
+  close at once, a new show, the end 4 s after the last key, the Esc sequence on a real layer and link
+  (`AmbienceLinkTests`).
 
 ## What it covers
 
@@ -477,7 +483,8 @@ C1 I1` of `docs/design-panel-lemna-ambience.html`):
   on that screen, a clear `CAMetalLayer` over it (bgra8, sRGB, not opaque), the screen's size at its scale. Its
   `CAMetalDisplayLink` (macOS 14) runs at 60 Hz on one `SceneThread` (a `Thread` with its own run loop) from the first
   key until the run is over (`Ambience.Run.frame` returns nil: 4 s after the last key, or at the end of a close), then
-  pauses; the layer's drawable is then 1 × 1 px and cleared, so the screen-sized drawables go. At each show `begin`
+  pauses; the layer's drawable is then 1 × 1 px and cleared, so the screen-sized drawables go (pass 15b changed how,
+  below). At each show `begin`
   hands it the mode (none on a screen without the box for the box-bound modes) and the stage (`Ambience.Stage`: the
   screen's size, the box and the line's band, baseline and caret in the screen's points); a new show or mode starts a
   new scene at the next key. At the box's close each scene fades out over the dim's wait and fade (`close`), and
@@ -510,8 +517,35 @@ C1 I1` of `docs/design-panel-lemna-ambience.html`):
 - Build: the executable is 1.20 MB (1,202,384 bytes; 907,200 in pass 14b), no `/Users/` path in it; signed with
   "Lemna Dev".
 
+Pass 15b, the crash at Esc (DESIGN.md A1's R1 amended, 2026-10-28; the user: "When I hit escape while editing it kills
+Lemna"):
+
+- Cause (the system log at the three crashes): `CAMetalLayerInvalidOperation: -nextDrawable should not be called when
+  using CAMetalDisplayLink.` At a scene's end pass 15's `Ambient.halt` shrank the layer and asked it for a drawable to
+  clear, from the link's callback; Core Animation refuses `nextDrawable` on a layer a CAMetalDisplayLink drives (paused
+  or not, on any thread, with or without a window: a probe, and now a test), the exception crossed the callback, and
+  `SceneThread`'s run loop aborted Lemna. Every scene's end went that way: Esc ended it with the close's fade, 4 s of
+  silence by itself. Off, or a mode with nothing typed since the summon, never reached it.
+- `Ambience.Lifecycle` (LemnaCore) decides what each frame does (`Step`: the sprites at an alpha, or a cleared frame;
+  the drawable's next size; the layer's show; the pause): a new scene's first frame is cleared and at the screen's size,
+  the layer is shown from its second; when nothing plays, a cleared frame, the drawable parked at 1 × 1 px once it is
+  committed, a second cleared frame, the pause; `stop` (the dim gone) ends a scene, and the next frame, if one comes,
+  parks. Free of Metal, so the tests drive whole sequences.
+- `Ambient` (the app) only carries the steps out, on the scene thread: each frame drawn into `update.drawable`, the
+  drawable's size set after the commit, the pause, and a show handed to the main thread, which owns the layer's
+  geometry and opacity: the box fades the layer out with the shade at a close (`undim`), and the show (only for the
+  turn still open) brings it back. `close` ends the scene `Tuning.closeAhead` (50 ms) before the dim goes, so it clears
+  and pauses while the window is still up. Nothing calls `nextDrawable` any more.
+- The callback's body runs inside `LemnaCatch` (`Sources/LemnaCatch`, a C-family target with one function, `@try` and
+  `@catch` around a block): an Objective-C exception that Core Animation or Metal raises there again is logged
+  (`Lemna: the ambience stopped: …`), the link is paused and invalidated on the scene thread, its callbacks ignored, the
+  keys dropped and the layer hidden; Lemna goes on without ambience until the next launch.
+
 ## Known gaps
 
+- Pass 15b is not tried: nothing was launched. The fix is checked by the lifecycle's tests and on a real layer and
+  link without a window; the display link's callbacks in a shown dim and the main thread's show after a cleared frame
+  are not.
 - Pass 15 is not tried: nothing was launched. Untried: that `CAMetalDisplayLink` fires on the scene thread's run loop
   and keeps off the main thread (the panel's "to verify"); the key's latency with a scene playing (the budget: p50/p90
   no worse than the spike's 42/60 ms, measured with os_signpost; not done); whether Core Animation composites the

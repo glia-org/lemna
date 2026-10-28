@@ -404,14 +404,21 @@ final class Box {
         for dim in dims.dropFirst(screens.count) { dim.window.orderOut(nil) }
     }
 
-    /// The dim goes with the box: after `waiting`, fading over `fading`; at once without a fade. The ambience stops with
-    /// it.
+    /// The dim goes with the box: after `waiting`, fading over `fading`; at once without a fade. The ambience's layers
+    /// fade with the shades and stay hidden until a show's scene has a cleared frame out (`Ambient.show`); the scenes
+    /// stop once the dim is gone.
     private func undim(waiting: Double, fading: Double) {
         guard fading > 0 else {
-            for dim in dims { dim.window.orderOut(nil) }
+            for dim in dims {
+                if let a = dim.ambient { fade(a.layer, to: 0, over: 0) }
+                dim.window.orderOut(nil)
+            }
             return stopAmbience()
         }
-        for dim in dims where dim.window.isVisible { fade(dim.shade, to: 0, after: waiting, over: fading) }
+        for dim in dims where dim.window.isVisible {
+            fade(dim.shade, to: 0, after: waiting, over: fading)
+            if let a = dim.ambient { fade(a.layer, to: 0, after: waiting, over: fading) }
+        }
         let mine = turn
         DispatchQueue.main.asyncAfter(deadline: .now() + waiting + fading) { [weak self] in
             guard let self, self.turn == mine else { return }
