@@ -1,5 +1,7 @@
 #!/bin/zsh
-# Builds Flow in release and assembles build/Flow.app, ad-hoc signed: there is no Developer ID yet (DESIGN.md E2, X1).
+# Builds Flow in release and assembles build/Flow.app, signed with the "Flow Dev" certificate from make-cert.sh when the
+# login keychain holds it (its signature stays the same across builds, so the Accessibility grant and the keychain
+# item survive a rebuild), else ad-hoc: there is no Developer ID yet (DESIGN.md E2, X1).
 # Idempotent: the bundle is assembled afresh on each run. Run: app/make-app.sh
 # LSUIElement: an accessory app from launch on (no Dock icon, no menu bar; DESIGN.md W2), as main.swift sets it too.
 set -eu
@@ -39,6 +41,8 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 plutil -lint -s "$app/Contents/Info.plist"
-codesign --force --sign - --deep "$app"
+sign="-"
+if security find-identity -v -p codesigning | grep -q '"Flow Dev"'; then sign="Flow Dev"; else echo "ad-hoc (no Flow Dev certificate; app/make-cert.sh makes one)"; fi
+codesign --force --sign "$sign" --deep "$app"
 codesign --verify --deep --strict "$app"
 echo "$PWD/$app"

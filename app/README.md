@@ -12,7 +12,8 @@ yet).
 ## Build, run, test
 
 ```sh
-app/make-app.sh            # release build, assembles, ad-hoc signs and verifies app/build/Flow.app, prints its path
+app/make-cert.sh           # once: a self-signed "Flow Dev" code-signing certificate in the login keychain
+app/make-app.sh            # release build, assembles, signs (Flow Dev, else ad-hoc) and verifies app/build/Flow.app, prints its path
 open app/build/Flow.app
 
 cd app
@@ -322,8 +323,9 @@ Pass 9, Harper removed (DESIGN.md R1+R3, amended 2026-10-28):
   `.floating` shows over a full-screen app; how sheets look on the borderless box (a question on the 112 pt box hangs
   below its top edge); whether the hotkey with a sheet up on the box brings the sheet back with the box.
 - The PostEvent permission is tied to the code signature, and an ad-hoc signature changes with every build: after a
-  rebuild macOS may show Flow as allowed under Accessibility but drop its events. Remove Flow there (−) and paste
-  again to be asked anew.
+  rebuild macOS may show Flow as allowed under Accessibility but drop its events. `app/make-cert.sh` (once) puts a
+  self-signed "Flow Dev" certificate in the login keychain and `make-app.sh` signs with it from then on, so the grant
+  survives rebuilds. After the switch from ad-hoc, once: `tccutil reset Accessibility org.flow.app`, relaunch, paste.
 - Keeping the old clipboard reads the general pasteboard. Where macOS (15.4 on) asks before an app reads it
   programmatically, that read may raise the system's paste alert at each paste; with the alert answered Deny, Flow
   leaves its text on the clipboard instead of restoring. Large items (an image) are read in full on the main thread.
@@ -347,7 +349,7 @@ Pass 9, Harper removed (DESIGN.md R1+R3, amended 2026-10-28):
   than ending under a closed lid. The fill's first and last points hide under the window's rounded bottom corners.
 - The radio buttons of the Time box sheet are reached by mouse, or by Tab with keyboard navigation on.
 - An ad-hoc signed rebuild changes the app's signature, so macOS may ask once whether Flow may use its keychain item
-  when a session is restored. Deny: the "not kept" alert, the old session stays on disk for the next launch.
+  when a session is restored (not with the "Flow Dev" certificate, see above). Deny: the "not kept" alert, the old session stays on disk for the next launch.
 - The duration is wall-clock time since the session's first edit (a restored session: since its journal file was
   made), breaks and quits included.
 - `Undo (10 s)` names the grace; it does not count down.
