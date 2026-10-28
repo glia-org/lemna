@@ -52,10 +52,12 @@ public struct Ambience: Equatable {
 }
 
 extension Ambience {
-    /// Every magnitude of the ambience in one place (A1, I1: fixed per mode, plainly visible over a dark app). The
-    /// panel's values where it gave them (its I1 table and the cards), the rest chosen to read as plainly; times in
-    /// seconds, lengths in points, alphas over the dim. The colours are the box's (C1): text for glyphs, rings, grid
-    /// lines and bubbles, the accent for heads, beams and lit cells.
+    /// Every magnitude of the ambience in one place (A1, I1: fixed per mode). Pass 16 (the user, having tried pass
+    /// 15: "The ambience effects are way too subtle") made every mode plain from its first frame, about two to three
+    /// times pass 15's alphas, larger where that reads better, a little longer where the fade took them early; pass
+    /// 15's values, the panel's, stand beside each as "subtle". Times in seconds, lengths in points, alphas over the
+    /// dim. The colours are the box's (C1): text for glyphs, rings, grid lines and bubbles, the accent for heads, beams
+    /// and lit cells.
     public enum Tuning {
         /// Every mode: at most this many sprites a frame (the panel's 2,000 particles), stepped and drawn at 60 Hz.
         public static let cap = 2000, frameRate = 60.0
@@ -71,53 +73,70 @@ extension Ambience {
         /// C1: the box's text and accent (`Style.text`, `Style.accent`), and the beams' white head.
         public static let text: UInt32 = 0xd8dce3, accent: UInt32 = 0x7aa7f0, white: UInt32 = 0xffffff
 
-        /// M1 Drift: a glyph that leaves the box's left edge fades in over `driftIn` to `driftPeak` and out by
-        /// `driftLife`. It leaves at the line's own speed (its advance times the typing rate), so the glyphs keep their
-        /// spacing as they come out, and slows over `driftCarry` onto a current of 8–40 pt/s set by the rate (eased over
-        /// `driftEase`), rising at its own pace (more often up than down), wandering and turning slowly. About 20 live
-        /// at 5 keys/s.
-        public static let driftPeak = 0.35, driftIn = 0.3, driftLife = 4.0, driftEase = 0.6, driftCarry = 1.0
-        public static let driftCurrent = 8.0...40.0, driftRise = -6.0...18.0, driftWander = 6.0, driftTurn = 0.05...0.2
+        /// Where a key is (pass 16, `Keyboard`): across the screen, Rain's columns from the left to the right end of
+        /// `screenSpan`; along the box, where Rings, Fireworks and Swarm start, `boxSpan` of its width; down the
+        /// keyboard, Rain's start from the top of `rainRows` (the number row) to its bottom (the space bar's), and the
+        /// beams' height from the top of `beamRows` to its bottom, shares of the screen's height. A key with no
+        /// position (an arrow, the accent menu's pick) takes the caret's x.
+        public static let screenSpan = 0.1...0.9, boxSpan = 0.05...0.95, rainRows = 0.55...0.95, beamRows = 0.1...0.85
 
-        /// M2 Rain: each glyph key drops one column at a random x, the typed glyph at its head in the accent at
-        /// `rainHead`, a trail of 4–8 glyphs in the text colour above it, each `rainTrailFall` of the one below (the
-        /// panel's 0.34, 0.2, 0.13, 0.08), a trail glyph swapping
-        /// `rainSwap` times a second; falling 150–300 pt/s, row by row, for `rainLife`, its last `rainOut` fading.
-        /// Space and Return drop none. The glyphs at `rainScale` of the line's size. About 90 live at 5 keys/s.
-        public static let rainHead = 0.3, rainLife = 2.5, rainOut = 0.6, rainScale = 0.8, rainSwap = 1.5, rainTrailFall = 0.6
-        public static let rainFall = 150.0...300.0, rainTrail = 4...8
+        /// M1 Drift: a glyph that leaves the box's left edge fades in over `driftIn` to `driftPeak`, holds it for
+        /// `driftHold` and fades out by `driftLife`. It leaves at the line's own speed (its advance times the typing
+        /// rate), so the glyphs keep their spacing as they come out, and slows over `driftCarry` onto a current of
+        /// 8–40 pt/s set by the rate (eased over `driftEase`), rising at its own pace (more often up than down),
+        /// wandering and turning slowly. About 20 live at 5 keys/s. Subtle: peak 0.35, no hold.
+        public static let driftPeak = 0.7, driftIn = 0.3, driftHold = 1.5, driftLife = 4.0, driftEase = 0.6
+        public static let driftCarry = 1.0, driftCurrent = 8.0...40.0, driftRise = -6.0...18.0, driftWander = 6.0
+        public static let driftTurn = 0.05...0.2
 
-        /// M3 Rings: each key sends one `ringWidth` ring out from the box's edge to `ringReach` on the curve, rounding
-        /// out as it grows, its alpha from `ringPeak` to nothing over `ringLife`; ⌫ sends one in from `ringInward`
-        /// onto the box. About 8 live at 5 keys/s.
-        public static let ringPeak = 0.25, ringWidth = 1.0, ringLife = 1.5, ringReach = 400.0, ringInward = 160.0
+        /// M2 Rain: each glyph key drops one column where the key is across the screen (anywhere within its width),
+        /// higher the higher its row, the
+        /// typed glyph at its head in the accent at `rainHead`, a trail of 4–8 glyphs in the text colour above it from
+        /// `rainTrailStart`, each `rainTrailFall` of the one below, a trail glyph swapping `rainSwap` times a second;
+        /// falling 150–300 pt/s, row by row, for `rainLife`, its last `rainOut` fading. Space and Return drop none.
+        /// The glyphs at `rainScale` of the line's size. Subtle: head 0.3, the trail from 0.18 by 0.6, 2.5 s, 0.8 of
+        /// the line's size.
+        public static let rainHead = 0.8, rainTrailStart = 0.55, rainTrailFall = 0.75, rainLife = 3.0, rainOut = 0.6
+        public static let rainScale = 1.0, rainSwap = 1.5, rainFall = 150.0...300.0, rainTrail = 4...8
 
-        /// M4 Beams: added light in the accent at `beamPeak` with a white head at `beamHead`. Space: a short one beside
-        /// the box (`wordBeam`: its length, how far its head goes, its life, its height); Return: one across every
-        /// screen (`lineBeam`, its length a share of the screen's width, at most `lineLongest`).
-        public static let beamPeak = 0.18, beamHead = 0.55
-        public static let wordBeam = (length: 160.0, travel: 420.0, life: 0.55, height: 2.0)
-        public static let lineBeam = (share: 0.35, life: 0.9, height: 3.0), lineLongest = 640.0
+        /// M3 Rings: each key sends one circle of `ringWidth` out from the box's top edge where the key is, to the
+        /// screen's farthest corner on the curve, its alpha from `ringPeak` to nothing over `ringLife`; ⌫ (at its key)
+        /// sends one in from `ringInward`. Drawn as arcs of about `ringArc` points (8 to `ringArcs` a circle). Subtle:
+        /// the box's outline grown to 400 pt, 1 pt, peak 0.25, 1.5 s, inward from 160 pt.
+        public static let ringPeak = 0.6, ringWidth = 2.0, ringLife = 2.0, ringInward = 240.0, ringArc = 100.0
+        public static let ringArcs = 96
+
+        /// M4 Beams: added light in the accent at `beamPeak` with a bright white head at `beamHead`. Space: one along
+        /// the bottom of the box's screen (`wordBeam`: its length a share of the screen's width, its life, its
+        /// height); Return: one across every screen at its row's height (`lineBeam`, at most `lineLongest`). Subtle:
+        /// 0.18 and 0.55; Space's 160 pt beside the box in 0.55 s, 2 pt; Return's at a random height in 0.9 s, 3 pt.
+        public static let beamPeak = 0.45, beamHead = 0.95
+        public static let wordBeam = (share: 0.25, life: 1.0, height: 3.0)
+        public static let lineBeam = (share: 0.35, life: 1.1, height: 4.0), lineLongest = 800.0
 
         /// M5 Grid: square cells of `gridCell` over the box's screen, the lines at `gridLines` fading in over `gridIn`
-        /// at the first key; each key lights one cell within `gridReach` cells of the box, near the caret more often
-        /// (weight e^(−distance / `gridNear`)), in the accent at `gridLit`, fading out by `gridLife`. About 3 lit at
-        /// 5 keys/s.
-        public static let gridCell = 24.0, gridLines = 0.06, gridIn = 0.3, gridLit = 0.2, gridLife = 0.6
-        public static let gridReach = 3, gridNear = 150.0
+        /// at the first key; each key lights its own cells in a keyboard of 5 × 15 cells `gridGap` cells under the
+        /// box (over it where there is no room), in the accent at `gridLit`, fading out by `gridLife`, so typing
+        /// draws the keyboard's shape. A key with no position lights one cell within `gridReach` of the box, near the
+        /// caret more often (weight e^(−distance / `gridNear`)). Subtle: 24 pt cells, lines 0.06, lit 0.2 for 0.6 s,
+        /// a random cell near the caret for every key.
+        public static let gridCell = 32.0, gridLines = 0.12, gridIn = 0.3, gridLit = 0.6, gridLife = 0.9
+        public static let gridGap = 1, gridReach = 3, gridNear = 150.0
 
-        /// M6 Fireworks: on Return a spark rises `fireRise` above the box at the caret in `fireLaunch` and bursts into
-        /// `fireSparks`: the last glyphs typed at `fireScale` and dots, text and accent in turn, flung at 60–150 pt/s,
-        /// slowed by `fireDrag`, falling by `fireGravity`, from `firePeak` to nothing over `fireLife`.
-        public static let firePeak = 0.42, fireLaunch = 0.45, fireRise = 130.0, fireSparks = 24, fireScale = 0.5
-        public static let fireSpeed = 60.0...150.0, fireDrag = 1.2, fireGravity = 140.0, fireLife = 1.6
+        /// M6 Fireworks: on Return a spark rises `fireRise` from the box's top edge where Return is in `fireLaunch`
+        /// and bursts into `fireSparks`: the last glyphs typed at `fireScale` and dots, text and accent by turns,
+        /// flung at 70–180 pt/s, slowed by `fireDrag`, falling by `fireGravity`, from `firePeak` to nothing over
+        /// `fireLife`. Subtle: peak 0.42, 24 sparks, half size, 60–150 pt/s, 1.6 s, from the caret, a rise of 130 pt.
+        public static let firePeak = 0.9, fireLaunch = 0.45, fireRise = 160.0, fireSparks = 48, fireScale = 0.7
+        public static let fireSpeed = 70.0...180.0, fireDrag = 1.2, fireGravity = 140.0, fireLife = 2.0
 
-        /// M7 Swarm: each glyph or Space lets one bubble rise from the box's top edge near the caret (Return five), at
-        /// `swarmRise` plus `swarmRiseRate` per key a second, then join a swarm circling `swarmHeight` above the caret
-        /// at 0.5 rad/s plus `swarmTurnRate` per key a second; a bubble lives 2.5–4 s at up to `swarmPeak`, then pops
-        /// (`swarmPop`).
-        public static let swarmPeak = 0.3, swarmLife = 2.5...4.0, swarmRadius = 4.0...10.0, swarmPop = 0.2
-        public static let swarmRise = 30.0, swarmRiseRate = 6.0, swarmHeight = 120.0, swarmTurnRate = 0.2
+        /// M7 Swarm: each glyph or Space lets one bubble (a ring of `swarmStroke`) rise from the box's top edge where
+        /// the key is (Return five), at `swarmRise` plus `swarmRiseRate` per key a second, then join a swarm circling
+        /// `swarmHeight` above the caret at 0.5 rad/s plus `swarmTurnRate` per key a second; a bubble lives 2.5–4 s at
+        /// up to `swarmPeak`, then pops (`swarmPop`). Subtle: peak 0.3, 1.2 pt, radius 4–10 pt, near the caret.
+        public static let swarmPeak = 0.6, swarmStroke = 2.0, swarmLife = 2.5...4.0, swarmRadius = 6.0...14.0
+        public static let swarmPop = 0.2, swarmRise = 30.0, swarmRiseRate = 6.0, swarmHeight = 120.0
+        public static let swarmTurnRate = 0.2
     }
 }
 
@@ -125,37 +144,50 @@ extension Ambience {
 
 extension Ambience {
     /// A key the line took, as it hands it on after the key's frame (on the main thread: a value and an enqueue,
-    /// nothing else). `pushed`: how far the text before the caret moved left (typing; 0 or less for a delete); with
-    /// `line`, the line as now shaped (a reference to its glyphs, copied by no one), the scene's thread finds what left
-    /// the box's left edge.
+    /// nothing else). `code`: the physical key (NSEvent's keyCode), nil when no key event brought it (the accent
+    /// menu's pick); the scene's thread finds where it is (`Keyboard`). `pushed`: how far the text before the caret
+    /// moved left (typing; 0 or less for a delete); with `line`, the line as now shaped (a reference to its glyphs,
+    /// copied by no one), the scene's thread finds what left the box's left edge.
     public struct Key {
         public enum Kind: Equatable { case glyph(Character), space, paragraph, backspace }
-        public var t: Double, kind: Kind, line: Shaped?, pushed: Double
-        public init(t: Double, kind: Kind, line: Shaped? = nil, pushed: Double = 0) {
-            (self.t, self.kind, self.line, self.pushed) = (t, kind, line, pushed)
+        public var t: Double, kind: Kind, code: UInt16?, line: Shaped?, pushed: Double
+        public init(t: Double, kind: Kind, code: UInt16? = nil, line: Shaped? = nil, pushed: Double = 0) {
+            (self.t, self.kind, self.code, self.line, self.pushed) = (t, kind, code, line, pushed)
         }
     }
 
-    /// What a scene is told, in order, since its last step: a key (a glyph key with its atlas slot, nil when the
-    /// atlas lacks it), or a glyph of the line that left the box's left edge, its baseline-left there.
+    /// What a scene is told, in order, since its last step: a key, where it is on the keyboard (nil: no position,
+    /// the caret's x then), a glyph key with its atlas slot (nil when the atlas lacks it); or a glyph of the line that
+    /// left the box's left edge, its baseline-left there.
     public enum Event: Equatable {
-        case typed(slot: Int?), space, paragraph, backspace
+        case typed(slot: Int?, at: Keyboard.Position?), space(Keyboard.Position?), paragraph(Keyboard.Position?)
+        case backspace(Keyboard.Position?)
         case leaving(slot: Int, at: CGPoint)
 
         /// Any key (not a glyph leaving).
         var isKey: Bool { if case .leaving = self { false } else { true } }
+
+        /// The key's place on the keyboard.
+        var key: Keyboard.Position? {
+            switch self {
+            case .typed(_, let p), .space(let p), .paragraph(let p), .backspace(let p): p
+            case .leaving: nil
+            }
+        }
     }
 
     /// Where a scene plays: one screen's dim, in its points (origin at the bottom left, as AppKit's). On the box's screen
     /// `box` is the box there and `band`, `baseline` and `caret` are the line's; on another screen `box` is nil.
     public struct Stage: Equatable {
-        public var size: CGSize, box: CGRect?, corner: CGFloat
+        public var size: CGSize, box: CGRect?, corner: CGFloat, keyboard: Keyboard.Kind
         public var band = CGRect.zero, baseline: CGFloat = 0, caret: CGFloat = 0
 
         /// `box` in the stage's points; the line sits `inset` inside it (its border), its band and baseline as
-        /// `Line.draw` places them, the caret's left edge at 60 % of the band.
-        public init(size: CGSize, box: CGRect? = nil, inset: CGFloat = 1, corner: CGFloat = 10, style: Style) {
-            (self.size, self.box, self.corner) = (size, box, corner)
+        /// `Line.draw` places them, the caret's left edge at 60 % of the band. `keyboard`: the physical layout, for
+        /// where a key is.
+        public init(size: CGSize, box: CGRect? = nil, inset: CGFloat = 1, corner: CGFloat = 10,
+                    keyboard: Keyboard.Kind = .ansi, style: Style) {
+            (self.size, self.box, self.corner, self.keyboard) = (size, box, corner, keyboard)
             guard let box else { return }
             let line = box.insetBy(dx: inset, dy: inset)
             band = Line.band(in: line.size, style: style).offsetBy(dx: line.minX, dy: line.minY)
@@ -165,8 +197,23 @@ extension Ambience {
 
         /// The caret's point: its x on the band's middle.
         public var caretPoint: CGPoint { CGPoint(x: caret, y: band.midY) }
+
+        /// Where a key is across the screen (`Tuning.screenSpan`); nil without a position.
+        public func screenX(_ key: Keyboard.Position?) -> Double? {
+            key.map { Double(size.width) * mix(Tuning.screenSpan, $0.across) }
+        }
+
+        /// Where a key is along the box (`Tuning.boxSpan`), or the caret's x without a position; nil off the box's
+        /// screen.
+        public func boxX(_ key: Keyboard.Position?) -> Double? {
+            guard let box else { return nil }
+            return key.map { Double(box.minX) + Double(box.width) * mix(Tuning.boxSpan, $0.across) } ?? Double(caret)
+        }
     }
 }
+
+/// A share of a range: its lower bound at 0, its upper at 1.
+func mix(_ r: ClosedRange<Double>, _ u: Double) -> Double { r.lowerBound + (r.upperBound - r.lowerBound) * u }
 
 // MARK: What a scene draws
 
@@ -179,9 +226,10 @@ public struct Sprite: Equatable {
 
     public enum Kind: UInt32 {
         /// A glyph from the atlas; a filled rectangle; a filled disc; a circle's stroke (its outer edge at the quad's);
-        /// a quarter of a circle's stroke about the quad's bottom-left corner, its radius the quad's width less the
-        /// stroke; a beam, its alpha rising along x to a white head.
-        case glyph, rect, dot, ring, arc, beam
+        /// a stretch of a large circle's stroke (`bend`: the circle's centre lies below the quad's middle by the radius,
+        /// on its turned y axis, and the stroke is cut square at the quad's ends, so arcs side by side make the circle);
+        /// a beam, its alpha rising along x to a white head.
+        case glyph, rect, dot, ring, bend, beam
     }
 
     public init(x: Double, y: Double, w: Double, h: Double, rotation: Double = 0, alpha: Double, colour: UInt32,
@@ -202,6 +250,11 @@ public struct Sprite: Equatable {
 
     /// A stroke's width as a parameter.
     static func stroke(_ w: Double) -> UInt32 { UInt32((w * 64).rounded()) }
+
+    /// A bend's radius (in half points, to 8,191 pt) and stroke width (in sixteenths, to 63 pt) as a parameter.
+    static func bend(radius r: Double, width w: Double) -> UInt32 {
+        UInt32(min(max((r * 2).rounded(), 0), 16383)) | UInt32(min(max((w * 16).rounded(), 0), 1023)) << 14
+    }
 }
 
 // MARK: The atlas's index
@@ -359,11 +412,12 @@ extension Ambience {
                 lastKey = max(lastKey, k.t)
                 typing.key(at: k.t)
                 if k.pushed > 0, let line = k.line, stage.box != nil { leaving(line, pushed: k.pushed) }
+                let at = k.code.flatMap { Keyboard.position(of: $0, on: stage.keyboard) }
                 switch k.kind {
-                case .glyph(let c): events.append(.typed(slot: glyphs.slot(c)))
-                case .space: events.append(.space)
-                case .paragraph: events.append(.paragraph)
-                case .backspace: events.append(.backspace)
+                case .glyph(let c): events.append(.typed(slot: glyphs.slot(c), at: at))
+                case .space: events.append(.space(at))
+                case .paragraph: events.append(.paragraph(at))
+                case .backspace: events.append(.backspace(at))
                 }
             }
         }

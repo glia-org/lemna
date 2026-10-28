@@ -419,7 +419,40 @@
   - Off: Ambience ▸ Off, type, Esc: as before pass 15.
   - Console (Lemna's process): no line `Lemna: the ambience stopped: …`; if one shows, it names what Core Animation
     refused, and the ambience is off until the next launch.
-- Next: the user quits Flow and tries pass 15b with pass 15, pass 14b (its list replaces pass 14's), pass 13, then pass 12, pass 11
+- App, pass 16 (2026-10-28; DESIGN.md A1 amended; the user, having tried pass 15b, which works: "The ambience
+  effects are way too subtle and some of them could also be more reactive depending on where the key is on the
+  keyboard."): every mode plain from its first frame, about two to three times pass 15's alphas, in
+  `Ambience.Tuning` with pass 15's values beside each as "subtle" (Drift 0.7 held 1.5 s; Rain's head 0.8, its trail
+  from 0.55, at the line's size, 3 s; Rings 2 pt from 0.6, 2 s, to the screen's edge; Beams 0.45 with a 0.95 head;
+  Grid 32 pt cells, lines 0.12, lit 0.6 for 0.9 s; Fireworks 0.9, 48 sparks, 2 s; Swarm 0.6, 2 pt). Each key now
+  carries its physical place on the keyboard (NSEvent's keyCode; a table of a MacBook's main block, 5 rows by 15 key
+  units, ANSI or ISO by KBGetLayoutType, in LemnaCore's `Keyboard`): Rain drops where the key is across the screen and
+  higher the higher its row; Rings are circles from the box's top edge where the key is along it; Grid lights the
+  key's own cells in a 5 × 15 keyboard under the box, so typing draws the keyboard; Fireworks launch where Return is;
+  Swarm's bubbles rise where the key is; Beams run at the key's row, Space along the bottom, Return across every
+  screen at the home row; Drift follows the text as before. Keys without a place (arrows, the accent menu's pick)
+  take the caret's x. Reduce Motion, Off, Esc and window mode as in pass 15b. Tests: the app's 86 (82 before; new: the
+  keymap's known keys on ANSI and ISO, every typing key on cells of its own, the layout type, a key's code becoming
+  its place; changed: the tuning, and each mode's test now checks where its sprites start for keys at both ends of
+  the keyboard: Rain's column, Rings' centre, Grid's cells (Q, the space bar, ISO's Return), Fireworks' launch,
+  Swarm's bubbles, Beams' heights), the lifecycle's 6 unchanged; LemnaJournal 16 (the keychain test skipped) and
+  LemnaClicks 14 (`--skip playReturnsInMicroseconds`), untouched. Renders: `app/renders/ambience-<mode>.png` again and
+  `ambience-grid-keyboard.png` ("the quick brown fox" at 20 keys/s). Measured (release, 2×): a scene's step 1.6–26
+  µs a frame at the cap (Drift 26, Beams 10, Rings 11, Rain 10, Swarm 7, Fireworks 3, Grid 1.6), encode, copy and
+  commit 9–12 µs, the GPU 0.39–0.58 ms for 2,000 glyphs at the line's size over the screen. Not tried: nothing was
+  launched. Try, after `app/make-app.sh` and `open app/build/Lemna.app`:
+  - The renders first: `app/renders/ambience-grid-keyboard.png` and the seven `ambience-<mode>.png`.
+  - Each mode over a dark app: plain at first sight now? Too much? Each magnitude is one row of `Ambience.Tuning`.
+  - Rain: type with the left hand only (asdf qwer), then the right (jkl; uiop): the drops follow the hand across the
+    screen; the number row starts high, the bottom row lower.
+  - Rings: type `q`, then `p`: circles from the left and from the right of the box's top edge; ⌫ pulls one in on the
+    right.
+  - Grid: type "the quick brown fox": the keys light up as a keyboard under the box, Space as a bar along its bottom.
+    On a German (ISO) keyboard: `<` left of Y lights the cell right of the short left Shift, Return two rows.
+  - Fireworks: Return: the burst rises over the right part of the box. Swarm: bubbles rise where the keys are.
+  - Beams: Space sweeps along the bottom of the screen, Return across the middle, on a second screen too.
+  - The CPU in Activity Monitor while typing with Rain, as in pass 15; the line's latency with each mode on.
+- Next: the user quits Flow and tries pass 16 with pass 15b and pass 15, pass 14b (its list replaces pass 14's), pass 13, then pass 12, pass 11
   and pass 10, and what of v1, pass 6, pass 7b's click outside and pass 8 is still untried; then DESIGN.md's Open
   items.
 

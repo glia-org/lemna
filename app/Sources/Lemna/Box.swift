@@ -432,6 +432,7 @@ final class Box {
     /// its line where they are on it. A dim gets its layer the first time a mode plays on it.
     private func stageAmbience(on boxScreen: NSScreen?) {
         let mode = ambience.playing(reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+        let keyboard = Keyboard.kind(layoutType: physicalLayout())  // where a key is (pass 16)
         ambients = []
         for (dim, s) in zip(dims, NSScreen.screens) {
             let here = s == boxScreen, m = here || mode?.everyScreen == true ? mode : nil
@@ -442,8 +443,9 @@ final class Box {
                 dim.window.contentView?.layer?.addSublayer(a.layer)
             }
             let box = here ? panel.frame.offsetBy(dx: -s.frame.minX, dy: -s.frame.minY) : nil
-            a.begin(m, on: Ambience.Stage(size: s.frame.size, box: box, inset: 1, corner: Face.cornerRadius, style: style),
-                    scale: s.backingScaleFactor)
+            let stage = Ambience.Stage(size: s.frame.size, box: box, inset: 1, corner: Face.cornerRadius,
+                                       keyboard: keyboard, style: style)
+            a.begin(m, on: stage, scale: s.backingScaleFactor)
             if m != nil { ambients.append(a) }
         }
     }

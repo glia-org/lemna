@@ -231,11 +231,11 @@ extension Ambience {
                 cover = saturate((w * 0.5 - d) * px + 0.5);
                 break;
             }
-            case 4u: {  // a quarter of a circle's stroke about the quad's bottom-left corner
-                float w = q.parameter / 64.0;
-                float2 r = p + h;
-                float d = abs(length(r) - (2.0 * h.x - w));
-                cover = saturate((w * 0.5 - d) * px + 0.5) * step(0.0, r.x) * step(0.0, r.y);
+            case 4u: {  // a stretch of a large circle's stroke, its centre the radius below the quad's middle
+                uint k = uint(q.parameter);
+                float r = float(k & 0x3fffu) / 2.0, w = float(k >> 14) / 16.0;
+                float d = abs(length(p + float2(0.0, r)) - r);
+                cover = saturate((w * 0.5 - d) * px + 0.5) * step(abs(p.x), h.x);  // cut square at the quad's ends
                 break;
             }
             case 5u: {  // a beam: its alpha rising along x, then to a white head

@@ -7,11 +7,21 @@
 // Every frame is drawn into the drawable the link hands its callback and into no other: `-[CAMetalLayer nextDrawable]`
 // raises on a layer a CAMetalDisplayLink drives, and pass 15, which cleared the layer with it, died at Esc (pass 15b).
 import AppKit
+import Carbon.HIToolbox
 import LemnaCatch
 import LemnaCore
 import Metal
 import QuartzCore
 import os
+
+/// The keyboard's physical layout as macOS last saw it (pass 16): KBGetLayoutType of LMGetKbdType, 'ANSI', 'ISO ' or
+/// 'JIS '. The SDK no longer has a header for KBGetLayoutType (HIToolbox still exports it), so it is looked up at run
+/// time; nil when it is not there, and the scenes then take ANSI's places.
+func physicalLayout() -> UInt32? {
+    typealias Layout = @convention(c) (Int16) -> UInt32
+    guard let f = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "KBGetLayoutType") else { return nil }  // RTLD_DEFAULT
+    return unsafeBitCast(f, to: Layout.self)(Int16(LMGetKbdType()))
+}
 
 /// The thread every screen's scene steps and draws on, with a run loop for the display links: nothing of the ambience
 /// runs on the main thread, where the line's keys and its own display link are.

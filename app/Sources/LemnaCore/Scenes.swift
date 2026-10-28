@@ -1,14 +1,12 @@
 // The seven scenes of the ambience (DESIGN.md A1; M1–M7 of docs/design-panel-lemna-ambience.html), each a particle
 // system on the CPU, stepped once a frame by `Ambience.Run` on the scene's thread, fed by the keys as the panel
-// couples them. Each borrows one tte effect's motion, not its text (the dim has no characters to reveal). Every
-// magnitude is `Ambience.Tuning`'s; a scene spawns nothing that would take it past `Tuning.cap` sprites.
+// couples them and, since pass 16, by where each key is on the keyboard (`Keyboard`; Drift follows the text instead).
+// Each borrows one tte effect's motion, not its text (the dim has no characters to reveal). Every magnitude is
+// `Ambience.Tuning`'s; a scene spawns nothing that would take it past `Tuning.cap` sprites.
 import CoreGraphics
 import Foundation
 
 private typealias T = Ambience.Tuning
-
-/// A share of a range: `lo` at 0, `hi` at 1.
-private func mix(_ r: ClosedRange<Double>, _ u: Double) -> Double { r.lowerBound + (r.upperBound - r.lowerBound) * u }
 
 /// How far the typing rate is to `Tuning.fastRate`, 0 to 1.
 private func pace(_ rate: Double) -> Double { min(max(rate / T.fastRate, 0), 1) }
@@ -34,6 +32,12 @@ struct Drift: Ambience.Scene {
 
     var count: Int { leaves.count }
 
+    /// Up over `driftIn`, held for `driftHold`, down to nothing at `driftLife`.
+    static func alpha(age: Double) -> Double {
+        let out = T.driftLife - T.driftIn - T.driftHold
+        return T.driftPeak * min(age / T.driftIn, 1) * min((T.driftLife - age) / out, 1)
+    }
+
     mutating func step(dt: Double, events: [Ambience.Event], rate: Double, into out: inout [Sprite]) {
         current += (mix(T.driftCurrent, pace(rate)) - current) * (1 - exp(-dt / T.driftEase))
         let current = current, carry = 1 - exp(-dt / T.driftCarry)
@@ -54,18 +58,19 @@ struct Drift: Ambience.Scene {
         }
         leaves.removeAll { $0.age >= T.driftLife || $0.x < -100 }
         for l in leaves {
-            let a = T.driftPeak * min(l.age / T.driftIn, 1) * min((T.driftLife - l.age) / (T.driftLife - T.driftIn), 1)
-            out.append(glyphs.sprite(l.slot, baselineLeft: CGPoint(x: l.x, y: l.y), rotation: l.rotation, alpha: a,
-                                     colour: T.text))
+            out.append(glyphs.sprite(l.slot, baselineLeft: CGPoint(x: l.x, y: l.y), rotation: l.rotation,
+                                     alpha: Self.alpha(age: l.age), colour: T.text))
         }
     }
 }
 
 // MARK: M2 Rain
 
-/// Faint columns of glyphs fall over the dim, matrix-like: each glyph key drops one at a random column, the typed glyph
-/// at its head in the accent and a trail of 4–8 glyphs above it, each fainter, growing as it falls row by row, a
-/// trail glyph swapping now and then. Typing sets the density; 3 s after the last key the dim is clear. Every screen.
+/// Columns of glyphs fall over the dim, matrix-like: each glyph key drops one where the key is across the screen
+/// (column 0 of the keyboard at a tenth of the width, column 14 at nine tenths), starting higher the higher its row,
+/// the typed glyph at its head in the accent and a trail of 4–8 glyphs above it, each fainter, growing as it falls row
+/// by row, a trail glyph swapping now and then. Typing sets the density; 3 s after the last key the dim is clear.
+/// Every screen.
 struct Rain: Ambience.Scene {
     private struct Drop { let x, top, fall: Double; var age: Double; let head: Int; var trail: [Int] }
     private var drops: [Drop] = []
@@ -86,11 +91,17 @@ struct Rain: Ambience.Scene {
 
     mutating func step(dt: Double, events: [Ambience.Event], rate: Double, into out: inout [Sprite]) {
         let (w, h, row, column) = (Double(stage.size.width), Double(stage.size.height), row, column)
-        for case .typed(let slot) in events {
+        for case .typed(let slot, let key) in events {
             let n = Int.random(in: T.rainTrail, using: &random)
             guard cells + 1 + n <= T.cap else { continue }
-            let x = (Double(Int.random(in: 0..<max(Int(w / column), 1), using: &random)) + 0.5) * column
-            let top = random.pick((0.35 * h)...(h + 2 * row)), fall = random.pick(T.rainFall), head = slot ?? letter()
+            // Where the key is across the screen, anywhere within its width (a key typed again does not stack its
+            // drops in one column); without a position the caret's x on the box's screen, anywhere else.
+            let width = w * (T.screenSpan.upperBound - T.screenSpan.lowerBound) / Keyboard.columns * (key?.width ?? 0)
+            let spread = random.pick(-0.4...0.4) * width
+            let along = stage.screenX(key).map { $0 + spread } ?? (stage.box != nil ? Double(stage.caret) : random.pick(0...w))
+            let x = ((along / column).rounded(.down) + 0.5) * column  // on the rain's grid of columns
+            let height = key.map { mix(T.rainRows, 1 - $0.down) } ?? random.pick(T.rainRows)
+            let top = h * (height + random.pick(-0.03...0.03)), fall = random.pick(T.rainFall), head = slot ?? letter()
             var trail: [Int] = []
             for _ in 0..<n { trail.append(letter()) }
             drops.append(Drop(x: x, top: top, fall: fall, age: 0, head: head, trail: trail))
@@ -110,11 +121,11 @@ struct Rain: Ambience.Scene {
             let fade = min(d.age / 0.08, 1) * min((T.rainLife - d.age) / T.rainOut, 1)
             out.append(glyphs.sprite(d.head, centre: CGPoint(x: d.x, y: y), scale: T.rainScale, alpha: T.rainHead * fade,
                                      colour: T.accent))
-            var a = T.rainHead * fade
+            var a = T.rainTrailStart * fade
             for k in 0..<min(d.trail.count, rows) {
-                a *= T.rainTrailFall
                 out.append(glyphs.sprite(d.trail[k], centre: CGPoint(x: d.x, y: y + Double(k + 1) * row),
                                          scale: T.rainScale, alpha: a, colour: T.text))
+                a *= T.rainTrailFall
             }
         }
     }
@@ -122,61 +133,68 @@ struct Rain: Ambience.Scene {
 
 // MARK: M3 Rings
 
-/// Each key sends one faint ring out from the box's edge across the dim, rounding out as it grows (its corners grow
-/// with it, its sides keep their length), gone in `ringLife`; ⌫ sends one in, onto the box. Rings add, so fast typing
-/// reads as a shimmer. The box's screen only.
+/// Each key sends one circle out from the box's top edge where the key is along the box, out past the screen's
+/// farthest corner on the curve, gone in `ringLife`; ⌫ sends one in from its key, onto the box. Rings add, so fast
+/// typing reads as a shimmer. The box's screen only.
 struct Rings: Ambience.Scene {
-    private struct Ring { var age: Double; let inward: Bool }
+    private struct Ring { var age: Double; let inward: Bool, x, y, reach: Double }
     private var rings: [Ring] = []
     private let stage: Ambience.Stage
 
     init(stage: Ambience.Stage, glyphs: Ambience.Glyphs, seed: UInt64) { self.stage = stage }
 
-    var count: Int { rings.count * 8 }
+    /// A circle draws at most `Tuning.ringArcs` arcs.
+    var count: Int { rings.count * T.ringArcs }
 
     mutating func step(dt: Double, events: [Ambience.Event], rate: Double, into out: inout [Sprite]) {
         guard let box = stage.box else { return }
-        for e in events where e.isKey && count + 8 <= T.cap { rings.append(Ring(age: 0, inward: e == .backspace)) }
+        let (w, h) = (Double(stage.size.width), Double(stage.size.height))
+        for e in events where e.isKey && count + T.ringArcs <= T.cap {
+            let x = stage.boxX(e.key) ?? Double(stage.caret), y = Double(box.maxY)
+            let reach = [(0.0, 0.0), (w, 0), (0, h), (w, h)].map { hypot($0.0 - x, $0.1 - y) }.max()!
+            var inward = false
+            if case .backspace = e { inward = true }
+            rings.append(Ring(age: 0, inward: inward, x: x, y: y, reach: reach))
+        }
         for i in rings.indices { rings[i].age += dt }
         rings.removeAll { $0.age >= T.ringLife }
         for r in rings {
             let u = r.age / T.ringLife, e = Curve.easeOutQuint(u)
-            outline(box, corner: stage.corner, grown: r.inward ? T.ringInward * (1 - e) : T.ringReach * e,
-                    width: T.ringWidth, alpha: T.ringPeak * (1 - u), colour: T.text, into: &out)
+            circle(x: r.x, y: r.y, radius: r.inward ? T.ringInward * (1 - e) : r.reach * e, width: T.ringWidth,
+                   alpha: T.ringPeak * (1 - u), colour: T.text, on: stage.size, into: &out)
         }
     }
 }
 
-/// The box's outline grown by `r` on every side: its sides as thin rectangles and its corners as quarter rings of
-/// radius `corner + r`, so that it rounds out as it grows. Eight sprites.
-func outline(_ box: CGRect, corner: CGFloat, grown r: Double, width w: Double, alpha: Double, colour: UInt32,
-             into out: inout [Sprite]) {
-    let g = box.insetBy(dx: -r, dy: -r), rc = Double(corner) + r
-    let (minX, maxX, minY, maxY) = (Double(g.minX), Double(g.maxX), Double(g.minY), Double(g.maxY))
-    let across = Double(g.width) - 2 * rc, up = Double(g.height) - 2 * rc
-    for y in [minY, maxY] {
-        out.append(Sprite(x: Double(g.midX), y: y, w: across, h: w, alpha: alpha, colour: colour, kind: .rect))
-    }
-    for x in [minX, maxX] {
-        out.append(Sprite(x: x, y: Double(g.midY), w: w, h: up, alpha: alpha, colour: colour, kind: .rect))
-    }
-    let s = rc + w, half = s / 2  // the quad from the circle's centre out past the stroke
-    for (cx, cy, turn) in [(maxX - rc, maxY - rc, 0.0), (minX + rc, maxY - rc, Double.pi / 2), (minX + rc, minY + rc, .pi),
-                           (maxX - rc, minY + rc, 3 * Double.pi / 2)] {
-        out.append(Sprite(x: cx + half * (cos(turn) - sin(turn)), y: cy + half * (sin(turn) + cos(turn)), w: s, h: s,
-                          rotation: turn, alpha: alpha, colour: colour, kind: .arc, parameter: Sprite.stroke(w)))
+/// A circle of stroke `w` about (x, y) as arcs of about `Tuning.ringArc` points side by side (8 to `ringArcs`), each a
+/// `bend` sprite the shader curves; the arcs off `size` are left out. Thin quads, so a circle across the screen costs
+/// its stroke's pixels, not the screen's.
+func circle(x: Double, y: Double, radius r: Double, width w: Double, alpha: Double, colour: UInt32, on size: CGSize,
+            into out: inout [Sprite]) {
+    guard r > 0.5 else { return }
+    let n = min(max(Int((2 * .pi * r / T.ringArc).rounded(.up)), 8), T.ringArcs), turn = 2 * Double.pi / Double(n)
+    let chord = 2 * r * sin(turn / 2), sag = r * (1 - cos(turn / 2)), height = w + 2 * sag + 2
+    let parameter = Sprite.bend(radius: r, width: w)
+    for k in 0..<n {
+        let a = (Double(k) + 0.5) * turn, mx = x + r * cos(a), my = y + r * sin(a)
+        guard mx > -chord, my > -chord, mx < Double(size.width) + chord, my < Double(size.height) + chord else { continue }
+        out.append(Sprite(x: mx, y: my, w: chord, h: height, rotation: a - .pi / 2, alpha: alpha, colour: colour,
+                          kind: .bend, parameter: parameter))
     }
 }
 
 // MARK: M4 Beams
 
-/// Horizontal beams of added light sweep the dim, in the accent with a white head: on Space a short one beside the
-/// box, on Return one across the screen (every screen). A beam grows out of where it starts and fades at its ends.
+/// Horizontal beams of added light sweep the dim, in the accent with a bright white head, at the height of the key's
+/// row: on Space one along the bottom of the box's screen, on Return one across every screen at Return's row. A beam
+/// grows out of the screen's left edge and fades at its ends.
 struct Beams: Ambience.Scene {
     private struct Beam { let y, from, travel, length, life, height: Double; var age: Double }
     private var beams: [Beam] = []
     private let stage: Ambience.Stage
     private var random: Ambience.Random
+    /// The keys' own places, for a Space or Return that came without one (the accent menu's).
+    private static let space = Keyboard.position(of: 0x31)!, enter = Keyboard.position(of: 0x24)!
 
     init(stage: Ambience.Stage, glyphs: Ambience.Glyphs, seed: UInt64) {
         (self.stage, random) = (stage, Ambience.Random(seed: seed))
@@ -187,20 +205,18 @@ struct Beams: Ambience.Scene {
     mutating func step(dt: Double, events: [Ambience.Event], rate: Double, into out: inout [Sprite]) {
         let (w, h) = (Double(stage.size.width), Double(stage.size.height))
         for e in events where beams.count < T.cap {
+            let key: Keyboard.Position, b: (share: Double, life: Double, height: Double)
             switch e {
-            case .space:
-                guard let box = stage.box else { continue }
-                let gap = random.pick(10...70), above = random.unit() < 0.5, along = random.pick(0.3...0.7)
-                let b = T.wordBeam
-                beams.append(Beam(y: above ? Double(box.maxY) + gap : Double(box.minY) - gap,
-                                  from: Double(box.minX) + along * Double(box.width),
-                                  travel: b.travel, length: b.length, life: b.life, height: b.height, age: 0))
-            case .paragraph:
-                let length = min(T.lineBeam.share * w, T.lineLongest), y = random.pick(0.12...0.88) * h
-                beams.append(Beam(y: y, from: 0, travel: w + length, length: length, life: T.lineBeam.life,
-                                  height: T.lineBeam.height, age: 0))
-            default: break
+            case .space(let at):
+                guard stage.box != nil else { continue }
+                (key, b) = (at ?? Self.space, T.wordBeam)
+            case .paragraph(let at):
+                (key, b) = (at ?? Self.enter, T.lineBeam)
+            default: continue
             }
+            let length = min(b.share * w, T.lineLongest), shift = random.pick(-0.02...0.02)
+            let y = h * (mix(T.beamRows, 1 - key.down) + shift)
+            beams.append(Beam(y: y, from: 0, travel: w + length, length: length, life: b.life, height: b.height, age: 0))
         }
         for i in beams.indices { beams[i].age += dt }
         beams.removeAll { $0.age >= $0.life }
@@ -216,13 +232,19 @@ struct Beams: Ambience.Scene {
 
 // MARK: M5 Grid
 
-/// A faint grid of square cells shows on the dim of the box's screen while you type (aligned to the box); each key
-/// lights one cell within `gridReach` cells of the box, near the caret more often, nearest first, which fades within
-/// `gridLife`. Anchored pulses, no travel.
+/// A grid of square cells shows on the dim of the box's screen while you type (aligned to the box); each key lights
+/// its own cells in a keyboard of 5 × 15 cells under the box (over it where there is no room), so typing draws the
+/// keyboard's shape: one cell a letter, a bar for the space bar. A key with no position lights a cell near the box,
+/// near the caret more often. Anchored pulses, no travel.
 struct Grid: Ambience.Scene {
     private var lines: [Sprite] = []
+    /// The cells near the box, for a key with no position, and the keyboard's: its left edge and each row's bottom.
     private var cells: [(centre: CGPoint, weight: Double)] = []
-    private var lit: [(cell: Int, age: Double)] = [], isLit: [Bool] = []
+    private var keyboard: (left: Double, rows: [Double])?
+    /// The keyboard's cells' ages, row by row (negative: not lit), and how many are lit; the near cells lit now (their
+    /// index in `cells`, their age).
+    private var keys = [Double](repeating: -1, count: Keyboard.rows * Int(Keyboard.columns)), keysLit = 0
+    private var lit: [(cell: Int, age: Double)] = []
     /// Since the first key: the lines fade in over `gridIn`; nil before it.
     private var shown: Double?
     private var random: Ambience.Random
@@ -232,13 +254,27 @@ struct Grid: Ambience.Scene {
         guard let box = stage.box else { return }
         let c = T.gridCell, (w, h) = (Double(stage.size.width), Double(stage.size.height))
         let (x0, y0) = (Double(box.minX), Double(box.minY))
-        for k in Int((-x0 / c).rounded(.up))...max(Int(((w - x0) / c).rounded(.down)), Int((-x0 / c).rounded(.up))) {
+        let first = Int((-x0 / c).rounded(.up)), last = max(Int(((w - x0) / c).rounded(.down)), first)
+        for k in first...last {
             lines.append(Sprite(x: x0 + Double(k) * c, y: h / 2, w: 1, h: h, alpha: 1, colour: T.text, kind: .rect))
         }
-        for k in Int((-y0 / c).rounded(.up))...max(Int(((h - y0) / c).rounded(.down)), Int((-y0 / c).rounded(.up))) {
+        let low = Int((-y0 / c).rounded(.up)), high = max(Int(((h - y0) / c).rounded(.down)), low)
+        for k in low...high {
             lines.append(Sprite(x: w / 2, y: y0 + Double(k) * c, w: w, h: 1, alpha: 1, colour: T.text, kind: .rect))
         }
         if lines.count > T.cap / 2 { lines.removeLast(lines.count - T.cap / 2) }
+        // The keyboard: centred under the box on the grid's cells, a gap of `gridGap` cells below it; over it if the
+        // screen has no room below.
+        let gap = Double(T.gridGap), n = Double(Keyboard.rows)
+        let left = x0 + ((Double(box.width) / 2 - Keyboard.columns / 2 * c) / c).rounded() * c
+        let over = y0 + (Double(box.height) / c).rounded(.up) * c, below = y0 - (gap + n) * c >= 0
+        var rows: [Double] = []
+        for r in 0..<Keyboard.rows {
+            let k = Double(r)
+            rows.append(below ? y0 - (gap + 1 + k) * c : over + (gap + n - 1 - k) * c)
+        }
+        keyboard = (left, rows)
+        // The cells near the box, for a key with no position: within `gridReach` cells, weighted toward the caret.
         let nx = Int((Double(box.width) / c).rounded(.up)), ny = Int((Double(box.height) / c).rounded(.up)), r = T.gridReach
         let caret = stage.caretPoint
         for i in -r..<(nx + r) {
@@ -248,57 +284,75 @@ struct Grid: Ambience.Scene {
                 cells.append((p, exp(-Double(hypot(p.x - caret.x, p.y - caret.y)) / T.gridNear)))
             }
         }
-        isLit = Array(repeating: false, count: cells.count)
     }
 
-    var count: Int { (shown == nil ? 0 : lines.count) + lit.count }
+    var count: Int { (shown == nil ? 0 : lines.count) + keysLit + lit.count }
 
-    /// One cell not lit now, by its weight: near the caret more often.
-    private mutating func light() {
-        guard count < T.cap, lit.count < cells.count else { return }
-        var total = 0.0
-        for i in cells.indices where !isLit[i] { total += cells[i].weight }
-        var pick = random.unit() * total, chosen = -1
-        for i in cells.indices where !isLit[i] {
-            chosen = i
+    /// The middle of the keyboard's cell at `row`, `column` (row 0 at the top).
+    func centre(row: Int, column: Int) -> CGPoint? {
+        keyboard.map { CGPoint(x: $0.left + (Double(column) + 0.5) * T.gridCell, y: $0.rows[row] + 0.5 * T.gridCell) }
+    }
+
+    /// A key with no position: one near cell not lit now, by its weight.
+    private mutating func lightNear() {
+        guard count < T.cap else { return }
+        let free = cells.indices.filter { i in !lit.contains { $0.cell == i } }
+        var pick = random.unit() * free.reduce(0) { $0 + cells[$1].weight }
+        for i in free {
             pick -= cells[i].weight
-            if pick <= 0 { break }
+            if pick <= 0 || i == free.last { return lit.append((i, 0)) }
         }
-        guard chosen >= 0 else { return }
-        isLit[chosen] = true
-        lit.append((chosen, 0))
     }
 
     mutating func step(dt: Double, events: [Ambience.Event], rate: Double, into out: inout [Sprite]) {
-        guard !cells.isEmpty else { return }
+        guard keyboard != nil else { return }
         for e in events where e.isKey {
             if shown == nil { shown = 0 }
-            light()
+            guard let key = e.key else {
+                lightNear()
+                continue
+            }
+            for r in key.rows {
+                for c in key.columns {  // lit, or lit afresh
+                    let i = r * Int(Keyboard.columns) + c
+                    if keys[i] < 0 { keysLit += 1 }
+                    keys[i] = 0
+                }
+            }
         }
         guard let since = shown.map({ $0 + dt }) else { return }
         shown = since
-        for i in lit.indices {
-            lit[i].age += dt
-            if lit[i].age >= T.gridLife { isLit[lit[i].cell] = false }
-        }
+        for i in lit.indices { lit[i].age += dt }
         lit.removeAll { $0.age >= T.gridLife }
+        if keysLit > 0 {
+            for i in keys.indices where keys[i] >= 0 {
+                keys[i] += dt
+                if keys[i] >= T.gridLife { (keys[i], keysLit) = (-1, keysLit - 1) }
+            }
+        }
         let a = Float(T.gridLines * min(since / T.gridIn, 1))
         for var l in lines {
             l.alpha = a
             out.append(l)
         }
         let side = T.gridCell - 1  // inside the lines
-        for (cell, age) in lit {
-            let p = cells[cell].centre
-            out.append(Sprite(x: Double(p.x), y: Double(p.y), w: side, h: side,
-                              alpha: T.gridLit * min(age / 0.05, 1) * (1 - age / T.gridLife), colour: T.accent, kind: .rect))
+        func cell(_ p: CGPoint, _ age: Double) -> Sprite {
+            Sprite(x: Double(p.x), y: Double(p.y), w: side, h: side,
+                   alpha: T.gridLit * min(age / 0.05, 1) * (1 - age / T.gridLife), colour: T.accent, kind: .rect)
         }
+        if keysLit > 0 {
+            for i in keys.indices where keys[i] >= 0 {
+                let n = Int(Keyboard.columns)
+                if let p = centre(row: i / n, column: i % n) { out.append(cell(p, keys[i])) }
+            }
+        }
+        for (i, age) in lit { out.append(cell(cells[i].centre, age)) }
     }
 }
 
 // MARK: M6 Fireworks
 
-/// On Return a spark rises from the box's top edge at the caret and bursts above it: the last glyphs you typed and
+/// On Return a spark rises from the box's top edge where Return is and bursts above it: the last glyphs you typed and
 /// dots, in the text colour and the accent by turns, flung out, slowed, falling, each with a short trail. The box's
 /// screen only.
 struct Fireworks: Ambience.Scene {
@@ -331,11 +385,11 @@ struct Fireworks: Ambience.Scene {
         guard let box = stage.box else { return }
         for e in events {
             switch e {
-            case .typed(let slot?):
+            case .typed(let slot?, _):
                 recent.append(slot)
                 if recent.count > 16 { recent.removeFirst() }
-            case .paragraph where count + 2 + 3 * T.fireSparks <= T.cap:  // room for its burst
-                rockets.append(Rocket(x: Double(stage.caret), y: Double(box.maxY), age: 0))
+            case .paragraph(let key) where count + 2 + 3 * T.fireSparks <= T.cap:  // room for its burst
+                rockets.append(Rocket(x: stage.boxX(key) ?? Double(stage.caret), y: Double(box.maxY), age: 0))
             default: break
             }
         }
@@ -353,20 +407,20 @@ struct Fireworks: Ambience.Scene {
         sparks.removeAll { $0.age >= T.fireLife }
         for r in rockets {
             let u = r.age / T.fireLaunch, y = r.y + T.fireRise * (1 - pow(1 - u, 3))
-            out.append(Sprite(x: r.x, y: (r.y + y) / 2, w: 1, h: y - r.y, alpha: 0.18, colour: T.text, kind: .rect))
-            out.append(Sprite(x: r.x, y: y, w: 4, h: 4, alpha: T.firePeak, colour: T.accent, kind: .dot))
+            out.append(Sprite(x: r.x, y: (r.y + y) / 2, w: 2, h: y - r.y, alpha: 0.4, colour: T.text, kind: .rect))
+            out.append(Sprite(x: r.x, y: y, w: 6, h: 6, alpha: T.firePeak, colour: T.accent, kind: .dot))
         }
         for s in sparks {
             let a = T.firePeak * (1 - s.age / T.fireLife)
             for (back, share) in [(0.07, 0.29), (0.035, 0.62)] {
-                out.append(Sprite(x: s.x - s.vx * back, y: s.y - s.vy * back, w: 2.4, h: 2.4, alpha: a * share,
+                out.append(Sprite(x: s.x - s.vx * back, y: s.y - s.vy * back, w: 3, h: 3, alpha: a * share,
                                   colour: s.colour, kind: .dot))
             }
             if let slot = s.slot {
                 out.append(glyphs.sprite(slot, centre: CGPoint(x: s.x, y: s.y), scale: T.fireScale, alpha: a,
                                          colour: s.colour))
             } else {
-                out.append(Sprite(x: s.x, y: s.y, w: 3, h: 3, alpha: a, colour: s.colour, kind: .dot))
+                out.append(Sprite(x: s.x, y: s.y, w: 4, h: 4, alpha: a, colour: s.colour, kind: .dot))
             }
         }
     }
@@ -374,9 +428,9 @@ struct Fireworks: Ambience.Scene {
 
 // MARK: M7 Swarm
 
-/// Bubbles rise from the box's top edge near the caret with the rhythm (one a glyph or Space, five a Return), faster
-/// as you type faster, then join a swarm that circles above the caret at the key rate; each pops at the end of its
-/// life into four ticks. The box's screen only.
+/// Bubbles rise from the box's top edge where the key is along the box, with the rhythm (one a glyph or Space, five a
+/// Return), faster as you type faster, then join a swarm that circles above the caret at the key rate; each pops at
+/// the end of its life into four ticks. The box's screen only.
 struct Swarm: Ambience.Scene {
     private struct Bubble { var x, y, vx, vy, age: Double; let life, radius, phase, dx, dy: Double }
     private var bubbles: [Bubble] = []
@@ -392,9 +446,9 @@ struct Swarm: Ambience.Scene {
     /// A popping bubble draws four ticks.
     var count: Int { bubbles.count * 4 }
 
-    private mutating func rise(from box: CGRect) {
-        let spread = (random.unit() + random.unit() + random.unit() - 1.5) * 0.3 * Double(box.width)  // about the caret
-        let x = min(max(Double(stage.caret) + spread, Double(box.minX) + 10), Double(box.maxX) - 10)
+    private mutating func rise(from box: CGRect, at key: Keyboard.Position?) {
+        let along = (stage.boxX(key) ?? Double(stage.caret)) + random.pick(-6...6)
+        let x = min(max(along, Double(box.minX) + 10), Double(box.maxX) - 10)
         let r = random.pick(T.swarmRadius), angle = random.pick(0...(2 * .pi)), off = 60 * random.unit().squareRoot()
         let life = random.pick(T.swarmLife), phase = random.pick(0...(2 * .pi))
         bubbles.append(Bubble(x: x, y: Double(box.maxY) + r, vx: 0, vy: 0, age: 0, life: life, radius: r, phase: phase,
@@ -410,7 +464,7 @@ struct Swarm: Ambience.Scene {
             case .paragraph: n = 5
             default: n = 0
             }
-            for _ in 0..<n where count + 4 <= T.cap { rise(from: box) }
+            for _ in 0..<n where count + 4 <= T.cap { rise(from: box, at: e.key) }
         }
         turn += (0.5 + T.swarmTurnRate * rate) * dt
         let cx = Double(stage.caret) + 0.25 * Double(box.width) * cos(turn)
@@ -434,12 +488,12 @@ struct Swarm: Ambience.Scene {
                 let u = b.age / b.life, r = b.radius * (1 + 0.3 * u)
                 let a = T.swarmPeak * min(b.age / 0.15, 1) * (1 - 0.5 * u)
                 out.append(Sprite(x: b.x, y: b.y, w: 2 * r, h: 2 * r, alpha: a, colour: T.text, kind: .ring,
-                                  parameter: Sprite.stroke(1.2)))
+                                  parameter: Sprite.stroke(T.swarmStroke)))
             } else {  // the pop: four ticks flying out
                 let p = (b.age - b.life) / T.swarmPop, d = b.radius * 1.3 * (1.2 + 0.8 * p)
                 for k in 0..<4 {
                     let a = Double(k) * .pi / 2
-                    out.append(Sprite(x: b.x + d * cos(a), y: b.y + d * sin(a), w: 4, h: 1.2, rotation: a,
+                    out.append(Sprite(x: b.x + d * cos(a), y: b.y + d * sin(a), w: 5, h: T.swarmStroke, rotation: a,
                                       alpha: T.swarmPeak * 0.8 * (1 - p), colour: T.text, kind: .rect))
                 }
             }

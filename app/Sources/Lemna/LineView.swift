@@ -161,9 +161,12 @@ final class LineView: NSView, NSTextInputClient {
 
     private func width(_ s: String) -> CGFloat { Line.width(s, font: style.font) }
 
-    /// After a key's frame: the key as the ambience takes it (A1). A value, nothing drawn or computed here.
+    /// After a key's frame: the key as the ambience takes it (A1), with its physical key (the key event's keyCode;
+    /// none for the accent menu's pick); where that is on the keyboard is found on the scene thread. A value, nothing
+    /// drawn or computed here.
     private func ambient(_ kind: Ambience.Key.Kind) {
-        onAmbient(Ambience.Key(t: keyFrame, kind: kind, line: shaped, pushed: pushed))
+        let code = NSApp.currentEvent.flatMap { $0.type == .keyDown ? $0.keyCode : nil }
+        onAmbient(Ambience.Key(t: keyFrame, kind: kind, code: code, line: shaped, pushed: pushed))
     }
 
     /// A key's change: its edits to the journal, then on screen as its motion says.

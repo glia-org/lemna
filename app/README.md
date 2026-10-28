@@ -13,7 +13,8 @@ the effects (F1): Tokyo Night's colours, the box's pop, accent border and theme 
 glyph pop-in, the sheens, the paragraph fade and Session › Effects ▸; then pass 14b: the effects made plain to see,
 their magnitudes in one table, and the colours back to Lemna's own; then pass 15: the ambience (A1), seven scenes on the
 dim around the box fed by the keys, on a Metal layer of their own, and Session › Ambience ▸; then pass 15b: the crash at
-Esc with a mode on fixed. Swift +
+Esc with a mode on fixed; then pass 16: the ambience plain to see and following where each key is on the keyboard.
+Swift +
 AppKit, SwiftPM with the Command Line Tools only (no Xcode), two package dependencies by path (`../lib/LemnaJournal`,
 `../lib/LemnaClicks`) and one Objective-C function of its own (`Sources/LemnaCatch`), signed with a self-signed certificate or ad-hoc (there is no Developer ID yet).
 
@@ -54,7 +55,8 @@ back in the text, the text after it shown) and `move-left-70ms.png` (70 ms into 
 `glide-8ms.png` and `pop-in-8ms.png` (the first 120 Hz frame after a key, without and with the glyph pop-in) and
 `paragraph-25ms.png` and `paragraph-fade-25ms.png` (25 ms after a Return, without and with the ` ¶ `'s fade), and since
 pass 15 `ambience-<mode>.png` for each of the seven modes (after 10 s of typing, 0.6 s after a Return, Fireworks 1 s,
-drawn by the Metal pipeline over a dimmed dark app with the box; skipped without a Metal device); the mark test writes
+drawn by the Metal pipeline over a dimmed dark app with the box; skipped without a Metal device), and since pass 16
+`ambience-grid-keyboard.png` ("the quick brown fox" at 20 keys/s, the keys lit as a keyboard); the mark test writes
 `mark-M3-1x.png` and `mark-M3-2x.png` (16 and 32 px, black on clear). `app/build/` and `app/renders/` are
 git-ignored.
 
@@ -68,7 +70,8 @@ git-ignored.
   every effect's magnitude (`Effects.Tuning`), `Ambience.swift` the Ambience submenu's choice, every magnitude of the
   ambience (`Ambience.Tuning`), what the line sends and a scene is told, the stage, the sprite, the atlas's index and the
   run of a scene (`Ambience.Run`), `Scenes.swift` the seven scenes, `Particles.swift` the Metal pipeline that draws them
-  (`Ambience.Renderer`: the shader's source, the glyph atlas, an offscreen frame for the tests),
+  (`Ambience.Renderer`: the shader's source, the glyph atlas, an offscreen frame for the tests), `Keyboard.swift` where
+  each physical key is on a MacBook's main block, ANSI and ISO (pass 16),
   `Mechanical.swift`
   the deterministic pass R1, `Session.swift` the end of a session as a state machine, `Summoning.swift` the menu-bar
   mark and when the Bluetooth notice shows, `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
@@ -100,7 +103,7 @@ git-ignored.
   renders (`AmbienceTests`); since pass 15b the display link's lifecycle: a real layer driven by a link refuses
   `nextDrawable`, Esc during typing and during the close's and the dim's fades in every mode and Off, a hand-off, a
   close at once, a new show, the end 4 s after the last key, the Esc sequence on a real layer and link
-  (`AmbienceLinkTests`).
+  (`AmbienceLinkTests`); since pass 16 the keymap (`KeyboardTests`) and where each mode's sprites start for a key.
 
 ## What it covers
 
@@ -541,8 +544,42 @@ Lemna"):
   (`Lemna: the ambience stopped: …`), the link is paused and invalidated on the scene thread, its callbacks ignored, the
   keys dropped and the layer hidden; Lemna goes on without ambience until the next launch.
 
+Pass 16, the ambience plain to see and where the key is (DESIGN.md A1 amended, 2026-10-28; the user: "The ambience
+effects are way too subtle and some of them could also be more reactive depending on where the key is on the
+keyboard."):
+
+- `Ambience.Tuning`: about two to three times pass 15's alphas, larger where that reads better, a little longer where
+  the fade took them early, pass 15's values beside each as "subtle" (DESIGN.md A1 lists them).
+- `Keyboard` (LemnaCore): a virtual key code (kVK_…, NSEvent's keyCode: the physical key, the same whatever the
+  layout) to its place on a MacBook's main block: the middle of its row (0 the number row to 4 the space bar's) and
+  column (0 to 15 key units), its width and height; `rows` and `columns` the cells of a 5 × 15 grid it covers. ANSI's
+  table and ISO's differences: kVK_ISO_Section left of 1, kVK_ANSI_Grave the extra key left of Z, kVK_ANSI_Backslash
+  left of Return in row 2, the tall Return over rows 1 and 2, a short left Shift. The arrows, Esc, the function row,
+  the keypad and JIS's own keys have no place. `Keyboard.kind(layoutType:)` reads KBGetLayoutType's answer.
+- The key path: `LineView.ambient` adds `NSApp.currentEvent`'s keyCode to the key it hands on (none when no key
+  event brought it, the accent menu's pick); `Ambience.Run.take` finds its place on the scene thread for the stage's
+  keyboard (`Stage.keyboard`, set at each show from `physicalLayout()`: KBGetLayoutType of LMGetKbdType, looked up
+  with `dlsym` since the SDK has no header for it; ANSI when it is missing); the events carry it
+  (`Ambience.Event.typed(slot:at:)`, `.space(_:)`, `.paragraph(_:)`, `.backspace(_:)`). `Stage.screenX` and `boxX`
+  turn it into an x across the screen (`Tuning.screenSpan`) or along the box (`boxSpan`, the caret's x without one).
+- The scenes: Rain's column at the key across the screen, anywhere within the key's width, starting higher the higher
+  its row (`rainRows`); Rings' circles centred on the box's top edge where the key is, out past the screen's farthest
+  corner, each drawn as 8 to 96 arcs of about 100 pt (`circle`, the `bend` sprite: the shader curves a thin quad
+  about a centre the radius below it and cuts it square at its ends, so the arcs meet without overlapping); the
+  rounded outline of pass 15 and its quarter rings (`arc`) are gone; Grid's keyboard of 5 × 15 cells, centred under
+  the box a cell below it (over it if the screen has no room), its cells' ages in a fixed table, the near cells for a
+  key without a place as before; Fireworks' rocket and Swarm's bubbles at the key along the box; Beams at the key's
+  row (`beamRows`), Space along the bottom of the box's screen, Return across every screen.
+- Measured (release, 2×, scratch timing): a scene's step at the cap 26 µs a frame for Drift, 10 for Beams and Rain, 11
+  for Rings (now circles of arcs), 7 for Swarm, 3 for Fireworks, 1.6 for Grid; encode, copy and commit 9–12 µs; the
+  GPU 0.39–0.58 ms for 2,000 glyph sprites at the line's size over a 3024 × 1964 drawable, 0.13 ms for 20 rings of
+  300–1,060 pt (446 arcs).
+
 ## Known gaps
 
+- Pass 16 is not tried: nothing was launched. The physical layout comes from KBGetLayoutType, which the SDK no longer
+  declares: if a macOS drops it, ISO keyboards take ANSI's places (only the four keys that differ move). A keyboard
+  plugged in after the summon is read at the next summon.
 - Pass 15b is not tried: nothing was launched. The fix is checked by the lifecycle's tests and on a real layer and
   link without a window; the display link's callbacks in a shown dim and the main thread's show after a cleared frame
   are not.
