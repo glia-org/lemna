@@ -302,8 +302,48 @@
     pop-in, no sheens; in Effects ▸ Pop, Glyph pop-in, Word sheen and Hand-off sheen are grey and unticked; Paragraph
     fade and Border warms keep their ticks and still play; the glide jumps as before.
   - Increase Contrast (the same pane): the ` ¶ ` and a bottom-edge note a lighter grey (#a9b1d6) at the next summon.
-- Next: the user quits Flow and tries pass 14, pass 13, then pass 12, pass 11 and pass 10, and what of v1, pass 6, pass
-  7b's click outside and pass 8 is still untried; then DESIGN.md's Open items.
+- App, pass 14b (2026-10-28; DESIGN.md F1 amended, W2, G1 H1, Plan item 11): the user tried pass 14 (the
+  Accessibility grant fixed, Reduce Motion off, every Effects item ticked): "Where are the new animations, I can barely
+  see anything." and "I liked the color better before." Every magnitude is now in one table, `Effects.Tuning` in
+  LemnaCore, with pass 14's values beside each as "subtle", and raised: Pop opens in 300 ms from 87 % (was 250 ms from
+  95 %) and closes in 200 ms (was 160); the glyph pop-in grows from 70 % (was 95 %) and rises 3 pt from below the
+  baseline (new) over 160 ms (was 120), still on easeOutQuint; the paragraph fade 200 ms (was 120); the hand-off sheen
+  peak 0.35 (was 0.14) over 350 ms (was 300), the fade waiting until 150 ms so both end together; the word sheen peak
+  0.7 (was 0.35); Border warms cools over 1.0 s after the 0.5 s quiet (was 1.5 s), the accent at full while typing,
+  the warm-up 150 ms. The dim stays the box's background at 0.5. The colours are T2 again, as before pass 14:
+  background #0e1013, text #d8dce3, muted #5c646f (#8d95a0 under Increase Contrast), caret and accent border #7aa7f0,
+  the cooled border (B2) #262b32, the hairline the box had before; the box stays opaque (Q1). T1's contrast gain is
+  lost: the muted grey is 3.2:1 again, below the HIG's 4.5:1 unless Increase Contrast is on. Tests: the app's 58 (57
+  before; new: the tuning table; changed: the entrance for 70 %, 3 pt and 160 ms, the newest glyph's scale and rise in
+  pixels, the colours' contrast and the renders' background and caret pixels back to T2). The band's draw beside the
+  old loop (release, the box's band at 2×, best of five 2,000 frames, three runs): 41.5–41.8 µs per frame for the old
+  loop, 41.5–42.2 at rest, 41.7–42.1 during a pop-in, 43.3–43.5 during the ` ¶ `'s fade, under the 45 µs asked.
+  LemnaJournal and LemnaClicks untouched. `make-app.sh` builds, signs with "Lemna Dev" (`Authority=Lemna Dev`, no
+  keychain question this time) and verifies; the executable is 0.91 MB (907,200 bytes, was 896,288), with no `/Users/`
+  path in it. Not tried: nothing was launched. Try, after `app/make-app.sh` and `open app/build/Lemna.app`, with every
+  Effects item ticked and Reduce Motion off:
+  - Open: summon over a light app and a dark one: the box should visibly grow from about seven eighths of its size and
+    fade in over about a third of a second, the dim with it. Type at once: the letters land while it opens. Too much
+    now? `Effects.Tuning.open` and `openScale` are the knobs (pass 14 had 0.250 and 0.95).
+  - Close: Esc: a fade over a fifth of a second; does Esc feel laggy now? Type straight after it: the letters go to the
+    app behind. Pop unticked makes both instant.
+  - Glyph pop-in at speed (about 12 keys/s for half a minute): each new letter comes out from under the caret small,
+    low and faint and settles into place within about 60 ms. Visible without staring? Reads as softness or as lag?
+    Does the line look jittery at speed? (`popInScale`, `popInRise`, `popIn`.)
+  - Paragraph fade: Return: the ` ¶ ` fades in over a fifth of a second.
+  - Hand-off sheen: summon from TextEdit, write, ⌘⏎: a clear band of light crosses the box left to right as it fades
+    (a third of a second), and the text lands in TextEdit at the same moment as before, not after the sheen. Also ⌘⇧⏎
+    and ⌘S (after the save panel's Save).
+  - Word sheen: each Space sends a bright light along the border, top and bottom. Visible now? Too much at a word a
+    second?
+  - Border warms: type: the border bright blue; stop: half a second later it fades over a second to the dark hairline;
+    the next key brings the blue back in 150 ms. It must not dip between keys while typing on.
+  - The colours: the box and the window as before pass 14 (#0e1013, the light grey text, the blue caret), with the blue
+    border; the dim over a light and a dark app.
+  - Reduce Motion on: the box comes and goes at once, no pop-in, no sheens, those four items grey; the paragraph fade
+    and Border warms still play. Increase Contrast on: the ` ¶ ` and a bottom-edge note lighter (#8d95a0).
+- Next: the user quits Flow and tries pass 14b (its list replaces pass 14's), pass 13, then pass 12, pass 11 and pass
+  10, and what of v1, pass 6, pass 7b's click outside and pass 8 is still untried; then DESIGN.md's Open items.
 
 ## Build and run
 

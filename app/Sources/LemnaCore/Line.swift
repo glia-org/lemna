@@ -18,29 +18,31 @@ public struct Shaped {
 }
 
 /// The newest glyphs as the band draws them (F1: K1, E2; `Entrance` says when): the last `units` of the line's UTF-16
-/// units before the caret, at `alpha` (times their V2 fade) and `scale` about their own baseline-left. The default
-/// draws them as the rest.
+/// units before the caret, at `alpha` (times their V2 fade), `scale` about their own baseline-left and `dy` points off
+/// the baseline (below it when negative). The default draws them as the rest.
 public struct Newest: Equatable {
-    public var units = 0, alpha = 1.0, scale = 1.0
-    public init(units: Int = 0, alpha: Double = 1, scale: Double = 1) {
-        (self.units, self.alpha, self.scale) = (units, alpha, scale)
+    public var units = 0, alpha = 1.0, scale = 1.0, dy = 0.0
+    public init(units: Int = 0, alpha: Double = 1, scale: Double = 1, dy: Double = 0) {
+        (self.units, self.alpha, self.scale, self.dy) = (units, alpha, scale, dy)
     }
 }
 
-/// The colours: Tokyo Night's roles as the terminal app and the brief app use them (DESIGN.md F1 T1), in the box and in the window.
+/// The colours, in the box and in the window: Lemna's own (DESIGN.md F1 T2; Tokyo Night's roles, T1, were tried in
+/// pass 14 and the user went back to these).
 public struct Style {
     public var font: CTFont
-    public var background = rgb(0x1a1b26), text = rgb(0xc0caf5), muted = Style.muted(increasedContrast: false),
+    public var background = rgb(0x0e1013), text = rgb(0xd8dce3), muted = Style.muted(increasedContrast: false),
                caret = Style.accent
     public init(font: CTFont) { self.font = font }
     public var size: CGFloat { CTFontGetSize(font) }
 
-    /// The accent (the caret, the box's border, B1) and the line role (the border cooled under B2): #7aa2f7, #3b4261.
-    public static let accent = rgb(0x7aa2f7), line = rgb(0x3b4261)
+    /// The accent (the caret, the box's border, B1) and the line, the hairline the box had before B1 (the border
+    /// cooled under B2): #7aa7f0, #262b32.
+    public static let accent = rgb(0x7aa7f0), line = rgb(0x262b32)
 
-    /// The muted colour (the ` ¶ `, the surface's bottom edge): #7f88b2, 4.9:1 on the background, so it meets the HIG's
-    /// 4.5:1 as it is; under Increase Contrast #a9b1d6, 8.1:1 (the siblings' text.mid), so the setting still raises it.
-    public static func muted(increasedContrast: Bool) -> CGColor { rgb(increasedContrast ? 0xa9b1d6 : 0x7f88b2) }
+    /// The muted colour (the ` ¶ `, the surface's bottom edge): #5c646f, 3.2:1 on the background; under Increase
+    /// Contrast #8d95a0, 6.3:1 (the HIG asks at least 4.5:1).
+    public static func muted(increasedContrast: Bool) -> CGColor { rgb(increasedContrast ? 0x8d95a0 : 0x5c646f) }
 }
 
 /// An sRGB colour from 0xRRGGBB.
@@ -141,8 +143,8 @@ public enum Line {
     /// top. So no glyph ever overlaps the caret: nothing before it is drawn right of it (S1; a new glyph emerges from
     /// under it as that part glides, a deleted one is gone at once), nothing after it left of it, and a caret move
     /// passes the text under it. `before` is the edit's glide and the caret move's together, `after` the move's alone.
-    /// `newest`: the glyphs a key just added, fading in and growing (F1: K1, E2), in the same pass, one more factor on
-    /// each glyph's alpha and, for those few, a scale.
+    /// `newest`: the glyphs a key just added, fading in, growing and rising (F1: K1, E2), in the same pass, one more
+    /// factor on each glyph's alpha and, for those few, a scale and a shift.
     public static func draw(_ line: Shaped, before: CGFloat, after: CGFloat, newest: Newest = Newest(), in c: CGContext,
                             band: CGRect, style: Style) {
         let bar = caretRect(in: band, style: style), w = Double(band.width)
@@ -161,9 +163,9 @@ public enum Line {
                 c.setAlpha(CGFloat(a))
                 c.setFillColor(g.muted ? style.muted : style.text)
                 var id = g.id, p = CGPoint(x: x, y: baseline)
-                if new && newest.scale != 1 {  // about its baseline-left
+                if new && (newest.scale != 1 || newest.dy != 0) {  // about its baseline-left, off the baseline by dy
                     c.saveGState()
-                    c.translateBy(x: x, y: baseline)
+                    c.translateBy(x: x, y: baseline + CGFloat(newest.dy))
                     c.scaleBy(x: CGFloat(newest.scale), y: CGFloat(newest.scale))
                     p = .zero
                     CTFontDrawGlyphs(g.font, &id, &p, 1, c)

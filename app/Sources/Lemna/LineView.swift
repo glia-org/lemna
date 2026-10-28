@@ -142,7 +142,7 @@ final class LineView: NSView, NSTextInputClient {
         let paragraph = typed == "\n"
         guard effects.plays(paragraph ? .paragraphFade : .glyphPopIn, reduceMotion: reduceMotion) else { return Entrance() }
         let units = typed.replacingOccurrences(of: "\n", with: Line.paragraphEnd).utf16.count  // as the line shows it
-        return Entrance(units: units, at: t, grows: !paragraph)
+        return paragraph ? .paragraph(units: units, at: t) : .glyph(units: units, at: t)
     }
 
     /// The line's last frame and where it sits in the container, for the box's last look as it fades (P1, E1); nil

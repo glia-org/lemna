@@ -1,5 +1,6 @@
-// The Effects submenu (DESIGN.md F1 S1): which effects play, Off, and Reduce Motion. Free of AppKit, so the tests check
-// it.
+// The Effects submenu (DESIGN.md F1 S1): which effects play, Off, and Reduce Motion; and every effect's magnitude in one
+// table (`Effects.Tuning`). Free of AppKit, so the tests check it.
+import CoreGraphics
 
 /// The effects ticked and whether they play. Off keeps the ticks, as Sound ▸ Off keeps the pack; Reduce Motion stops the
 /// ones that move (the submenu greys them) and leaves the others as ticked. The box's still accent border (B1) and the
@@ -77,4 +78,32 @@ public struct Effects: Equatable {
 
     /// Off: the effects stop, or, while they are off, come back with their ticks.
     public mutating func toggle() { on.toggle() }
+}
+
+extension Effects {
+    /// Every magnitude of the effects in one place (F1). Pass 14b (the user, having tried pass 14 with every item ticked:
+    /// "Where are the new animations, I can barely see anything.") made them plain to see; pass 14's values, the panel's,
+    /// stand beside each as "subtle". Durations in seconds, all on the curve (`Curve`) unless said otherwise.
+    public enum Tuning {
+        /// P1, the box: open from `openScale` with a fade, close in a fade. Omarchy's released window open was 410 ms
+        /// from 87 %. Subtle: 0.250 s from 0.95, close 0.160 s.
+        public static let open = 0.300, openScale = 0.87, close = 0.200
+        /// D1, the dim's opacity (the box's background at it). Unchanged.
+        public static let dim: Float = 0.5
+        /// K1, the newest glyph: from `popInScale` about its baseline-left, rising `popInRise` points from below the
+        /// baseline, fading in. Subtle: 0.120 s from 0.95, no rise.
+        public static let popIn = 0.160, popInScale = 0.70, popInRise = 3.0
+        /// E2, a Return's ` ¶ `, opacity alone. Subtle: 0.120 s.
+        public static let paragraphFade = 0.200
+        /// E1, the band of light across the box at a hand-off, at an even pace; the close's fade waits so that both
+        /// end together. Subtle: peak 0.14 over 0.300 s.
+        public static let handOffSheen = 0.350, handOffPeak = 0.35
+        /// K3, the same band along the border alone, on Space. Subtle: peak 0.35 (the duration as it was).
+        public static let wordSheen = 0.300, wordPeak = 0.7
+        /// B2: the border `warm` (the accent at full) while keys come, back in `warmIn` at the first key after a
+        /// pause; `coolAfter` after the last key it cools evenly (not on the curve) to `cooled` over `coolOver`.
+        /// Subtle: the same, but cooling over 1.5 s.
+        public static let warmIn = 0.150, coolAfter = 0.5, coolOver = 1.0
+        public static let warm = Style.accent, cooled = Style.line
+    }
 }

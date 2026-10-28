@@ -68,16 +68,29 @@ private typealias Item = Effects.Item
     #expect(Effects(kept: ["wordSheen": true, "gone": false]) == sheen)  // missing keys default, unknown ones are ignored
 }
 
-@Test func anEntranceFadesInOver120msOnTheCurve() {
-    let e = Entrance(units: 1, at: 1, grows: true)
-    #expect(e.newest(at: 1) == Newest(units: 1, alpha: 0, scale: 0.95))  // the key's own instant: nothing yet, at 95 %
-    let first = e.newest(at: 1 + 1.0 / 120)  // the first 120 Hz frame: the panel's α .29
-    #expect(abs(first.alpha - 0.29) < 0.01 && abs(first.scale - (0.95 + 0.05 * first.alpha)) < 1e-12)
-    #expect(e.newest(at: 1.043).alpha > 0.89)  // 90 % in at 43 ms
-    #expect(e.active(at: 1.119) && !e.active(at: 1.120))
-    #expect(e.newest(at: 1.120) == Newest())  // done: drawn as the rest of the line
-    let paragraph = Entrance(units: 3, at: 0, grows: false)  // E2: the ` ¶ `, opacity only
-    #expect(paragraph.newest(at: 0.06).scale == 1 && paragraph.newest(at: 0.06).alpha > 0.9)
+@Test func theTuningIsPlainToSee() {
+    // Pass 14b (the user: "Where are the new animations, I can barely see anything."); pass 14's subtle values beside.
+    typealias T = Effects.Tuning
+    #expect(T.open == 0.300 && T.openScale == 0.87 && T.close == 0.200)  // subtle: 0.250, 0.95, 0.160
+    #expect(T.popIn == 0.160 && T.popInScale == 0.70 && T.popInRise == 3)  // subtle: 0.120, 0.95, 0
+    #expect(T.paragraphFade == 0.200 && T.dim == 0.5)  // subtle: 0.120; the dim unchanged
+    #expect(T.handOffSheen == 0.350 && T.handOffPeak == 0.35 && T.wordSheen == 0.300 && T.wordPeak == 0.7)
+    #expect(T.warmIn == 0.150 && T.coolAfter == 0.5 && T.coolOver == 1.0)  // subtle: cooling over 1.5 s
+    #expect(T.warm == Style.accent && T.cooled == Style.line)
+}
+
+@Test func anEntranceGrowsRisesAndFadesInOnTheCurve() {
+    let e = Entrance.glyph(units: 1, at: 1)  // K1: from 70 %, 3 pt below the baseline, over 160 ms
+    #expect(e.newest(at: 1) == Newest(units: 1, alpha: 0, scale: 0.70, dy: -3))  // the key's own instant
+    let first = e.newest(at: 1 + 1.0 / 120)  // the first 120 Hz frame
+    #expect(abs(first.alpha - 0.218) < 0.002)
+    #expect(abs(first.scale - (0.70 + 0.30 * first.alpha)) < 1e-12 && abs(first.dy + 3 * (1 - first.alpha)) < 1e-12)
+    #expect(e.newest(at: 1.058).alpha > 0.9 && e.newest(at: 1.057).alpha < 0.9)  // 90 % in at 58 ms
+    #expect(e.active(at: 1.159) && !e.active(at: 1.160))
+    #expect(e.newest(at: 1.160) == Newest())  // done: drawn as the rest of the line
+    let paragraph = Entrance.paragraph(units: 3, at: 0)  // E2: the ` ¶ `, opacity alone, over 200 ms
+    #expect(paragraph.newest(at: 0.025).scale == 1 && paragraph.newest(at: 0.025).dy == 0)
+    #expect(abs(paragraph.newest(at: 0.025).alpha - 0.48) < 0.01 && paragraph.active(at: 0.199) && !paragraph.active(at: 0.2))
     #expect(Entrance().newest(at: 0) == Newest() && !Entrance().active(at: 0))
 }
 
@@ -106,11 +119,13 @@ private typealias Item = Effects.Item
     let a = Int(2 * advance), caret = 240
     let m = (caret - 2 * a)..<(caret - a), wGlyph = (caret - a)..<caret
     let whole = ink(Newest(), wGlyph), faded = ink(Newest(units: 1, alpha: 0.5), wGlyph)
-    let grown = ink(Newest(units: 1, alpha: 1, scale: 0.95), wGlyph)
+    let grown = ink(Newest(units: 1, alpha: 1, scale: 0.7), wGlyph), risen = ink(Newest(units: 1, alpha: 1, dy: -3), wGlyph)
     #expect(abs(Int(faded.peak) - Int(whole.peak) / 2) <= 2)  // the newest at half its alpha
-    #expect(ink(Newest(units: 1, alpha: 0.5, scale: 0.95), m).peak == ink(Newest(), m).peak)  // the M as it was
+    #expect(ink(Newest(units: 1, alpha: 0.5, scale: 0.7, dy: -3), m).peak == ink(Newest(), m).peak)  // the M as it was
     #expect(ink(Newest(units: 2, alpha: 0.5), m).peak < ink(Newest(), m).peak)  // two units: the M too
-    // At 95 %: its top lower and its right edge further left; its baseline and its left edge where they were.
-    #expect(grown.top > whole.top && grown.right < whole.right)
+    // At 70 %: its top lower and its right edge further left; its baseline and its left edge where they were.
+    #expect(grown.top > whole.top + 8 && grown.right < whole.right - 6)
     #expect(abs(grown.bottom - whole.bottom) <= 1 && abs(grown.left - whole.left) <= 1)
+    // 3 pt below the baseline: 6 rows lower at 2×, top and bottom alike.
+    #expect(abs(risen.top - whole.top - 6) <= 1 && abs(risen.bottom - whole.bottom - 6) <= 1)
 }

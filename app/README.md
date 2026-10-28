@@ -10,7 +10,8 @@ the journal in format 2; then pass 10: no review, Done pastes at once with R1 ap
 paste, the box opaque under Reduce Transparency and the muted grey lighter under Increase Contrast; then pass 12:
 the menu-bar mark M3 and the app icon (L1); then pass 13: the name, Lemna (N; Flow was the working name); then pass 14:
 the effects (F1): Tokyo Night's colours, the box's pop, accent border and theme dim, the glide on easeOutQuint, the
-glyph pop-in, the sheens, the paragraph fade and Session › Effects ▸. Swift +
+glyph pop-in, the sheens, the paragraph fade and Session › Effects ▸; then pass 14b: the effects made plain to see,
+their magnitudes in one table, and the colours back to Lemna's own. Swift +
 AppKit, SwiftPM with the Command Line Tools only (no Xcode), two package dependencies by path (`../lib/LemnaJournal`,
 `../lib/LemnaClicks`), signed with a self-signed certificate or ad-hoc (there is no Developer ID yet).
 
@@ -59,7 +60,8 @@ git-ignored.
   Characters; each key's edits and motion as a `Change`; a journal edit applied, the replay; the line's two parts
   around the caret with ` ¶ `), `Line.swift` the geometry and drawing (Core Text shaping around the caret, the two
   fades, the clips at the caret, caret, the band, the newest glyphs' look, the colours), `Glide.swift` the glide, the curve
-  (`Curve.easeOutQuint`) and the newest glyphs' entrance (`Entrance`), `Effects.swift` the Effects submenu's choice,
+  (`Curve.easeOutQuint`) and the newest glyphs' entrance (`Entrance`), `Effects.swift` the Effects submenu's choice and
+  every effect's magnitude (`Effects.Tuning`),
   `Mechanical.swift`
   the deterministic pass R1, `Session.swift` the end of a session as a state machine, `Summoning.swift` the menu-bar
   mark and when the Bluetooth notice shows, `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
@@ -371,7 +373,8 @@ Pass 13, the name (DESIGN.md N, 2026-10-28):
   and one in use stay). Build: the executable is 0.80 MB (803,504 bytes; 798,160 before), signed with "Flow Dev" (no
   "Lemna Dev" yet).
 
-Pass 14, the effects (DESIGN.md F1, amending F0, W2, S1's curve and G1 H1, 2026-10-28):
+Pass 14, the effects (DESIGN.md F1, amending F0, W2, S1's curve and G1 H1, 2026-10-28; pass 14b, below, changed
+the colours back and raised the magnitudes):
 
 - Colours (T1, `Style`): Tokyo Night's roles as the terminal app and the brief app use them, in the box and the window: background
   #1a1b26, text #c0caf5 (10.6:1), muted #7f88b2 (4.9:1; under Increase Contrast #a9b1d6, 8.1:1), caret #7aa2f7
@@ -423,8 +426,32 @@ Pass 14, the effects (DESIGN.md F1, amending F0, W2, S1's curve and G1 H1, 2026-
   Dev", which `make-app.sh` now finds. The first signing with that key waited on macOS's question whether codesign may
   use it; once answered, builds sign without asking.
 
+Pass 14b, the effects plain to see and the colours back (DESIGN.md F1 amended, 2026-10-28; the user, having tried
+pass 14 with every effect ticked: "Where are the new animations, I can barely see anything." and "I liked the color
+better before."):
+
+- `Effects.Tuning` (LemnaCore, `Effects.swift`) holds every magnitude, pass 14's beside each as "subtle": Pop opens in
+  0.300 s from 0.87 (subtle 0.250 s from 0.95) and closes in 0.200 s (0.160); the dim 0.5 (unchanged); the glyph
+  pop-in 0.160 s from 0.70 with a 3 pt rise from below the baseline (0.120 s from 0.95, no rise); the paragraph fade
+  0.200 s (0.120); the hand-off sheen 0.350 s at peak 0.35 (0.300 s, 0.14); the word sheen 0.300 s at peak 0.7
+  (0.35); Border warms 0.150 s warm-up, 0.5 s quiet, 1.0 s even cool (1.5 s), `warm` the accent, `cooled` the line.
+  `Box` and `Entrance` read it; nothing else holds a magnitude.
+- `Entrance.glyph(units:at:)` (K1) and `Entrance.paragraph(units:at:)` (E2) replace `Entrance(units:at:grows:)`; an
+  entrance carries its duration, start scale and rise. `Newest` gains `dy`, the newest glyphs' shift off the baseline
+  (−3 pt at the key, 0 at rest), drawn in the same translate as the scale.
+- The colours are T2 again (`Style`): background #0e1013, text #d8dce3, muted #5c646f (#8d95a0 under Increase
+  Contrast), caret and `Style.accent` #7aa7f0, `Style.line` #262b32 (B2's cooled border, the old hairline). The box
+  stays opaque, with the accent border; the dim is #0e1013 at 0.5.
+- Tests: `theTuningIsPlainToSee`, the entrance at 70 %, 3 pt and 160 ms, the newest glyph's scale and rise in pixels
+  (6 rows lower at 2×), the contrast and the renders' background and caret pixels in T2's colours; 58 in all.
+- Measured: the band's draw (release, the box's band at 2×, best of five 2,000 frames, three runs): 41.5–41.8 µs for
+  the old loop, 41.5–42.2 at rest, 41.7–42.1 during a pop-in, 43.3–43.5 during the ` ¶ `'s fade.
+- Build: the executable is 0.91 MB (907,200 bytes; 896,288 in pass 14), signed with "Lemna Dev".
+
 ## Known gaps
 
+- Pass 14b is not tried: nothing was launched. Whether the new magnitudes are now plain without being too much (the
+  knobs are `Effects.Tuning`'s), and whether the 3 pt rise makes the line look jittery at speed.
 - Pass 14 is not tried: nothing was launched. Untried: the open and close's feel and whether Esc feels slow with the
   fade; whether the ghost hands over from the box without a blank frame (`CATransaction.flush` before the box goes);
   how the system shadow behaves while the content grows (taken again at the end); whether AppKit's window-alpha

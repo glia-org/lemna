@@ -155,15 +155,8 @@ final class Box {
     /// B2: when the line last took a key, whether the border has the accent, and the one timer that cools it.
     private var lastKey = 0.0, warm = true, cooling: Timer?
 
-    /// P1: open in 250 ms from 95 % with a fade, close in a 160 ms fade, both on the curve; the dim with them (D1: the
-    /// box's background at 0.5, Omarchy's scrim).
-    static let open = 0.250, close = 0.160, openScale: CGFloat = 0.95, dim: Float = 0.5
-    /// B2: the accent back in 150 ms at a key; from 0.5 s after the last key it cools to the line colour over 1.5 s,
-    /// evenly, so it has cooled 2 s after that key. Gaps between keys while typing are shorter than the 0.5 s.
-    static let warmIn = 0.150, coolAfter = 0.5, coolOver = 1.5
-    /// E1 across the box at a hand-off and K3 along its border on Space, 300 ms each. K3's light is the stronger, as it
-    /// lights a 1 pt line where E1 lights the whole box (white at 0.14 on the 1 pt accent would barely change it).
-    static let sweep = 0.300, handOffPeak: CGFloat = 0.14, wordPeak: CGFloat = 0.35
+    /// Every magnitude (the open and close, the dim, the border's warmth, the sheens) is `Effects.Tuning`'s.
+    private typealias T = Effects.Tuning
 
     /// `lineHeight`: the box's height while it holds the line (`BoxFrame.height`).
     init(lineHeight: CGFloat, style: Style) {
@@ -217,16 +210,16 @@ final class Box {
         if !panel.isVisible, let screen = NSScreen.screens.first(where: { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) })
             ?? NSScreen.main {
             let still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-            let open = effects.duration(.pop, Self.open, reduceMotion: still)
+            let open = effects.duration(.pop, T.open, reduceMotion: still)
             turn += 1
             ghost.orderOut(nil)  // the last look of a close still under way goes at once
             panel.setFrame(BoxFrame.line(in: screen.visibleFrame, height: lineHeight), display: false)
             face.stop()
-            face.borderColor(Style.accent, over: 0)
+            face.borderColor(T.warm, over: 0)
             warm = true
             if effects.plays(.borderWarms, reduceMotion: still) {  // as if a key came: it cools if none does
                 lastKey = CACurrentMediaTime()
-                coolLater(Self.coolAfter)
+                coolLater(T.coolAfter)
             }
             dim(over: open)
             panel.alphaValue = open > 0 ? 0 : 1
@@ -242,11 +235,11 @@ final class Box {
     enum Leaving { case atOnce, fade, handOff }
 
     /// Off screen at once; what fades is the box's last look (`ghost`), and at a hand-off E1's sheen crosses it, the
-    /// fade waiting so that both end together (sheen 0–300 ms, fade 140–300 ms). The dim fades with it.
+    /// fade waiting so that both end together (sheen 0–350 ms, fade 150–350 ms). The dim fades with it.
     func hide(_ leaving: Leaving = .fade) {
         let still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        let fade = leaving == .atOnce ? 0 : effects.duration(.pop, Self.close, reduceMotion: still)
-        let sweep = leaving == .handOff ? effects.duration(.handOffSheen, Self.sweep, reduceMotion: still) : 0
+        let fade = leaving == .atOnce ? 0 : effects.duration(.pop, T.close, reduceMotion: still)
+        let sweep = leaving == .handOff ? effects.duration(.handOffSheen, T.handOffSheen, reduceMotion: still) : 0
         let wait = max(sweep - fade, 0)
         turn += 1
         cooling?.invalidate()
@@ -261,28 +254,28 @@ final class Box {
 
     /// A key's frame is on screen (`LineView.onShown`, after the frame): B2 keeps the border warm while keys come, K3
     /// sweeps along it on Space. Steady typing touches no layer: only the first key after a pause animates (the accent
-    /// back in 150 ms), and one timer per pause cools it.
+    /// back in `warmIn`), and one timer per pause cools it.
     func keyShown(_ typed: String) {
         guard panel.isVisible else { return }
         let still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         if effects.plays(.borderWarms, reduceMotion: still) {
             lastKey = CACurrentMediaTime()
             if !warm {
-                face.borderColor(Style.accent, over: Self.warmIn)
+                face.borderColor(T.warm, over: T.warmIn)
                 warm = true
             }
-            if cooling == nil { coolLater(Self.coolAfter) }
+            if cooling == nil { coolLater(T.coolAfter) }
         }
         if let last = typed.last, last.isWhitespace, !last.isNewline, effects.plays(.wordSheen, reduceMotion: still) {
-            face.sweep(peak: Self.wordPeak, borderOnly: true, over: Self.sweep)
+            face.sweep(peak: CGFloat(T.wordPeak), borderOnly: true, over: T.wordSheen)
         }
     }
 
     /// E1 on a box that stays: ⌘⏎ copied instead of pasting and says why at its bottom edge.
     func sweep() {
         let still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        face.sweep(peak: Self.handOffPeak, borderOnly: false,
-                   over: effects.duration(.handOffSheen, Self.sweep, reduceMotion: still))
+        face.sweep(peak: CGFloat(T.handOffPeak), borderOnly: false,
+                   over: effects.duration(.handOffSheen, T.handOffSheen, reduceMotion: still))
     }
 
     // MARK: Inside
@@ -306,11 +299,11 @@ final class Box {
     }
 
     /// P1's open: the window fades in from transparent (its shadow with it; AppKit animates the window's alpha) while the
-    /// content grows from 95 % about its middle (Core Animation scales the layer, the line's band with it, sharp again at
-    /// rest). The shadow is taken again at full size once it has grown.
+    /// content grows from `Tuning.openScale` about its middle (Core Animation scales the layer, the line's band with
+    /// it, sharp again at rest). The shadow is taken again at full size once it has grown.
     private func pop(over d: Double) {
         guard let layer = content.layer else { return }
-        let s = Self.openScale, b = content.bounds, a = layer.anchorPoint
+        let s = CGFloat(T.openScale), b = content.bounds, a = layer.anchorPoint
         var grown = CATransform3DIdentity  // s·p + (1 − s)·m about the anchor, m the middle: the middle stays put
         (grown.m11, grown.m22) = (s, s)
         (grown.m41, grown.m42) = ((0.5 - a.x) * b.width * (1 - s), (0.5 - a.y) * b.height * (1 - s))
@@ -337,12 +330,12 @@ final class Box {
         guard let shot = line?.snapshot() else { return }  // nothing drawn yet: it goes at once
         ghost.setFrame(panel.frame, display: false)
         ghostFace.show(shot.image, in: shot.frame, scale: panel.backingScaleFactor)
-        ghostFace.borderColor(face.shownBorder ?? Style.accent, over: 0)
+        ghostFace.borderColor(face.shownBorder ?? T.warm, over: 0)
         ghost.alphaValue = panel.alphaValue  // a close during the open goes on from where the open was
         ghost.orderFrontRegardless()
         CATransaction.flush()  // its layers committed before the box goes, so no frame shows neither
         ghost.invalidateShadow()
-        ghostFace.sweep(peak: Self.handOffPeak, borderOnly: false, over: sweep)
+        ghostFace.sweep(peak: CGFloat(T.handOffPeak), borderOnly: false, over: sweep)
         let mine = turn
         DispatchQueue.main.asyncAfter(deadline: .now() + waiting) { [weak self] in
             guard let self, self.turn == mine else { return }
@@ -381,7 +374,7 @@ final class Box {
         }
         for (dim, s) in zip(dims, screens) {
             dim.window.setFrame(s.frame, display: false)
-            fade(dim.shade, from: dim.window.isVisible ? nil : 0, to: Self.dim, over: d)  // off screen: from nothing
+            fade(dim.shade, from: dim.window.isVisible ? nil : 0, to: T.dim, over: d)  // off screen: from nothing
             dim.window.orderFrontRegardless()
         }
         for dim in dims.dropFirst(screens.count) { dim.window.orderOut(nil) }
@@ -421,16 +414,16 @@ final class Box {
         CATransaction.commit()
     }
 
-    /// B2: after `after` seconds, the border cools if no key came in the last 0.5 s (else it looks again then), evenly
-    /// over 1.5 s.
+    /// B2: after `after` seconds, the border cools if no key came in the last `coolAfter` (else it looks again then),
+    /// evenly over `coolOver`.
     private func coolLater(_ after: Double) {
         let mine = turn
         cooling = Timer.scheduledTimer(withTimeInterval: after, repeats: false) { [weak self] _ in
             guard let self, self.turn == mine else { return }
             self.cooling = nil
             let quiet = CACurrentMediaTime() - self.lastKey
-            guard quiet >= Self.coolAfter else { return self.coolLater(Self.coolAfter - quiet) }
-            self.face.borderColor(Style.line, over: Self.coolOver, curve: CAMediaTimingFunction(name: .linear))
+            guard quiet >= T.coolAfter else { return self.coolLater(T.coolAfter - quiet) }
+            self.face.borderColor(T.cooled, over: T.coolOver, curve: CAMediaTimingFunction(name: .linear))
             self.warm = false
         }
     }
@@ -442,12 +435,12 @@ final class Box {
         if effects.plays(.borderWarms, reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion) {
             if cooling == nil, warm {
                 lastKey = CACurrentMediaTime()
-                coolLater(Self.coolAfter)
+                coolLater(T.coolAfter)
             }
         } else {
             cooling?.invalidate()
             cooling = nil
-            if !warm { face.borderColor(Style.accent, over: 0) }
+            if !warm { face.borderColor(T.warm, over: 0) }
             warm = true
         }
     }
