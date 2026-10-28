@@ -1,4 +1,4 @@
-# Flow app
+# Lemna app
 
 The writing surface (DESIGN.md S1 V2 B1 P0), kept in the journal (E2), with key clicks (K1) and the end of a session
 (O1 O2 R1), as a macOS app: v1 as planned, then pass 6 (Plan item 6): the surface is a small floating box over
@@ -8,17 +8,17 @@ the box (it also brought Harper's suggestions to the review, R2, which pass 9 re
 the journal in format 2; then pass 10: no review, Done pastes at once with R1 applied silently, and the session frame
 (M1) is gone; then pass 11: three more click packs and a Sound submenu (K1), the text left on the clipboard after a
 paste, the box opaque under Reduce Transparency and the muted grey lighter under Increase Contrast; then pass 12:
-the menu-bar mark M3 and the app icon (L1). Swift + AppKit, SwiftPM with the Command Line Tools only (no Xcode), two
-package dependencies by path (`../lib/FlowJournal`, `../lib/FlowClicks`), ad-hoc signed (there is no Developer ID
-yet).
+the menu-bar mark M3 and the app icon (L1); then pass 13: the name, Lemna (N; Flow was the working name). Swift +
+AppKit, SwiftPM with the Command Line Tools only (no Xcode), two package dependencies by path (`../lib/LemnaJournal`,
+`../lib/LemnaClicks`), signed with a self-signed certificate or ad-hoc (there is no Developer ID yet).
 
 ## Build, run, test
 
 ```sh
-app/make-cert.sh           # once: a self-signed "Flow Dev" code-signing certificate in the login keychain
-app/make-app.sh            # release build, assembles, signs (Flow Dev, else ad-hoc) and verifies app/build/Flow.app, prints its path
+app/make-cert.sh           # once: a self-signed "Lemna Dev" code-signing certificate in the login keychain
+app/make-app.sh            # release build, assembles, signs (Lemna Dev, else Flow Dev, else ad-hoc) and verifies app/build/Lemna.app
 (cd app && swift make-icon.swift ../assets/logo/icon-I1-M3-b.svg build)  # the icon alone: build/AppIcon.iconset, build/AppIcon.icns
-open app/build/Flow.app
+open app/build/Lemna.app
 
 cd app
 F=/Library/Developer/CommandLineTools/Library/Developer/Frameworks
@@ -31,7 +31,7 @@ overlay without a module, so no test file imports Foundation and Testing togethe
 '_Testing_Foundation'"). `JournalReplayTests` gets by without it: the journal's `URL` is built from the parameter's
 own type (`.init(fileURLWithPath:)`), the temporary folder comes from Darwin's `mkdtemp`.
 
-`make-app.sh` copies the click packs (`lib/FlowClicks/Sources/FlowClicks/DefaultPack`, `TypewriterPack`, `SoftPack`,
+`make-app.sh` copies the click packs (`lib/LemnaClicks/Sources/LemnaClicks/DefaultPack`, `TypewriterPack`, `SoftPack`,
 `ElectricPack`, each a `pack.json` and its WAVs) into `Contents/Resources`, where `SoundPack.bundled(<folder>)` loads
 them, writes `LSUIElement` (an accessory app from
 launch on: no Dock icon, no menu bar) into the Info.plist, and checks the signature with
@@ -51,7 +51,7 @@ git-ignored.
 
 ## Layout
 
-- `Sources/FlowCore` (no AppKit): `Text.swift` the model (one string with `"\n"` between paragraphs and a caret in
+- `Sources/LemnaCore` (no AppKit): `Text.swift` the model (one string with `"\n"` between paragraphs and a caret in
   Characters; each key's edits and motion as a `Change`; a journal edit applied, the replay; the line's two parts
   around the caret with ` ¶ `), `Line.swift` the geometry and drawing (Core Text shaping around the caret, the two
   fades, the clips at the caret, caret, the band), `Glide.swift` the glide, `Mechanical.swift`
@@ -59,15 +59,15 @@ git-ignored.
   mark and when the Bluetooth notice shows, `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
   holds the line (`Surface`) and when a click outside hides the box (`ClickOutside`), `Paste.swift` the paste's
   decision table.
-- `Sources/Flow`: `main.swift` the app, window, menus, clicks and the sound toggle, summoning and the two containers
+- `Sources/Lemna`: `main.swift` the app, window, menus, clicks and the sound toggle, summoning and the two containers
   (`apply()`), a click outside the box, and the end of a session (Done's paste or copy, Copy, Save, Discard, each
   finishing at once); `Box.swift` the box (the non-activating panel, the dim overlays, the line in it); `Paste.swift`
   the pasteboard (Copy's item; since pass 11 nothing is read from it) and the posted ⌘V; `Keeper.swift` the journal in
   the app (open and restore, append, the flushes); `LineView.swift` the view (text input, the keys of B4, edits as
   journal edits and clicks, the two glides, display link); `Strip.swift` the Metal band (Core Graphics into a shared
   buffer, blitted into the drawable); `Frame.swift` the surface's bottom edge (the Bluetooth notice, a hand-off's
-  note); `Summon.swift` the hotkey (Carbon) and the menu-bar item with Flow's menu.
-- `Tests/FlowCoreTests`: the model, the glide, the fades, nothing before the caret drawn right of it, the text after it
+  note); `Summon.swift` the hotkey (Carbon) and the menu-bar item with Lemna's menu.
+- `Tests/LemnaCoreTests`: the model, the glide, the fades, nothing before the caret drawn right of it, the text after it
   from the caret to 95 %, the renders (`CoreTests`, `RenderTests`); every key of B4, its boundaries, the word rules,
   Characters with é, 🙂 and 👩‍💻, the replay of every key's edits (`EditingTests`); R1's rules, counts and idempotence (`MechanicalTests`); the state machine (`SessionTests`); the
   journal round trip through the app's replay, edits in the middle included (`JournalReplayTests`); the menu-bar mark,
@@ -96,7 +96,7 @@ Milestone 1, the surface (the window is window mode since pass 6, below):
 
 Milestone 2 in the app, the journal (E2):
 
-- At launch `Journal.open` in `~/Library/Application Support/Flow/sessions.noindex/` with the login keychain
+- At launch `Journal.open` in `~/Library/Application Support/Lemna/sessions.noindex/` with the login keychain
   (`KeychainKeyStore()`); the journal creates the folder (0700) and excludes it from backups. The edits of the last
   unfinished session are replayed into the model without a word: the line shows where it ended.
 - Every change to the text is one edit: typing `insert`, Return `paragraphEnd`, backspace and the press-and-hold
@@ -113,13 +113,13 @@ Milestone 2 in the app, the journal (E2):
 
 Milestone 3, the end of a session (O1 O2 R1); its review, R1's undo and the grace went in pass 10 (below):
 
-- Menus: Flow (About Flow, a placeholder; Quit ⌘Q), Session (Done ⌘⏎, Copy ⌘⇧⏎, Save… ⌘S, Discard…, Sound ⌘K), View
+- Menus: Lemna (About Lemna, a placeholder; Quit ⌘Q), Session (Done ⌘⏎, Copy ⌘⇧⏎, Save… ⌘S, Discard…, Sound ⌘K), View
   (Open Window ⌃⌘F, since pass 6). Done, Copy and Save… are off while the text is blank, a hand-off is under way or
-  a question is up. Since pass 6 Flow shows no menu bar; these menus hold the key equivalents, and the menu-bar item's
+  a question is up. Since pass 6 Lemna shows no menu bar; these menus hold the key equivalents, and the menu-bar item's
   menu shows the items.
 - Copy: `prepareForNewContents(with: .currentHostOnly)`, then one pasteboard item with `public.utf8-plain-text` and
   the empty markers `org.nspasteboard.ConcealedType` and `org.nspasteboard.TransientType`.
-- Save…: `NSSavePanel` as a sheet on the container, `.md`, named `flow-YYYY-MM-DD-HHMM.md`, opening in the last folder
+- Save…: `NSSavePanel` as a sheet on the container, `.md`, named `lemna-YYYY-MM-DD-HHMM.md`, opening in the last folder
   (UserDefaults `SaveFolder`, a path); the text plus a final newline is written with `Data.write(options: .atomic)`.
 - Discard… asks once ("Discard this session's text?" / "It cannot be recovered.", Discard / Cancel), then
   `journal.discard()`, the surface clears, a new session starts.
@@ -133,7 +133,7 @@ Milestone 3, the end of a session (O1 O2 R1); its review, R1's undo and the grac
 Milestone 4 in the app, the clicks (K1):
 
 - One `ClickPlayer(pack: .bundled())` at launch (since pass 11 `ClickPlayer(packs:)`, below). If it cannot start (no
-  output device, the pack missing), Flow is silent and writes one line to the system log (`Flow: no key clicks: …`).
+  output device, the pack missing), Lemna is silent and writes one line to the system log (`Lemna: no key clicks: …`).
 - A click on each key that changes the text, played before the edit is laid out and drawn: `.letter` for typed
   characters (and a dead key's pending mark, a key that shows), `.space` for white space, `.paragraph` for Return,
   `.backspace` for a backspace that deletes. A blocked backspace (after a space, at a paragraph's start) is silent, as
@@ -153,10 +153,10 @@ Milestone 5, summoning (W1); the session frame (M1) it also brought went in pass
   minimised window) or, when the window or a sheet on it is already key, hides the app so the app before it comes
   back. If the chord cannot be registered, one line in the system log; the menu-bar item still works.
 - Menu-bar item: a template image drawn in code (16 × 16 pt; a 1.5 pt line from x 2 to 14 with a 1.5 × 8.5 pt caret
-  bar centred at 60 % of it), so it follows the menu bar's appearance; its menu (since pass 6 all of Flow's menu):
-  Show Flow (⌃⌥Space shown as its key equivalent), Open Window / Close Window ⌃⌘F, Done ⌘⏎, Copy ⌘⇧⏎, Save… ⌘S,
-  Discard…, Sound ✓ ⌘K, Quit Flow ⌘Q. Done from there brings the box (or the window) forward first.
-- v1 kept the regular activation policy (Dock icon) for tiling window managers; pass 6 makes Flow an accessory app.
+  bar centred at 60 % of it), so it follows the menu bar's appearance; its menu (since pass 6 all of Lemna's menu):
+  Show Lemna (⌃⌥Space shown as its key equivalent), Open Window / Close Window ⌃⌘F, Done ⌘⏎, Copy ⌘⇧⏎, Save… ⌘S,
+  Discard…, Sound ✓ ⌘K, Quit Lemna ⌘Q. Done from there brings the box (or the window) forward first.
+- v1 kept the regular activation policy (Dock icon) for tiling window managers; pass 6 makes Lemna an accessory app.
 
 Pass 6, the box and paste (W2, O3):
 
@@ -178,39 +178,39 @@ Pass 6, the box and paste (W2, O3):
   the container. It draws only while it is on screen (a hidden layer may keep its drawables), and once per show.
   The bottom edge (the Bluetooth notice, a hand-off's note) is its subview, so it sits at the box's bottom edge
   inside the border. The notice is checked at each summon, so one at launch is not spent unseen.
-- Summoning (`Surface`): the hotkey and Show Flow show the box (recording `NSWorkspace.frontmostApplication` as the
-  app to paste into, unless that is Flow itself) and make it key without activating Flow, with the dim; again while
+- Summoning (`Surface`): the hotkey and Show Lemna show the box (recording `NSWorkspace.frontmostApplication` as the
+  app to paste into, unless that is Lemna itself) and make it key without activating Lemna, with the dim; again while
   the box has the keys, they hide both. A box left on screen after a click into another app takes the keys back
   (and that app becomes the target). Esc while writing hides the box; the session stays, the journal keeps
-  everything, and hiding flushes it fully (as deactivating did). Where Flow did get activated (window mode, a
+  everything, and hiding flushes it fully (as deactivating did). Where Lemna did get activated (window mode, a
   question), hiding hides the app so the app before it comes back.
-- Window mode: Open Window (⌃⌘F in the box, or the menu-bar item) hides the box and dim, activates Flow
-  (`NSApp.activate()`, and `activate(ignoringOtherApps:)` 0.2 s later if Flow is still not active) and shows v1's
+- Window mode: Open Window (⌃⌘F in the box, or the menu-bar item) hides the box and dim, activates Lemna
+  (`NSApp.activate()`, and `activate(ignoringOtherApps:)` 0.2 s later if Lemna is still not active) and shows v1's
   window with the line in it. ⌃⌘F again (Close Window) or the close button returns to the box (out of full screen
   first). Only while writing: a hand-off or question stays with the container it opened on (the close button then
   only hides the window).
 - Questions (Discard…, Save…, the journal alert) are sheets on the container on screen; on the box
-  Flow is activated first, since a sheet takes keys only in the active app.
+  Lemna is activated first, since a sheet takes keys only in the active app.
 - Paste (O3): ⌘⏎ (Done) in the box, at once since pass 10. `Paste.decide` first: Secure Input on
   (`IsSecureEventInputEnabled`) → copy, note `Secure input is on: copied instead`; no PostEvent permission
   (`CGPreflightPostEventAccess`) → `AXIsProcessTrustedWithOptions` with the prompt option (macOS asks once) and copy,
-  `Copied · allow Flow under Privacy & Security › Accessibility to paste`; no target (none recorded, or it quit) →
+  `Copied · allow Lemna under Privacy & Security › Accessibility to paste`; no target (none recorded, or it quit) →
   copy, `Copied · no app to paste into`. Else, once Return is up (at most 1 s; a held ⌘⏎ would otherwise auto-repeat
   into the app behind, where it sends messages in many apps): the old pasteboard's items are kept (each type's data,
-  as NSPasteboard gives it; nothing when macOS 15.4's pasteboard privacy denies Flow; until pass 11), the pasteboard
+  as NSPasteboard gives it; nothing when macOS 15.4's pasteboard privacy denies Lemna; until pass 11), the pasteboard
   is written as Copy writes it, the session is finished, the box and dim go, the target is brought forward if it is not in front
   (yield, then `activate(from:)`, then a plain `activate`), and after 120 ms Secure Input is checked again (a password
   field turns it on only once its window has the keys back: then the text stays copied and the box comes back saying
   so); else ⌘V goes out as two `CGEvent`s (`kVK_ANSI_V` down and up, `.maskCommand`, a private event source so held
   keys add no flags) to `.cghidEventTap`. 250 ms later the old items went back if the pasteboard's change count was
-  still the one Flow's write left (until pass 11, which leaves Flow's text on the clipboard).
+  still the one Lemna's write left (until pass 11, which leaves Lemna's text on the clipboard).
 
 Pass 7b, a click outside (W2). The pass also put Harper's suggestions in the review (R2); pass 9 removed them, below.
 
 - Click outside: when the box stops being the key window (`NSWindow.didResignKeyNotification` for the panel), a turn
   later, it hides with the dim as Esc does (the session stays), unless `ClickOutside` holds it: the box is not on
   screen (Esc, the hotkey, a paste, Open Window hid it), a question is up, a sheet hangs on it (Save…, Discard…, an
-  alert), or another window of Flow's has the keys (`NSApp.keyWindow` is then not nil).
+  alert), or another window of Lemna's has the keys (`NSApp.keyWindow` is then not nil).
 
 Pass 8, editing anywhere on the line (B4, which replaces B1):
 
@@ -250,7 +250,7 @@ Pass 8, editing anywhere on the line (B4, which replaces B1):
 - Input system: the selected and marked ranges sit at the caret (in UTF-16 units, as it counts), the document it reads
   is the text with the pending text at the caret, and the press-and-hold menu's replacement (a range ending at the
   caret) takes the Characters holding those units before the caret, anywhere in the text.
-- Journal format 2 (`../lib/FlowJournal/README.md`, Format): `insert(at:, text)` and `delete(at:, count:)` in
+- Journal format 2 (`../lib/LemnaJournal/README.md`, Format): `insert(at:, text)` and `delete(at:, count:)` in
   Characters; moves are not journaled and the replay puts the caret at the end. A session left by a build before pass 8
   (format 1) is restored as its text and moved into a format 2 file without a word.
 - Clicks: a letter (or space, or paragraph) click on typing as before, the backspace click on every delete key that
@@ -280,31 +280,31 @@ Pass 10, no review and no session frame (DESIGN.md O1+O2+O3, R1+R3, W2, E2 amend
   `#5c646f`, no fade); the next key the line takes (not a ⌘ chord), Esc, or the container going clears it. In the
   window ⌘⏎ always copies, `Copied · no app to paste into`. After a paste the next summon shows an empty line.
 - Copy (⌘⇧⏎) and Save… (⌘S): R1's text, as in milestone 3; then the session is finished and the container goes (the
-  box hides; Flow hides if it was active, so the app before it comes back). Both in the main menu, so they reach the
+  box hides; Lemna hides if it was active, so the app before it comes back). Both in the main menu, so they reach the
   box through its `sendEvent`, and in the menu-bar item's menu. Failures stay on the surface as a note: `Not copied.`,
   `Not pasted.`, `Not saved: …`; the text stays and writing goes on.
-- The menu-bar item: Show Flow ⌃⌥Space, Open Window ⌃⌘F, Done ⌘⏎, Copy ⌘⇧⏎, Save… ⌘S, Discard…, Sound ⌘K, Quit Flow
+- The menu-bar item: Show Lemna ⌃⌥Space, Open Window ⌃⌘F, Done ⌘⏎, Copy ⌘⇧⏎, Save… ⌘S, Discard…, Sound ⌘K, Quit Lemna
   ⌘Q. Discard… asks once, as before.
 - Build: the bundle's executable is 0.78 MB (779,680 bytes; 890,448 before); signed with "Flow Dev".
 
 Pass 11, sounds and the clipboard (DESIGN.md K1 amended, F0, G1 H1, I1 in O1+O2+O3 and E2, W2's accessibility,
 2026-10-28):
 
-- Packs: `lib/FlowClicks` holds four, each 12 cuts in a folder with its `pack.json`: the Keychron (`DefaultPack`, as
+- Packs: `lib/LemnaClicks` holds four, each 12 cuts in a folder with its `pack.json`: the Keychron (`DefaultPack`, as
   before), `TypewriterPack` (a manual typewriter, CC0, low-passed at 3.5 kHz, Return the carriage-return lever),
   `SoftPack` (MacBook Air keys, CC0, Enter and Delete from a FUJITSU board), `ElectricPack` (an electric typewriter,
-  CC BY 4.0, its credit line in `pack.json` and in `lib/FlowClicks/THIRD_PARTY.md`, which records every pack's
+  CC BY 4.0, its credit line in `pack.json` and in `lib/LemnaClicks/THIRD_PARTY.md`, which records every pack's
   sources, licence checks, commands and measures). `make-app.sh` copies all four into `Contents/Resources`.
 - The player: one `ClickPlayer(packs:)` at launch with the four packs in the submenu's order, every sample of every
   pack in its table (48 clicks, 0.54 MB as files); `pack` is the playing pack's index, so a switch is one assignment
   on the main thread: nothing is read, decoded or allocated, and the key handler never waits. A pack that will not
-  load leaves Flow silent, as the one pack did before.
+  load leaves Lemna silent, as the one pack did before.
 - Session › Sound (and the menu-bar item's Sound) is a submenu: Keychron, Typewriter, Soft, Electric, then Off ⌘K.
   The playing pack has the tick; Off has it while the sound is off (and no pack then). A pack turns the sound on and
   plays from the next key; Off or ⌘K turns it off, and while it is off back on with the last pack
-  (`SoundChoice` in FlowCore). Kept in UserDefaults: `sound` (on or off, as before) and `soundPack` (the folder; none
+  (`SoundChoice` in LemnaCore). Kept in UserDefaults: `sound` (on or off, as before) and `soundPack` (the folder; none
   or an unknown one is the Keychron). The Bluetooth notice is as before: once per output, while the sound is on.
-- Paste (I1): Flow's text stays on the clipboard after a paste, with the Concealed and Transient markers as before.
+- Paste (I1): Lemna's text stays on the clipboard after a paste, with the Concealed and Transient markers as before.
   The old clipboard is no longer read before the write or put back 250 ms after the ⌘V (`Clipboard.save`,
   `Clipboard.restore`, `Paste.restores`, `Paste.restoreAfter` are gone), so a ⌘V that did not land is one more ⌘V
   away, and macOS 15.4's paste alert cannot come up.
@@ -331,16 +331,50 @@ Pass 12, the mark and the icon (DESIGN.md L1, 2026-10-28):
   pixel AppKit's rendering of `assets/logo/mark-M3.svg`.
 - Build: `Contents/Resources` 1,020 KB (624 before: `AppIcon.icns` 393 KB); signed with "Flow Dev".
 
+Pass 13, the name (DESIGN.md N, 2026-10-28):
+
+- Lemna wherever the app shows its name: the menu-bar item's accessibility description, Show Lemna and Quit Lemna in its
+  menu, the main menu's Lemna menu (About Lemna, still a placeholder, the standard panel; Quit Lemna), the alerts
+  (`Lemna could not open its journal: …`), the paste note
+  `Copied · allow Lemna under Privacy & Security › Accessibility to paste`, the save panel's `lemna-YYYY-MM-DD-HHMM.md`,
+  the system log's `Lemna: …` lines.
+- The bundle: `build/Lemna.app`, `Contents/MacOS/Lemna`, `CFBundleName` `Lemna`, `CFBundleIdentifier` `dev.lemna.app`
+  (was `org.flow.app`). The keychain service `dev.lemna.app.session` (`KeychainKeyStore.service`; was
+  `org.flow.app.session`), the journal's folder `~/Library/Application Support/Lemna/sessions.noindex/`, the window's
+  frame name `Lemna`, the queues `dev.lemna.flush` and `dev.lemna.journal`, the hotkey's Carbon signature `'Lmna'` (the
+  chord stays ⌃⌥Space), the line's attribute key `LemnaMuted`, `ClickOutside.hides(…, lemnaHasKeys:)`.
+- The modules: `Lemna` (the app), `LemnaCore`, `LemnaCoreTests`, and next door `lib/LemnaJournal` and `lib/LemnaClicks`
+  with their tests; the login-keychain test's switch is `LEMNA_KEYCHAIN_TEST=1`.
+- Unchanged: the journal's format magic (`FLOWJ2`, `FLOWJ1`, a format and not a name), the pasteboard markers, the
+  UserDefaults keys (`sound`, `soundPack`, `SaveFolder`), the hotkey. UserDefaults are kept per bundle id, so the new id
+  starts from the defaults.
+- Signing: `make-cert.sh` makes "Lemna Dev"; `make-app.sh` signs with "Lemna Dev", else "Flow Dev" (the certificate from
+  before the rename, so builds keep their signature until `make-cert.sh` runs again), else ad-hoc with a notice.
+- A session Flow left (`Keeper.open`, before `Journal.open`): `Journal.adopt` moves each journal in
+  `~/Library/Application Support/Flow/sessions.noindex/` that has a record in it and no lock on it into Lemna's folder,
+  and its key from `org.flow.app.session` into `dev.lemna.app.session`: stored first, then the file moved, then the old
+  key destroyed, so a crash anywhere leaves what the next open takes up. It runs at each open (launch, and after each
+  hand-off), so a session typed into a Flow still running at Lemna's first launch comes along once Flow has quit. A
+  session with nothing typed stays with its key, so no keychain question comes for it. Reading the old key is a keychain
+  question for Lemna (another signature than the item's); denied, nothing moves, the not-kept alert says why and the
+  next open asks again.
+- Tests: LemnaJournal's two for `adopt` (a typed session comes along, after a store that would not answer; an empty one
+  and one in use stay). Build: the executable is 0.80 MB (803,504 bytes; 798,160 before), signed with "Flow Dev" (no
+  "Lemna Dev" yet).
+
 ## Known gaps
+
+- Pass 13 is not tried: nothing was launched; nothing showed the new name, the Accessibility prompt for the new id,
+  or a Flow session coming along in the real keychain (the tests use a key store in memory).
 
 - Pass 12 is not tried: the mark has not been seen in the real menu bar, nor the icon in Finder or System Settings.
 
 - Pass 11 is not tried, and nothing in its packs was listened to: their filters, spans and levels are by
-  measurement (`lib/FlowClicks/THIRD_PARTY.md`). On a MacBook the Soft pack may double the key under the fingers.
+  measurement (`lib/LemnaClicks/THIRD_PARTY.md`). On a MacBook the Soft pack may double the key under the fingers.
 
 - Pass 10 is not tried (the builder shows no windows; the note was not drawn).
 - A paste finishes the session before its ⌘V goes out: if the ⌘V does not land (no text field has the keys in the
-  target, the target ignores posted keys), the text is no longer in Flow, but since pass 11 it is still on the
+  target, the target ignores posted keys), the text is no longer in Lemna, but since pass 11 it is still on the
   clipboard, one ⌘V away. Before pass 11 the old clipboard came back 250 ms after the ⌘V and the text was then
   nowhere; before pass 10 the 10 s grace's Undo covered it. The clipboard the user had before a paste is gone, as
   after any copy.
@@ -365,11 +399,11 @@ Pass 12, the mark and the icon (DESIGN.md L1, 2026-10-28):
   `.floating` shows over a full-screen app; how sheets look on the borderless box (a question on the 112 pt box hangs
   below its top edge); whether the hotkey with a sheet up on the box brings the sheet back with the box.
 - The PostEvent permission is tied to the code signature, and an ad-hoc signature changes with every build: after a
-  rebuild macOS may show Flow as allowed under Accessibility but drop its events. `app/make-cert.sh` (once) puts a
-  self-signed "Flow Dev" certificate in the login keychain and `make-app.sh` signs with it from then on, so the grant
-  survives rebuilds. After the switch from ad-hoc, once: `tccutil reset Accessibility org.flow.app`, relaunch, paste.
+  rebuild macOS may show Lemna as allowed under Accessibility but drop its events. `app/make-cert.sh` (once) puts a
+  self-signed "Lemna Dev" certificate in the login keychain and `make-app.sh` signs with it from then on, so the grant
+  survives rebuilds. After the switch from ad-hoc, once: `tccutil reset Accessibility dev.lemna.app`, relaunch, paste.
 - The target is the app in front at the summon. A click into another app and then back on the box (rather than the
-  hotkey) leaves the old target; when the box is the key window of an inactive Flow, ⌘V goes wherever the keys are
+  hotkey) leaves the old target; when the box is the key window of an inactive Lemna, ⌘V goes wherever the keys are
   once the box hides.
 - The dim and the box are fitted to the screens at each summon, not while they show: a display plugged in meanwhile
   is not dimmed until the next summon.
@@ -379,12 +413,12 @@ Pass 12, the mark and the icon (DESIGN.md L1, 2026-10-28):
   live resize, full screen, AeroSpace tiling, dead keys and the accent menu, the save panel, the restore; nor anything
   of milestones 4 and 5 (clicks in the app, the hotkey, the menu-bar item, the bottom edge). DESIGN.md Open 4 and 5 stay open.
 - `NSApp.activate()` (macOS 14's cooperative activation) does not promise to activate; since pass 6 window mode
-  falls back to `activate(ignoringOtherApps: true)` (to be deprecated) when Flow is still not active 0.2 s later.
+  falls back to `activate(ignoringOtherApps: true)` (to be deprecated) when Lemna is still not active 0.2 s later.
   The box needs no activation.
 - ⌃⌥Space is also macOS's default for "Select next source in Input menu" (System Settings › Keyboard › Keyboard
   Shortcuts › Input Sources); where that shortcut is on, it takes the chord.
-- An ad-hoc signed rebuild changes the app's signature, so macOS may ask once whether Flow may use its keychain item
-  when a session is restored (not with the "Flow Dev" certificate, see above). Deny: the "not kept" alert, the old session stays on disk for the next launch.
+- An ad-hoc signed rebuild changes the app's signature, so macOS may ask once whether Lemna may use its keychain item
+  when a session is restored (not with the "Lemna Dev" certificate, see above). Deny: the "not kept" alert, the old session stays on disk for the next launch.
 - If the key store refuses to destroy the key at the end, an alert says "Not finished: …" and the session stays, on
   the line and on disk.
 - Journals `open` reports as unreadable (noise of finished sessions) are left on disk.
@@ -393,4 +427,6 @@ Pass 12, the mark and the icon (DESIGN.md L1, 2026-10-28):
 - Pending text from multi-stage input methods (Japanese, Chinese) is drawn as plain text, without the underline or
   the selected clause.
 - No accessibility: VoiceOver does not see the text yet.
-- No icon; the bundle identifier `org.flow.app` is a placeholder until the name is chosen.
+- The bundle identifier `dev.lemna.app` is for personal builds: lemna.dev belongs to someone else. Change it before a
+  public release if a domain of your own exists (DESIGN.md N, X1); a new id resets the Accessibility grant, the
+  keychain item's access and the settings, as the rename did.

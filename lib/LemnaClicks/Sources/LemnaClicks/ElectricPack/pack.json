@@ -1,0 +1,12 @@
+{
+  "name": "Electric typewriter",
+  "licence": "CC-BY-4.0",
+  "source": "https://freesound.org/people/magedu/packs/17107/",
+  "attribution": "typewriter_electric_typing_01.wav (https://freesound.org/people/magedu/sounds/277721/), typewriter_electric_spacebar.wav (https://freesound.org/people/magedu/sounds/277724/), typewriter_electric_spacebar_several_times.wav (https://freesound.org/people/magedu/sounds/319944/) and typewriter_electric_return.wav (https://freesound.org/people/magedu/sounds/319945/) by magedu (https://freesound.org/people/magedu/), from the pack Typewriter (https://freesound.org/people/magedu/packs/17107/), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Changed for Lemna: cut into single key sounds, high-pass filtered at 150 Hz, peak-normalised, some slowed and lowered in level. No warranties are given.",
+  "files": {
+    "letter": ["letter-1.wav", "letter-2.wav", "letter-3.wav", "letter-4.wav", "letter-5.wav", "letter-6.wav"],
+    "space": ["space-1.wav", "space-2.wav"],
+    "paragraph": ["paragraph-1.wav", "paragraph-2.wav"],
+    "backspace": ["backspace-1.wav", "backspace-2.wav"]
+  }
+}
