@@ -19,9 +19,14 @@ public struct Shaped {
 
 public struct Style {
     public var font: CTFont
-    public var background = rgb(0x0e1013), text = rgb(0xd8dce3), muted = rgb(0x5c646f), caret = rgb(0x7aa7f0)
+    public var background = rgb(0x0e1013), text = rgb(0xd8dce3), muted = Style.muted(increasedContrast: false),
+               caret = rgb(0x7aa7f0)
     public init(font: CTFont) { self.font = font }
     public var size: CGFloat { CTFontGetSize(font) }
+
+    /// The muted colour (the ` ¶ `, the surface's bottom edge): #5c646f, 3.2:1 on the background; under Increase
+    /// Contrast #8d95a0, 6.3:1 (the HIG asks at least 4.5:1).
+    public static func muted(increasedContrast: Bool) -> CGColor { rgb(increasedContrast ? 0x8d95a0 : 0x5c646f) }
 }
 
 /// An sRGB colour from 0xRRGGBB.

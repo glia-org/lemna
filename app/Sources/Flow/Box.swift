@@ -49,8 +49,9 @@ final class Box {
         panel.backgroundColor = .clear
         panel.hasShadow = true
         // 0.97 on the whole box rather than on its background alone: the line's Metal band is opaque, and a background
-        // a touch lighter than it would show the band as a stripe. Text at 97 % looks the same.
-        panel.alphaValue = 0.97
+        // a touch lighter than it would show the band as a stripe. Text at 97 % looks the same. Opaque under Reduce
+        // Transparency, read at each show.
+        panel.alphaValue = Self.alpha
         content.wantsLayer = true
         content.layer?.backgroundColor = rgb(0x0e1013)
         content.layer?.cornerRadius = 10
@@ -62,6 +63,9 @@ final class Box {
 
     static let behavior: NSWindow.CollectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
 
+    /// 0.97, or 1 under Reduce Transparency (the HIG: a solid background instead of a transparent one).
+    private static var alpha: CGFloat { NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency ? 1 : 0.97 }
+
     var isVisible: Bool { panel.isVisible }
 
     /// On screen with the keys and the dim. From off screen: on the screen with the pointer, centred in its lower third
@@ -70,6 +74,7 @@ final class Box {
         if !panel.isVisible, let screen = NSScreen.screens.first(where: { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) })
             ?? NSScreen.main {
             panel.setFrame(BoxFrame.line(in: screen.visibleFrame, height: lineHeight), display: false)
+            panel.alphaValue = Self.alpha
             dim()
             panel.orderFrontRegardless()  // Flow is not active: plain orderFront may leave it behind the active app's
             hold(line)  // once the panel is on screen, so the strip's first frames reach a shown layer

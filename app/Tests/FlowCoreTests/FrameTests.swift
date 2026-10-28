@@ -1,5 +1,6 @@
-// What surrounds the surface (W1 K1): the menu-bar mark and the Bluetooth notice.
+// What surrounds the surface (W1 K1): the menu-bar mark, the Bluetooth notice and the muted colour.
 import CoreGraphics
+import Darwin
 import Testing
 @testable import FlowCore
 
@@ -35,4 +36,23 @@ import Testing
     var muted = BluetoothNotice()
     let off = muted.check(bluetooth: true, sound: false), on = muted.check(bluetooth: true, sound: true)
     #expect(!off && on)  // muted at launch: nothing to warn about, until the sound is turned on
+}
+
+@Test func mutedTextReachesTheHIGsContrastUnderIncreaseContrast() {
+    /// WCAG's contrast ratio of two sRGB colours.
+    func ratio(_ a: CGColor, _ b: CGColor) -> Double {
+        func luminance(_ c: CGColor) -> Double {
+            let v = c.components!.prefix(3).map { x -> Double in
+                let x = Double(x)
+                return x <= 0.04045 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4)
+            }
+            return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]
+        }
+        let (x, y) = (luminance(a), luminance(b))
+        return (max(x, y) + 0.05) / (min(x, y) + 0.05)
+    }
+    let background = Style(font: menlo).background
+    #expect(Style(font: menlo).muted == Style.muted(increasedContrast: false))
+    #expect(abs(ratio(Style.muted(increasedContrast: false), background) - 3.2) < 0.05)  // as designed: below 4.5:1
+    #expect(ratio(Style.muted(increasedContrast: true), background) >= 4.5)  // HIG Dark Mode's minimum
 }

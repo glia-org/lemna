@@ -214,6 +214,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// goes: the next summon shows the line alone.
     private func apply() {
         let on = surface.onScreen
+        let recoloured = on != nil && readContrast()
         if on != .box, box.isVisible {
             box.hide()
             keeper.flushSoon()  // leaving the box is leaving Flow: the full flush deactivating did in v1's window
@@ -238,6 +239,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
                 view.autoresizingMask = [.width, .height]
                 view.frame = holder.bounds
                 holder.addSubview(view)
+            } else if recoloured {
+                view.redraw()  // the box draws on each show anyway; the window only when the line moves in
             }
             if window.attachedSheet == nil { window.makeFirstResponder(view) }
             activateFlow()
@@ -249,6 +252,17 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             notKept = false
             warnIfNotKept()
         }
+    }
+
+    /// Increase Contrast, read as a container comes on screen: the muted colour of the ` ¶ ` and of the bottom edge
+    /// (`Style.muted`). True when it changed since the last show.
+    private func readContrast() -> Bool {
+        let high = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
+        let muted = Style.muted(increasedContrast: high)
+        edge.use(increasedContrast: high)
+        guard view.style.muted != muted else { return false }
+        view.style.muted = muted
+        return true
     }
 
     /// Flow comes forward: the window, and a question on the box (a sheet takes keys only in the active app; the box

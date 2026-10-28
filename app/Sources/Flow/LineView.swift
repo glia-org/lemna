@@ -9,7 +9,8 @@ import FlowJournal
 import QuartzCore
 
 final class LineView: NSView, NSTextInputClient {
-    let style: Style
+    /// Its muted colour follows Increase Contrast, set by the app as the line comes on screen.
+    var style: Style
     private let strip = Strip()
     private(set) var text = Text()
     private var marked = ""

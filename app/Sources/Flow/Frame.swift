@@ -19,7 +19,7 @@ final class EdgeView: NSView {
         super.init(frame: NSRect(x: 0, y: 0, width: 0, height: Self.height))
         autoresizingMask = [.width, .maxYMargin]  // across the bottom as the window resizes
         notice.font = .systemFont(ofSize: 12)
-        notice.textColor = color(0x5c646f)
+        notice.textColor = NSColor(cgColor: Style.muted(increasedContrast: false))
         notice.alignment = .center
         notice.lineBreakMode = .byTruncatingTail
         notice.isHidden = true
@@ -30,6 +30,9 @@ final class EdgeView: NSView {
     required init?(coder: NSCoder) { fatalError() }
 
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    /// The text's colour: muted, or its variant under Increase Contrast (`Style.muted`).
+    func use(increasedContrast: Bool) { notice.textColor = NSColor(cgColor: Style.muted(increasedContrast: increasedContrast)) }
 
     /// The Bluetooth notice: at once, then after 5 s it fades out over a second.
     func showNotice() { show(BluetoothNotice.text, fades: true) }
@@ -59,10 +62,4 @@ final class EdgeView: NSView {
             NSAnimationContext.runAnimationGroup { $0.duration = 1; self.notice.animator().alphaValue = 0 }
         }
     }
-}
-
-/// An sRGB colour from 0xRRGGBB.
-func color(_ hex: UInt32) -> NSColor {
-    NSColor(srgbRed: CGFloat(hex >> 16 & 255) / 255, green: CGFloat(hex >> 8 & 255) / 255,
-            blue: CGFloat(hex & 255) / 255, alpha: 1)
 }
