@@ -349,11 +349,11 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         }
     }
 
-    /// Copy (⌘⇧C, O1): R1's text on the clipboard; the session is finished and the box (or the window) goes, as after a
+    /// Copy (⌘⇧⏎, O1): R1's text on the clipboard; the session is finished and the box (or the window) goes, as after a
     /// paste.
     @objc func copyText(_ sender: Any?) {
         guard let text = handOff() else { return }
-        copyOut(text, note: nil)
+        afterReturnIsUp { [unowned self] in self.copyOut(text, note: nil) }  // ⌘⇧⏎ held, as with ⌘⏎
     }
 
     /// The pasteboard as Copy writes it, then the session is finished. `note`: ⌘⏎ copied instead of pasting, and why;
@@ -519,8 +519,8 @@ func mainMenu() -> NSMenu {
     app.addItem(.separator())
     app.addItem(withTitle: "Quit Flow", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     session.addItem(withTitle: "Done", action: #selector(App.done(_:)), keyEquivalent: "\r")  // ⌘⏎
-    session.addItem(withTitle: "Copy", action: #selector(App.copyText(_:)), keyEquivalent: "c")
-        .keyEquivalentModifierMask = [.command, .shift]  // ⌘⇧C
+    session.addItem(withTitle: "Copy", action: #selector(App.copyText(_:)), keyEquivalent: "\r")
+        .keyEquivalentModifierMask = [.command, .shift]  // ⌘⇧⏎
     session.addItem(withTitle: "Save…", action: #selector(App.saveText(_:)), keyEquivalent: "s")  // ⌘S
     session.addItem(withTitle: "Discard…", action: #selector(App.discard(_:)), keyEquivalent: "")
     session.addItem(.separator())

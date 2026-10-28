@@ -15,7 +15,7 @@ final class BoxPanel: NSPanel {
     override func sendEvent(_ e: NSEvent) {
         if e.type == .keyUp { onKeyUp(e.keyCode) }
         // Flow is not the active app while the box has the keys. Should AppKit then leave out the main menu's key
-        // equivalents (Done ⌘⏎, Copy ⌘⇧C, Save… ⌘S, Open Window ⌃⌘F, Sound ⌘K, Quit ⌘Q), the menu gets them here; only
+        // equivalents (Done ⌘⏎, Copy ⌘⇧⏎, Save… ⌘S, Open Window ⌃⌘F, Sound ⌘K, Quit ⌘Q), the menu gets them here; only
         // a key no menu item took reaches this, so nothing runs twice.
         if e.type == .keyDown, e.modifierFlags.contains(.command), NSApp.mainMenu?.performKeyEquivalent(with: e) == true {
             return

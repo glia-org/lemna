@@ -115,14 +115,14 @@
   modes, it's not really necessary."; DESIGN.md O1+O2+O3, R1+R3, W2, E2 amended, M1 removed, Plan items 3 and 5
   marked, Open 8 dropped): `Review.swift`, `FlowCore/Frame.swift` (time box, tone, log), the Time box… and Intent…
   sheets, `ReviewKey`, the grown box, the grace and its Undo, the duration and the word count are gone. ⌘⏎ (Done)
-  applies R1 silently and pastes at once, or copies with the note at the box's bottom edge; Copy ⌘⇧C and Save… ⌘S
+  applies R1 silently and pastes at once, or copies with the note at the box's bottom edge; Copy ⌘⇧⏎ and Save… ⌘S
   hand off R1's text too; every hand-off finishes the session at once (key destroyed, journal deleted). The Sound
   toggle and Discard… stay. 49 app tests pass (61 before: 9 went with the removed code, the time box's 2, the tone's,
   the log's 2, the review's keys, the grown box, the pasted grace and the word count; the state machine's 8 became 5
   for writing → handing off → cleared); `lib/FlowJournal` is untouched. `make-app.sh` builds, signs with Flow Dev
   and verifies; the executable is 0.78 MB (779,680 bytes, was 890,448). Not tried: the builder showed no window.
   `app/README.md` (Pass 10) says what each part does. The menu-bar item's menu now: Show Flow ⌃⌥Space, Open Window
-  ⌃⌘F, Done ⌘⏎, Copy ⌘⇧C, Save… ⌘S, Discard…, Sound ⌘K, Quit Flow ⌘Q. Try, after `app/make-app.sh` and
+  ⌃⌘F, Done ⌘⏎, Copy ⌘⇧⏎, Save… ⌘S, Discard…, Sound ⌘K, Quit Flow ⌘Q. Try, after `app/make-app.sh` and
   `open app/build/Flow.app`:
   - Paste at once: summon from TextEdit, type `teh boats sat low.  a idea`, ⌘⏎: no review; the box and the dim go and
     `Teh boats sat low. A idea` lands at TextEdit's cursor (R1: capitals, the double space). The clipboard holds what
@@ -137,13 +137,13 @@
       ⌘⏎: `Copied · no app to paste into`.
     - The next key clears the note and is typed into the new line; Esc clears it and hides the box; so do the hotkey
       and a click outside. Summon again: no note.
-  - Copy: write, ⌘⇧C: the box goes; paste anywhere: R1's text. Summon: an empty line.
+  - Copy: write, ⌘⇧⏎: the box goes; paste anywhere: R1's text. Summon: an empty line.
   - Save: write, ⌘S: the save panel as a sheet on the box (Flow comes forward), `flow-YYYY-MM-DD-HHMM.md`; save: the
     box goes and Flow hides; the file holds R1's text, paragraphs apart by a blank line. Cancel instead: the line
     takes keys again with the text as it was.
   - Discard: the menu-bar item's Discard… asks once; Discard clears the line, Cancel keeps it.
   - Window mode: ⌃⌘F, write, ⌘⏎: copied, `Copied · no app to paste into` at the window's bottom edge, an empty line;
-    Esc clears the note. ⌘⇧C or ⌘S in the window: the hand-off, then Flow hides.
+    Esc clears the note. ⌘⇧⏎ or ⌘S in the window: the hand-off, then Flow hides.
   - From the menu-bar item with the box hidden (each off while the line is empty): Done pastes into the app in front,
     Copy copies, Save… brings the box with the panel on it.
   - Restore after `pkill -9 -x Flow` mid-word: silent, as before.

@@ -59,7 +59,7 @@ func makeStatusItem(target: AnyObject) -> NSStatusItem {
         .keyEquivalentModifierMask = [.control, .command]
     menu.addItem(.separator())
     menu.addItem(withTitle: "Done", action: #selector(App.done(_:)), keyEquivalent: "\r")
-    menu.addItem(withTitle: "Copy", action: #selector(App.copyText(_:)), keyEquivalent: "c")
+    menu.addItem(withTitle: "Copy", action: #selector(App.copyText(_:)), keyEquivalent: "\r")
         .keyEquivalentModifierMask = [.command, .shift]
     menu.addItem(withTitle: "Save…", action: #selector(App.saveText(_:)), keyEquivalent: "s")
     menu.addItem(withTitle: "Discard…", action: #selector(App.discard(_:)), keyEquivalent: "")

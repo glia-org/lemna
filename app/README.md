@@ -102,7 +102,7 @@ Milestone 2 in the app, the journal (E2):
 
 Milestone 3, the end of a session (O1 O2 R1); its review, R1's undo and the grace went in pass 10 (below):
 
-- Menus: Flow (About Flow, a placeholder; Quit ⌘Q), Session (Done ⌘⏎, Copy ⌘⇧C, Save… ⌘S, Discard…, Sound ⌘K), View
+- Menus: Flow (About Flow, a placeholder; Quit ⌘Q), Session (Done ⌘⏎, Copy ⌘⇧⏎, Save… ⌘S, Discard…, Sound ⌘K), View
   (Open Window ⌃⌘F, since pass 6). Done, Copy and Save… are off while the text is blank, a hand-off is under way or
   a question is up. Since pass 6 Flow shows no menu bar; these menus hold the key equivalents, and the menu-bar item's
   menu shows the items.
@@ -143,7 +143,7 @@ Milestone 5, summoning (W1); the session frame (M1) it also brought went in pass
   back. If the chord cannot be registered, one line in the system log; the menu-bar item still works.
 - Menu-bar item: a template image drawn in code (16 × 16 pt; a 1.5 pt line from x 2 to 14 with a 1.5 × 8.5 pt caret
   bar centred at 60 % of it), so it follows the menu bar's appearance; its menu (since pass 6 all of Flow's menu):
-  Show Flow (⌃⌥Space shown as its key equivalent), Open Window / Close Window ⌃⌘F, Done ⌘⏎, Copy ⌘⇧C, Save… ⌘S,
+  Show Flow (⌃⌥Space shown as its key equivalent), Open Window / Close Window ⌃⌘F, Done ⌘⏎, Copy ⌘⇧⏎, Save… ⌘S,
   Discard…, Sound ✓ ⌘K, Quit Flow ⌘Q. Done from there brings the box (or the window) forward first.
 - v1 kept the regular activation policy (Dock icon) for tiling window managers; pass 6 makes Flow an accessory app.
 
@@ -268,11 +268,11 @@ Pass 10, no review and no session frame (DESIGN.md O1+O2+O3, R1+R3, W2, E2 amend
   container stays up with the note at its bottom edge (`EdgeView.showNote`, in the Bluetooth notice's place, 12 pt
   `#5c646f`, no fade); the next key the line takes (not a ⌘ chord), Esc, or the container going clears it. In the
   window ⌘⏎ always copies, `Copied · no app to paste into`. After a paste the next summon shows an empty line.
-- Copy (⌘⇧C) and Save… (⌘S): R1's text, as in milestone 3; then the session is finished and the container goes (the
+- Copy (⌘⇧⏎) and Save… (⌘S): R1's text, as in milestone 3; then the session is finished and the container goes (the
   box hides; Flow hides if it was active, so the app before it comes back). Both in the main menu, so they reach the
   box through its `sendEvent`, and in the menu-bar item's menu. Failures stay on the surface as a note: `Not copied.`,
   `Not pasted.`, `Not saved: …`; the text stays and writing goes on.
-- The menu-bar item: Show Flow ⌃⌥Space, Open Window ⌃⌘F, Done ⌘⏎, Copy ⌘⇧C, Save… ⌘S, Discard…, Sound ⌘K, Quit Flow
+- The menu-bar item: Show Flow ⌃⌥Space, Open Window ⌃⌘F, Done ⌘⏎, Copy ⌘⇧⏎, Save… ⌘S, Discard…, Sound ⌘K, Quit Flow
   ⌘Q. Discard… asks once, as before.
 - Build: the bundle's executable is 0.78 MB (779,680 bytes; 890,448 before); signed with "Flow Dev".
 
