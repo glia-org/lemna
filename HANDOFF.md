@@ -34,7 +34,7 @@
   intent, the review's ⌘⏎ and the log. Try, after `app/make-app.sh`:
   - Clicks: type; each letter, space, Return and deleting backspace clicks, before the line moves. A backspace that
     does nothing (after a space, at a paragraph's start) is silent.
-  - Sound: Session › Sound (⌘K) unticks and silences; relaunch: still off. ⌘K again: on.
+  - Sound: ⌘K silences (since pass 11 it ticks Off in the Sound submenu); relaunch: still off. ⌘K again: on.
   - Bluetooth notice: with Bluetooth headphones as the output (at launch, or switch to them while Flow runs):
     `Bluetooth output: clicks arrive late · ⌘K mutes`, small and grey, centred near the bottom edge, fading after 5 s;
     once per switch, not again for the same output. With the sound off: no notice, until ⌘K turns it on.
@@ -125,8 +125,9 @@
   ⌃⌘F, Done ⌘⏎, Copy ⌘⇧⏎, Save… ⌘S, Discard…, Sound ⌘K, Quit Flow ⌘Q. Try, after `app/make-app.sh` and
   `open app/build/Flow.app`:
   - Paste at once: summon from TextEdit, type `teh boats sat low.  a idea`, ⌘⏎: no review; the box and the dim go and
-    `Teh boats sat low. A idea` lands at TextEdit's cursor (R1: capitals, the double space). The clipboard holds what
-    it held before about a quarter second later. Summon again: an empty line.
+    `Teh boats sat low. A idea` lands at TextEdit's cursor (R1: capitals, the double space). Since pass 11 the
+    clipboard keeps that text (it held what it held before about a quarter second later until then). Summon again:
+    an empty line.
   - Copy notes, each with the box staying up, the line empty and the text on the clipboard:
     - Secure Input: focus a password field (Safari, or Terminal with Secure Keyboard Entry on), summon, write, ⌘⏎:
       `Secure input is on: copied instead` at the box's bottom edge, nothing typed into the field. If the box first
@@ -147,8 +148,43 @@
   - From the menu-bar item with the box hidden (each off while the line is empty): Done pastes into the app in front,
     Copy copies, Save… brings the box with the panel on it.
   - Restore after `pkill -9 -x Flow` mid-word: silent, as before.
-- Next: the user tries pass 10, and what of v1, pass 6, pass 7b's click outside and pass 8 is still untried; then
-  DESIGN.md's Open items.
+- App, pass 11 (2026-10-28; the picks `A0+A1+A2+A3 P1 C1 D1 U1 F0 G1 H1 I1 N1` from
+  `docs/design-panel-flow-sounds-name.html`, the user, P1 and U1 taken as recommended where left blank; DESIGN.md K1
+  amended, F0 and G1 H1 new, O1+O2+O3 and E2 amended for I1, W2's accessibility, Plan item 9, Open 1 closed, Open 3
+  names Hypha; the rename itself is a separate pass, after a trademark search): three click packs beside the Keychron
+  in `lib/FlowClicks`, 12 cuts each from Freesound's previews: Typewriter (a manual machine, CC0, low-passed at 3.5 kHz,
+  125,764 bytes), Soft (MacBook Air keys with a FUJITSU Enter and Delete, CC0, 103,868 bytes), Electric (CC BY 4.0, its
+  credit line in the pack and in `THIRD_PARTY.md`, 209,600 bytes); `THIRD_PARTY.md` has every source, licence check,
+  command and measure, and `tools/cut_click.py` gained `--gain`, `--lead`, `--fade`, `--max`. `ClickPlayer(packs:)`
+  loads every pack at launch and `pack` picks one by index, so a switch never loads anything on the key path. Session
+  › Sound (and the menu-bar item's Sound) is a submenu: Keychron, Typewriter, Soft, Electric, Off ⌘K (radio ticks);
+  ⌘K turns the sound off and back on with the last pack; the pack is kept as `soundPack` beside `sound`. A paste
+  leaves Flow's text on the clipboard: no restore, no read of the clipboard. The box is opaque under Reduce
+  Transparency; the muted grey is #8d95a0 (6.3:1) under Increase Contrast; both read at each show. 51 app tests pass
+  (49 before: the restore rule's test went with it, 2 for the Sound choice, 1 for the contrast), FlowClicks 14 of 15
+  (11 before; new: each new pack's loading and per-key mapping, the CC BY credit line, a pack's picker in a shared
+  table, all four packs in one player): the audible engine test was left out (`--skip playReturnsInMicroseconds`), no
+  sound was played. `make-app.sh` copies the four packs, signs with Flow Dev and verifies; the executable is 0.80 MB
+  (798,160 bytes, was 779,680), `Contents/Resources` 624 KB. Not tried, and nothing was listened to: the packs' filters,
+  spans and levels are by measurement. `app/README.md` (Pass 11) says what each part does. Try, after `app/make-app.sh`
+  and `open app/build/Flow.app`:
+  - Each pack at speed: the menu-bar item's Sound ▸ Typewriter, then type a fast burst (about 12 keys/s) for half a
+    minute: clicks stay apart and none jumps out; Space, Return (a carriage-return lever) and ⌫ (a lighter, lower
+    strike) each sound their own. Too dull, or still too bright? (The low-pass is one command in `THIRD_PARTY.md`.)
+    Then Soft (on the MacBook's own keyboard: does it double the real key into a flam?), Electric (Return is a 0.6 s
+    motor return), Keychron.
+  - The submenu: a tick on the pack that plays; another pack plays from the next key, with no pause in the typing;
+    relaunch: the same pack, ticked.
+  - ⌘K: silent, Off ticked and no pack; ⌘K again: back with the pack that played last, not the Keychron. Off from the
+    submenu does the same; a pack chosen while off turns the sound on. The Bluetooth notice as before.
+  - Paste leaves the text: summon from TextEdit, write, ⌘⏎: it lands; ⌘V in TextEdit: the same text again, not what
+    was on the clipboard before. No paste alert from macOS.
+  - Reduce Transparency (System Settings › Accessibility › Display) on, summon: the box is opaque (over a bright
+    window nothing shows through its edge); off: 97 % again at the next summon.
+  - Increase Contrast (the same pane) on, summon: the ` ¶ ` (Return) and a note at the bottom edge (⌘⏎ in the window:
+    `Copied · no app to paste into`) are a lighter grey; off: the dim grey again at the next summon.
+- Next: the user tries pass 11 and pass 10, and what of v1, pass 6, pass 7b's click outside and pass 8 is still
+  untried; the rename to Hypha after a trademark search (a pass of its own); then DESIGN.md's Open items.
 
 ## Build and run
 

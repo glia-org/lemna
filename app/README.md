@@ -6,7 +6,8 @@ whatever the user is doing (W2) and Done can paste into the app behind it (O3); 
 the box (it also brought Harper's suggestions to the review, R2, which pass 9 removed again); then pass 8 (Plan item
 8): the caret moves through the text and typing and deleting work anywhere on the line (B4, which replaces B1), with
 the journal in format 2; then pass 10: no review, Done pastes at once with R1 applied silently, and the session frame
-(M1) is gone. Swift + AppKit, SwiftPM with the Command Line Tools only (no Xcode), two
+(M1) is gone; then pass 11: three more click packs and a Sound submenu (K1), the text left on the clipboard after a
+paste, the box opaque under Reduce Transparency and the muted grey lighter under Increase Contrast. Swift + AppKit, SwiftPM with the Command Line Tools only (no Xcode), two
 package dependencies by path (`../lib/FlowJournal`, `../lib/FlowClicks`), ad-hoc signed (there is no Developer ID
 yet).
 
@@ -28,8 +29,9 @@ overlay without a module, so no test file imports Foundation and Testing togethe
 '_Testing_Foundation'"). `JournalReplayTests` gets by without it: the journal's `URL` is built from the parameter's
 own type (`.init(fileURLWithPath:)`), the temporary folder comes from Darwin's `mkdtemp`.
 
-`make-app.sh` copies the click pack (`lib/FlowClicks/Sources/FlowClicks/DefaultPack`, `pack.json` and its WAVs) into
-`Contents/Resources/DefaultPack`, where `SoundPack.bundled()` loads it, writes `LSUIElement` (an accessory app from
+`make-app.sh` copies the click packs (`lib/FlowClicks/Sources/FlowClicks/DefaultPack`, `TypewriterPack`, `SoftPack`,
+`ElectricPack`, each a `pack.json` and its WAVs) into `Contents/Resources`, where `SoundPack.bundled(<folder>)` loads
+them, writes `LSUIElement` (an accessory app from
 launch on: no Dock icon, no menu bar) into the Info.plist, and checks the signature with
 `codesign --verify --deep --strict`.
 
@@ -46,13 +48,13 @@ back in the text, the text after it shown) and `move-left-70ms.png` (70 ms into 
   around the caret with ` ¶ `), `Line.swift` the geometry and drawing (Core Text shaping around the caret, the two
   fades, the clips at the caret, caret, the band), `Glide.swift` the glide, `Mechanical.swift`
   the deterministic pass R1, `Session.swift` the end of a session as a state machine, `Summoning.swift` the menu-bar
-  mark and when the Bluetooth notice shows, `Box.swift` the box's frame on a screen (`BoxFrame`), which container
+  mark and when the Bluetooth notice shows, `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
   holds the line (`Surface`) and when a click outside hides the box (`ClickOutside`), `Paste.swift` the paste's
-  decision table and the restore rule.
+  decision table.
 - `Sources/Flow`: `main.swift` the app, window, menus, clicks and the sound toggle, summoning and the two containers
   (`apply()`), a click outside the box, and the end of a session (Done's paste or copy, Copy, Save, Discard, each
   finishing at once); `Box.swift` the box (the non-activating panel, the dim overlays, the line in it); `Paste.swift`
-  the pasteboard (Copy's item, the old clipboard kept and put back) and the posted ⌘V; `Keeper.swift` the journal in
+  the pasteboard (Copy's item; since pass 11 nothing is read from it) and the posted ⌘V; `Keeper.swift` the journal in
   the app (open and restore, append, the flushes); `LineView.swift` the view (text input, the keys of B4, edits as
   journal edits and clicks, the two glides, display link); `Strip.swift` the Metal band (Core Graphics into a shared
   buffer, blitted into the drawable); `Frame.swift` the surface's bottom edge (the Bluetooth notice, a hand-off's
@@ -61,8 +63,9 @@ back in the text, the text after it shown) and `move-left-70ms.png` (70 ms into 
   from the caret to 95 %, the renders (`CoreTests`, `RenderTests`); every key of B4, its boundaries, the word rules,
   Characters with é, 🙂 and 👩‍💻, the replay of every key's edits (`EditingTests`); R1's rules, counts and idempotence (`MechanicalTests`); the state machine (`SessionTests`); the
   journal round trip through the app's replay, edits in the middle included (`JournalReplayTests`); the menu-bar mark,
-  the Bluetooth notice (`FrameTests`); the box's frame and its clamps, one container at a time, the paste's decision
-  table, the restore rule, the click-outside guard's table (`BoxTests`).
+  the Bluetooth notice, the muted colour's contrast (`FrameTests`); the box's frame and its clamps, one container at a
+  time, the paste's decision table, the click-outside guard's table (`BoxTests`); the Sound submenu's default, a
+  pack's choice and ⌘K (`SoundTests`).
 
 ## What it covers
 
@@ -121,15 +124,15 @@ Milestone 3, the end of a session (O1 O2 R1); its review, R1's undo and the grac
 
 Milestone 4 in the app, the clicks (K1):
 
-- One `ClickPlayer(pack: .bundled())` at launch. If it cannot start (no output device, the pack missing), Flow is
-  silent and writes one line to the system log (`Flow: no key clicks: …`).
+- One `ClickPlayer(pack: .bundled())` at launch (since pass 11 `ClickPlayer(packs:)`, below). If it cannot start (no
+  output device, the pack missing), Flow is silent and writes one line to the system log (`Flow: no key clicks: …`).
 - A click on each key that changes the text, played before the edit is laid out and drawn: `.letter` for typed
   characters (and a dead key's pending mark, a key that shows), `.space` for white space, `.paragraph` for Return,
   `.backspace` for a backspace that deletes. A blocked backspace (after a space, at a paragraph's start) is silent, as
   are keys during a hand-off and ⌘ chords. Volume stays at the library's default. (Since pass 8 every delete key
   that deletes clicks `.backspace`; caret moves are silent.)
 - Session › Sound (⌘K, and in the menu-bar item) with a check mark, kept in UserDefaults as `sound` (default on). Off
-  pauses the engine.
+  pauses the engine. (Since pass 11 a submenu of packs, below.)
 - Bluetooth: when the output is Bluetooth at launch, after the output device changes, or when the sound is turned on,
   the surface's bottom edge says `Bluetooth output: clicks arrive late · ⌘K mutes` (12 pt system font, `#5c646f`,
   centred, 12 pt above the bottom), once per output, only while the sound is on; it fades out over 1 s after 5 s.
@@ -186,13 +189,13 @@ Pass 6, the box and paste (W2, O3):
   `Copied · allow Flow under Privacy & Security › Accessibility to paste`; no target (none recorded, or it quit) →
   copy, `Copied · no app to paste into`. Else, once Return is up (at most 1 s; a held ⌘⏎ would otherwise auto-repeat
   into the app behind, where it sends messages in many apps): the old pasteboard's items are kept (each type's data,
-  as NSPasteboard gives it; nothing when macOS 15.4's pasteboard privacy denies Flow), the pasteboard is written as
-  Copy writes it, the session is finished, the box and dim go, the target is brought forward if it is not in front
+  as NSPasteboard gives it; nothing when macOS 15.4's pasteboard privacy denies Flow; until pass 11), the pasteboard
+  is written as Copy writes it, the session is finished, the box and dim go, the target is brought forward if it is not in front
   (yield, then `activate(from:)`, then a plain `activate`), and after 120 ms Secure Input is checked again (a password
   field turns it on only once its window has the keys back: then the text stays copied and the box comes back saying
   so); else ⌘V goes out as two `CGEvent`s (`kVK_ANSI_V` down and up, `.maskCommand`, a private event source so held
-  keys add no flags) to `.cghidEventTap`. 250 ms later the old items go back if the pasteboard's change count is still
-  the one Flow's write left.
+  keys add no flags) to `.cghidEventTap`. 250 ms later the old items went back if the pasteboard's change count was
+  still the one Flow's write left (until pass 11, which leaves Flow's text on the clipboard).
 
 Pass 7b, a click outside (W2). The pass also put Harper's suggestions in the review (R2); pass 9 removed them, below.
 
@@ -276,13 +279,44 @@ Pass 10, no review and no session frame (DESIGN.md O1+O2+O3, R1+R3, W2, E2 amend
   ⌘Q. Discard… asks once, as before.
 - Build: the bundle's executable is 0.78 MB (779,680 bytes; 890,448 before); signed with "Flow Dev".
 
+Pass 11, sounds and the clipboard (DESIGN.md K1 amended, F0, G1 H1, I1 in O1+O2+O3 and E2, W2's accessibility,
+2026-10-28):
+
+- Packs: `lib/FlowClicks` holds four, each 12 cuts in a folder with its `pack.json`: the Keychron (`DefaultPack`, as
+  before), `TypewriterPack` (a manual typewriter, CC0, low-passed at 3.5 kHz, Return the carriage-return lever),
+  `SoftPack` (MacBook Air keys, CC0, Enter and Delete from a FUJITSU board), `ElectricPack` (an electric typewriter,
+  CC BY 4.0, its credit line in `pack.json` and in `lib/FlowClicks/THIRD_PARTY.md`, which records every pack's
+  sources, licence checks, commands and measures). `make-app.sh` copies all four into `Contents/Resources`.
+- The player: one `ClickPlayer(packs:)` at launch with the four packs in the submenu's order, every sample of every
+  pack in its table (48 clicks, 0.54 MB as files); `pack` is the playing pack's index, so a switch is one assignment
+  on the main thread: nothing is read, decoded or allocated, and the key handler never waits. A pack that will not
+  load leaves Flow silent, as the one pack did before.
+- Session › Sound (and the menu-bar item's Sound) is a submenu: Keychron, Typewriter, Soft, Electric, then Off ⌘K.
+  The playing pack has the tick; Off has it while the sound is off (and no pack then). A pack turns the sound on and
+  plays from the next key; Off or ⌘K turns it off, and while it is off back on with the last pack
+  (`SoundChoice` in FlowCore). Kept in UserDefaults: `sound` (on or off, as before) and `soundPack` (the folder; none
+  or an unknown one is the Keychron). The Bluetooth notice is as before: once per output, while the sound is on.
+- Paste (I1): Flow's text stays on the clipboard after a paste, with the Concealed and Transient markers as before.
+  The old clipboard is no longer read before the write or put back 250 ms after the ⌘V (`Clipboard.save`,
+  `Clipboard.restore`, `Paste.restores`, `Paste.restoreAfter` are gone), so a ⌘V that did not land is one more ⌘V
+  away, and macOS 15.4's paste alert cannot come up.
+- Reduce Transparency: the box's alpha is 1 instead of 0.97, read at each show. Increase Contrast: the muted grey
+  (the ` ¶ ` on the line, the bottom edge's notice and notes) is #8d95a0, 6.3:1 on the box, instead of #5c646f,
+  3.2:1 (`Style.muted(increasedContrast:)`), read each time the box or the window comes on screen.
+- Build: the executable is 0.80 MB (798,160 bytes; 779,680 before), `Contents/Resources` 624 KB; signed with "Flow
+  Dev".
+
 ## Known gaps
 
+- Pass 11 is not tried, and nothing in its packs was listened to: their filters, spans and levels are by
+  measurement (`lib/FlowClicks/THIRD_PARTY.md`). On a MacBook the Soft pack may double the key under the fingers.
+
 - Pass 10 is not tried (the builder shows no windows; the note was not drawn).
-- A paste finishes the session before its ⌘V goes out, and the old clipboard comes back 250 ms after it: if the ⌘V
-  does not land (no text field has the keys in the target, the target ignores posted keys), the text is neither in
-  Flow nor on the clipboard. Before pass 10 the 10 s grace's Undo covered this. A Copy is likewise only on the
-  clipboard once the session is finished.
+- A paste finishes the session before its ⌘V goes out: if the ⌘V does not land (no text field has the keys in the
+  target, the target ignores posted keys), the text is no longer in Flow, but since pass 11 it is still on the
+  clipboard, one ⌘V away. Before pass 11 the old clipboard came back 250 ms after the ⌘V and the text was then
+  nowhere; before pass 10 the 10 s grace's Undo covered it. The clipboard the user had before a paste is gone, as
+  after any copy.
 - Done from the menu-bar item with the box hidden brings the box up first (to record the app in front and to have a
   place for a note), so on a paste it shows for a moment before it goes.
 - Pass 8 is not tried (the builder shows no windows; the line was drawn offscreen, `editing.png`,
@@ -307,9 +341,6 @@ Pass 10, no review and no session frame (DESIGN.md O1+O2+O3, R1+R3, W2, E2 amend
   rebuild macOS may show Flow as allowed under Accessibility but drop its events. `app/make-cert.sh` (once) puts a
   self-signed "Flow Dev" certificate in the login keychain and `make-app.sh` signs with it from then on, so the grant
   survives rebuilds. After the switch from ad-hoc, once: `tccutil reset Accessibility org.flow.app`, relaunch, paste.
-- Keeping the old clipboard reads the general pasteboard. Where macOS (15.4 on) asks before an app reads it
-  programmatically, that read may raise the system's paste alert at each paste; with the alert answered Deny, Flow
-  leaves its text on the clipboard instead of restoring. Large items (an image) are read in full on the main thread.
 - The target is the app in front at the summon. A click into another app and then back on the box (rather than the
   hotkey) leaves the old target; when the box is the key window of an inactive Flow, ⌘V goes wherever the keys are
   once the box hides.
