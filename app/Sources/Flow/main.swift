@@ -473,7 +473,9 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         switch Paste.decide(secureInput: IsSecureEventInputEnabled(), mayPost: CGPreflightPostEventAccess(),
                             hasTarget: app != nil) {
         case .copy(let note, let ask):
-            if ask { _ = CGRequestPostEventAccess() }  // macOS shows its Accessibility prompt, once
+            // macOS's Accessibility prompt, once (seen 2026-10-28: CGRequestPostEventAccess brought none, this does; the
+            // Accessibility grant covers posting events too)
+            if ask { _ = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary) }
             copyOut(note: note)
         case .paste:
             afterReturnIsUp { [unowned self] in
