@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lemna Effects Design Options</title>
+<style>
+/* One page, nine decisions on effects for Lemna, the one-line writer: borrowing Omarchy's feel without per-key motion.
+   Same language as design-panel-flow-writer.html: one mono font, 1 px lines, glyph + colour.
+   Readable without scripts; the pick line updates where scripts run. */
+:root{
+  color-scheme:dark;
+  --bg:#0e1013; --surface:#14171b; --raise:#1b1f25; --line:#262b32; --line-2:#3a414c;
+  --fg:#d9dde3; --muted:#8d95a0; --faint:#5c646f;
+  --accent:#7aa7f0; --accent-soft:rgba(122,167,240,.13); --on-accent:#0e1013;
+  --work:#e2a03a; --need:#f06a43; --done:#52b87c;
+  --ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"CaskaydiaCove Nerd Font Mono","Cascadia Code","Cascadia Mono","Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --w-bg:#1a1b26; --w-raised:#16161e; --w-line:#3b4261; --w-fg:#c0caf5; --w-mid:#a9b1d6; --w-low:#7f88b2; --w-sel:#283457;
+  --w-accent:#7aa2f7; --w-work:#e0af68; --w-need:#f7768e; --w-done:#9ece6a; --w-idle:#6b7399;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--ui);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin-inline:auto;padding:32px clamp(16px,4vw,32px) 120px;display:flex;flex-direction:column;gap:52px}
+h1,h2,h3,p,ul,figure{margin:0}
+ul{padding:0;list-style:none}
+code{font:12.5px/1 var(--mono);white-space:nowrap}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font:600 clamp(24px,4vw,34px)/1.15 var(--mono);letter-spacing:-.02em}
+.lede{max-width:78ch;color:var(--muted);font-size:15px}
+.lede b{color:var(--fg);font-weight:600}
+.top{display:flex;flex-direction:column;gap:14px}
+.bundle{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.bundle-l{font:500 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:5px 9px;border-radius:6px;background:var(--accent-soft);text-decoration:none;font-size:13px;white-space:nowrap;color:inherit}
+.chip b{font:600 12px/1 var(--mono);color:var(--accent)}
+.sec{display:flex;flex-direction:column;gap:18px}
+.sec-h{display:flex;gap:14px;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:12px}
+.num{font:600 28px/1 var(--mono);color:var(--accent)}
+.sec-h h2{font:600 19px/1.2 var(--mono)}
+.sec-h p{color:var(--muted);margin-top:3px;max-width:80ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,500px),1fr));gap:16px}
+.card{min-width:0;display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.card.wide{grid-column:1/-1}
+.card:has(.pick input:checked){border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.card-h{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.oid{font:600 13px/1 var(--mono);padding:5px 7px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.card-h h3{font:600 16px/1.2 var(--ui)}
+.tag{font:500 11px/1 var(--mono);padding:4px 6px;border-radius:4px;border:1px solid var(--line-2);color:var(--muted);white-space:nowrap}
+.tag.rec{border-color:var(--done);color:var(--done)}
+.tag.ask{border-color:var(--work);color:var(--work)}
+.tag.no{border-color:var(--need);color:var(--need)}
+.pick{margin-left:auto;display:inline-flex;gap:6px;align-items:center;font:500 12px/1 var(--mono);color:var(--muted);cursor:pointer;padding:5px 8px;border:1px solid var(--line);border-radius:6px}
+.pick input{accent-color:var(--accent);margin:0}
+.pick:has(input:checked){color:var(--fg);border-color:var(--accent)}
+.pitch{font-size:15px;max-width:76ch}
+.how{display:flex;flex-direction:column;gap:5px;color:var(--muted)}
+.how li{padding-left:14px;position:relative;max-width:78ch}
+.how li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--faint)}
+.how b{color:var(--fg);font-weight:600}
+figcaption{font-size:12px;color:var(--muted);margin-top:6px;max-width:72ch}
+.risk{font-size:13px;color:var(--muted);border-left:2px solid var(--line-2);padding-left:10px;max-width:76ch}
+.risk b{color:var(--fg)}
+.ledger{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:10px}
+.ledger div{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13px;color:var(--muted)}
+.ledger b{display:block;color:var(--fg);font:600 12px/1.6 var(--mono)}
+.ledger .urgent{border-color:var(--need)} .ledger .urgent b{color:var(--need)}
+.ledger .ok b{color:var(--done)}
+.order{counter-reset:o;display:flex;flex-direction:column;gap:6px;padding:0;list-style:none}
+.order li{counter-increment:o;padding-left:28px;position:relative;max-width:84ch;color:var(--muted)}
+.order li::before{content:counter(o);position:absolute;left:0;top:0;font:600 13px/1.5 var(--mono);color:var(--accent)}
+.order b{color:var(--fg)}
+table.keys{border-collapse:collapse;font-size:13px;color:var(--muted)}
+table.keys td,table.keys th{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+table.keys th{font:500 12px/1.3 var(--mono);color:var(--fg)}
+table.keys code{color:var(--fg)}
+table.keys a{color:var(--accent)}
+
+/* ---------- the app, drawn at real size: 1 CSS px = 1 pt ---------- */
+.real{display:flex;flex-wrap:wrap;gap:22px 26px;padding:18px 20px;background:var(--w-bg);border:1px solid var(--line-2);overflow-x:auto}
+.real figure{display:flex;flex-direction:column;gap:8px}
+.real figcaption{margin:0;font:12px/1.4 var(--mono);color:var(--w-low);max-width:640px}
+.real figcaption b{color:var(--w-fg);font-weight:500}
+.mock{overflow-x:auto}
+
+/* picks bar */
+.picks{position:sticky;bottom:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-inline:calc(-1 * clamp(8px,2vw,16px));padding:10px clamp(8px,2vw,16px);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 -6px 24px rgba(0,0,0,.35)}
+.picks-l{font:500 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.picks code{font:600 14px/1.3 var(--mono);color:var(--fg);user-select:all;white-space:normal}
+.picks button{margin-left:auto;font:600 13px/1 var(--ui);padding:8px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);cursor:pointer}
+</style>
+<style>
+/* additions for this panel: links, a findings grid, refs, the figures, and the drawings at real size */
+.wrap a:not(.chip){color:var(--accent);text-decoration:none}
+.wrap a:not(.chip):hover{text-decoration:underline}
+.finding{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
+.finding div{padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13.5px;color:var(--muted)}
+.finding b{color:var(--fg);display:block;margin-bottom:4px;font-weight:600}
+.refs{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:13px;max-width:96ch}
+.refs li{padding-left:14px;position:relative}
+.refs li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--faint)}
+.refs b{color:var(--fg);font-weight:600}
+.mock table.keys{width:100%;min-width:760px}
+table.keys td:first-child{color:var(--fg)}
+.kind{font:500 11px/1.4 var(--mono);color:var(--muted)}
+/* cards: three to a row, so each figure shows at its drawn size */
+.grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))}
+.ledger.one{grid-template-columns:1fr;gap:6px}
+.ledger.one b{display:inline;margin-right:8px}
+.note{font-size:13px;color:var(--muted)}
+/* figures: inline SVG in the panel's language. 1 px lines in --line-2, text in --fg, --muted for dimmed text,
+   --accent only for the caret, status colours only on ✓ ✗ and their words. 1 viewBox unit = 1 CSS px at full size. */
+.fig{display:block;width:100%;max-width:320px;height:auto;font:11px var(--mono);font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}
+.fig.w{max-width:none;min-width:640px}
+.fig.fx{width:var(--w);max-width:100%}
+.figw,.figs{overflow-x:auto}
+.figs{display:flex;flex-wrap:wrap;gap:20px 32px;align-items:flex-start}
+.fig text{fill:var(--fg)}
+.fig .big{font-size:12px}
+.fig .b{font-weight:600}
+.fig .m{fill:var(--muted)} .fig .f{fill:var(--faint)}
+.fig .ok{fill:var(--done)} .fig .no{fill:var(--need)} .fig .wk{fill:var(--work)}
+.fig .bx{fill:var(--bg);stroke:var(--line-2)}
+.fig .bx2{fill:var(--raise);stroke:var(--line-2)}
+.fig .ln{fill:none;stroke:var(--line-2)}
+.fig .ar{fill:none;stroke:var(--muted)}
+.fig .sfg{fill:none;stroke:var(--fg)}
+.fig .sok{fill:none;stroke:var(--done)}
+.fig .sno{fill:none;stroke:var(--need)}
+.fig .swk{fill:none;stroke:var(--work)}
+.fig .cr{fill:var(--accent)}
+.fig .ip{fill:var(--fg)}
+.fig .dim{fill:var(--bg);opacity:.62}
+.fig .gs{stop-color:var(--fg)}
+/* this panel: the box's own colours, drawn exact (T1 Tokyo Night roles, T2 today's) */
+.fig .c1{fill:#c0caf5} .fig .m1{fill:#7f88b2} .fig .c2{fill:#d8dce3} .fig .m2{fill:#5c646f} .fig .q0t{fill:#bec8f2}
+.fig .k1g{font-size:24px} .fig .e2g{font-size:16px}
+.fig .sel{fill:var(--accent-soft)}
+.note{font-size:13px;color:var(--muted);max-width:84ch}
+.sub{font:600 15px/1.2 var(--mono);margin-top:6px}
+</style>
+
+<div class="wrap">
+<header class="top">
+<p class="eyebrow">Design panel · Lemna</p>
+<h1>Lemna effects design options</h1>
+<p class="lede">Omarchy's feel comes from <b>one sharp curve, short durations, a still accent border and a theme-coloured dim</b>, not from motion per key. Nine decisions and a cost line: <b>recommended</b> is the proposed pick, <b>ask</b> a matter of taste, <b>no</b> ruled out by evidence; the argument is in the <a href="../research_notes/Lemna%20effects/">effects notes</a> and the <a href="../research_notes/Flow%20sounds%20and%20ambience/visuals.md">ambience note</a> of 2026-10-28.</p>
+<div class="bundle"><span class="bundle-l">Picks</span><a class="chip" href="#opt-T1"><b>T1</b> Tokyo Night roles</a><a class="chip" href="#opt-P1"><b>P1</b> Omarchy pop</a><a class="chip" href="#opt-G1"><b>G1</b> easeOutQuint glide</a><a class="chip" href="#opt-D1"><b>D1</b> theme dim at 0.5</a><a class="chip" href="#opt-Q1"><b>Q1</b> opaque box</a><a class="chip" href="#opt-B1"><b>B1</b> accent border</a><a class="chip" href="#opt-K1"><b>K1</b> glyph pop-in</a><a class="chip" href="#opt-E1"><b>E1</b> hand-off sheen</a><a class="chip" href="#opt-E2"><b>E2</b> ¶ fade</a><a class="chip" href="#opt-S1"><b>S1</b> Effects submenu</a></div>
+<p class="eyebrow">Pick line: <span id="pickline">T1 P1 G1 D1 Q1 B1 K1 E1+E2 S1</span></p>
+</header>
+
+<section class="sec" aria-labelledby="s0h">
+<header class="sec-h"><span class="num">0</span><div><h2 id="s0h">What Omarchy actually does</h2><p>Read from its repository on 2026-10-28 (<a href="../research_notes/Lemna%20effects/omarchy.md">Omarchy note</a>).</p></div></header>
+<div class="finding">
+<div><b>Nothing per keystroke.</b>Its motion rules (2026-10-24): "A keystroke that acts and is done jumps." Terminals keep a still block cursor, Omawrite's caret is a still 1 px bar, and text effects run only in the screensaver, ending at the first key.</div>
+<div><b>One curve.</b>easeOutQuint, <code>cubic-bezier(0.23, 1, 0.32, 1)</code>, for every animation since 2026-10-28: no ease-in, no bounce, nothing over 300 ms.</div>
+<div><b>Short.</b>A window opens in 250 ms from 95 % and closes in 160 ms; the border colour changes in 150 ms.</div>
+<div><b>Still surfaces.</b>An accent border, the launcher's dim in the theme background at 0.5, Tokyo Night tokens; blur and shadows off by default since 2026-07-13, "a source of GPU load".</div>
+</div>
+<div class="figw"><svg class="fig w" style="max-width:660px" viewBox="0 0 660 226" role="img"><title>Progress over 140 ms: easeOutQuint reaches 90 % at 50 ms, Lemna's ease-out cubic at 75 ms</title>
+<path class="ln" d="M60.5 24v166.5H624"/>
+<path class="ln" d="M60 30.5h560M60 46.5h560" stroke-dasharray="3 3"/>
+<path class="ln" d="M93.3 186v4M126.7 186v4M160 186v4M193.3 186v4M226.7 186v4M260 186v4M293.3 186v4M326.7 186v4M360 186v4M393.3 186v4M426.7 186v4M460 186v4M493.3 186v4M526.7 186v4M560 186v4M593.3 186v4"/>
+<path class="ln" d="M262.5 46v144M360.5 46v144" stroke-dasharray="2 3"/>
+<path class="ar" d="M60 190C246.7 30 433.3 30 620 30" stroke-dasharray="5 3"/>
+<path class="sfg" d="M60 190C188.8 30 239.2 30 620 30" stroke-width="1.5"/>
+<text class="m" x="52" y="34" text-anchor="end">100 %</text><text class="m" x="52" y="50" text-anchor="end">90 %</text><text class="m" x="52" y="194" text-anchor="end">0</text>
+<text class="m" x="60" y="206" text-anchor="middle">0</text><text class="b" x="262" y="206" text-anchor="middle">50 ms</text><text x="360" y="206" text-anchor="middle">75 ms</text><text class="m" x="620" y="206" text-anchor="end">140 ms</text>
+<text class="m" x="340" y="222" text-anchor="middle">ticks: 120 Hz frames, 8.3 ms apart</text>
+<path class="sfg" d="M400 106.5h28" stroke-width="1.5"/><text x="436" y="110">easeOutQuint · Omarchy</text>
+<path class="ar" d="M400 126.5h28" stroke-dasharray="5 3"/><text x="436" y="130">ease-out cubic · Lemna, the terminal app</text>
+<text class="m" x="400" y="156">first three frames</text>
+<text x="400" y="172">25 / 46 / 63 % <tspan class="m">against</tspan> 17 / 32 / 45 %</text>
+</svg></div>
+<p class="note">Lemna's glide is <code>1 − (1 − u)³</code>, exactly <code>cubic-bezier(1/3, 1, 2/3, 1)</code>; over the same 140 ms Omarchy's curve covers 90 % of the distance at 50 ms instead of 75 ms (computed).</p>
+<div class="ledger one">
+<div class="ok"><b>F0 stays.</b>Its verdicts hold: no glow, breathing, rhythm trace, particles, colour drift or ripple. This panel adds switchable effects on top; Effects ▸ Off is F0, and Reduce Motion turns every moving effect off.</div>
+<div><b>One wording changes.</b>The recommended defaults (P1, B1, K1, E1, E2) rewrite F0's "nothing beyond the glide and the fade"; Off restores it.</div>
+<div><b>IDs.</b>This panel's own: DESIGN.md's S1, K1, T2 or G1 are other decisions.</div>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s1h">
+<header class="sec-h"><span class="num">1</span><div><h2 id="s1h">T: theme tokens</h2><p>The box's colours, over a light app under today's dim.</p></div></header>
+<div class="figw"><svg class="fig w" style="max-width:660px" viewBox="0 0 660 190" role="img"><title>T1 and T2 side by side: the box in Tokyo Night roles and in today's colours over a dimmed light app</title>
+<defs><linearGradient id="gT1" gradientUnits="userSpaceOnUse" x1="80" x2="130"><stop offset="0" stop-color="#c0caf5" stop-opacity="0"/><stop offset="1" stop-color="#c0caf5"/></linearGradient>
+<linearGradient id="gT2" gradientUnits="userSpaceOnUse" x1="80" x2="130"><stop offset="0" stop-color="#d8dce3" stop-opacity="0"/><stop offset="1" stop-color="#d8dce3"/></linearGradient></defs>
+<g>
+<rect x=".5" y=".5" width="319" height="150" fill="#eceef1" stroke="var(--line-2)"/><rect x="1" y="1" width="318" height="18" fill="#dfe2e6"/>
+<path d="M14 36h150M14 50h220M14 64h190M14 78h120" stroke="#aeb3ba" stroke-width="4"/>
+<rect x="1" y="1" width="318" height="149" fill="#000" opacity=".35"/>
+<rect x="60.5" y="98.5" width="200" height="36" rx="6" fill="#1a1b26" stroke="#3b4261"/>
+<text x="178" y="120" text-anchor="end" style="fill:url(#gT1)">boats sat low<tspan class="m1"> ¶ </tspan>Nobody</text>
+<rect x="180" y="106" width="2" height="20" fill="#7aa2f7"/>
+<text x="160" y="168" text-anchor="middle">T1 · Tokyo Night roles</text><text class="m" x="160" y="184" text-anchor="middle">text 10.6:1 · muted 4.9:1 · caret 6.8:1</text>
+</g>
+<g transform="translate(340 0)">
+<rect x=".5" y=".5" width="319" height="150" fill="#eceef1" stroke="var(--line-2)"/><rect x="1" y="1" width="318" height="18" fill="#dfe2e6"/>
+<path d="M14 36h150M14 50h220M14 64h190M14 78h120" stroke="#aeb3ba" stroke-width="4"/>
+<rect x="1" y="1" width="318" height="149" fill="#000" opacity=".35"/>
+<rect x="60.5" y="98.5" width="200" height="36" rx="6" fill="#0e1013" stroke="#262b32"/>
+<text x="178" y="120" text-anchor="end" style="fill:url(#gT2)">boats sat low<tspan class="m2"> ¶ </tspan>Nobody</text>
+<rect x="180" y="106" width="2" height="20" fill="#7aa7f0"/>
+<text x="160" y="168" text-anchor="middle">T2 · today</text><text class="m" x="160" y="184" text-anchor="middle">text 13.9:1 · muted 3.2:1 · caret 7.8:1</text>
+</g>
+</svg></div>
+<div class="grid">
+<article class="card" id="opt-T1"><div class="card-h"><span class="oid">T1</span><h3>The siblings' Tokyo Night roles</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="T" value="T1" checked> pick</label></div>
+<p class="pitch">Background <code>#1a1b26</code>, text <code>#c0caf5</code>, muted <code>#7f88b2</code>, caret <code>#7aa2f7</code>, line <code>#3b4261</code>.</p>
+<ul class="how">
+<li>the terminal app and the brief app use these roles; Tokyo Night is Omarchy's default (<a href="../research_notes/Lemna%20effects/siblings.md">siblings note</a>).</li>
+<li>Muted passes the HIG's 4.5:1 at 4.9:1 without Increase Contrast; today it is 3.2:1 (computed).</li>
+<li>A lighter box: over a white app the surround drops from 127 to 57 times the box's luminance (computed).</li>
+</ul>
+<p class="risk"><b>Risk.</b> The app icon (L1) is drawn in today's colours; it keeps them or follows.</p></article>
+<article class="card" id="opt-T2"><div class="card-h"><span class="oid">T2</span><h3>Keep today's colours</h3><label class="pick"><input type="radio" name="T" value="T2"> pick</label></div>
+<p class="pitch"><code>#0e1013</code>, <code>#d8dce3</code>, <code>#7aa7f0</code>, muted <code>#5c646f</code>.</p>
+<p class="risk"><b>Risk.</b> Darker than every Omarchy dark theme but two; muted passes only under Increase Contrast.</p></article>
+<article class="card" id="opt-T3"><div class="card-h"><span class="oid">T3</span><h3>A Theme submenu</h3><span class="tag">later</span><label class="pick"><input type="radio" name="T" value="T3"> pick</label></div>
+<p class="pitch">The siblings' schemes: Catppuccin, Nord, Gruvbox, Everforest, Kanagawa, Rose Pine, Graphite.</p>
+<p class="risk"><b>Risk.</b> Each scheme needs its muted checked and every effect tried on it; no need shown yet.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s2h">
+<header class="sec-h"><span class="num">2</span><div><h2 id="s2h">P: box open and close</h2><p>How the box arrives at the hotkey and leaves at a hand-off or Esc; the dim (D1) shown with it.</p></div></header>
+<div class="figw"><svg class="fig w" style="max-width:660px" viewBox="0 0 660 196" role="img"><title>P1 keyframes: the box opens from 95 % with a fade over 250 ms and closes with a 160 ms fade, the dim following</title>
+<text class="b" x="0" y="34">open</text><text class="m" x="0" y="50">250 ms</text>
+<text class="b" x="0" y="130">close</text><text class="m" x="0" y="146">160 ms</text>
+<g>
+<rect x="96.5" y="8.5" width="100" height="56" fill="#eceef1" stroke="var(--line-2)"/>
+<rect class="ln" x="109" y="25.5" width="76" height="20.9" rx="4" stroke-dasharray="2 2"/>
+<rect x="208.5" y="8.5" width="100" height="56" fill="#eceef1" stroke="var(--line-2)"/><rect x="209" y="9" width="99" height="55" fill="#1a1b26" opacity=".2"/>
+<g transform="translate(258 36) scale(.97)" opacity=".4"><rect x="-40" y="-11" width="80" height="22" rx="4" fill="#1a1b26" stroke="#3b4261"/><rect x="-22" y="-1.5" width="28" height="3" fill="#c0caf5"/><rect x="8" y="-7" width="1.5" height="14" fill="#7aa2f7"/></g>
+<rect x="320.5" y="8.5" width="100" height="56" fill="#eceef1" stroke="var(--line-2)"/><rect x="321" y="9" width="99" height="55" fill="#1a1b26" opacity=".34"/>
+<g transform="translate(370 36) scale(.984)" opacity=".68"><rect x="-40" y="-11" width="80" height="22" rx="4" fill="#1a1b26" stroke="#3b4261"/><rect x="-22" y="-1.5" width="28" height="3" fill="#c0caf5"/><rect x="8" y="-7" width="1.5" height="14" fill="#7aa2f7"/></g>
+<rect x="432.5" y="8.5" width="100" height="56" fill="#eceef1" stroke="var(--line-2)"/><rect x="433" y="9" width="99" height="55" fill="#1a1b26" opacity=".465"/>
+<g transform="translate(482 36) scale(.996)" opacity=".93"><rect x="-40" y="-11" width="80" height="22" rx="4" fill="#1a1b26" stroke="#3b4261"/><rect x="-22" y="-1.5" width="28" height="3" fill="#c0caf5"/><rect x="8" y="-7" width="1.5" height="14" fill="#7aa2f7"/></g>
+<rect x="544.5" y="8.5" width="100" height="56" fill="#eceef1" stroke="var(--line-2)"/><rect x="545" y="9" width="99" height="55" fill="#1a1b26" opacity=".5"/>
+<g transform="translate(594 36)"><rect x="-40" y="-11" width="80" height="22" rx="4" fill="#1a1b26" stroke="#3b4261"/><rect x="-22" y="-1.5" width="28" height="3" fill="#c0caf5"/><rect x="8" y="-7" width="1.5" height="14" fill="#7aa2f7"/></g>
+</g>
+<text x="146" y="80" text-anchor="middle">0 ms</text><text class="m" x="146" y="94" text-anchor="middle">95 % · α 0</text>
+<text x="258" y="80" text-anchor="middle">25 ms</text><text class="m" x="258" y="94" text-anchor="middle">97 % · α .40</text>
+<text x="370" y="80" text-anchor="middle">50 ms</text><text class="m" x="370" y="94" text-anchor="middle">98 % · α .68</text>
+<text x="482" y="80" text-anchor="middle">100 ms</text><text class="m" x="482" y="94" text-anchor="middle">99.6 % · α .93</text>
+<text x="594" y="80" text-anchor="middle">250 ms</text><text class="m" x="594" y="94" text-anchor="middle">100 % · α 1</text>
+<g>
+<rect x="96.5" y="104.5" width="100" height="56" fill="#eceef1" stroke="var(--line-2)"/><rect x="97" y="105" width="99" height="55" fill="#1a1b26" opacity=".5"/>
+<g transform="translate(146 132)"><rect x="-40" y="-11" width="80" height="22" rx="4" fill="#1a1b26" stroke="#3b4261"/><rect x="-22" y="-1.5" width="28" height="3" fill="#c0caf5"/><rect x="8" y="-7" width="1.5" height="14" fill="#7aa2f7"/></g>
+<rect x="208.5" y="104.5" width="100" height="56" fill="#eceef1" stroke="var(--line-2)"/><rect x="209" y="105" width="99" height="55" fill="#1a1b26" opacity=".26"/>
+<g transform="translate(258 132)" opacity=".52"><rect x="-40" y="-11" width="80" height="22" rx="4" fill="#1a1b26" stroke="#3b4261"/><rect x="-22" y="-1.5" width="28" height="3" fill="#c0caf5"/><rect x="8" y="-7" width="1.5" height="14" fill="#7aa2f7"/></g>
+<rect x="320.5" y="104.5" width="100" height="56" fill="#eceef1" stroke="var(--line-2)"/><rect x="321" y="105" width="99" height="55" fill="#1a1b26" opacity=".11"/>
+<g transform="translate(370 132)" opacity=".22"><rect x="-40" y="-11" width="80" height="22" rx="4" fill="#1a1b26" stroke="#3b4261"/><rect x="-22" y="-1.5" width="28" height="3" fill="#c0caf5"/><rect x="8" y="-7" width="1.5" height="14" fill="#7aa2f7"/></g>
+<rect x="432.5" y="104.5" width="100" height="56" fill="#eceef1" stroke="var(--line-2)"/><rect x="433" y="105" width="99" height="55" fill="#1a1b26" opacity=".015"/>
+<g transform="translate(482 132)" opacity=".03"><rect x="-40" y="-11" width="80" height="22" rx="4" fill="#1a1b26" stroke="#3b4261"/></g>
+<rect x="544.5" y="104.5" width="100" height="56" fill="#eceef1" stroke="var(--line-2)"/>
+<rect class="ln" x="554" y="121.5" width="80" height="22" rx="4" stroke-dasharray="2 2"/>
+</g>
+<text x="146" y="176" text-anchor="middle">0 ms</text><text class="m" x="146" y="190" text-anchor="middle">α 1</text>
+<text x="258" y="176" text-anchor="middle">20 ms</text><text class="m" x="258" y="190" text-anchor="middle">α .52</text>
+<text x="370" y="176" text-anchor="middle">40 ms</text><text class="m" x="370" y="190" text-anchor="middle">α .22</text>
+<text x="482" y="176" text-anchor="middle">80 ms</text><text class="m" x="482" y="190" text-anchor="middle">α .03</text>
+<text x="594" y="176" text-anchor="middle">160 ms</text><text class="m" x="594" y="190" text-anchor="middle">gone</text>
+</svg></div>
+<div class="grid">
+<article class="card" id="opt-P1"><div class="card-h"><span class="oid">P1</span><h3>Omarchy's pop</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="P" value="P1" checked> pick</label></div>
+<p class="pitch">Open in 250 ms from 95 % with a fade, close in a 160 ms fade, both easeOutQuint; the dim follows the same curves.</p>
+<ul class="how">
+<li>Omarchy's window open and close since 2026-10-28; 90 % there at 90 ms.</li>
+<li>It shows where the box came from, a few times a day; the rules Omarchy adapts forbid motion only at 100+ uses a day.</li>
+</ul>
+<p class="risk"><b>Risk.</b> Omarchy's launcher, the nearest surface, opens at once, and its rules make keyboard dismissals jump: if Esc feels slow, Esc jumps. The system shadow does not follow a layer's scale (unverified).</p></article>
+<article class="card" id="opt-P2"><div class="card-h"><span class="oid">P2</span><h3>Instant</h3><label class="pick"><input type="radio" name="P" value="P2"> pick</label></div>
+<p class="pitch">On and off screen at once, as today.</p>
+<p class="risk"><b>Risk.</b> None; Omarchy's launcher does the same.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s3h">
+<header class="sec-h"><span class="num">3</span><div><h2 id="s3h">G: the glide's curve</h2><p>The same 140 ms, a sharper start: how much of the new glyph is out from under the caret, per 120 Hz frame.</p></div></header>
+<div class="figw"><svg class="fig w" style="max-width:660px" viewBox="0 0 660 120" role="img"><title>The new glyph's emergence per frame: G1 easeOutQuint 25, 46, 63 % in the first three frames, G2 cubic 17, 32, 45 %</title>
+<text class="b" x="0" y="25">G1</text><text class="m" x="24" y="25">quint</text>
+<text class="b" x="0" y="77">G2</text><text class="m" x="24" y="77">cubic</text>
+<path class="ln" d="M120.5 10.5h36v20h-36zM200.5 10.5h36v20h-36zM280.5 10.5h36v20h-36zM360.5 10.5h36v20h-36zM440.5 10.5h36v20h-36zM520.5 10.5h36v20h-36zM600.5 10.5h36v20h-36zM120.5 62.5h36v20h-36zM200.5 62.5h36v20h-36zM280.5 62.5h36v20h-36zM360.5 62.5h36v20h-36zM440.5 62.5h36v20h-36zM520.5 62.5h36v20h-36zM600.5 62.5h36v20h-36z" stroke-dasharray="2 2"/>
+<rect class="ip" x="147.1" y="11" width="8.9" height="19"/><rect class="ip" x="219.4" y="11" width="16.6" height="19"/><rect class="ip" x="293.2" y="11" width="22.8" height="19"/><rect class="ip" x="368.8" y="11" width="27.2" height="19"/><rect class="ip" x="443.7" y="11" width="32.3" height="19"/><rect class="ip" x="520.9" y="11" width="35.1" height="19"/><rect class="ip" x="600.2" y="11" width="35.8" height="19"/>
+<rect class="ip" x="149.9" y="63" width="6.1" height="19"/><rect class="ip" x="224.6" y="63" width="11.4" height="19"/><rect class="ip" x="300" y="63" width="16" height="19"/><rect class="ip" x="375.9" y="63" width="20.1" height="19"/><rect class="ip" x="449.6" y="63" width="26.4" height="19"/><rect class="ip" x="523.6" y="63" width="32.4" height="19"/><rect class="ip" x="600.8" y="63" width="35.2" height="19"/>
+<rect class="cr" x="156" y="6" width="2" height="29"/><rect class="cr" x="236" y="6" width="2" height="29"/><rect class="cr" x="316" y="6" width="2" height="29"/><rect class="cr" x="396" y="6" width="2" height="29"/><rect class="cr" x="476" y="6" width="2" height="29"/><rect class="cr" x="556" y="6" width="2" height="29"/><rect class="cr" x="636" y="6" width="2" height="29"/>
+<rect class="cr" x="156" y="58" width="2" height="29"/><rect class="cr" x="236" y="58" width="2" height="29"/><rect class="cr" x="316" y="58" width="2" height="29"/><rect class="cr" x="396" y="58" width="2" height="29"/><rect class="cr" x="476" y="58" width="2" height="29"/><rect class="cr" x="556" y="58" width="2" height="29"/><rect class="cr" x="636" y="58" width="2" height="29"/>
+<text x="138" y="47" text-anchor="middle">25 %</text><text x="218" y="47" text-anchor="middle">46 %</text><text x="298" y="47" text-anchor="middle">63 %</text><text x="378" y="47" text-anchor="middle">76 %</text><text x="458" y="47" text-anchor="middle">90 %</text><text x="538" y="47" text-anchor="middle">97 %</text><text x="618" y="47" text-anchor="middle">100 %</text>
+<text x="138" y="99" text-anchor="middle">17 %</text><text x="218" y="99" text-anchor="middle">32 %</text><text x="298" y="99" text-anchor="middle">45 %</text><text x="378" y="99" text-anchor="middle">56 %</text><text x="458" y="99" text-anchor="middle">73 %</text><text x="538" y="99" text-anchor="middle">90 %</text><text x="618" y="99" text-anchor="middle">98 %</text>
+<text class="m" x="138" y="116" text-anchor="middle">8 ms</text><text class="m" x="218" y="116" text-anchor="middle">17</text><text class="m" x="298" y="116" text-anchor="middle">25</text><text class="m" x="378" y="116" text-anchor="middle">33</text><text class="m" x="458" y="116" text-anchor="middle">50</text><text class="m" x="538" y="116" text-anchor="middle">75</text><text class="m" x="618" y="116" text-anchor="middle">100 ms</text>
+</svg></div>
+<div class="grid">
+<article class="card" id="opt-G1"><div class="card-h"><span class="oid">G1</span><h3>easeOutQuint, 140 ms</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="G" value="G1" checked> pick</label></div>
+<p class="pitch">Omarchy's curve over today's 140 ms: 90 % of the advance at 50 ms instead of 75 ms.</p>
+<ul class="how">
+<li>One line in <code>Line.ease</code> (a lookup table); drawn in the band as now, at no cost.</li>
+<li>Brings the motion you notice into the 60–80 ms DESIGN.md left as the try, keeping the tail.</li>
+<li>Always on: a curve, not an item in the Effects menu.</li>
+</ul>
+<p class="risk"><b>Risk.</b> A sharper start may read as a jump; tried in a minute, reverted in one line.</p></article>
+<article class="card" id="opt-G2"><div class="card-h"><span class="oid">G2</span><h3>Keep the cubic</h3><label class="pick"><input type="radio" name="G" value="G2"> pick</label></div>
+<p class="pitch"><code>1 − (1 − u)³</code>, as the terminal app's glide.</p>
+<p class="risk"><b>Risk.</b> At 240 ms between keys the line moves 58 % of the time, its second half a slow tail (<a href="../research_notes/Flow%20sounds%20and%20ambience/visuals.md">visuals.md</a> §6.1).</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s4h">
+<header class="sec-h"><span class="num">4</span><div><h2 id="s4h">D: the dim, and Q: the box's alpha</h2><p>What surrounds the box, and how much of the app shows through it. Both over a white app, the box in T1.</p></div></header>
+<div class="figw"><svg class="fig w" style="max-width:660px" viewBox="0 0 660 190" role="img"><title>D1 and D2: the T1 box over a white app, dimmed by the theme background at 0.5 and by black at 0.35</title>
+<defs><linearGradient id="gD" gradientUnits="userSpaceOnUse" x1="80" x2="130"><stop offset="0" stop-color="#c0caf5" stop-opacity="0"/><stop offset="1" stop-color="#c0caf5"/></linearGradient></defs>
+<g>
+<rect x=".5" y=".5" width="319" height="150" fill="#f7f7f8" stroke="var(--line-2)"/><rect x="1" y="1" width="318" height="18" fill="#e8eaed"/>
+<path d="M14 36h150M14 50h220M14 64h190M14 78h120" stroke="#b4b9c0" stroke-width="4"/>
+<rect x="1" y="1" width="318" height="149" fill="#1a1b26" opacity=".5"/>
+<rect x="60.5" y="98.5" width="200" height="36" rx="6" fill="#1a1b26" stroke="#3b4261"/>
+<text x="178" y="120" text-anchor="end" style="fill:url(#gD)">boats sat low<tspan class="m1"> ¶ </tspan>Nobody</text><rect x="180" y="106" width="2" height="20" fill="#7aa2f7"/>
+<text x="160" y="168" text-anchor="middle">D1 · theme background at 0.5</text><text class="m" x="160" y="184" text-anchor="middle">surround 44 × the box</text>
+</g>
+<g transform="translate(340 0)">
+<rect x=".5" y=".5" width="319" height="150" fill="#f7f7f8" stroke="var(--line-2)"/><rect x="1" y="1" width="318" height="18" fill="#e8eaed"/>
+<path d="M14 36h150M14 50h220M14 64h190M14 78h120" stroke="#b4b9c0" stroke-width="4"/>
+<rect x="1" y="1" width="318" height="149" fill="#000" opacity=".35"/>
+<rect x="60.5" y="98.5" width="200" height="36" rx="6" fill="#1a1b26" stroke="#3b4261"/>
+<text x="178" y="120" text-anchor="end" style="fill:url(#gD)">boats sat low<tspan class="m1"> ¶ </tspan>Nobody</text><rect x="180" y="106" width="2" height="20" fill="#7aa2f7"/>
+<text x="160" y="168" text-anchor="middle">D2 · black at 0.35, today</text><text class="m" x="160" y="184" text-anchor="middle">57 × · today's box 127 ×</text>
+</g>
+</svg></div>
+<div class="grid">
+<article class="card" id="opt-D1"><div class="card-h"><span class="oid">D1</span><h3>Theme background at 0.5</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="D" value="D1" checked> pick</label></div>
+<p class="pitch">The dim takes the box's background colour at α 0.5: Omarchy's launcher scrim.</p>
+<ul class="how">
+<li>Over a white app the surround falls from 57 to 44 times the T1 box; today's box and dim give 127 (computed). Lighting standards ask at most 10.</li>
+<li>The deeper dim DESIGN.md held as a try (H2, α 0.5–0.6).</li>
+</ul>
+<p class="risk"><b>Risk.</b> The app you paste into shows less.</p></article>
+<article class="card" id="opt-D2"><div class="card-h"><span class="oid">D2</span><h3>Black at 0.35</h3><label class="pick"><input type="radio" name="D" value="D2"> pick</label></div>
+<p class="pitch">Today's dim.</p>
+<p class="risk"><b>Risk.</b> The bright surround raises the threshold for any small change inside the box (visuals.md §5.4).</p></article>
+</div>
+<p class="sub">Q: the box's alpha</p>
+<p class="note">Omarchy's lesson (its Glassy toggle): put alpha on the background, so text stays crisp. Lemna sets 0.97 on the whole panel, text included, and <code>Box.swift</code> says why: "the line's Metal band is opaque, and a background a touch lighter than it would show the band as a stripe."</p>
+<div class="figw"><svg class="fig w" style="max-width:660px" viewBox="0 0 660 100" role="img"><title>Q0, Q1 and Q2 over the dimmed app: the whole box at 0.97, an opaque box, and alpha on the background only, which shows the opaque band as a stripe</title>
+<rect x="0" y="0" width="660" height="64" fill="#81828a"/>
+<rect x="12.5" y="10.5" width="196" height="44" rx="6" fill="#1d1e29" stroke="#3b4261"/><text class="q0t" x="128" y="37" text-anchor="end">boats sat low</text><rect x="130" y="23" width="2" height="18" fill="#7aa2f7"/>
+<rect x="232.5" y="10.5" width="196" height="44" rx="6" fill="#1a1b26" stroke="#3b4261"/><text class="c1" x="348" y="37" text-anchor="end">boats sat low</text><rect x="350" y="23" width="2" height="18" fill="#7aa2f7"/>
+<rect x="452.5" y="10.5" width="196" height="44" rx="6" fill="#1d1e29" stroke="#3b4261"/><rect x="453" y="21.5" width="195" height="22" fill="#1a1b26"/><text class="c1" x="568" y="37" text-anchor="end">boats sat low</text><rect x="570" y="23" width="2" height="18" fill="#7aa2f7"/>
+<path class="ar" d="M640 21.5h18M640 43.5h18"/>
+<text x="12" y="80">Q0 · 0.97, whole box</text><text class="m" x="12" y="94">today · text at 97 %</text>
+<text x="232" y="80">Q1 · opaque</text><text class="m" x="232" y="94">text at 100 %</text>
+<text x="452" y="80">Q2 · alpha on background</text><text class="m" x="452" y="94">the band shows as a stripe</text>
+</svg></div>
+<p class="note">Blended in sRGB at 3 % of the app behind (estimate); the stripe's strength depends on that app.</p>
+<div class="grid">
+<article class="card" id="opt-Q1"><div class="card-h"><span class="oid">Q1</span><h3>Opaque box</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="Q" value="Q1" checked> pick</label></div>
+<p class="pitch">Alpha 1 on the whole box: text at full strength, and the box looks the same over any app.</p>
+<p class="risk"><b>Risk.</b> None found; it is what Reduce Transparency does already, and at 3 % little showed through.</p></article>
+<article class="card" id="opt-Q0"><div class="card-h"><span class="oid">Q0</span><h3>0.97 on the whole box</h3><label class="pick"><input type="radio" name="Q" value="Q0"> pick</label></div>
+<p class="pitch">Today: text at 97 %, which <code>Box.swift</code> says looks the same.</p>
+<p class="risk"><b>Risk.</b> The box is a shade lighter over a light app than over a dark one.</p></article>
+<article class="card" id="opt-Q2"><div class="card-h"><span class="oid">Q2</span><h3>Alpha on the background only</h3><span class="tag no">no, with an opaque band</span><label class="pick"><input type="radio" name="Q" value="Q2"> pick</label></div>
+<p class="pitch">Omarchy's way: the background translucent, text at full strength.</p>
+<p class="risk"><b>No, as built.</b> The margins turn lighter than the band, a stripe; a non-opaque band may cost the text its smoothing (unverified).</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s5h">
+<header class="sec-h"><span class="num">5</span><div><h2 id="s5h">B: the border</h2><p>The single most Omarchy element.</p></div></header>
+<div class="figw"><svg class="fig w" style="max-width:660px" viewBox="0 0 660 150" role="img"><title>B0 to B3: hairline, still accent border, a border that follows typing, the neon gradient; below, B2's colour over time</title>
+<defs><linearGradient id="gB3" gradientUnits="userSpaceOnUse" x1="498" y1="48" x2="593" y2="-47"><stop offset="0" stop-color="#33ccff" stop-opacity=".93"/><stop offset="1" stop-color="#00ff99" stop-opacity=".93"/></linearGradient>
+<linearGradient id="gB2" gradientUnits="userSpaceOnUse" x1="96" x2="658"><stop offset="0" stop-color="#7aa2f7"/><stop offset=".384" stop-color="#7aa2f7"/><stop offset=".74" stop-color="#3b4261"/><stop offset=".826" stop-color="#3b4261"/><stop offset=".852" stop-color="#7aa2f7"/><stop offset="1" stop-color="#7aa2f7"/></linearGradient></defs>
+<rect x="6.5" y="8.5" width="150" height="40" rx="6" fill="#1a1b26" stroke="#3b4261"/>
+<rect x="170.5" y="8.5" width="150" height="40" rx="6" fill="#1a1b26" stroke="#7aa2f7"/>
+<rect x="334.5" y="8.5" width="150" height="40" rx="6" fill="#1a1b26" stroke="#7aa2f7"/>
+<rect x="499" y="9" width="149" height="39" rx="6" fill="#1a1b26" stroke="url(#gB3)" stroke-width="2"/>
+<text class="c1" x="94" y="33" text-anchor="end">sat low</text><rect x="96" y="18" width="2" height="20" fill="#7aa2f7"/>
+<text class="c1" x="258" y="33" text-anchor="end">sat low</text><rect x="260" y="18" width="2" height="20" fill="#7aa2f7"/>
+<text class="c1" x="422" y="33" text-anchor="end">sat low</text><rect x="424" y="18" width="2" height="20" fill="#7aa2f7"/>
+<text class="c1" x="586" y="33" text-anchor="end">sat low</text><rect x="588" y="18" width="2" height="20" fill="#7aa2f7"/>
+<text x="6" y="66">B0 · hairline</text><text class="m" x="6" y="80">#3b4261, the line role</text>
+<text x="170" y="66">B1 · accent, still</text><text class="m" x="170" y="80">#7aa2f7, 1 px</text>
+<text x="334" y="66">B2 · follows typing</text><text class="m" x="334" y="80">B1 while keys come</text>
+<text x="498" y="66">B3 · neon gradient</text><text class="m" x="498" y="80">#33ccff → #00ff99, 2 px</text>
+<text class="b" x="0" y="108">B2</text><text class="m" x="0" y="124">1 s = 100 px</text>
+<path class="sfg" d="M96.5 98v10M120.5 98v10M144.5 98v10M168.5 98v10M192.5 98v10M216.5 98v10M240.5 98v10M264.5 98v10M288.5 98v10M312.5 98v10M560.5 98v10M584.5 98v10M608.5 98v10M632.5 98v10M656.5 98v10"/>
+<text class="m" x="436" y="107" text-anchor="middle">pause</text>
+<rect x="96" y="114" width="562" height="6" fill="url(#gB2)"/>
+<text x="96" y="138">accent while keys come</text><text class="m" x="412" y="138" text-anchor="middle">cools over ~2 s</text><text class="m" x="658" y="138" text-anchor="end">back in 150 ms</text>
+</svg></div>
+<div class="grid">
+<article class="card" id="opt-B1"><div class="card-h"><span class="oid">B1</span><h3>1 px accent border, still</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="B" value="B1" checked> pick</label></div>
+<p class="pitch">Omarchy's active border, in the box's accent, never changing.</p>
+<ul class="how">
+<li>The box is always the focused thing, which the accent means there.</li>
+<li>Still, so F0's "moves while typing" does not reach it; one layer property.</li>
+<li>Omarchy draws 2 px; 1 px is the siblings' line.</li>
+</ul>
+<p class="risk"><b>Risk.</b> A second accent beside the caret; if it competes, B0.</p></article>
+<article class="card" id="opt-B0"><div class="card-h"><span class="oid">B0</span><h3>No accent</h3><label class="pick"><input type="radio" name="B" value="B0"> pick</label></div>
+<p class="pitch">The 1 px hairline the box has today (<code>#262b32</code>; <code>#3b4261</code> with T1).</p>
+<p class="risk"><b>Risk.</b> The least Omarchy of the four.</p></article>
+<article class="card" id="opt-B2"><div class="card-h"><span class="oid">B2</span><h3>Border follows typing</h3><span class="tag ask">ask, opt-in</span><label class="pick"><input type="radio" name="B" value="B2"> pick</label></div>
+<p class="pitch">B1 while keys come; over ~2 s of pause it cools to the line colour in 150 ms steps; the next key restores it.</p>
+<ul class="how"><li>Omarchy's border marks focus coming and going, not each key.</li></ul>
+<p class="risk"><b>Risk.</b> It says you stopped: the ambience note's rhythm trace in a weaker form, a mild pause cue against P0. An extra menu item, off by default.</p></article>
+<article class="card" id="opt-B3"><div class="card-h"><span class="oid">B3</span><h3>Neon gradient</h3><span class="tag ask">ask</span><label class="pick"><input type="radio" name="B" value="B3"> pick</label></div>
+<p class="pitch">Hyprland's stock border, <code>#33ccff → #00ff99</code> at 45°, Omarchy's Tokyo Night border until v3.2.</p>
+<p class="risk"><b>Risk.</b> Decoration: the most saturated colour on screen, next to the caret.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s6h">
+<header class="sec-h"><span class="num">6</span><div><h2 id="s6h">K: per-key effects</h2><p>Each its own menu item; several can be picked.</p></div></header>
+<div class="figw"><svg class="fig w" style="max-width:660px" viewBox="0 0 660 196" role="img"><title>K1: the new glyph glides out from under the caret while it scales up from 95 % and fades in over 120 ms. K2's caret flash at every key and K4's travelling trail are ruled out</title>
+<defs>
+<clipPath id="k0"><rect x="97" y="9" width="55" height="39"/></clipPath><clipPath id="k1"><rect x="189" y="9" width="55" height="39"/></clipPath><clipPath id="k2"><rect x="281" y="9" width="55" height="39"/></clipPath>
+<clipPath id="k3"><rect x="373" y="9" width="55" height="39"/></clipPath><clipPath id="k4"><rect x="465" y="9" width="55" height="39"/></clipPath><clipPath id="k5"><rect x="557" y="9" width="55" height="39"/></clipPath>
+<linearGradient id="gK4" gradientUnits="userSpaceOnUse" x1="526" x2="588"><stop offset="0" stop-color="#ffffff" stop-opacity="0"/><stop offset="1" stop-color="#ffffff" stop-opacity=".2"/></linearGradient>
+</defs>
+<text class="b" x="0" y="30">K1</text><text class="m" x="0" y="46">pop-in</text>
+<rect x="96.5" y="8.5" width="84" height="40" fill="#1a1b26" stroke="var(--line-2)"/><rect x="188.5" y="8.5" width="84" height="40" fill="#1a1b26" stroke="var(--line-2)"/><rect x="280.5" y="8.5" width="84" height="40" fill="#1a1b26" stroke="var(--line-2)"/><rect x="372.5" y="8.5" width="84" height="40" fill="#1a1b26" stroke="var(--line-2)"/><rect x="464.5" y="8.5" width="84" height="40" fill="#1a1b26" stroke="var(--line-2)"/><rect x="556.5" y="8.5" width="84" height="40" fill="#1a1b26" stroke="var(--line-2)"/>
+<g clip-path="url(#k0)"><text class="c1 k1g" x="152" y="37" text-anchor="end">boat</text></g>
+<g clip-path="url(#k1)"><text class="c1 k1g" x="240.4" y="37" text-anchor="end">boat</text><text class="c1 k1g" x="240.4" y="37" opacity=".29" transform="translate(247.6 30) scale(.964) translate(-247.6 -30)">s</text></g>
+<g clip-path="url(#k2)"><text class="c1 k1g" x="329.3" y="37" text-anchor="end">boat</text><text class="c1 k1g" x="329.3" y="37" opacity=".52" transform="translate(336.5 30) scale(.976) translate(-336.5 -30)">s</text></g>
+<g clip-path="url(#k3)"><text class="c1 k1g" x="417.1" y="37" text-anchor="end">boat</text><text class="c1 k1g" x="417.1" y="37" opacity=".82" transform="translate(424.3 30) scale(.991) translate(-424.3 -30)">s</text></g>
+<g clip-path="url(#k4)"><text class="c1 k1g" x="506.5" y="37" text-anchor="end">boat</text><text class="c1 k1g" x="506.5" y="37" opacity=".97">s</text></g>
+<g clip-path="url(#k5)"><text class="c1 k1g" x="597.6" y="37" text-anchor="end">boat</text><text class="c1 k1g" x="597.6" y="37">s</text></g>
+<rect class="cr" x="152" y="14" width="2" height="28"/><rect class="cr" x="244" y="14" width="2" height="28"/><rect class="cr" x="336" y="14" width="2" height="28"/><rect class="cr" x="428" y="14" width="2" height="28"/><rect class="cr" x="520" y="14" width="2" height="28"/><rect class="cr" x="612" y="14" width="2" height="28"/>
+<text x="138" y="64" text-anchor="middle">0 ms</text><text x="230" y="64" text-anchor="middle">8</text><text x="322" y="64" text-anchor="middle">17</text><text x="414" y="64" text-anchor="middle">33</text><text x="506" y="64" text-anchor="middle">60</text><text x="598" y="64" text-anchor="middle">120 ms</text>
+<text class="m" x="138" y="78" text-anchor="middle">α 0 · 95 %</text><text class="m" x="230" y="78" text-anchor="middle">α .29</text><text class="m" x="322" y="78" text-anchor="middle">α .52</text><text class="m" x="414" y="78" text-anchor="middle">α .82</text><text class="m" x="506" y="78" text-anchor="middle">α .97</text><text class="m" x="598" y="78" text-anchor="middle">α 1 · 100 %</text>
+<text class="b" x="0" y="124">K2</text><text class="m" x="0" y="140">caret pulse</text>
+<path class="ln" d="M96 142.5h308"/>
+<path class="sfg" d="M96 142V112C106.35 142 110.4 142 141 142M133.5 142V112C143.85 142 147.9 142 178.5 142M171 142V112C181.35 142 185.4 142 216 142M208.5 142V112C218.85 142 222.9 142 253.5 142M246 142V112C256.35 142 260.4 142 291 142M283.5 142V112C293.85 142 297.9 142 328.5 142M321 142V112C331.35 142 335.4 142 366 142M358.5 142V112C368.85 142 372.9 142 403.5 142"/>
+<text class="m" x="96" y="160">keys 125 ms apart, one flash each</text>
+<text x="96" y="176"><tspan class="no">✗</tspan> 3–8 Hz at the fixation point</text>
+<rect x="440.5" y="104.5" width="218" height="40" fill="#1a1b26" stroke="var(--line-2)"/>
+<rect x="526" y="112" width="62" height="25" fill="url(#gK4)"/>
+<text class="c1" x="588" y="129" text-anchor="end">sat low and</text><rect class="cr" x="590" y="112" width="2" height="25"/>
+<path class="ar" d="M584 152.5h-60m5-4-5 4 5 4"/>
+<text class="b" x="440" y="176">K4</text><text class="m" x="464" y="176">wake</text>
+<text x="440" y="192"><tspan class="no">✗</tspan> a trail over what you wrote</text>
+</svg></div>
+<div class="grid">
+<article class="card" id="opt-K1"><div class="card-h"><span class="oid">K1</span><h3>Glyph pop-in</h3><span class="tag rec">recommended, default on</span><label class="pick"><input type="checkbox" name="K" value="K1" checked> pick</label></div>
+<p class="pitch">The new glyph emerges from under the caret scaling up from 95 % and fading in over 120 ms, easeOutQuint.</p>
+<ul class="how">
+<li>It is what you just typed: Omarchy's exception, "Inside something the user stays and watches, keys get the same motion as the pointer", and the glide's own case.</li>
+<li>No new light: it softens the onset the glyph makes anyway; 90 % opaque at 43 ms.</li>
+<li>In the band, one more parameter in the per-glyph draw, during frames the glide draws anyway: no extra latency.</li>
+</ul>
+<p class="risk"><b>Risk.</b> At 28 pt the scale is under a point; the fade is what shows. Animated text can read as lag (visuals.md §6.1).</p></article>
+<article class="card" id="opt-K3"><div class="card-h"><span class="oid">K3</span><h3>Border sheen per word</h3><span class="tag ask">ask, opt-in</span><label class="pick"><input type="checkbox" name="K" value="K3"> pick</label></div>
+<p class="pitch">On Space, a 300 ms light sweep along the border.</p>
+<p class="risk"><b>Risk.</b> A sweep is travelling motion, the class Bartram ranks most distracting, about once a second; outside the fixation point, off by default.</p></article>
+<article class="card" id="opt-K2"><div class="card-h"><span class="oid">K2</span><h3>Caret pulse</h3><span class="tag no">no</span><label class="pick"><input type="checkbox" name="K" value="K2"> pick</label></div>
+<p class="pitch">The caret brightens on each key and decays over 150 ms.</p>
+<p class="risk"><b>No.</b> A 3–8 Hz flicker at the fixation point while typing (visuals.md, the keystroke glow).</p></article>
+<article class="card" id="opt-K4"><div class="card-h"><span class="oid">K4</span><h3>Wake</h3><span class="tag no">no</span><label class="pick"><input type="checkbox" name="K" value="K4"> pick</label></div>
+<p class="pitch">A faint lighter trail behind the caret, fading over 300 ms.</p>
+<p class="risk"><b>No.</b> Travelling motion over the words you just wrote (<a href="https://www.interruptions.net/literature/Bartram-IJHCS03.pdf">Bartram 2003</a>).</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s7h">
+<header class="sec-h"><span class="num">7</span><div><h2 id="s7h">E: event effects</h2><p>Tied to an event, not to keys; several can be picked.</p></div></header>
+<div class="figw"><svg class="fig w" style="max-width:660px" viewBox="0 0 660 206" role="img"><title>E1: a 45° sheen crosses the box over 300 ms while it closes, and the paste does not wait. E2: the ¶ fades in over 120 ms. E3, a sheen after 20 s idle, is ruled out</title>
+<defs><clipPath id="eC"><rect x="1" y="11" width="199" height="39" rx="6"/></clipPath></defs>
+<rect x=".5" y="10.5" width="200" height="40" rx="6" fill="#1a1b26" stroke="#7aa2f7"/>
+<g clip-path="url(#eC)"><polygon points="70,51 94,51 134,10 110,10" fill="#ffffff" opacity=".14"/></g>
+<text class="c1" x="120" y="35" text-anchor="end">version small</text><rect class="cr" x="122" y="20" width="2" height="20"/>
+<text class="m" x="0" y="68">E1 · sheen mid-way, 45°</text>
+<text x="270" y="10"><tspan class="ok">✓</tspan> paste at 0: nothing waits</text>
+<text class="m" x="262" y="25" text-anchor="end">sheen</text><rect class="sfg" x="270.5" y="17.5" width="216" height="8"/>
+<text class="m" x="262" y="39" text-anchor="end">close</text><rect class="ar" x="370.5" y="31.5" width="115.5" height="8"/>
+<text class="m" x="262" y="56" text-anchor="end">in a row</text><rect class="ln" x="270.5" y="48.5" width="216" height="8" stroke-dasharray="3 2"/><rect class="ln" x="486.5" y="48.5" width="115" height="8" stroke-dasharray="3 2"/><path class="sno" d="M601.5 45v16"/>
+<path class="ln" d="M270 66.5h390M270.5 66v4M486.5 66v4M601.5 66v4"/>
+<text class="m" x="270" y="82" text-anchor="middle">0</text><text class="m" x="486" y="82" text-anchor="middle">300</text><text class="m" x="601" y="82" text-anchor="middle">460 ms</text>
+<text x="660" y="96" text-anchor="end"><tspan class="no">✗</tspan> in a row, the paste waits 460 ms</text>
+<text class="b" x="0" y="124">E2</text><text class="m" x="24" y="124">¶ on Return, opacity only</text>
+<rect x="270.5" y="104.5" width="260" height="32" fill="#1a1b26" stroke="var(--line-2)"/>
+<text class="m1 e2g" x="320" y="126" text-anchor="middle" opacity=".29">¶</text><text class="m1 e2g" x="400" y="126" text-anchor="middle" opacity=".7">¶</text><text class="m1 e2g" x="480" y="126" text-anchor="middle">¶</text>
+<text class="m" x="320" y="152" text-anchor="middle">8 ms · .29</text><text class="m" x="400" y="152" text-anchor="middle">25 ms · .70</text><text class="m" x="480" y="152" text-anchor="middle">120 ms · 1</text>
+<text class="b" x="0" y="182">E3</text><text class="m" x="24" y="182">idle sheen</text>
+<path class="sfg" d="M270.5 172v10M288.5 172v10M306.5 172v10M324.5 172v10M342.5 172v10M360.5 172v10"/>
+<path class="ln" d="M362 177.5h196" stroke-dasharray="3 3"/><text class="m" x="460" y="172" text-anchor="middle">20 s, no key</text>
+<rect class="sno" x="560.5" y="173.5" width="60" height="8"/>
+<text x="270" y="200"><tspan class="no">✗</tspan> it marks the pause: pressure, against P0</text>
+</svg></div>
+<div class="grid">
+<article class="card" id="opt-E1"><div class="card-h"><span class="oid">E1</span><h3>Hand-off sheen</h3><span class="tag rec">recommended</span><label class="pick"><input type="checkbox" name="E" value="E1" checked> pick</label></div>
+<p class="pitch">At ⌘⏎ or ⌘⇧⏎ one 45° band of light crosses the box in 300 ms as it closes.</p>
+<ul class="how">
+<li>Omarchy's About-logo sheen, on an event: it confirms the hand-off, once per session.</li>
+<li>Sheen and close overlap and end together; in a row they would hold the paste ~460 ms. The paste never waits.</li>
+</ul>
+<p class="risk"><b>Risk.</b> Outside the letter of "A keystroke that acts and is done jumps". Untested whether the box can give up the keys while it fades; if not, it hides at once and the sheen goes.</p></article>
+<article class="card" id="opt-E2"><div class="card-h"><span class="oid">E2</span><h3>¶ fade on Return</h3><span class="tag rec">recommended</span><label class="pick"><input type="checkbox" name="E" value="E2" checked> pick</label></div>
+<p class="pitch">On Return the <code> ¶ </code> fades in over 120 ms, opacity only.</p>
+<ul class="how"><li>The ambience note's smallest version of the ripple: no ring, no motion, drawn during the glide Return starts.</li></ul>
+<p class="risk"><b>Risk.</b> Perhaps unseen; then drop it.</p></article>
+<article class="card" id="opt-E3"><div class="card-h"><span class="oid">E3</span><h3>Idle sheen</h3><span class="tag no">no</span><label class="pick"><input type="checkbox" name="E" value="E3"> pick</label></div>
+<p class="pitch">After 20 s without a key a sheen crosses the line, like Omarchy's screensaver.</p>
+<p class="risk"><b>No.</b> It marks the pause: pause pressure, against P0 ("stressed" was the commonest feeling, <a href="https://www.jowr.org/jowr/article/view/790">Dux Speltz 2021</a>).</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s8h">
+<header class="sec-h"><span class="num">8</span><div><h2 id="s8h">S: switches</h2><p>Where effects are turned on and off, beside Sound.</p></div></header>
+<div class="figw"><svg class="fig w" style="max-width:600px" viewBox="0 0 600 226" role="img"><title>S1: Session › Effects ▸ with one check item per effect and Off; S2: one Effects item</title>
+<rect class="bx2" x=".5" y=".5" width="180" height="96" rx="6"/>
+<text class="m" x="12" y="18">Session</text>
+<text x="12" y="42">Sound</text><text x="168" y="42" text-anchor="end">▸</text>
+<rect class="sel" x="4" y="49" width="172" height="20" rx="4"/><text x="12" y="63">Effects</text><text x="168" y="63" text-anchor="end">▸</text>
+<text class="m" x="12" y="86">…</text>
+<rect class="bx2" x="190.5" y="44.5" width="230" height="176" rx="6"/>
+<text x="202" y="64">✓</text><text x="216" y="64">Box pop</text><text class="m" x="410" y="64" text-anchor="end">P1</text>
+<text x="202" y="83">✓</text><text x="216" y="83">Border</text><text class="m" x="410" y="83" text-anchor="end">B1</text>
+<text class="m" x="216" y="102">Border follows typing</text><text class="m" x="410" y="102" text-anchor="end">B2</text>
+<text x="202" y="121">✓</text><text x="216" y="121">Glyph pop-in</text><text class="m" x="410" y="121" text-anchor="end">K1</text>
+<text x="216" y="140">Word sheen</text><text class="m" x="410" y="140" text-anchor="end">K3</text>
+<text x="202" y="159">✓</text><text x="216" y="159">Hand-off sheen</text><text class="m" x="410" y="159" text-anchor="end">E1</text>
+<text x="202" y="178">✓</text><text x="216" y="178">Paragraph fade</text><text class="m" x="410" y="178" text-anchor="end">E2</text>
+<path class="ln" d="M198 188.5h214"/>
+<text x="216" y="207">Off</text><text class="m" x="410" y="207" text-anchor="end">= F0</text>
+<text class="m" x="436" y="64">no key</text><text class="m" x="436" y="80">(⌥⌘K if wanted)</text>
+<text class="m" x="436" y="112">kept across launches</text>
+<text class="m" x="436" y="144">Reduce Motion: items</text><text class="m" x="436" y="160">that move off, greyed</text>
+<rect class="bx2" x=".5" y="130.5" width="180" height="44" rx="6"/>
+<text class="m" x="12" y="148">S2 · Session</text><text x="12" y="166">✓</text><text x="26" y="166">Effects</text>
+</svg></div>
+<div class="grid">
+<article class="card" id="opt-S1"><div class="card-h"><span class="oid">S1</span><h3>An Effects submenu</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="S" value="S1" checked> pick</label></div>
+<p class="pitch">Session › Effects ▸ next to Sound, in the menu-bar item's menu and the main menu: a check item per effect, then Off.</p>
+<ul class="how">
+<li>Box pop, Border, Glyph pop-in, Word sheen, Hand-off sheen, Paragraph fade; Border follows typing with B2. The glide curve is not an effect.</li>
+<li>Off keeps the checks, as Sound ▸ Off keeps the pack.</li>
+<li>No key: effects are set once, not muted for a call like sound; ⌥⌘K beside ⌘K if one is wanted.</li>
+<li>Kept in UserDefaults. Reduce Motion turns every moving item off and greys it; the still border is not motion and keeps its setting.</li>
+</ul>
+<p class="risk"><b>Risk.</b> Seven items for small effects; S2 if you never mix.</p></article>
+<article class="card" id="opt-S2"><div class="card-h"><span class="oid">S2</span><h3>One toggle</h3><label class="pick"><input type="radio" name="S" value="S2"> pick</label></div>
+<p class="pitch">Session › Effects as one check item: all or none.</p>
+<p class="risk"><b>Risk.</b> No way to keep the border and drop the sheens.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s9h">
+<header class="sec-h"><span class="num">9</span><div><h2 id="s9h">C: what it costs</h2><p>Not a pick: where each recommended effect runs, and the budget it answers to.</p></div></header>
+<div class="figw"><svg class="fig w" style="max-width:660px" viewBox="0 0 660 252" role="img"><title>The box's layers from top to bottom and what drives each: Core Animation for the sheen, border, background and dim; the CPU on the main thread for the line band; no blur</title>
+<rect class="bx" x=".5" y=".5" width="430" height="26"/><text x="10" y="18">sheen layer, above the band</text><text class="m" x="420" y="18" text-anchor="end">E1 K3</text><text x="444" y="18">Core Animation</text>
+<rect class="bx" x=".5" y="32.5" width="430" height="26"/><text x="10" y="50">border, drawn over the band</text><text class="m" x="420" y="50" text-anchor="end">B1 B2</text><text x="444" y="50">Core Animation</text>
+<rect class="bx2" x=".5" y="64.5" width="430" height="26" style="stroke:var(--fg)"/><text x="10" y="82">line band · CAMetalLayer, opaque</text><text class="m" x="420" y="82" text-anchor="end">G1 V2 K1 E2</text><text x="444" y="82">CPU · main thread</text>
+<rect class="bx" x=".5" y="96.5" width="430" height="26"/><text x="10" y="114">box background</text><text class="m" x="420" y="114" text-anchor="end">T1 · P1 scale</text><text x="444" y="114">Core Animation</text>
+<rect class="bx" x=".5" y="128.5" width="430" height="26"/><text x="10" y="146">panel · system shadow</text><text class="m" x="420" y="146" text-anchor="end">Q1 · P1 fade</text><text x="444" y="146">WindowServer</text>
+<rect class="bx" x=".5" y="160.5" width="430" height="26"/><text x="10" y="178">dim window, one per screen</text><text class="m" x="420" y="178" text-anchor="end">D1 · P1 fade</text><text x="444" y="178">Core Animation</text>
+<rect class="ln" x=".5" y="192.5" width="430" height="26" stroke-dasharray="3 3"/><text class="m" x="10" y="210">the app behind</text>
+<text x="0" y="244"><tspan class="no">✗</tspan> blur behind the box: no radius control, recomposed on every glide frame</text>
+</svg></div>
+<div class="ledger one">
+<div><b>Off the main thread.</b>P1, D1's fade, B, K3 and E1 animate properties of their own CALayers through Core Animation; the key path only adds an animation after its frame is presented.</div>
+<div><b>In the band.</b>G1, K1 and E2 change how the band draws in frames the glide draws anyway. Budget: key → presented p50 / p90 no worse than the spike's 42 / 60 ms, measured with <code>os_signpost</code> before it lands.</div>
+<div><b>Nothing at rest.</b>No effect loops, none runs while idle or while the box is hidden.</div>
+<div><b>No blur.</b>NSVisualEffectView has no radius control and is recomposed on every glide frame; Omarchy dropped blur for GPU load.</div>
+<div><b>One switch.</b>Every duration goes through one function that returns 0 under Reduce Motion or Off, as Omarchy's <code>Style.duration</code> does.</div>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s10h">
+<header class="sec-h"><span class="num">10</span><div><h2 id="s10h">Sources</h2><p>Researched 2026-10-28.</p></div></header>
+<ul class="refs">
+<li><b>Effects notes</b> (<a href="../research_notes/Lemna%20effects/">folder</a>): <a href="../research_notes/Lemna%20effects/omarchy.md">Omarchy's visual and motion language</a>, <a href="../research_notes/Lemna%20effects/siblings.md">the sibling apps' tokens and motions</a>.</li>
+<li><b>Ambience</b>: <a href="../research_notes/Flow%20sounds%20and%20ambience/visuals.md">visual ambience while typing</a>, the rating table (§0) and the candidates (§3).</li>
+<li><b>Decisions</b>: <a href="../DESIGN.md">DESIGN.md</a> rows S1, V2, W2, K1, L1, F0, G1 H1, N; the earlier panels <a href="design-panel-flow-writer.html">flow writer</a> and <a href="design-panel-flow-sounds-name.html">sounds and name</a>.</li>
+</ul>
+<p class="note">Numbers marked computed are arithmetic on the notes' values; contrast ratios by WCAG's formula, luminance ratios over a white app as the ambience note computes them.</p>
+</section>
+
+<div class="picks"><span class="picks-l">Picks</span><code id="picks">T1 P1 G1 D1 Q1 B1 K1 E1+E2 S1</code><button type="button" id="copy" hidden>Copy picks</button></div>
+</div>
+<script>function picks(){const v=n=>[...document.querySelectorAll(`input[name="${n}"]:checked`)].map(i=>i.value).join('+')||'–';const s=['T','P','G','D','Q','B','K','E','S'].map(v).join(' ');document.getElementById('pickline').textContent=s;document.getElementById('picks').textContent=s;}document.querySelectorAll('.pick input').forEach(i=>i.addEventListener('change',picks));const cb=document.getElementById('copy');if(navigator.clipboard){cb.hidden=false;cb.addEventListener('click',()=>navigator.clipboard.writeText(document.getElementById('picks').textContent).then(()=>{cb.textContent='Copied';setTimeout(()=>{cb.textContent='Copy picks'},1200)},()=>{}));}picks();</script>
+</html>
