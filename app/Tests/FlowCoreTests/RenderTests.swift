@@ -21,13 +21,18 @@ func render(_ text: Text, marked: String = "", offset: CGFloat, moved: CGFloat =
     c.fill(CGRect(origin: .zero, size: size))
     Line.draw(Line.shape(text, marked: marked, font: menlo), before: offset + moved, after: moved, in: c,
               band: Line.band(in: size, style: style), style: style)
+    savePNG(c, name, dpi: 144)
+    let px = c.data!.assumingMemoryBound(to: UInt8.self)
+    return Array(UnsafeBufferPointer(start: px, count: 4 * w * h))
+}
+
+/// Writes a context's bitmap to app/renders/<name>, at `dpi` (72 for 1×, 144 for 2×).
+func savePNG(_ c: CGContext, _ name: String, dpi: Int) {
     mkdir(renders, 0o755)  // fails harmlessly once it exists
     let url = CFURLCreateWithFileSystemPath(nil, renders + "/" + name as CFString, .cfurlposixPathStyle, false)!
     let png = CGImageDestinationCreateWithURL(url, "public.png" as CFString, 1, nil)!
-    CGImageDestinationAddImage(png, c.makeImage()!, [kCGImagePropertyDPIWidth: 144, kCGImagePropertyDPIHeight: 144] as CFDictionary)
+    CGImageDestinationAddImage(png, c.makeImage()!, [kCGImagePropertyDPIWidth: dpi, kCGImagePropertyDPIHeight: dpi] as CFDictionary)
     #expect(CGImageDestinationFinalize(png))
-    let px = c.data!.assumingMemoryBound(to: UInt8.self)
-    return Array(UnsafeBufferPointer(start: px, count: 4 * w * h))
 }
 
 /// The first and last pixel columns (at 2×) that differ from the background anywhere.

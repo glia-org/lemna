@@ -7,7 +7,8 @@ the box (it also brought Harper's suggestions to the review, R2, which pass 9 re
 8): the caret moves through the text and typing and deleting work anywhere on the line (B4, which replaces B1), with
 the journal in format 2; then pass 10: no review, Done pastes at once with R1 applied silently, and the session frame
 (M1) is gone; then pass 11: three more click packs and a Sound submenu (K1), the text left on the clipboard after a
-paste, the box opaque under Reduce Transparency and the muted grey lighter under Increase Contrast. Swift + AppKit, SwiftPM with the Command Line Tools only (no Xcode), two
+paste, the box opaque under Reduce Transparency and the muted grey lighter under Increase Contrast; then pass 12:
+the menu-bar mark M3 and the app icon (L1). Swift + AppKit, SwiftPM with the Command Line Tools only (no Xcode), two
 package dependencies by path (`../lib/FlowJournal`, `../lib/FlowClicks`), ad-hoc signed (there is no Developer ID
 yet).
 
@@ -16,6 +17,7 @@ yet).
 ```sh
 app/make-cert.sh           # once: a self-signed "Flow Dev" code-signing certificate in the login keychain
 app/make-app.sh            # release build, assembles, signs (Flow Dev, else ad-hoc) and verifies app/build/Flow.app, prints its path
+(cd app && swift make-icon.swift ../assets/logo/icon-I1-M3-b.svg build)  # the icon alone: build/AppIcon.iconset, build/AppIcon.icns
 open app/build/Flow.app
 
 cd app
@@ -33,13 +35,19 @@ own type (`.init(fileURLWithPath:)`), the temporary folder comes from Darwin's `
 `ElectricPack`, each a `pack.json` and its WAVs) into `Contents/Resources`, where `SoundPack.bundled(<folder>)` loads
 them, writes `LSUIElement` (an accessory app from
 launch on: no Dock icon, no menu bar) into the Info.plist, and checks the signature with
-`codesign --verify --deep --strict`.
+`codesign --verify --deep --strict`. It runs `make-icon.swift` on the icon SVG named in its `icon=` line (J2 of
+`docs/design-panel-icon-round-2.html` until the pick), copies `build/AppIcon.icns` into `Contents/Resources` and sets
+`CFBundleIconFile` to `AppIcon`. `make-icon.swift` runs with `swift` from the Command Line Tools: `NSImage` reads the
+SVG and draws it at iconutil's ten sizes (16 to 1024 px, sRGB), with the drop shadow AppKit's SVG reader leaves out,
+and `iconutil -c icns` packs them; the iconset is written afresh each run, and the same SVG gives the same bytes.
+`assets/logo/icons.py` writes the three icon SVGs from their numbers.
 
 The tests need no window and no keychain (the journal test keeps its key in memory). `offscreenRenders` draws the
 window's content as the app does (1200 × 700 pt at 2×) and writes `app/renders/idle.png`, `glide-0.png`,
 `glide-70ms.png`, `glide-140ms.png` (after a new key), `marked.png` (a pending `´` at the caret), `editing.png` (the caret
-back in the text, the text after it shown) and `move-left-70ms.png` (70 ms into a ← there). `app/build/` and
-`app/renders/` are git-ignored.
+back in the text, the text after it shown) and `move-left-70ms.png` (70 ms into a ← there); the mark test writes
+`mark-M3-1x.png` and `mark-M3-2x.png` (16 and 32 px, black on clear). `app/build/` and `app/renders/` are
+git-ignored.
 
 ## Layout
 
@@ -306,7 +314,24 @@ Pass 11, sounds and the clipboard (DESIGN.md K1 amended, F0, G1 H1, I1 in O1+O2+
 - Build: the executable is 0.80 MB (798,160 bytes; 779,680 before), `Contents/Resources` 624 KB; signed with "Flow
   Dev".
 
+Pass 12, the mark and the icon (DESIGN.md L1, 2026-10-28):
+
+- The menu-bar mark is M3 of `docs/design-panel-hypha-logo.html`, the tapered line (`StatusMark` in
+  `Summoning.swift`): right of the caret's left edge the line is 1.5 pt (y 7.5 to 9); left of it the bottom edge rises
+  to y 8 at x 4, and the last 2 pt are 1 pt tall against the top edge, so on a 1× display the left end is one whole
+  row of pixels. M3's SVG narrows to a point on the line's middle instead (a grey wisp at 1×); Q of
+  `docs/design-panel-icon-round-2.html` asks whether to draw that at 2× (Q2). The caret as before.
+- The app icon: `CFBundleIconFile` `AppIcon`, from `assets/logo/icon-I1-M3-b.svg` (J2: I1's body, M3 at 70 % of it,
+  the line fading to 35 % at its point) through `make-icon.swift`. macOS shows it in Finder and System Settings (no
+  Dock icon, LSUIElement); macOS 26's IconServices draws it in its own body, not in a grey tile.
+- Tests: the mark's test asserts its pixels at 2× (three rows right of the caret, the straight top edge, two rows
+  along the last 2 pt, the lowest row filling monotonically between them, the caret at 60 % and 1.5 pt wide) and at
+  1× (the top row whole from end to end, the tip that row alone).
+- Build: `Contents/Resources` 1,020 KB (624 before: `AppIcon.icns` 393 KB); signed with "Flow Dev".
+
 ## Known gaps
+
+- Pass 12 is not tried: the mark has not been seen in the real menu bar, nor the icon in Finder or System Settings.
 
 - Pass 11 is not tried, and nothing in its packs was listened to: their filters, spans and levels are by
   measurement (`lib/FlowClicks/THIRD_PARTY.md`). On a MacBook the Soft pack may double the key under the fingers.

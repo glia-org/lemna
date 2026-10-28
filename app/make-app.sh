@@ -4,14 +4,18 @@
 # item survive a rebuild), else ad-hoc: there is no Developer ID yet (DESIGN.md E2, X1).
 # Idempotent: the bundle is assembled afresh on each run. Run: app/make-app.sh
 # LSUIElement: an accessory app from launch on (no Dock icon, no menu bar; DESIGN.md W2), as main.swift sets it too.
+# The app icon (DESIGN.md L1): make-icon.swift draws the variant below into build/AppIcon.icns.
 set -eu
 cd "${0:A:h}"
+icon=../assets/logo/icon-I1-M3-b.svg  # J2 of docs/design-panel-icon-round-2.html, until the user's pick
 swift build -c release
 bin="$(swift build -c release --show-bin-path)"
 app=build/Flow.app
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin/Flow" "$app/Contents/MacOS/Flow"
+swift make-icon.swift "$icon" build
+cp build/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 # The click packs (lib/FlowClicks, each a pack.json and its WAVs): SoundPack.bundled(<folder>) loads them from
 # Contents/Resources; Session › Sound chooses among them.
 for pack in DefaultPack TypewriterPack SoftPack ElectricPack; do
@@ -28,6 +32,8 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 	<string>Flow</string>
 	<key>CFBundleExecutable</key>
 	<string>Flow</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleInfoDictionaryVersion</key>

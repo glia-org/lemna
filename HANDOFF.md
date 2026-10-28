@@ -183,8 +183,31 @@
     window nothing shows through its edge); off: 97 % again at the next summon.
   - Increase Contrast (the same pane) on, summon: the ` ¶ ` (Return) and a note at the bottom edge (⌘⏎ in the window:
     `Copied · no app to paste into`) are a lighter grey; off: the dim grey again at the next summon.
-- Next: the user tries pass 11 and pass 10, and what of v1, pass 6, pass 7b's click outside and pass 8 is still
-  untried; the rename to Hypha after a trademark search (a pass of its own); then DESIGN.md's Open items.
+- App, pass 12 (2026-10-28; the mark and the icon, DESIGN.md L1; the user: "M3 because it looks better in the small
+  preview in the menu bar. I like I1, but it should be more related to the M3 icon then."): the menu-bar mark is M3,
+  the tapered line (`StatusMark`): 1.5 pt right of the caret's left edge, the bottom edge rising from there to a left
+  end 1 pt tall along its last 2 pt, against the top edge, so a 1× display shows it as one whole pixel row (M3's SVG
+  ends in a point). The app icon is I1 from M3, three variants in `docs/design-panel-icon-round-2.html` (J1 plain, J2
+  the thin end fading, J3 larger; recommended J2), with a question on the mark (Q1 as built, Q2 M3's point at 2×,
+  recommended); picks pending. `app/make-icon.swift` (run with `swift`, Command Line Tools only) draws an icon SVG at
+  the iconset's ten sizes and packs `build/AppIcon.icns`; `make-app.sh` runs it on J2 (its `icon=` line), copies the
+  `.icns` into `Contents/Resources` and sets `CFBundleIconFile`. `assets/logo/icons.py` writes the three SVGs. 51 app
+  tests pass (the mark's test rewritten for the taper: its pixels at 2× and 1×; it writes `app/renders/mark-M3-1x.png`
+  and `-2x.png`). `make-app.sh` builds, signs with Flow Dev and verifies; `Contents/Resources` 1,020 KB (393 KB of it
+  the icon). Not tried: the builder launched nothing. `app/README.md` (Pass 12) says what each part does. Try, after
+  `app/make-app.sh` and `open app/build/Flow.app`:
+  - The menu-bar mark on the Mac's own (2×) display, in a light and a dark menu bar: the line with the caret bar, its
+    left part narrowing slightly toward the left. Is it the M3 that was picked, or too close to the old mark? (Q of
+    the panel.) On a 1× external display, if there is one: the left end a whole line, not a grey smudge.
+  - The icon: Finder › `app/build/Flow.app` › Get Info (⌘I): the icon at the top left, J2; Finder's icon view at a
+    large size (⌘J) for the fade at the line's point; list view for 16 pt. There is no Dock icon at runtime
+    (LSUIElement), so these are the places it shows. If Finder still shows the generic app icon, the bundle's old
+    icon is cached: `touch app/build/Flow.app`, or move the bundle once.
+  - System Settings › Privacy & Security › Accessibility: Flow's row with the new icon (after the next paste's
+    prompt, or at once if Flow is already listed).
+- Next: the user picks J and Q in `docs/design-panel-icon-round-2.html`; tries pass 12, pass 11 and pass 10, and what
+  of v1, pass 6, pass 7b's click outside and pass 8 is still untried; the rename to Hypha after a trademark search (a
+  pass of its own); then DESIGN.md's Open items.
 
 ## Build and run
 
