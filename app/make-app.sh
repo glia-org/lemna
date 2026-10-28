@@ -7,7 +7,7 @@
 # The app icon (DESIGN.md L1): make-icon.swift draws the variant below into build/AppIcon.icns.
 set -eu
 cd "${0:A:h}"
-icon=../assets/logo/icon-I1-M3-b.svg  # J2 of docs/design-panel-icon-round-2.html, until the user's pick
+icon=../assets/logo/icon-K1.svg  # K1 of docs/design-panel-icon-round-3.html (DESIGN.md L1)
 swift build -c release
 bin="$(swift build -c release --show-bin-path)"
 app=build/Lemna.app

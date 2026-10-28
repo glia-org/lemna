@@ -188,9 +188,9 @@
   the tapered line (`StatusMark`), drawn per scale (Q2 of `docs/design-panel-icon-round-2.html`, taken): at 2× as
   M3's SVG has it, 1.5 pt right of the caret's left edge and narrowing from there to a point on the line's middle; at
   1× the last 2 pt stay 1 pt tall against the top edge, one whole pixel row instead of a grey wisp. The app icon is I1
-  from M3, three variants in the same panel (J1 plain, J2 the thin end fading, J3 larger; recommended J2); the J pick
-  is pending. `app/make-icon.swift` (run with `swift`, Command Line Tools only) draws an icon SVG at
-  the iconset's ten sizes and packs `build/AppIcon.icns`; `make-app.sh` runs it on J2 (its `icon=` line), copies the
+  from M3, three variants in the same panel (J1 plain, J2 the thin end fading, J3 larger; recommended J2); the user rejected
+  J2 ("looks like a triangle on the left") and picked K1 of `docs/design-panel-icon-round-3.html`, round 1's I1 as it was. `app/make-icon.swift` (run with `swift`, Command Line Tools only) draws an icon SVG at
+  the iconset's ten sizes and packs `build/AppIcon.icns`; `make-app.sh` runs it on K1 (its `icon=` line), copies the
   `.icns` into `Contents/Resources` and sets `CFBundleIconFile`. `assets/logo/icons.py` writes the three SVGs. 51 app
   tests pass (the mark's test rewritten for the taper: at 2× M3's point, the rows above and below the middle alike,
   at 1× the whole top row; it writes `app/renders/mark-M3-1x.png` and `-2x.png`, the 2× one pixel for pixel AppKit's
@@ -200,7 +200,7 @@
   - The menu-bar mark on the Mac's own (2×) display, in a light and a dark menu bar: the line with the caret bar, its
     left part narrowing to a point, as the M3 of the round 1 panel. On a 1× external display, if there is one: the
     left end a whole line, not a grey smudge (each screen's menu bar draws the mark at its own scale).
-  - The icon: Finder › `app/build/Lemna.app` › Get Info (⌘I): the icon at the top left, J2; Finder's icon view at a
+  - The icon: Finder › `app/build/Lemna.app` › Get Info (⌘I): the icon at the top left, K1; Finder's icon view at a
     large size (⌘J) for the fade at the line's point; list view for 16 pt. There is no Dock icon at runtime
     (LSUIElement), so these are the places it shows. If Finder still shows the generic app icon, the bundle's old
     icon is cached: `touch app/build/Lemna.app`, or move the bundle once.

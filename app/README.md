@@ -17,7 +17,7 @@ AppKit, SwiftPM with the Command Line Tools only (no Xcode), two package depende
 ```sh
 app/make-cert.sh           # once: a self-signed "Lemna Dev" code-signing certificate in the login keychain
 app/make-app.sh            # release build, assembles, signs (Lemna Dev, else Flow Dev, else ad-hoc) and verifies app/build/Lemna.app
-(cd app && swift make-icon.swift ../assets/logo/icon-I1-M3-b.svg build)  # the icon alone: build/AppIcon.iconset, build/AppIcon.icns
+(cd app && swift make-icon.swift ../assets/logo/icon-K1.svg build)  # the icon alone: build/AppIcon.iconset, build/AppIcon.icns
 open app/build/Lemna.app
 
 cd app
@@ -35,8 +35,8 @@ own type (`.init(fileURLWithPath:)`), the temporary folder comes from Darwin's `
 `ElectricPack`, each a `pack.json` and its WAVs) into `Contents/Resources`, where `SoundPack.bundled(<folder>)` loads
 them, writes `LSUIElement` (an accessory app from
 launch on: no Dock icon, no menu bar) into the Info.plist, and checks the signature with
-`codesign --verify --deep --strict`. It runs `make-icon.swift` on the icon SVG named in its `icon=` line (J2 of
-`docs/design-panel-icon-round-2.html` until the pick), copies `build/AppIcon.icns` into `Contents/Resources` and sets
+`codesign --verify --deep --strict`. It runs `make-icon.swift` on the icon SVG named in its `icon=` line (K1 of
+`docs/design-panel-icon-round-3.html`), copies `build/AppIcon.icns` into `Contents/Resources` and sets
 `CFBundleIconFile` to `AppIcon`. `make-icon.swift` runs with `swift` from the Command Line Tools: `NSImage` reads the
 SVG and draws it at iconutil's ten sizes (16 to 1024 px, sRGB), with the drop shadow AppKit's SVG reader leaves out,
 and `iconutil -c icns` packs them; the iconset is written afresh each run, and the same SVG gives the same bytes.
@@ -322,8 +322,8 @@ Pass 12, the mark and the icon (DESIGN.md L1, 2026-10-28):
   line is 1.5 pt (y 7.5 to 9). Left of it, at 2× and up, it narrows to a point on the line's middle (y 8.25), as
   M3's SVG; at 1× the bottom edge rises to y 8 at x 4 and the last 2 pt are 1 pt tall against the top edge
   (`StatusMark.tip`), so the left end is one whole row of pixels instead of a grey wisp. The caret as before.
-- The app icon: `CFBundleIconFile` `AppIcon`, from `assets/logo/icon-I1-M3-b.svg` (J2: I1's body, M3 at 70 % of it,
-  the line fading to 35 % at its point) through `make-icon.swift`. macOS shows it in Finder and System Settings (no
+- The app icon: `CFBundleIconFile` `AppIcon`, from `assets/logo/icon-K1.svg` (K1: I1's body, a constant-weight line fading
+  in from the left, the caret at 60 %, a dim track right of it; no taper) through `make-icon.swift`. macOS shows it in Finder and System Settings (no
   Dock icon, LSUIElement); macOS 26's IconServices draws it in its own body, not in a grey tile.
 - Tests: the mark's test asserts its pixels at 2× (three rows right of the caret; left of it the rows above and
   below the middle alike, each filling steadily toward the caret from nothing at the point; the caret at 60 % and
