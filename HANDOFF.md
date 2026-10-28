@@ -2,7 +2,7 @@
 
 `DESIGN.md` holds the decisions and the plan. This file says what is done and what is next.
 
-## State (2026-10-27)
+## State (2026-10-28)
 
 - Research, panel, report: done (`docs/`, `reports/`, `research_notes/`).
 - Spike GPUI vs AppKit: done, results in `DESIGN.md`; the user chose T2 (Swift + AppKit).
@@ -118,30 +118,10 @@
     no Dock icon is open.
   - Time box…, Intent…, Discard… from the menu-bar item with the box hidden: the box comes, with the question as a
     sheet on it.
-- App, pass 7b (R2 Harper in the review, Plan item 7; and a click outside hides the box): built on pass 7a's
-  `lib/FlowHarper`, 64 tests pass (51 before, 13 new: accepting one, the later offsets shifted, offsets past `é`, 🙂
-  and 👩‍💻, accept all in order, a stale suggestion, the selection, the footer's wording, the kind's label, beside or
-  below for a width, the list's keys, the click-outside guard's table, the handoff's sample through the real Harper,
-  Done → suggestions timed on 1,000 words: 113–118 ms). `make-app.sh` now runs cargo first; the bundle's executable
-  grew by 9.5 MB to 10.3 MB, signed and verified. The test command gains `-Xlinker -L` (`app/README.md`). Not tried:
-  the builder showed no window (the review was drawn offscreen for a look). `app/README.md` (Pass 7b) says what each
-  part does. Try, after `app/make-app.sh` and `open app/build/Flow.app`:
-  - Summon the box, type `teh boats sat low, a idea the the`, then Done (⌘⏎). The review shows R1's text
-    (`Teh boats sat low, a idea the the`); right of it, a moment after (`checking…` first), the column
-    `HARPER · ENGLISH · OFFLINE` with three rows: `1 typo ~~Teh~~ → The`, `2 miscellaneous ~~a~~ → an`,
-    `3 repetition ~~the the~~ → the`, and `accept`, `skip`, `accept all` under them. Row 1 and `Teh` in the text stand
-    on a dark blue.
-  - ↓ and ↑ move the selection (the text's highlight follows); Return accepts the selected one (the text changes, the
-    row goes, the footer's R1 line ends `· Harper: 1 accepted`); ⌫ skips it (the row goes, the text stays). A click on
-    a row selects it; the buttons do the same as the keys. `accept all` on the three: `The boats sat low, an idea the`,
-    and the column says `Harper · no suggestions`.
-  - ⌘⏎ (Paste) or Copy: the text as accepted lands in the app behind (or on the clipboard). Save… writes it too.
-  - Undo on the R1 line: the raw text, `checking…`, then its own three rows (`teh → the` first); the accepted count is
-    gone. Redo: R1's text and its rows again, nothing accepted.
-  - A clean text (`The boats sat low.`): the column's place stays empty but for `Harper · no suggestions`.
-  - A narrow screen or a narrow window (the window's sheet under about 860 pt of window): the list goes under the text.
-  - Copy, then accept a suggestion within the 10 s: the `Copied · Undo` line goes and the session stays (the grace
-    stopped, as under the save panel).
+- App, pass 7b (a click outside hides the box; the pass also brought Harper's review, R2, Plan item 7, which pass 9
+  removed): built, signed and verified; its one test that stays is the click-outside guard's table. Not tried: the
+  builder showed no window. `app/README.md` (Pass 7b) says what it does. Try, after `app/make-app.sh` and
+  `open app/build/Flow.app`:
   - Click outside: with the box up (writing or the review), click into another app or on the dim: box and dim go at
     once, that app has the keys; summon again: the box is back as it was (the review too). Not while a question or the
     save panel is up on the box, nor within a Copy's or Save's 10 s grace. Typing with the accent menu (hold e) or an
@@ -172,14 +152,29 @@
     by yesterday's build (format 1): the first launch of this build shows its text as before and moves it into a new
     journal file without a word; `sessions.noindex/` then holds one new `<uuid>.journal` (starting `FLOWJ2`), the old
     one gone.
-- Next: the user tries v1, pass 6, pass 7b and pass 8; then DESIGN.md's Open items.
+- App, pass 9 (2026-10-28; Harper removed, DESIGN.md R1+R3 amended, Plan item 7 marked removed): `lib/FlowHarper`
+  (with its 589 MB Rust build folder), `Lint.swift`, `Suggestions.swift` and their tests are gone; `Package.swift` and
+  `make-app.sh` are back to two dependencies and no cargo step, so the build needs no Rust toolchain. The review is
+  pass 6's again (one text column, R1's line with Undo / Redo, the footer, the buttons); R1's Undo or Redo during a
+  hand-off's grace still stops the grace (kept from pass 7b). 61 app tests pass (74 before; 13 went with Harper: the
+  suggestion list's 10, the 2 through the real library, the list's keys), the journal's 14 (the login-keychain test
+  skipped as before). `make-app.sh` builds, signs and verifies; the executable is 0.89 MB (886,816 bytes, was
+  10,410,848). Not tried: the builder showed no window. `app/README.md` (Pass 9) says what changed. Try, after
+  `app/make-app.sh` and `open app/build/Flow.app`:
+  - Summon the box, type `teh boats sat low, a idea the the`, then Done (⌘⏎): the review shows R1's text
+    (`Teh boats sat low, a idea the the`) in one column centred in the box, nothing beside or under it; the footer's
+    first line `R1 · 1 fix: 1 capital · Undo`, then the duration and words; Discard… / Back, Save…, Copy, Paste.
+  - Keys in the review: ⌘⏎ pastes, Esc is Back, plain Return does nothing; ↑ and ↓ scroll a long text.
+  - Copy, then Undo on the R1 line within the 10 s: the `Copied · Undo` line goes and the session stays (the grace
+    stopped); Copy again: the raw text is on the clipboard.
+  - Window mode: ⌃⌘F, Done: the sheet is as wide as the text column and its margins (about 600 pt), not 950.
+- Next: the user tries v1, pass 6, pass 7b's click outside, pass 8 and pass 9; then DESIGN.md's Open items.
 
 ## Build and run
 
 - Spikes: `spikes/run-bench.sh` (two visible windows; under AeroSpace click the AppKit window once).
-- App: `app/make-app.sh` builds Harper's Rust library with cargo, then builds in release with SwiftPM and assembles
-  `app/build/Flow.app`, ad-hoc signed; the test command (with the Command Line Tools' `-F` flags and Harper's
-  `-Xlinker -L`, after cargo) is in `app/README.md`.
+- App: `app/make-app.sh` builds in release with SwiftPM and assembles `app/build/Flow.app`, ad-hoc signed; the test
+  command (with the Command Line Tools' `-F` flags) is in `app/README.md`. No Rust toolchain needed (since pass 9).
 
 ## Rules carried over
 

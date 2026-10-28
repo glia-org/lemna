@@ -1,7 +1,0 @@
-// The C module of the Rust static library. `link` makes every importer link libflow_harper.a; the build passes the
-// folder holding it (-Xlinker -L, see README) so that the package needs no unsafeFlags.
-module CFlowHarper [system] {
-    header "flow_harper.h"
-    link "flow_harper"
-    export *
-}
