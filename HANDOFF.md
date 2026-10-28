@@ -2,6 +2,9 @@
 
 `DESIGN.md` holds the decisions and the plan. This file says what is done and what is next.
 
+
+**Known crash (2026-10-28, pass 15 as pushed): Esc while a session is open kills Lemna** when an ambience mode is on (three crash reports; thread `dev.lemna.ambience`, an Objective-C exception out of the `CAMetalDisplayLink` callback during the dim layer's teardown, from `SceneThread.main` at `Ambient.swift:31`). Workaround: Session › Ambience › Off. The fix is in progress on branch `wip/esc-crash` (lifecycle type + tests done, the scene-thread rewrite of `Ambient.swift` not); the user stopped work to shut the machine down. Resume there: finish the teardown order (pause and invalidate the link on the scene thread before any layer or drawable change, callbacks ignored after invalidation, `nextDrawable` nil handled), reproduce with the lifecycle tests, build, then merge to main.
+
 ## State (2026-10-28)
 
 - Research, panel, report: done (`docs/`, `reports/`, `research_notes/`).
