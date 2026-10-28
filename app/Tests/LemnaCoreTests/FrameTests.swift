@@ -68,7 +68,7 @@ func drawMark(scale: Int, name: String) -> (CGFloat, CGFloat) -> UInt8 {
     #expect(!off && on)  // muted at launch: nothing to warn about, until the sound is turned on
 }
 
-@Test func mutedTextReachesTheHIGsContrastUnderIncreaseContrast() {
+@Test func theColoursReachTheHIGsContrast() {
     /// WCAG's contrast ratio of two sRGB colours.
     func ratio(_ a: CGColor, _ b: CGColor) -> Double {
         func luminance(_ c: CGColor) -> Double {
@@ -81,8 +81,12 @@ func drawMark(scale: Int, name: String) -> (CGFloat, CGFloat) -> UInt8 {
         let (x, y) = (luminance(a), luminance(b))
         return (max(x, y) + 0.05) / (min(x, y) + 0.05)
     }
-    let background = Style(font: menlo).background
-    #expect(Style(font: menlo).muted == Style.muted(increasedContrast: false))
-    #expect(abs(ratio(Style.muted(increasedContrast: false), background) - 3.2) < 0.05)  // as designed: below 4.5:1
-    #expect(ratio(Style.muted(increasedContrast: true), background) >= 4.5)  // HIG Dark Mode's minimum
+    // Tokyo Night's roles (F1 T1) on the box's #1a1b26: the text 10.6:1, the caret 6.8:1, the muted grey 4.9:1, so it
+    // meets the HIG's 4.5:1 without Increase Contrast (#5c646f on #0e1013 was 3.2:1); under it the grey is lighter yet.
+    let style = Style(font: menlo), background = style.background
+    #expect(style.muted == Style.muted(increasedContrast: false) && style.caret == Style.accent)
+    #expect(abs(ratio(style.text, background) - 10.6) < 0.05 && abs(ratio(style.caret, background) - 6.8) < 0.05)
+    #expect(abs(ratio(Style.muted(increasedContrast: false), background) - 4.9) < 0.05)
+    #expect(ratio(Style.muted(increasedContrast: false), background) >= 4.5)  // HIG Dark Mode's minimum
+    #expect(abs(ratio(Style.muted(increasedContrast: true), background) - 8.1) < 0.05)
 }

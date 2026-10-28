@@ -5,28 +5,42 @@ import CoreText
 import Foundation
 
 /// A shaped glyph: its font (a fallback one for characters Menlo lacks), id, x in the line, advance, whether it
-/// belongs to a paragraph end, and whether it stands after the caret.
+/// belongs to a paragraph end, whether it stands after the caret, and where it starts in the line's string (UTF-16).
 public struct Glyph {
-    public let font: CTFont, id: CGGlyph, x: CGFloat, advance: CGFloat, muted: Bool, after: Bool
+    public let font: CTFont, id: CGGlyph, x: CGFloat, advance: CGFloat, muted: Bool, after: Bool, index: Int
 }
 
 /// The line laid out around the caret: `caret` is the caret's x in it, where the text before it ends and the text
-/// after it begins. It rests with that x at the caret.
+/// after it begins, `split` the same place in the line's UTF-16 units. It rests with that x at the caret.
 public struct Shaped {
-    public var glyphs: [Glyph] = [], width: CGFloat = 0, caret: CGFloat = 0
+    public var glyphs: [Glyph] = [], width: CGFloat = 0, caret: CGFloat = 0, split = 0
     public init() {}
 }
 
+/// The newest glyphs as the band draws them (F1: K1, E2; `Entrance` says when): the last `units` of the line's UTF-16
+/// units before the caret, at `alpha` (times their V2 fade) and `scale` about their own baseline-left. The default
+/// draws them as the rest.
+public struct Newest: Equatable {
+    public var units = 0, alpha = 1.0, scale = 1.0
+    public init(units: Int = 0, alpha: Double = 1, scale: Double = 1) {
+        (self.units, self.alpha, self.scale) = (units, alpha, scale)
+    }
+}
+
+/// The colours: Tokyo Night's roles as the terminal app and the brief app use them (DESIGN.md F1 T1), in the box and in the window.
 public struct Style {
     public var font: CTFont
-    public var background = rgb(0x0e1013), text = rgb(0xd8dce3), muted = Style.muted(increasedContrast: false),
-               caret = rgb(0x7aa7f0)
+    public var background = rgb(0x1a1b26), text = rgb(0xc0caf5), muted = Style.muted(increasedContrast: false),
+               caret = Style.accent
     public init(font: CTFont) { self.font = font }
     public var size: CGFloat { CTFontGetSize(font) }
 
-    /// The muted colour (the ` ¶ `, the surface's bottom edge): #5c646f, 3.2:1 on the background; under Increase
-    /// Contrast #8d95a0, 6.3:1 (the HIG asks at least 4.5:1).
-    public static func muted(increasedContrast: Bool) -> CGColor { rgb(increasedContrast ? 0x8d95a0 : 0x5c646f) }
+    /// The accent (the caret, the box's border, B1) and the line role (the border cooled under B2): #7aa2f7, #3b4261.
+    public static let accent = rgb(0x7aa2f7), line = rgb(0x3b4261)
+
+    /// The muted colour (the ` ¶ `, the surface's bottom edge): #7f88b2, 4.9:1 on the background, so it meets the HIG's
+    /// 4.5:1 as it is; under Increase Contrast #a9b1d6, 8.1:1 (the siblings' text.mid), so the setting still raises it.
+    public static func muted(increasedContrast: Bool) -> CGColor { rgb(increasedContrast ? 0xa9b1d6 : 0x7f88b2) }
 }
 
 /// An sRGB colour from 0xRRGGBB.
@@ -50,12 +64,6 @@ public enum Line {
     /// text at most this far behind the caret.
     public static let wordCells = 6
     static let mutedKey = NSAttributedString.Key("LemnaMuted")
-
-    /// Ease-out cubic, 1 − (1 − u)³, with u clamped to 0…1.
-    public static func ease(_ u: Double) -> Double {
-        let v = 1 - min(max(u, 0), 1)
-        return 1 - v * v * v
-    }
 
     /// A glyph's opacity by its x in a band `w` wide: 1 right of 45 %, 0 at 25 % and left of it, linear between.
     public static func fade(x: Double, width w: Double) -> Double {
@@ -91,6 +99,7 @@ public enum Line {
         var out = Shaped()
         out.width = CTLineGetTypographicBounds(line, nil, nil, nil)
         out.caret = CTLineGetOffsetForStringIndex(line, split, nil)
+        out.split = split
         for run in CTLineGetGlyphRuns(line) as! [CTRun] {
             let attributes = CTRunGetAttributes(run) as NSDictionary, n = CTRunGetGlyphCount(run)
             let runFont = attributes[kCTFontAttributeName as String] as! CTFont, muted = attributes[mutedKey.rawValue] != nil
@@ -102,7 +111,7 @@ public enum Line {
             CTRunGetStringIndices(run, CFRange(), &at)
             for i in 0..<n {
                 out.glyphs.append(Glyph(font: runFont, id: ids[i], x: pos[i].x, advance: adv[i].width, muted: muted,
-                                        after: at[i] >= split))
+                                        after: at[i] >= split, index: at[i]))
             }
         }
         return out
@@ -132,8 +141,10 @@ public enum Line {
     /// top. So no glyph ever overlaps the caret: nothing before it is drawn right of it (S1; a new glyph emerges from
     /// under it as that part glides, a deleted one is gone at once), nothing after it left of it, and a caret move
     /// passes the text under it. `before` is the edit's glide and the caret move's together, `after` the move's alone.
-    public static func draw(_ line: Shaped, before: CGFloat, after: CGFloat, in c: CGContext, band: CGRect,
-                            style: Style) {
+    /// `newest`: the glyphs a key just added, fading in and growing (F1: K1, E2), in the same pass, one more factor on
+    /// each glyph's alpha and, for those few, a scale.
+    public static func draw(_ line: Shaped, before: CGFloat, after: CGFloat, newest: Newest = Newest(), in c: CGContext,
+                            band: CGRect, style: Style) {
         let bar = caretRect(in: band, style: style), w = Double(band.width)
         let baseline = band.midY - (CTFontGetAscent(style.font) - CTFontGetDescent(style.font)) / 2  // centres the glyphs
         c.saveGState()
@@ -142,13 +153,24 @@ public enum Line {
         func part(_ isAfter: Bool, from x0: CGFloat, clip: CGRect, alpha: (Double) -> Double) {
             c.saveGState()
             c.clip(to: clip)
+            let first = isAfter || newest.units == 0 ? Int.max : line.split - newest.units  // the newest glyphs' start
             for g in line.glyphs where g.after == isAfter {
-                let x = x0 + g.x, a = alpha(Double(x + g.advance / 2 - band.minX))
+                let x = x0 + g.x, new = g.index >= first
+                let a = alpha(Double(x + g.advance / 2 - band.minX)) * (new ? newest.alpha : 1)
                 guard a > 0, x < clip.maxX, x + g.advance > clip.minX else { continue }
                 c.setAlpha(CGFloat(a))
                 c.setFillColor(g.muted ? style.muted : style.text)
                 var id = g.id, p = CGPoint(x: x, y: baseline)
-                CTFontDrawGlyphs(g.font, &id, &p, 1, c)
+                if new && newest.scale != 1 {  // about its baseline-left
+                    c.saveGState()
+                    c.translateBy(x: x, y: baseline)
+                    c.scaleBy(x: CGFloat(newest.scale), y: CGFloat(newest.scale))
+                    p = .zero
+                    CTFontDrawGlyphs(g.font, &id, &p, 1, c)
+                    c.restoreGState()
+                } else {
+                    CTFontDrawGlyphs(g.font, &id, &p, 1, c)
+                }
             }
             c.restoreGState()
         }

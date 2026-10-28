@@ -13,6 +13,8 @@ final class Strip: NSView {
     /// One bitmap more than drawables, each with the command buffer that last read it.
     private var ring: [(buffer: MTLBuffer, context: CGContext, reader: MTLCommandBuffer?)] = []
     private var pixels = (w: 0, h: 0, row: 0), next = 0
+    /// `ring[next]` holds a frame drawn since the last resize.
+    private var drawn = false
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -50,7 +52,11 @@ final class Strip: NSView {
             let b = device.makeBuffer(length: pixels.row * h, options: .storageModeShared)!
             return (b, Line.context(width: w, height: h, rowBytes: pixels.row, scale: scale, data: b.contents()), nil)
         }
+        drawn = false
     }
+
+    /// The last frame presented, as an image (a copy of its bitmap), for the box's last look as it fades (P1, E1).
+    func lastFrame() -> CGImage? { drawn ? ring[next].context.makeImage() : nil }
 
     /// Draws a frame with `draw` (in points, origin at the bottom left) and presents it.
     func present(_ draw: (CGContext) -> Void) {
@@ -58,6 +64,7 @@ final class Strip: NSView {
         next = (next + 1) % ring.count
         ring[next].reader?.waitUntilCompleted()  // done long ago in practice; this makes it certain
         draw(ring[next].context)
+        drawn = true
         let commands = queue.makeCommandBuffer()!, blit = commands.makeBlitCommandEncoder()!
         let size = MTLSize(width: min(pixels.w, drawable.texture.width), height: min(pixels.h, drawable.texture.height),
                            depth: 1)  // a drawable from before a resize may be smaller

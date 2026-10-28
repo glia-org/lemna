@@ -1,7 +1,8 @@
 // Lemna: the writing surface (DESIGN.md S1 V2 B4 P0) in a small floating box over whatever the user is
 // doing, or in an ordinary window for long sessions (W2), kept in the journal (E2), with key clicks (K1), summoning
 // (hotkey, menu-bar item), and the end of a session: Done pastes into the app behind the box, or Copy, Save… or
-// Discard…, with R1 applied silently and the session finished at once (O1 O2 O3 R1).
+// Discard…, with R1 applied silently and the session finished at once (O1 O2 O3 R1); and the effects, switched in the
+// Effects submenu (F1).
 import AppKit
 import Carbon.HIToolbox
 import LemnaClicks
@@ -34,6 +35,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         UserDefaults.standard.register(defaults: [Self.soundKey: true])
         choice = SoundChoice(pack: UserDefaults.standard.string(forKey: Self.packKey),
                              on: UserDefaults.standard.bool(forKey: Self.soundKey))
+        effects = Effects(kept: UserDefaults.standard.dictionary(forKey: Self.effectsKey) as? [String: Bool])
         let font = (NSFont(name: "Menlo", size: 28) ?? .monospacedSystemFont(ofSize: 28, weight: .regular)) as CTFont
         let style = Style(font: font)
         view = LineView(style: style)
@@ -41,8 +43,11 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         view.onEdit = { [unowned self] in self.keeper.append($0) }
         view.onEscape = { [unowned self] in self.escape() }
         view.onKey = { [unowned self] in self.edge.clearNote() }  // the next key, Esc included
+        view.onShown = { [unowned self] in self.box.keyShown($0) }  // B2, K3, after the key's frame
         view.addSubview(edge)  // at the view's zero size, so the edge's autoresizing keeps it across the bottom
-        box = Box(lineHeight: BoxFrame.height(fontSize: style.size))
+        box = Box(lineHeight: BoxFrame.height(fontSize: style.size), style: style)
+        view.effects = effects
+        box.effects = effects
         // Window mode (W2 keeps v1's window for long sessions): titled, with its standard buttons, so tiling window
         // managers (AeroSpace, yabai) treat it as a normal window.
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1200, height: 700),
@@ -125,6 +130,32 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         clicks?.pack = choice.index
         clicks?.enabled = sound
         warnIfBluetooth()  // turned on over Bluetooth: said once for this output
+    }
+
+    // MARK: Effects (F1)
+
+    private static let effectsKey = "effects"
+    /// Session › Effects: which effects play, kept across launches (read at launch).
+    private var effects = Effects()
+
+    /// An effect from Session › Effects (the item's tag is its place in `Effects.Item.allCases`): its tick turns over,
+    /// or, while Off, the effects come back with it ticked.
+    @objc func chooseEffect(_ sender: NSMenuItem) {
+        effects.choose(Effects.Item.allCases[sender.tag])
+        keepEffects()
+    }
+
+    /// Session › Effects › Off: every effect stops (the glide and the fade as F0 had them), or comes back with its tick.
+    @objc func toggleEffects(_ sender: Any?) {
+        effects.toggle()
+        keepEffects()
+    }
+
+    /// The choice kept across launches and given to the line and the box.
+    private func keepEffects() {
+        UserDefaults.standard.set(effects.kept, forKey: Self.effectsKey)
+        view.effects = effects
+        box.effects = effects
     }
 
     // MARK: Summoning (W2)
@@ -211,12 +242,13 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     private var container: NSWindow { surface.mode == .box ? box.panel : window }
 
     /// Makes the screen match `surface`: at most one container on screen, the line in it. Off screen, a hand-off's note
-    /// goes: the next summon shows the line alone.
-    private func apply() {
+    /// goes: the next summon shows the line alone. `leaving`: how a box that goes leaves (P1's fade, E1's sheen at a
+    /// hand-off); for the window it goes at once.
+    private func apply(leaving: Box.Leaving = .fade) {
         let on = surface.onScreen
         let recoloured = on != nil && readContrast()
         if on != .box, box.isVisible {
-            box.hide()
+            box.hide(on == .window ? .atOnce : leaving)
             keeper.flushSoon()  // leaving the box is leaving Lemna: the full flush deactivating did in v1's window
         }
         // The line moved to the box: the window goes. In window mode hiding is the app's (`handBack`), which also keeps
@@ -353,6 +385,13 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         case #selector(chooseSound(_:)):
             item.state = sound && item.tag == choice.index ? .on : .off
             return true
+        case #selector(chooseEffect(_:)):  // Reduce Motion greys the ones that move, read as the menu opens
+            let effect = Effects.Item.allCases[item.tag], still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+            item.state = effects.plays(effect, reduceMotion: still) ? .on : .off
+            return Effects.available(effect, reduceMotion: still)
+        case #selector(toggleEffects(_:)):
+            item.state = effects.on ? .off : .on  // Off is ticked while the effects are off
+            return true
         default: return true
         }
     }
@@ -400,9 +439,12 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     private func copyOut(_ text: String, note: String?) {
         guard Clipboard.write(text) else { return notHandedOff("Not copied.") }
         guard finished() else { return }
-        if let note { return edge.showNote(note) }
+        if let note {
+            if surface.onScreen == .box { box.sweep() }  // E1 on the box that stays
+            return edge.showNote(note)
+        }
         surface.hide()
-        apply()
+        apply(leaving: .handOff)
         handBack()
     }
 
@@ -416,7 +458,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         guard Clipboard.write(text) else { return notHandedOff("Not pasted.") }
         guard finished() else { return }
         surface.hide()
-        apply()
+        apply(leaving: .handOff)  // the box is gone at once, its look fading: the ⌘V reaches the app behind
         bringForward(app)
         DispatchQueue.main.asyncAfter(deadline: .now() + Paste.settle) { [weak self] in
             guard let self else { return }
@@ -478,7 +520,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             UserDefaults.standard.set(url.deletingLastPathComponent().path, forKey: Self.folderKey)
             guard self.finished() else { return }
             self.surface.hide()
-            self.apply()
+            self.apply(leaving: .handOff)
             self.handBack()
         }
     }
@@ -558,7 +600,21 @@ func soundMenu(target: AnyObject?) -> NSMenu {
     return menu
 }
 
-/// Lemna: About, Quit; Session: Done, Copy, Save…, Discard…, Sound ▸; View: Open Window. As an accessory
+/// Session › Effects and the menu-bar item's Effects (F1 S1): a check item per effect, then Off, which stops them all
+/// and keeps their ticks; no key (effects are set once, not muted for a moment as the sound is). `target` as for Sound.
+func effectsMenu(target: AnyObject?) -> NSMenu {
+    let menu = NSMenu(title: "Effects")
+    for (i, effect) in Effects.Item.allCases.enumerated() {
+        let item = menu.addItem(withTitle: effect.title, action: #selector(App.chooseEffect(_:)), keyEquivalent: "")
+        item.tag = i
+        item.target = target
+    }
+    menu.addItem(.separator())
+    menu.addItem(withTitle: "Off", action: #selector(App.toggleEffects(_:)), keyEquivalent: "").target = target
+    return menu
+}
+
+/// Lemna: About, Quit; Session: Done, Copy, Save…, Discard…, Sound ▸, Effects ▸; View: Open Window. As an accessory
 /// app Lemna shows no menu bar, so this is where the key equivalents live (the menu-bar item's menu shows the items).
 /// No Edit menu yet, so no ⌘ shortcut but these reaches the text. Full screen: the window's green button.
 func mainMenu() -> NSMenu {
@@ -574,6 +630,7 @@ func mainMenu() -> NSMenu {
     session.addItem(withTitle: "Discard…", action: #selector(App.discard(_:)), keyEquivalent: "")
     session.addItem(.separator())
     session.addItem(withTitle: "Sound", action: nil, keyEquivalent: "").submenu = soundMenu(target: nil)  // Off ⌘K
+    session.addItem(withTitle: "Effects", action: nil, keyEquivalent: "").submenu = effectsMenu(target: nil)
     view.addItem(withTitle: "Open Window", action: #selector(App.toggleWindow(_:)), keyEquivalent: "f")
         .keyEquivalentModifierMask = [.control, .command]
     for menu in [app, session, view] { bar.addItem(withTitle: menu.title, action: nil, keyEquivalent: "").submenu = menu }

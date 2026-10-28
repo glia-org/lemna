@@ -248,9 +248,62 @@
   - After `app/make-cert.sh` (it makes "Lemna Dev") the next build signs with it: the Accessibility grant and the
     keychain item's access change once more (allow again; Always Allow). "Flow Dev" can then be deleted in Keychain
     Access, or kept as the fallback.
-- Next: the user picks J in `docs/design-panel-icon-round-2.html`; quits Flow and tries pass 13, then pass 12, pass 11
-  and pass 10, and what of v1, pass 6, pass 7b's click outside and pass 8 is still untried; runs `app/make-cert.sh` for
-  "Lemna Dev" when it suits; then DESIGN.md's Open items.
+- App, pass 14 (2026-10-28; the effects, DESIGN.md F1 and Plan item 11, amending F0, W2, S1's curve and G1 H1; the user,
+  after `docs/design-panel-lemna-effects.html`: "I like this, Go ahead with your picks", `T1 P1 G1 D1 Q1 B1 K1 E1+E2
+  S1`): Tokyo Night's colours in the box and the window (#1a1b26, text #c0caf5, muted #7f88b2, caret #7aa2f7, line
+  #3b4261; under Increase Contrast the muted grey #a9b1d6); the box opaque always, with a still 1 pt accent border
+  instead of the hairline; the dim the box's background at 0.5 instead of black at 0.35; the box opening in 250 ms from
+  95 % with a fade and closing in a 160 ms fade, the dim with it; the glide on easeOutQuint (the same 140 ms); the
+  newest glyph popping in (120 ms, from 0 and 95 %); a sheen across the box at a hand-off; the ` ¶ ` fading in on
+  Return; opt-in, off at first, the border warming with the keys and a sheen along it on Space; Session › Effects ▸
+  (and the menu-bar item's) with Pop, Border warms, Glyph pop-in, Word sheen, Hand-off sheen, Paragraph fade and Off.
+  Reduce Motion stops and greys Pop, Glyph pop-in and the sheens; the paragraph fade and the border's warmth stay. The
+  close takes the box off screen at once and fades its last look in a window that takes no keys and no clicks, so
+  nothing waits: Esc gives the keys back at once and a paste's ⌘V goes out at 120 ms as before. Tests: the app's 57
+  (51 before; new: the Effects defaults, Off, Reduce Motion, the round trip through a dictionary, the entrance on the
+  curve, the newest glyph's fade and scale in pixels; changed: the curve and the glide for easeOutQuint, the colours'
+  contrast, the renders in the new colours with `pop-in-8ms.png`, `glide-8ms.png`, `paragraph-fade-25ms.png`,
+  `paragraph-25ms.png`). The band's draw, measured beside the old loop (release, the box's band at 2×, best of five
+  2,000 frames): 41.0–41.6 µs per frame before, 40.9–41.4 µs during a pop-in, 42.5 µs during the ` ¶ `'s fade.
+  LemnaJournal 16 (the login-keychain test skipped), LemnaClicks 14 of 15 (`--skip playReturnsInMicroseconds`), both
+  untouched. `make-app.sh` builds, signs with "Lemna Dev" (made since pass 13; `codesign -dvv`: `Authority=Lemna
+  Dev`, `Identifier=dev.lemna.app`) and verifies; the executable is 0.90 MB (896,288 bytes, was 803,504), with no
+  `/Users/` path in it. The first signing with the new key waited about nine minutes on macOS's keychain question
+  (codesign asking to use the key "Lemna Dev") until it was answered; the rebuild after it signed without asking. The
+  new signature (Lemna Dev, not Flow Dev) asks for the Accessibility grant and the keychain item's access once more.
+  `app/README.md` (Pass 14) says what each part does. Not tried: nothing was launched. Try, after `app/make-app.sh` and
+  `open app/build/Lemna.app`:
+  - Open and close: summon from a light app (TextEdit) and a dark one: the box grows from a little smaller and fades in
+    over a quarter second, the dim with it; type at once: the first letters land and show while it opens. Esc: it
+    fades out over a sixth of a second. Does the open feel quick or slow? Does Esc feel laggy with the fade (the panel's
+    risk line: Omarchy makes keyboard dismissals jump)? If it does, Effects ▸ Pop off makes both instant; say so, and
+    Esc alone can jump. Type straight after Esc: the letters go to the app behind, none into Lemna. Summon again at
+    once after Esc: the fading box is gone and the new one opens. Watch the box's shadow at the open's end: if it
+    snaps in or out of place, that is the shadow taken again at full size.
+  - The colours: the box #1a1b26 with the accent border, the text #c0caf5, the ` ¶ ` #7f88b2; the dim over a light and a
+    dark app (the box's background at half strength; over a white page it should be calmer than before; over a dark
+    terminal, nearly nothing). The window (⌃⌘F) in the same colours, without the border. The app icon is unchanged.
+  - The glide: type at speed; the new letter comes out from under the caret faster at first (90 % in about 50 ms) and
+    settles. Too jumpy? (One line in `Curve` takes the cubic back.)
+  - Glyph pop-in at 12 keys/s: a fast burst for half a minute: each new letter fades in as it comes out from under the
+    caret; does it read as softer, as lag, or not at all? Effects ▸ Glyph pop-in off for the difference.
+  - Paragraph fade: Return: the ` ¶ ` fades in over about a tenth of a second.
+  - Hand-off sheen vs paste timing: summon from TextEdit, write, ⌘⏎: a band of light crosses the box left to right as
+    it fades, and the text lands in TextEdit at the same moment as before, not after the sheen. Also ⌘⇧⏎ (copy) and ⌘S
+    (after the save panel's Save). ⌘⏎ in a password field (Secure Input): the box stays with its note and the sheen
+    crosses it in place.
+  - Each toggle in Session › Effects ▸ (the menu-bar item's): unticking one stops it from the next key or summon,
+    relaunch keeps the ticks; Off: no pop, no pop-in, no sheen, no fade, the border still accent; Off again (or an item
+    chosen while Off): back with the ticks.
+  - Border warms (tick it): type: the border has the accent; stop: half a second later it cools to a dark grey-blue
+    over 1.5 s; the next key brings the accent back in 150 ms. It should never dip between keys while typing on.
+  - Word sheen (tick it): each Space sends a light along the border, top and bottom. Visible? Distracting?
+  - Reduce Motion (System Settings › Accessibility › Display › Reduce motion): the box comes and goes at once, no
+    pop-in, no sheens; in Effects ▸ Pop, Glyph pop-in, Word sheen and Hand-off sheen are grey and unticked; Paragraph
+    fade and Border warms keep their ticks and still play; the glide jumps as before.
+  - Increase Contrast (the same pane): the ` ¶ ` and a bottom-edge note a lighter grey (#a9b1d6) at the next summon.
+- Next: the user quits Flow and tries pass 14, pass 13, then pass 12, pass 11 and pass 10, and what of v1, pass 6, pass
+  7b's click outside and pass 8 is still untried; then DESIGN.md's Open items.
 
 ## Build and run
 

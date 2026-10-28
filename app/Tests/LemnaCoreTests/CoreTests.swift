@@ -75,19 +75,32 @@ func shown(_ t: Text, around n: Int = 999) -> (before: String, after: String, mu
     #expect(Line.width("", font: menlo) == 0)
 }
 
-@Test func easeOutCubic() {
-    #expect(Line.ease(0) == 0)
-    #expect(Line.ease(1) == 1)
-    #expect(Line.ease(0.5) == 0.875)
-    #expect(Line.ease(-1) == 0 && Line.ease(2) == 1)
-    #expect(Line.ease(0.2) < Line.ease(0.3))
+@Test func easeOutQuint() {
+    let q = Curve.easeOutQuint
+    #expect(q(0) == 0 && q(1) == 1)
+    #expect(q(-1) == 0 && q(2) == 1)
+    // cubic-bezier(0.23, 1, 0.32, 1) over the glide's 140 ms: the first three 120 Hz frames (the panel's 25, 46, 63 %;
+    // the ease-out cubic before it gave 17, 32, 45 %), then 90 % at about 51 ms.
+    let frames = [1.0, 2, 3].map { q($0 / 120 / Line.glideDuration) }
+    #expect(zip(frames, [0.248, 0.462, 0.632]).allSatisfy { abs($0 - $1) < 0.002 }, "\(frames)")
+    #expect(q(0.050 / Line.glideDuration) > 0.89 && q(0.050 / Line.glideDuration) < 0.9)
+    #expect(q(0.052 / Line.glideDuration) > 0.9)
+    // Its x solved for the time: the curve's own points, and steadily rising, never past 1.
+    let us = stride(from: 0.0, through: 1, by: 0.01).map(q)
+    #expect(zip(us, us.dropFirst()).allSatisfy { $0 < $1 || $1 == 1 } && us.allSatisfy { $0 <= 1 })
+    let (x1, x2) = (Curve.controlPoints.x1, Curve.controlPoints.x2)
+    for t in [0.1, 0.3, 0.5, 0.8] {  // at the bezier's own parameter t: x(t) in, 1 − (1 − t)³ out (y1 = y2 = 1)
+        let x = 3 * (1 - t) * (1 - t) * t * x1 + 3 * (1 - t) * t * t * x2 + t * t * t
+        #expect(abs(q(x) - (1 - (1 - t) * (1 - t) * (1 - t))) < 1e-7)
+    }
 }
 
 @Test func glideStartsAtAdvanceAndEasesToZeroIn140ms() {
     var g = Glide()
     g.add(10, at: 1, reduceMotion: false)
     #expect(g.offset(at: 1) == 10)
-    #expect(abs(g.offset(at: 1.07) - 1.25) < 1e-9)  // (1 − 0.5)³ of it left at half time
+    #expect(g.offset(at: 1.050) > 1 && g.offset(at: 1.050) < 1.1)  // 90 % of the way at about 50 ms (the cubic: 75)
+    #expect(g.offset(at: 1.07) < 0.4)  // under 4 % left at half time (the cubic left 12.5 %)
     #expect(g.active(at: 1.1))
     #expect(g.offset(at: 1.141) == 0 && !g.active(at: 1.141))
 }

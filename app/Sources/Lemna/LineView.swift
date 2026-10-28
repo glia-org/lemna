@@ -1,7 +1,8 @@
 // The writing surface (DESIGN.md S1 V2 B4 P0): the view fills its container (the box, or the window: one view moved
 // between them, W2), its layer paints the background, and the line is drawn into the strip across its middle on each
-// key and, while a glide runs, on each display refresh. The caret moves through the text and edits anywhere (B4);
-// every change to the text leaves as a journal edit (E2) and, ahead of the drawing, as a click (K1).
+// key and, while a glide or an entrance runs, on each display refresh. The caret moves through the text and edits
+// anywhere (B4); every change to the text leaves as a journal edit (E2) and, ahead of the drawing, as a click (K1). The
+// newest glyph pops in and a Return's ` ¶ ` fades in, in the same frames (F1: K1, E2).
 import AppKit
 import LemnaClicks
 import LemnaCore
@@ -25,6 +26,13 @@ final class LineView: NSView, NSTextInputClient {
     var onKey: () -> Void = {}
     /// False during a hand-off (Done, Copy, Save…): keys do nothing and the line keeps its last frame.
     private(set) var accepting = true
+    /// The Effects submenu (F1), for the glyph pop-in (K1) and the paragraph fade (E2); set by the app.
+    var effects = Effects()
+    /// After a key's frame is on screen: what the key added before the caret ("" for a delete, a move, a dead key), for
+    /// the box's border (B2) and the word sheen (K3). Called after the frame, so they never delay it.
+    var onShown: (String) -> Void = { _ in }
+    /// The newest glyphs' entrance (K1, E2): one at a time.
+    private var entrance = Entrance()
     /// `glide` moves the text before the caret (an edit there), `slide` the whole text (a caret move): S1, B4.
     private var shaped = Shaped(), glide = Glide(), slide = Glide()
     /// About one word: the most a held ← leaves the text behind the caret.
@@ -92,26 +100,30 @@ final class LineView: NSView, NSTextInputClient {
     private func render(at t: Double) {
         guard window?.isVisible == true, !isHiddenOrHasHiddenAncestor else { return }
         let band = CGRect(origin: .zero, size: strip.bounds.size), moved = CGFloat(slide.offset(at: t))
-        let edit = CGFloat(glide.offset(at: t))
-        strip.present { Line.draw(shaped, before: edit + moved, after: moved, in: $0, band: band, style: style) }
+        let edit = CGFloat(glide.offset(at: t)), newest = entrance.newest(at: t)
+        strip.present {
+            Line.draw(shaped, before: edit + moved, after: moved, newest: newest, in: $0, band: band, style: style)
+        }
     }
 
     @objc private func tick(_ l: CADisplayLink) {
         if keyFrame <= l.timestamp { render(at: l.targetTimestamp) }  // else a key already drew this refresh's frame
-        if !gliding(at: l.targetTimestamp) { l.isPaused = true }
+        if !animating(at: l.targetTimestamp) { l.isPaused = true }
     }
 
-    private func gliding(at t: Double) -> Bool { glide.active(at: t) || slide.active(at: t) }
+    private func animating(at t: Double) -> Bool { glide.active(at: t) || slide.active(at: t) || entrance.active(at: t) }
 
     /// Shows a change at once, on the key event itself: the text before the caret moved left by `dw` points (an edit
     /// there), the whole text by `ds` (a caret move; capped at a word behind, and starting at most a band's width
-    /// away), or neither (a deletion after the caret closes up at once).
-    private func edited(before dw: CGFloat = 0, moved ds: CGFloat = 0) {
+    /// away), or neither (a deletion after the caret closes up at once). `typed`: what the key added before the caret,
+    /// which enters (K1, E2); nil for anything else, which ends an entrance under way.
+    private func edited(before dw: CGFloat = 0, moved ds: CGFloat = 0, typed: String? = nil) {
         let now = CACurrentMediaTime(), still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         shaped = Line.shape(text, marked: marked, font: style.font)
         glide.add(Double(dw), at: now, reduceMotion: still)
         slide.add(Double(ds), at: now, reduceMotion: still, cap: max(abs(Double(ds)), Double(word)),
                   limit: Double(bounds.width))
+        entrance = entering(typed, at: now, reduceMotion: still)
         // Drawn as the glides will stand when the frame is on screen (the display link's next target while that lies
         // ahead, else about one refresh on): at the key's own time the new glyph is still wholly under the caret, and the
         // frame would show nothing new.
@@ -119,7 +131,25 @@ final class LineView: NSView, NSTextInputClient {
         let shown = target > now ? target : now + refresh
         keyFrame = now
         render(at: shown)
-        if gliding(at: shown) { link?.isPaused = false }
+        if animating(at: shown) { link?.isPaused = false }
+        onShown(typed ?? "")
+    }
+
+    /// The entrance for what a key added (F1): a Return's ` ¶ ` fades in (E2), anything else typed pops in (K1); none
+    /// while that effect is off, or Reduce Motion stops it.
+    private func entering(_ typed: String?, at t: Double, reduceMotion: Bool) -> Entrance {
+        guard let typed, !typed.isEmpty else { return Entrance() }
+        let paragraph = typed == "\n"
+        guard effects.plays(paragraph ? .paragraphFade : .glyphPopIn, reduceMotion: reduceMotion) else { return Entrance() }
+        let units = typed.replacingOccurrences(of: "\n", with: Line.paragraphEnd).utf16.count  // as the line shows it
+        return Entrance(units: units, at: t, grows: !paragraph)
+    }
+
+    /// The line's last frame and where it sits in the container, for the box's last look as it fades (P1, E1); nil
+    /// before anything was drawn.
+    func snapshot() -> (image: CGImage, frame: CGRect)? {
+        guard let image = strip.lastFrame() else { return nil }
+        return (image, convert(strip.frame, to: superview))
     }
 
     private func width(_ s: String) -> CGFloat { Line.width(s, font: style.font) }
@@ -129,7 +159,7 @@ final class LineView: NSView, NSTextInputClient {
         for e in change.edits { onEdit(e) }
         switch change.motion {
         case .none: break
-        case .before(let added, let removed): edited(before: width(added) - width(removed))
+        case .before(let added, let removed): edited(before: width(added) - width(removed), typed: added)
         case .after: edited()
         case .caret(let passed, let leftward): edited(moved: leftward ? -width(passed) : width(passed))
         }
@@ -147,7 +177,7 @@ final class LineView: NSView, NSTextInputClient {
 
     /// Shows `t` at rest and takes keys: the restore at launch, and the clear after a session ends.
     func load(_ t: Text) {
-        (text, marked, glide, slide, accepting) = (t, "", Glide(), Glide(), true)
+        (text, marked, glide, slide, entrance, accepting) = (t, "", Glide(), Glide(), Entrance(), true)
         inputContext?.discardMarkedText()  // after `marked` is empty, so an unmarkText it may send adds nothing
         shaped = Line.shape(text, marked: "", font: style.font)
         if window != nil { render(at: CACurrentMediaTime()) }
@@ -162,6 +192,7 @@ final class LineView: NSView, NSTextInputClient {
             marked = ""
             shaped = Line.shape(text, marked: "", font: style.font)
         }
+        entrance = Entrance()
         inputContext?.discardMarkedText()
     }
 
@@ -223,9 +254,9 @@ final class LineView: NSView, NSTextInputClient {
         let change = text.insert(s, replacing: pressAndHold ? r.length : 0), old = marked
         marked = ""
         for e in change.edits { onEdit(e) }
-        var dw = -width(old)  // the pending text it takes the place of
-        if case .before(let added, let removed) = change.motion { dw += width(added) - width(removed) }
-        edited(before: dw)
+        var dw = -width(old), typed: String?  // the pending text it takes the place of
+        if case .before(let added, let removed) = change.motion { (dw, typed) = (dw + width(added) - width(removed), added) }
+        edited(before: dw, typed: typed)
     }
     func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
         guard accepting else { return }

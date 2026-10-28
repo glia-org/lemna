@@ -8,7 +8,9 @@ the box (it also brought Harper's suggestions to the review, R2, which pass 9 re
 the journal in format 2; then pass 10: no review, Done pastes at once with R1 applied silently, and the session frame
 (M1) is gone; then pass 11: three more click packs and a Sound submenu (K1), the text left on the clipboard after a
 paste, the box opaque under Reduce Transparency and the muted grey lighter under Increase Contrast; then pass 12:
-the menu-bar mark M3 and the app icon (L1); then pass 13: the name, Lemna (N; Flow was the working name). Swift +
+the menu-bar mark M3 and the app icon (L1); then pass 13: the name, Lemna (N; Flow was the working name); then pass 14:
+the effects (F1): Tokyo Night's colours, the box's pop, accent border and theme dim, the glide on easeOutQuint, the
+glyph pop-in, the sheens, the paragraph fade and Session › Effects ▸. Swift +
 AppKit, SwiftPM with the Command Line Tools only (no Xcode), two package dependencies by path (`../lib/LemnaJournal`,
 `../lib/LemnaClicks`), signed with a self-signed certificate or ad-hoc (there is no Developer ID yet).
 
@@ -45,7 +47,9 @@ and `iconutil -c icns` packs them; the iconset is written afresh each run, and t
 The tests need no window and no keychain (the journal test keeps its key in memory). `offscreenRenders` draws the
 window's content as the app does (1200 × 700 pt at 2×) and writes `app/renders/idle.png`, `glide-0.png`,
 `glide-70ms.png`, `glide-140ms.png` (after a new key), `marked.png` (a pending `´` at the caret), `editing.png` (the caret
-back in the text, the text after it shown) and `move-left-70ms.png` (70 ms into a ← there); the mark test writes
+back in the text, the text after it shown) and `move-left-70ms.png` (70 ms into a ← there), and since pass 14
+`glide-8ms.png` and `pop-in-8ms.png` (the first 120 Hz frame after a key, without and with the glyph pop-in) and
+`paragraph-25ms.png` and `paragraph-fade-25ms.png` (25 ms after a Return, without and with the ` ¶ `'s fade); the mark test writes
 `mark-M3-1x.png` and `mark-M3-2x.png` (16 and 32 px, black on clear). `app/build/` and `app/renders/` are
 git-ignored.
 
@@ -54,14 +58,17 @@ git-ignored.
 - `Sources/LemnaCore` (no AppKit): `Text.swift` the model (one string with `"\n"` between paragraphs and a caret in
   Characters; each key's edits and motion as a `Change`; a journal edit applied, the replay; the line's two parts
   around the caret with ` ¶ `), `Line.swift` the geometry and drawing (Core Text shaping around the caret, the two
-  fades, the clips at the caret, caret, the band), `Glide.swift` the glide, `Mechanical.swift`
+  fades, the clips at the caret, caret, the band, the newest glyphs' look, the colours), `Glide.swift` the glide, the curve
+  (`Curve.easeOutQuint`) and the newest glyphs' entrance (`Entrance`), `Effects.swift` the Effects submenu's choice,
+  `Mechanical.swift`
   the deterministic pass R1, `Session.swift` the end of a session as a state machine, `Summoning.swift` the menu-bar
   mark and when the Bluetooth notice shows, `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
   holds the line (`Surface`) and when a click outside hides the box (`ClickOutside`), `Paste.swift` the paste's
   decision table.
-- `Sources/Lemna`: `main.swift` the app, window, menus, clicks and the sound toggle, summoning and the two containers
+- `Sources/Lemna`: `main.swift` the app, window, menus, clicks and the sound toggle, the Effects submenu, summoning and the two containers
   (`apply()`), a click outside the box, and the end of a session (Done's paste or copy, Copy, Save, Discard, each
-  finishing at once); `Box.swift` the box (the non-activating panel, the dim overlays, the line in it); `Paste.swift`
+  finishing at once); `Box.swift` the box (the non-activating panel, the dim overlays, the line in it; since pass 14 its
+  face, the border and the sheen, its open and close, the last look that fades, the warming border); `Paste.swift`
   the pasteboard (Copy's item; since pass 11 nothing is read from it) and the posted ⌘V; `Keeper.swift` the journal in
   the app (open and restore, append, the flushes); `LineView.swift` the view (text input, the keys of B4, edits as
   journal edits and clicks, the two glides, display link); `Strip.swift` the Metal band (Core Graphics into a shared
@@ -73,7 +80,8 @@ git-ignored.
   journal round trip through the app's replay, edits in the middle included (`JournalReplayTests`); the menu-bar mark,
   the Bluetooth notice, the muted colour's contrast (`FrameTests`); the box's frame and its clamps, one container at a
   time, the paste's decision table, the click-outside guard's table (`BoxTests`); the Sound submenu's default, a
-  pack's choice and ⌘K (`SoundTests`).
+  pack's choice and ⌘K (`SoundTests`); the Effects submenu's defaults, Off, Reduce Motion and its round trip through a
+  dictionary, the entrance on the curve, the newest glyph's fade and scale (`EffectsTests`).
 
 ## What it covers
 
@@ -83,7 +91,7 @@ Milestone 1, the surface (the window is window mode since pass 6, below):
   remembered), so tiling window managers place it; full screen from the green button (⌃⌘F is Open Window since pass
   6). No Edit menu yet.
 - The line: Menlo 28 pt, its end at a caret fixed at 60 % of the width, vertically centred; the whole line glides left
-  by each key's advance over 140 ms (ease-out cubic, a leftover capped at one advance), and back on backspace; nothing
+  by each key's advance over 140 ms (ease-out cubic, a leftover capped at one advance; easeOutQuint since pass 14), and back on backspace; nothing
   is drawn right of the caret (since pass 8: of the text before it); glyphs fade from full strength at 45 % of the width to nothing at 25 %. Reduce Motion
   jumps. A resize lays the line out again.
 - The model: paragraphs; Return ends one (twice leaves a blank line), shown on the line as a muted ` ¶ `; backspace only
@@ -166,14 +174,15 @@ Pass 6, the box and paste (W2, O3):
   on all Spaces and as a full-screen auxiliary, transient (left out of Mission Control), `hidesOnDeactivate` off,
   movable by its background, on and off screen at once. Content: `#0e1013`, 10 pt corners, a 1 pt `#262b32` border
   drawn over the content (the line sits 1 pt inside it), the system shadow along the rounded outline;
-  the whole panel at alpha 0.97 (on the background alone, the opaque Metal band would show as a darker stripe). Size
+  the whole panel at alpha 0.97 (on the background alone, the opaque Metal band would show as a darker stripe). (Since
+  pass 14: `#1a1b26`, opaque, a 1 pt accent border, opening and closing with a fade; below.) Size
   (`BoxFrame`): 60 % of the visible frame of the screen with the pointer (at least 600 pt, at most the screen), 4 em
   tall (112 pt at 28 pt: the line's 2 em band with one em above and below), centred across, its centre two thirds of
   the way down, on whole points, inside the visible frame. A box dragged elsewhere goes back to that place at the next
   summon.
 - The dim: one borderless window per screen, black at 0.35, transparent to the mouse, one level under the box, the
   box's collection behaviour, on and off with the box at once; fitted to the screens at each summon. The menu bar and
-  the Dock stay above it.
+  the Dock stay above it. (Since pass 14 the box's background at 0.5, fading with the box.)
 - The line: one `LineView`, moved between the box and the window (whichever is on screen); its caret stays at 60 % of
   the container. It draws only while it is on screen (a hidden layer may keep its drawables), and once per show.
   The bottom edge (the Bluetooth notice, a hand-off's note) is its subview, so it sits at the box's bottom edge
@@ -362,7 +371,65 @@ Pass 13, the name (DESIGN.md N, 2026-10-28):
   and one in use stay). Build: the executable is 0.80 MB (803,504 bytes; 798,160 before), signed with "Flow Dev" (no
   "Lemna Dev" yet).
 
+Pass 14, the effects (DESIGN.md F1, amending F0, W2, S1's curve and G1 H1, 2026-10-28):
+
+- Colours (T1, `Style`): Tokyo Night's roles as the terminal app and the brief app use them, in the box and the window: background
+  #1a1b26, text #c0caf5 (10.6:1), muted #7f88b2 (4.9:1; under Increase Contrast #a9b1d6, 8.1:1), caret #7aa2f7
+  (`Style.accent`, 6.8:1), line #3b4261 (`Style.line`). The bottom edge's text takes the muted grey as before.
+- The box (`Box.swift`): opaque always (Q1; no Reduce Transparency case, nothing read for it). The panel's content is
+  the background with its 10 pt corners and the line; over the line a `Face`, a layer-hosting view of Lemna's own
+  that lets clicks through, holds the border (B1: 1 pt, `#7aa2f7`, on the box's whole points, so sharp at 1× and
+  2×) and above it the sheen, so the word sheen can light the border.
+- The dim (D1): per screen as before, a layer-hosting view whose layer is the box's background at opacity 0.5.
+- Open (P1): from off screen the panel's alpha goes from 0 to 1 (`NSAnimationContext` and `animator()`, so the
+  system shadow fades with it) and the content layer's transform from 95 % about its middle to identity
+  (`CABasicAnimation`), both 250 ms on `quint` (`CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1)`); the dim's
+  layers fade to 0.5 alike. The panel is key and the line draws from the first instant; once grown, the shadow is
+  taken again (`invalidateShadow`).
+- Close (P1): `Box.hide(_:)` takes the panel off screen at once, so the keys (and a paste's ⌘V, 120 ms on) go to the
+  app behind as before. Its last look goes into a second borderless panel (`ghost`: never key, ignores the mouse,
+  the same level, its own shadow): the strip's last frame (`Strip.lastFrame`, `LineView.snapshot`) in place under a
+  `Face` with the border's colour as it showed; that panel's alpha fades to 0 over 160 ms on `quint`, then it goes,
+  and the dim fades with it. At a hand-off (`.handOff`: the paste, Copy, Save…) the sheen crosses it first: 300 ms,
+  the fade starting at 140 ms so both end together. Open Window (`.atOnce`) and Reduce Motion, or Pop unticked, go at
+  once. A summon during the fade removes the last look at once. `turn` moves on at each show and hide, so a late
+  fade's end or a cooling does nothing.
+- The glide (G1): `Curve.easeOutQuint`, the bezier's x solved for the time (Newton, then bisection), in `Glide`; the
+  same 140 ms; Reduce Motion jumps as before. `Line.ease` (the cubic) is gone.
+- Glyph pop-in (K1) and paragraph fade (E2): `LineView` keeps one `Entrance` (the UTF-16 units the key added before
+  the caret, its time, whether it grows): typing starts one that grows (K1), Return one for the ` ¶ ` that only fades
+  (E2), anything else (a delete, a move, a dead key's mark) ends it, and the next key replaces it (the glyph before
+  drawn whole). `Line.draw` takes `Newest` (units, alpha, scale): each glyph's alpha gets one more factor, and the
+  newest few are drawn scaled about their baseline-left in the same pass (`Glyph.index`, `Shaped.split` tell which).
+  The display link runs while an entrance does, as while a glide does.
+- The sheens (E1, K3, `Face.sweep`): a `CAGradientLayer` as wide as the box is tall (clear, white, clear), leaning
+  45° (`m21 = 1`), moved by `position.x` from left of the box to right of it in 300 ms at an even pace, clipped to the
+  rounded box; peak α 0.14 across the box (E1), or masked to the border's 1 pt band at peak α 0.35 (K3, on Space or
+  a no-break space, not on Return). E1 on a box that stays (⌘⏎ copied instead, with its note) crosses it in place.
+- Border warms (B2, `Box.keyShown`): after each key's frame (`LineView.onShown`), the border is warm; the first key
+  after it cooled animates the accent back in 150 ms on `quint`; one timer per pause looks 0.5 s after the last key
+  and cools the border evenly to `Style.line` over 1.5 s. Turning it off while cooled warms the border at once.
+- Session › Effects ▸ (`effectsMenu`, in the main menu and the menu-bar item's menu): Pop, Border warms, Glyph pop-in,
+  Word sheen, Hand-off sheen, Paragraph fade (check items, tags = `Effects.Item.allCases`), then Off (no key).
+  `Effects` (LemnaCore): the ticks and Off; `plays(_:reduceMotion:)`, `available` (Reduce Motion greys Pop, Glyph
+  pop-in and the sheens), `duration` (0 when it does not play), `choose` (while Off: back on with the item ticked),
+  `toggle`; kept in UserDefaults as `effects`, a dictionary of the item names and `on`. The menu reads Reduce Motion
+  as it opens; the line and the box read it at each key, show and hide.
+- Measured: the band's draw beside the old loop (release, the box's band 905 × 56 pt at 2×, a 200-glyph line, best
+  of five 2,000 frames): 41.0–41.6 µs per frame before, 40.9–41.4 µs during a pop-in, 42.5 µs during the ` ¶ `'s
+  fade. The latency budget (key → presented p50/p90 no worse than the spike's 42/60 ms) was not measured: nothing was
+  launched.
+- Build: the executable is 0.90 MB (896,288 bytes; 803,504 before), no `/Users/` path in it; signed with "Lemna
+  Dev", which `make-app.sh` now finds. The first signing with that key waited on macOS's question whether codesign may
+  use it; once answered, builds sign without asking.
+
 ## Known gaps
+
+- Pass 14 is not tried: nothing was launched. Untried: the open and close's feel and whether Esc feels slow with the
+  fade; whether the ghost hands over from the box without a blank frame (`CATransaction.flush` before the box goes);
+  how the system shadow behaves while the content grows (taken again at the end); whether AppKit's window-alpha
+  animation keeps `quint`; the pop-in at speed; the sheen against the paste's timing; B2 and K3; the dim over light
+  and dark apps; the box's look under Reduce Motion and Increase Contrast. The app icon (L1) keeps its old colours.
 
 - Pass 13 is not tried: nothing was launched; nothing showed the new name, the Accessibility prompt for the new id,
   or a Flow session coming along in the real keychain (the tests use a key store in memory).
