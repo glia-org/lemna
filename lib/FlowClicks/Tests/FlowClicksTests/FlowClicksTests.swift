@@ -5,16 +5,19 @@ import Testing
 
 // MARK: The default pack
 
-/// The default pack from the source tree: `SoundPack.bundled()` reads an app's Contents/Resources, which a test lacks.
-private func defaultPack() throws -> SoundPack {
+/// A pack from the source tree: `SoundPack.bundled()` reads an app's Contents/Resources, which a test lacks.
+private func pack(_ folder: String) throws -> SoundPack {
     let package = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         .deletingLastPathComponent()
-    return try SoundPack(folder: package.appendingPathComponent("Sources/FlowClicks/DefaultPack"))
+    return try SoundPack(folder: package.appendingPathComponent("Sources/FlowClicks/\(folder)"))
 }
 
+private func defaultPack() throws -> SoundPack { try pack("DefaultPack") }
+
 @Test func bundledThrowsWithoutThePackInTheApp() {
-    // The test runner is not an app: no DefaultPack in its resources.
+    // The test runner is not an app: no pack in its resources.
     #expect(throws: ClickError.self) { try SoundPack.bundled() }
+    #expect(throws: ClickError.self) { try SoundPack.bundled("TypewriterPack") }
 }
 
 @Test func defaultPackMeetsTheFormat() throws {
@@ -35,6 +38,46 @@ private func defaultPack() throws -> SoundPack {
         bytes += try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
     }
     #expect(bytes <= 600_000)
+}
+
+// MARK: The packs beside it (DESIGN.md K1: Typewriter, Soft, Electric)
+
+@Test(arguments: ["TypewriterPack", "SoftPack", "ElectricPack"])
+func packLoadsAndMapsEachKeyToItsOwnCuts(_ folder: String) throws {
+    let p = try pack(folder)
+    #expect(p.licence == (folder == "ElectricPack" ? "CC-BY-4.0" : "CC0-1.0"))
+    #expect(p.files[.letter]?.count == 6)
+    for kind in [KeyKind.space, .paragraph, .backspace] {
+        #expect(p.files[kind]?.count == 2, "\(kind)")
+    }
+    var bytes = 0, count = 0
+    for (kind, urls) in p.files {
+        for url in urls {
+            let file = try AVAudioFile(forReading: url)
+            let name = url.lastPathComponent
+            #expect(name.hasPrefix("\(kind)-"), "\(name)")  // Return plays the carriage return, ⌫ its own cuts
+            #expect(file.fileFormat.sampleRate == 48_000, "\(name)")
+            #expect(file.fileFormat.channelCount == 1, "\(name)")
+            #expect(file.fileFormat.commonFormat == .pcmFormatInt16, "\(name)")
+            // A carriage return may run long, as paragraphs are rare; every other key stays a click.
+            #expect(Double(file.length) / 48_000 <= (kind == .paragraph ? 1.0 : 0.150), "\(name)")
+            bytes += try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+            count += 1
+        }
+    }
+    #expect(count == 12)
+    #expect(bytes <= 1_000_000)
+}
+
+@Test func theCCBYPackCarriesItsCreditLine() throws {
+    let credit = try pack("ElectricPack").attribution ?? ""
+    #expect(credit.contains("by magedu") && credit.contains("CC BY 4.0"))
+    #expect(credit.contains("https://creativecommons.org/licenses/by/4.0/"))
+    #expect(credit.contains("https://freesound.org/people/magedu/packs/17107/"))
+    for id in [277721, 277724, 319944, 319945] {
+        #expect(credit.contains("https://freesound.org/people/magedu/sounds/\(id)/"), "\(id)")
+    }
+    #expect(try defaultPack().attribution == nil && pack("TypewriterPack").attribution == nil)  // CC0: none owed
 }
 
 @Test func packJSONMustNameEveryKindAndNoOther() throws {
@@ -95,6 +138,18 @@ private func defaultPack() throws -> SoundPack {
         #expect(seen == Set(first..<first + counts[kind.rawValue]), "\(kind)")
         first += counts[kind.rawValue]
     }
+}
+
+@Test func eachPacksPickerStaysInItsPartOfTheTable() {
+    // The player lays the packs out one after the other: the second pack's 12 samples follow the first's 12.
+    var picker = Picker(counts: [6, 2, 2, 2], seed: 3, base: 12)
+    var seen: [KeyKind: Set<Int>] = [:]
+    for i in 0..<10_000 {
+        let kind = KeyKind.allCases[i % 4]
+        seen[kind, default: []].insert(picker.next(kind).sample)
+    }
+    #expect(seen[.letter] == Set(12..<18) && seen[.space] == [18, 19])
+    #expect(seen[.paragraph] == [20, 21] && seen[.backspace] == [22, 23])
 }
 
 @Test func rateStaysWithinThreePercent() {
@@ -198,6 +253,19 @@ private var hasOutput: Bool { OutputDevice.defaultID() != nil }
         player.play(.paragraph)
         Thread.sleep(forTimeInterval: 0.2)
         #expect(player.mixer.consumed == 11)  // the engine runs again
+    }
+
+    /// Silent: loads every pack into one player and switches between them; nothing is played.
+    @Test(.enabled(if: hasOutput, "no audio output device: engine test skipped"))
+    func allPacksLoadIntoOnePlayer() throws {
+        let folders = ["DefaultPack", "TypewriterPack", "SoftPack", "ElectricPack"]
+        let player = try ClickPlayer(packs: folders.map(pack))
+        #expect(player.packs.map(\.name) == (try folders.map { try pack($0).name }))
+        #expect(player.mixer.sampleCount == 48)  // 12 per pack, all in one table
+        #expect(player.pack == 0)
+        player.pack = 3
+        #expect(player.pack == 3)
+        #expect(player.mixer.consumed == 0)
     }
 
     @Test func bluetoothFlagReads() throws {

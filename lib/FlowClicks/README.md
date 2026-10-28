@@ -1,8 +1,8 @@
 # FlowClicks
 
 The key click player of Flow (DESIGN.md K1): a click on key-down in the app's own window, from preloaded
-samples, varied per key, through one audio stream that stays open. A SwiftPM library, macOS 14, no
-dependencies.
+samples, varied per key, through one audio stream that stays open. Four packs: the default (a Keychron K10),
+Typewriter, Soft and Electric. A SwiftPM library, macOS 14, no dependencies.
 
 ## API
 
@@ -10,6 +10,8 @@ dependencies.
 import FlowClicks
 
 let clicks = try ClickPlayer(pack: SoundPack.bundled())  // starts the engine, loads every sample
+let all = try ClickPlayer(packs: ["DefaultPack", "TypewriterPack"].map { try SoundPack.bundled($0) })
+all.pack = 1                      // which pack plays: an index, every pack is loaded already
 clicks.play(.letter)              // on key-down: .letter, .space, .paragraph (Return), .backspace
 clicks.enabled = false            // play() does nothing and the engine pauses
 clicks.volume = 0.6               // 0–1, the default
@@ -22,14 +24,16 @@ clicks.ioBufferFrames             // the IO buffer the device accepted (128 aske
   drawing, so the sound leaves ahead of the picture.
 - `isBluetoothOutput` is re-read whenever the default output device changes; Bluetooth headphones play every
   click 120–300 ms late and no code can shorten that, so the app warns once (`onOutputChanged`).
-- `init` throws `ClickError` when there is no output device or a file of the pack will not load.
+- `init` throws `ClickError` when there is no output device or a file of a pack will not load.
+- `pack` switches packs without loading anything (all of them are in the mixer's table from `init`), so it can
+  change while typing goes on; the key handler never waits for it.
 
 ## How the latency path works
 
-1. `play` picks the sample (a random one of its kind, never the one played before) and a playback rate within
-   ±3 %, and pushes the pair into a lock-free single-producer, single-consumer ring (`Sources/ClickRing`,
-   C11 atomics, because Swift's `Atomic` needs macOS 15). No allocation, no lock, no Objective-C call:
-   0.5–17 µs measured in a release build.
+1. `play` picks the sample (a random one of its kind in the playing pack, never the one played before) and a
+   playback rate within ±3 %, and pushes the pair into a lock-free single-producer, single-consumer ring
+   (`Sources/ClickRing`, C11 atomics, because Swift's `Atomic` needs macOS 15). No allocation, no lock, no
+   Objective-C call: 0.5–17 µs measured in a release build.
 2. The engine calls an `AVAudioSourceNode`'s render block on its audio thread once per IO buffer. The block
    drains the ring, starts each click in a free voice of a 16-voice table (stealing the voice furthest through
    its sample when all are busy) at the head of the buffer it fills, and mixes the voices with linear
@@ -61,6 +65,7 @@ A pack is a folder with clicks and a `pack.json`:
   "name": "My switches",
   "licence": "CC0-1.0",
   "source": "https://…",
+  "attribution": "…",
   "files": {
     "letter": ["letter-1.wav", "letter-2.wav", "letter-3.wav"],
     "space": ["space-1.wav", "space-2.wav"],
@@ -70,16 +75,19 @@ A pack is a folder with clicks and a `pack.json`:
 }
 ```
 
-Every kind needs at least one file; two or more avoid repeats. Any WAV or CAF loads (other rates and stereo are
-converted), but keep to the default pack's format: 48 kHz mono 16-bit, at most 150 ms, the press only, peaks at
--6 dBFS. `tools/cut_click.py` cuts such clicks from a recording (`hits` lists the key hits, `cut` makes one
-file; see its header). Load a pack with `SoundPack(folder:)`; record where its sounds came from and their
-licence in `THIRD_PARTY.md`.
+Every kind needs at least one file; two or more avoid repeats. `attribution` is optional: the credit line a
+licence such as CC BY asks for (the Electric pack's). Any WAV or CAF loads (other rates and stereo are
+converted), but keep to the default pack's format: 48 kHz mono 16-bit, at most 150 ms (a paragraph's sound, a
+carriage return, at most 1 s: paragraphs are rare), the press only, peaks at -6 dBFS. `tools/cut_click.py` cuts
+such clicks from a recording (`hits` lists the key hits, `cut` makes one file, with `--rate`, `--gain`,
+`--lead`, `--fade` and `--max`; see its header). Load a pack with `SoundPack(folder:)`; record where its sounds
+came from, their licence and every command that made them in `THIRD_PARTY.md`.
 
-The default pack (`Sources/FlowClicks/DefaultPack`) is not a SwiftPM resource: the generated `Bundle.module`
-writes the absolute build path into every binary that links the library and stops the process when the bundle
-is missing. An app copies the folder into `Contents/Resources/DefaultPack`, where `SoundPack.bundled()` loads
-it; without it, `bundled()` throws `ClickError`. The tests load it from the source tree with `SoundPack(folder:)`.
+The packs (`Sources/FlowClicks/DefaultPack`, `TypewriterPack`, `SoftPack`, `ElectricPack`) are not SwiftPM
+resources: the generated `Bundle.module` writes the absolute build path into every binary that links the
+library and stops the process when the bundle is missing. An app copies the folders into `Contents/Resources`,
+where `SoundPack.bundled(<folder>)` loads them (`bundled()` is the default pack); without one, `bundled` throws
+`ClickError`. The tests load them from the source tree with `SoundPack(folder:)`.
 
 ## Tests
 
@@ -90,5 +98,5 @@ F=/Library/Developer/CommandLineTools/Library/Developer/Frameworks
 swift test -Xswiftc -F -Xswiftc $F -Xlinker -F -Xlinker $F -Xlinker -rpath -Xlinker $F
 ```
 
-The engine tests click audibly (11 clicks at a low volume) and skip when there is no output device. Add
-`-c release -Xswiftc -enable-testing` for release timings.
+The engine tests skip when there is no output device; one of them clicks audibly (11 clicks at a low volume),
+`--skip playReturnsInMicroseconds` leaves it out. Add `-c release -Xswiftc -enable-testing` for release timings.

@@ -32,6 +32,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.register(defaults: [Self.soundKey: true])
+        choice = SoundChoice(pack: UserDefaults.standard.string(forKey: Self.packKey),
+                             on: UserDefaults.standard.bool(forKey: Self.soundKey))
         let font = (NSFont(name: "Menlo", size: 28) ?? .monospacedSystemFont(ofSize: 28, weight: .regular)) as CTFont
         let style = Style(font: font)
         view = LineView(style: style)
@@ -69,14 +71,18 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
 
     // MARK: Clicks (K1)
 
-    private static let soundKey = "sound"
-    private var sound: Bool { UserDefaults.standard.bool(forKey: Self.soundKey) }
+    /// `sound`: on or off, as before the submenu; `soundPack`: the chosen pack's folder.
+    private static let soundKey = "sound", packKey = "soundPack"
+    /// Session › Sound: the pack and whether it plays, kept across launches (read at launch).
+    private var choice = SoundChoice(pack: nil, on: true)
+    private var sound: Bool { choice.on }
 
-    /// The player is made once; if it cannot start (no output device, the pack missing) Flow is silent and says so
-    /// once, in the system log.
+    /// The player is made once, with every pack loaded, so choosing another is an index and never a load on the key
+    /// path; if it cannot start (no output device, a pack missing) Flow is silent and says so once, in the system log.
     private func startClicks() {
         do {
-            let c = try ClickPlayer(pack: .bundled())
+            let c = try ClickPlayer(packs: SoundChoice.packs.map { try SoundPack.bundled($0.folder) })
+            c.pack = choice.index
             c.enabled = sound
             c.onOutputChanged = { [unowned self] in
                 self.notice.outputChanged()
@@ -99,9 +105,24 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         edge.showNotice()
     }
 
-    /// Session › Sound (⌘K), also in the menu-bar item: clicks on or off, kept across launches.
+    /// Session › Sound › Off (⌘K), also in the menu-bar item: clicks off, or, while off, back on with the last pack.
     @objc func toggleSound(_ sender: Any?) {
-        UserDefaults.standard.set(!sound, forKey: Self.soundKey)
+        choice.toggle()
+        keepSound()
+    }
+
+    /// A pack from Session › Sound (the item's tag is its place in `SoundChoice.packs`): the next key plays it, and the
+    /// sound is on.
+    @objc func chooseSound(_ sender: NSMenuItem) {
+        choice.choose(SoundChoice.packs[sender.tag].folder)
+        keepSound()
+    }
+
+    /// The choice kept across launches and given to the player: a pack is an index there, on or off.
+    private func keepSound() {
+        UserDefaults.standard.set(choice.on, forKey: Self.soundKey)
+        UserDefaults.standard.set(choice.pack, forKey: Self.packKey)
+        clicks?.pack = choice.index
         clicks?.enabled = sound
         warnIfBluetooth()  // turned on over Bluetooth: said once for this output
     }
@@ -313,7 +334,10 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             item.title = surface.mode == .window ? "Close Window" : "Open Window"
             return session.phase == .writing && !asking && container.attachedSheet == nil
         case #selector(toggleSound(_:)):
-            item.state = sound ? .on : .off
+            item.state = sound ? .off : .on  // Off is ticked while the sound is off
+            return true
+        case #selector(chooseSound(_:)):
+            item.state = sound && item.tag == choice.index ? .on : .off
             return true
         default: return true
         }
@@ -509,7 +533,22 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     }
 }
 
-/// Flow: About, Quit; Session: Done, Copy, Save…, Discard…, Sound; View: Open Window. As an accessory
+/// Session › Sound and the menu-bar item's Sound (K1): the packs as radio items, then Off ⌘K, which turns the sound off
+/// and, while it is off, back on with the last pack. `target` nil in the main menu (the App gets the actions as the
+/// delegate); the menu-bar item's menu names it, as Flow may not be active.
+func soundMenu(target: AnyObject?) -> NSMenu {
+    let menu = NSMenu(title: "Sound")
+    for (i, pack) in SoundChoice.packs.enumerated() {
+        let item = menu.addItem(withTitle: pack.title, action: #selector(App.chooseSound(_:)), keyEquivalent: "")
+        item.tag = i
+        item.target = target
+    }
+    menu.addItem(.separator())
+    menu.addItem(withTitle: "Off", action: #selector(App.toggleSound(_:)), keyEquivalent: "k").target = target  // ⌘K
+    return menu
+}
+
+/// Flow: About, Quit; Session: Done, Copy, Save…, Discard…, Sound ▸; View: Open Window. As an accessory
 /// app Flow shows no menu bar, so this is where the key equivalents live (the menu-bar item's menu shows the items).
 /// No Edit menu yet, so no ⌘ shortcut but these reaches the text. Full screen: the window's green button.
 func mainMenu() -> NSMenu {
@@ -524,7 +563,7 @@ func mainMenu() -> NSMenu {
     session.addItem(withTitle: "Save…", action: #selector(App.saveText(_:)), keyEquivalent: "s")  // ⌘S
     session.addItem(withTitle: "Discard…", action: #selector(App.discard(_:)), keyEquivalent: "")
     session.addItem(.separator())
-    session.addItem(withTitle: "Sound", action: #selector(App.toggleSound(_:)), keyEquivalent: "k")  // ⌘K
+    session.addItem(withTitle: "Sound", action: nil, keyEquivalent: "").submenu = soundMenu(target: nil)  // Off ⌘K
     view.addItem(withTitle: "Open Window", action: #selector(App.toggleWindow(_:)), keyEquivalent: "f")
         .keyEquivalentModifierMask = [.control, .command]
     for menu in [app, session, view] { bar.addItem(withTitle: menu.title, action: nil, keyEquivalent: "").submenu = menu }

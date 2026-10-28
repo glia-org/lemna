@@ -31,6 +31,13 @@ public final class ClickPlayer {
         didSet { source.volume = Self.clamp(volume) }
     }
 
+    /// The packs, every sample of each loaded at `init`.
+    public let packs: [SoundPack]
+
+    /// Which of `packs` plays, by index; out of range, `play` does nothing. Every pack is loaded already, so a switch
+    /// is this one assignment: nothing is read or decoded, and the key handler never waits.
+    public var pack = 0
+
     /// Whether the default output device is Bluetooth; re-read when the default output changes.
     public private(set) var isBluetoothOutput = false
 
@@ -47,13 +54,18 @@ public final class ClickPlayer {
     let engine: AVAudioEngine
     private let source: AVAudioSourceNode
     let mixer: Mixer
-    private var picker: Picker
+    /// One per pack, each over its pack's part of the mixer's table.
+    private var pickers: [Picker]
     private var listener: AudioObjectPropertyListenerBlock?
     private var observer: NSObjectProtocol?
 
-    /// Loads every sample of `pack`, converted to mono at the output device's sample rate, and
-    /// starts the engine. Throws when there is no output device or a file will not load.
-    public init(pack: SoundPack) throws {
+    /// One pack: `init(packs: [pack])`.
+    public convenience init(pack: SoundPack) throws { try self.init(packs: [pack]) }
+
+    /// Loads every sample of every pack, converted to mono at the output device's sample rate, and
+    /// starts the engine; the first pack plays. Throws when there is no output device or a file
+    /// will not load.
+    public init(packs: [SoundPack]) throws {
         let engine = AVAudioEngine()
         let hardware = engine.outputNode.outputFormat(forBus: 0)
         // AVAudioEngine.h: a zero sample rate or channel count on the output node means no output.
@@ -62,13 +74,19 @@ public final class ClickPlayer {
         else { throw ClickError("no audio output device") }
 
         // Mono at the device's rate: the main mixer only spreads it over the output channels and
-        // converts no rate. Laid out kind after kind, as the picker expects.
+        // converts no rate. Laid out pack after pack and, in each, kind after kind, as the pickers expect.
         var samples: [[Float]] = []
-        var counts: [Int] = []
-        for kind in KeyKind.allCases {
-            let urls = pack.files[kind] ?? []
-            counts.append(urls.count)
-            for url in urls { samples.append(try Self.load(url, as: format)) }
+        var pickers: [Picker] = []
+        let seed = mach_absolute_time()
+        for (p, pack) in packs.enumerated() {
+            let base = samples.count
+            var counts: [Int] = []
+            for kind in KeyKind.allCases {
+                let urls = pack.files[kind] ?? []
+                counts.append(urls.count)
+                for url in urls { samples.append(try Self.load(url, as: format)) }
+            }
+            pickers.append(Picker(counts: counts, seed: seed &+ UInt64(p), base: base))
         }
         let mixer = Mixer(samples: samples)
 
@@ -90,7 +108,8 @@ public final class ClickPlayer {
         self.engine = engine
         self.source = source
         self.mixer = mixer
-        self.picker = Picker(counts: counts, seed: mach_absolute_time())
+        self.packs = packs
+        self.pickers = pickers
         source.volume = Self.clamp(volume)
         try start()
         isBluetoothOutput = OutputDevice.defaultIsBluetooth()
@@ -109,8 +128,8 @@ public final class ClickPlayer {
     /// Call on key-down from the key handler, from one thread at a time (the main thread in the
     /// app). Returns in microseconds: no allocation, no lock, no node or engine call.
     public func play(_ kind: KeyKind) {
-        guard enabled else { return }
-        let (sample, rate) = picker.next(kind)
+        guard enabled, pickers.indices.contains(pack) else { return }
+        let (sample, rate) = pickers[pack].next(kind)
         mixer.trigger(sample: sample, rate: rate)
     }
 

@@ -12,8 +12,11 @@ app=build/Flow.app
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin/Flow" "$app/Contents/MacOS/Flow"
-# The click pack (lib/FlowClicks, pack.json and its WAVs): SoundPack.bundled() loads it from Contents/Resources.
-cp -R ../lib/FlowClicks/Sources/FlowClicks/DefaultPack "$app/Contents/Resources/DefaultPack"
+# The click packs (lib/FlowClicks, each a pack.json and its WAVs): SoundPack.bundled(<folder>) loads them from
+# Contents/Resources; Session › Sound chooses among them.
+for pack in DefaultPack TypewriterPack SoftPack ElectricPack; do
+  cp -R "../lib/FlowClicks/Sources/FlowClicks/$pack" "$app/Contents/Resources/$pack"
+done
 cat > "$app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

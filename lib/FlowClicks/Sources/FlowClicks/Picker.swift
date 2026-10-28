@@ -9,10 +9,11 @@ struct Picker {
     private var last: [Int]   // the last sample played per kind, -1 before the first
     private var rng: SplitMix64
 
-    /// `counts[kind.rawValue]` samples per kind, laid out kind after kind.
-    init(counts: [Int], seed: UInt64) {
+    /// `counts[kind.rawValue]` samples per kind, laid out kind after kind from `base` on (a pack's place in a table
+    /// that holds several packs).
+    init(counts: [Int], seed: UInt64, base: Int = 0) {
         var first: [Int] = []
-        var next = 0
+        var next = base
         for n in counts {
             first.append(next)
             next += n

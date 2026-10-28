@@ -14,14 +14,16 @@ public enum KeyKind: Int, CaseIterable, Sendable {
 
 /// A folder of WAV or CAF clicks with a `pack.json`:
 ///
-///     {"name": "…", "licence": "CC0-1.0", "source": "https://…",
+///     {"name": "…", "licence": "CC0-1.0", "source": "https://…", "attribution": "…",
 ///      "files": {"letter": ["a.wav", …], "space": […], "paragraph": […], "backspace": […]}}
 ///
-/// Every kind needs at least one file; two or more let the player avoid repeating itself.
+/// Every kind needs at least one file; two or more let the player avoid repeating itself. `attribution` is optional:
+/// the credit line a licence such as CC BY requires.
 public struct SoundPack: Sendable {
     public let name: String
     public let licence: String
     public let source: String
+    public let attribution: String?
     public let folder: URL
     /// The files of each kind, in `pack.json` order.
     public let files: [KeyKind: [URL]]
@@ -30,6 +32,7 @@ public struct SoundPack: Sendable {
         let name: String
         let licence: String
         let source: String
+        let attribution: String?
         let files: [String: [String]]
     }
 
@@ -56,17 +59,18 @@ public struct SoundPack: Sendable {
         self.name = manifest.name
         self.licence = manifest.licence
         self.source = manifest.source
+        self.attribution = manifest.attribution
         self.folder = folder
         self.files = files
     }
 
-    /// The default pack (see THIRD_PARTY.md for its source and licence), which an app carries in
-    /// `Contents/Resources/DefaultPack`.
-    public static func bundled() throws -> SoundPack {
-        guard let folder = Bundle.main.resourceURL?.appendingPathComponent("DefaultPack"),
-              FileManager.default.fileExists(atPath: folder.path) else {
-            throw ClickError("the default pack is missing from the app's Contents/Resources")
+    /// A pack an app carries in `Contents/Resources/<folder>`: the default pack (`DefaultPack`), or `TypewriterPack`,
+    /// `SoftPack`, `ElectricPack` (see THIRD_PARTY.md for their sources and licences).
+    public static func bundled(_ folder: String = "DefaultPack") throws -> SoundPack {
+        guard let url = Bundle.main.resourceURL?.appendingPathComponent(folder),
+              FileManager.default.fileExists(atPath: url.path) else {
+            throw ClickError("the pack \(folder) is missing from the app's Contents/Resources")
         }
-        return try SoundPack(folder: folder)
+        return try SoundPack(folder: url)
     }
 }
