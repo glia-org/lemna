@@ -8,8 +8,9 @@ import CoreGraphics
 public struct Effects: Equatable {
     public enum Item: String, CaseIterable {
         /// P1, the box's open and close; B2, the border warming with the keys; K1, the newest glyph's pop-in; K3, a sheen
-        /// along the border on Space; E1, a sheen across the box at a hand-off; E2, the ` ¶ ` fading in on Return.
-        case pop, borderWarms, glyphPopIn, wordSheen, handOffSheen, paragraphFade
+        /// along the border on Space; H1 and C1, the hand-off's motion (`Handoff`; since pass 17b, where E1's sheen
+        /// across the box was, `handOffSheen`); E2, the ` ¶ ` fading in on Return.
+        case pop, borderWarms, glyphPopIn, wordSheen, handOff, paragraphFade
 
         /// The submenu's item, in `allCases`' order.
         public var title: String {
@@ -18,16 +19,17 @@ public struct Effects: Equatable {
             case .borderWarms: "Border warms"
             case .glyphPopIn: "Glyph pop-in"
             case .wordSheen: "Word sheen"
-            case .handOffSheen: "Hand-off sheen"
+            case .handOff: "Hand-off"
             case .paragraphFade: "Paragraph fade"
             }
         }
 
-        /// Ticked at a first launch: the user's picks P1, K1, E1 and E2; B2 and K3 are opt-in.
+        /// Ticked at a first launch: the user's picks P1, K1, H1 and E2; B2 and K3 are opt-in.
         public var byDefault: Bool { self != .borderWarms && self != .wordSheen }
 
-        /// Moves something: a scale (the pop, the glyph's pop-in) or a sweep (the sheens). Reduce Motion stops these; the
-        /// paragraph fade (opacity alone) and the border's warmth (a colour) move nothing and stay.
+        /// Moves something: a scale (the pop, the glyph's pop-in), a sweep (the word sheen) or the glyphs and the box
+        /// (the hand-off). Reduce Motion stops these; the paragraph fade (opacity alone) and the border's warmth (a
+        /// colour) move nothing and stay.
         public var moves: Bool { self != .borderWarms && self != .paragraphFade }
     }
 
@@ -95,10 +97,20 @@ extension Effects {
         public static let popIn = 0.160, popInScale = 0.70, popInRise = 3.0
         /// E2, a Return's ` ¶ `, opacity alone. Subtle: 0.120 s.
         public static let paragraphFade = 0.200
-        /// E1, the band of light across the box at a hand-off, at an even pace; the close's fade waits so that both
-        /// end together. Subtle: peak 0.14 over 0.300 s.
-        public static let handOffSheen = 0.350, handOffPeak = 0.35
-        /// K3, the same band along the border alone, on Space. Subtle: peak 0.35 (the duration as it was).
+        /// H1 and C1 (pass 17b), the hand-off (`Handoff`): each glyph travels `sendReach` of the box's width to the
+        /// right (a paste) or `riseReach` of its height upward (a copy or a save) on the curve over `exit`, the one at the
+        /// caret from the key-down's frame on, each further one `exitStagger` after its neighbour nearer the caret, those
+        /// past `exitStaggerCap` all with the last (in the box on a 1512 pt screen about 19 glyphs show: 18 of them
+        /// 7 ms apart, the faded rest at 120 ms; a cap of 0.060 would send the faded half as one block at 60 ms and
+        /// empty the line by about 110 ms); the dim lifts from the key over `lift`; from `collapseAt` the box shrinks to
+        /// `collapseScale` about its middle and fades over `collapse`: 280 ms in all. The panel's H1 had ease-in over
+        /// ~220 ms, ~8 ms apart, the clause over at most 120 ms. Was E1 (pass 14b): a 45° band of light across the
+        /// box, peak 0.35 over 0.350 s at an even pace, the close's fade from 0.150 s (subtle: peak 0.14 over 0.300 s).
+        public static let exit = 0.200, exitStagger = 0.007, exitStaggerCap = 0.120
+        public static let sendReach: CGFloat = 1.0, riseReach: CGFloat = 1.25
+        public static let lift = 0.160, collapseAt = 0.120, collapse = 0.160, collapseScale = 0.9
+        /// K3, a band of light along the border alone, on Space (E1's band, masked to the border). Subtle: peak 0.35
+        /// (the duration as it was).
         public static let wordSheen = 0.300, wordPeak = 0.7
         /// B2: the border `warm` (the accent at full) while keys come, back in `warmIn` at the first key after a
         /// pause; `coolAfter` after the last key it cools evenly (not on the curve) to `cooled` over `coolOver`.

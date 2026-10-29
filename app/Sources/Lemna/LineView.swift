@@ -45,6 +45,8 @@ final class LineView: NSView, NSTextInputClient {
     private lazy var word = Line.width(String(repeating: "n", count: Line.wordCells), font: style.font)
     private var link: CADisplayLink?
     private var keyFrame = 0.0  // when a key last drew a frame
+    /// The offsets the last frame drew the two parts at (`Line.draw`'s `before` and `after`), for the hand-off's cut.
+    private var drawn = (before: CGFloat(0), after: CGFloat(0))
 
     init(style: Style) {
         self.style = style
@@ -102,13 +104,15 @@ final class LineView: NSView, NSTextInputClient {
 
     /// Presents a frame only while the view is on screen: a drawable presented to a hidden window or view may not come
     /// back to the layer's pool of two, and the next `nextDrawable` would wait up to a second on the main thread. The
-    /// box hides often (Esc, the hotkey, a paste) and the session can end while it is hidden; `redraw` catches up.
+    /// box hides often (Esc, the hotkey, a paste) and the session can end while it is hidden; `redraw` catches up. Nor
+    /// while a hand-off's cut has hidden the strip (`cut`).
     private func render(at t: Double) {
-        guard window?.isVisible == true, !isHiddenOrHasHiddenAncestor else { return }
+        guard window?.isVisible == true, !isHiddenOrHasHiddenAncestor, !strip.isHidden else { return }
         let band = CGRect(origin: .zero, size: strip.bounds.size), moved = CGFloat(slide.offset(at: t))
         let edit = CGFloat(glide.offset(at: t)), newest = entrance.newest(at: t)
         strip.present {
             Line.draw(shaped, before: edit + moved, after: moved, newest: newest, in: $0, band: band, style: style)
+            drawn = (edit + moved, moved)
         }
     }
 
@@ -152,11 +156,29 @@ final class LineView: NSView, NSTextInputClient {
         return paragraph ? .paragraph(units: units, at: t) : .glyph(units: units, at: t)
     }
 
-    /// The line's last frame and where it sits in the container, for the box's last look as it fades (P1, E1); nil
-    /// before anything was drawn.
+    /// The line's last frame and where it sits in the container, for the box's last look as it fades (P1); nil before
+    /// anything was drawn.
     func snapshot() -> (image: CGImage, frame: CGRect)? {
         guard let image = strip.lastFrame() else { return nil }
         return (image, convert(strip.frame, to: superview))
+    }
+
+    /// The hand-off's cut (F1's H1 and C1): the line's last frame, where its band sits in the container, at what scale,
+    /// and one piece per glyph it showed (`Handoff.pieces`), for the box to send off as layers of their own.
+    struct Cut {
+        let image: CGImage, band: CGRect, scale: CGFloat, pieces: [Handoff.Piece]
+    }
+
+    /// The line cut into its glyphs at a hand-off, and the strip hidden (its caret with it) in the same transaction as
+    /// the pieces take its place; it shows again when the line is loaded (the session finished) or resumed (the
+    /// hand-off did not happen). Nil before anything was drawn.
+    func cut() -> Cut? {
+        guard let image = strip.lastFrame() else { return nil }
+        let scale = window?.backingScaleFactor ?? 2, band = CGRect(origin: .zero, size: strip.bounds.size)
+        let pieces = Handoff.pieces(shaped, before: drawn.before, after: drawn.after, band: band, style: style,
+                                    scale: scale)
+        strip.isHidden = true
+        return Cut(image: image, band: convert(strip.frame, to: superview), scale: scale, pieces: pieces)
     }
 
     private func width(_ s: String) -> CGFloat { Line.width(s, font: style.font) }
@@ -194,6 +216,7 @@ final class LineView: NSView, NSTextInputClient {
     /// Shows `t` at rest and takes keys: the restore at launch, and the clear after a session ends.
     func load(_ t: Text) {
         (text, marked, glide, slide, entrance, accepting) = (t, "", Glide(), Glide(), Entrance(), true)
+        strip.isHidden = false  // a hand-off's cut hid it
         inputContext?.discardMarkedText()  // after `marked` is empty, so an unmarkText it may send adds nothing
         shaped = Line.shape(text, marked: "", font: style.font)
         if window != nil { render(at: CACurrentMediaTime()) }
@@ -212,8 +235,14 @@ final class LineView: NSView, NSTextInputClient {
         inputContext?.discardMarkedText()
     }
 
-    /// The hand-off did not happen (the save panel cancelled, the pasteboard refused, the key kept): keys again.
-    func resume() { accepting = true }
+    /// The hand-off did not happen (the save panel cancelled, the pasteboard refused, the key kept): keys again, and
+    /// the line again where a cut had hidden it.
+    func resume() {
+        accepting = true
+        guard strip.isHidden else { return }
+        strip.isHidden = false
+        render(at: CACurrentMediaTime())
+    }
 
     // MARK: Input
 

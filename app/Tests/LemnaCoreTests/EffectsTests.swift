@@ -10,10 +10,10 @@ private typealias Item = Effects.Item
     let e = Effects()
     #expect(e.on)
     for item in Item.allCases {
-        #expect(e.plays(item, reduceMotion: false) == [.pop, .glyphPopIn, .handOffSheen, .paragraphFade].contains(item))
+        #expect(e.plays(item, reduceMotion: false) == [.pop, .glyphPopIn, .handOff, .paragraphFade].contains(item))
     }
-    #expect(Item.allCases.map(\.title)
-        == ["Pop", "Border warms", "Glyph pop-in", "Word sheen", "Hand-off sheen", "Paragraph fade"])
+    #expect(Item.allCases.map(\.title)  // pass 17b: "Hand-off" (the motion, H1 and C1) where "Hand-off sheen" was (E1)
+        == ["Pop", "Border warms", "Glyph pop-in", "Word sheen", "Hand-off", "Paragraph fade"])
     #expect(e.duration(.pop, 0.25, reduceMotion: false) == 0.25)
     #expect(e.duration(.wordSheen, 0.3, reduceMotion: false) == 0)  // opt-in: at once, which is not at all
 }
@@ -25,7 +25,7 @@ private typealias Item = Effects.Item
     e.toggle()  // Off
     #expect(!e.on && Item.allCases.allSatisfy { !e.plays($0, reduceMotion: false) })
     #expect(e.duration(.pop, 0.25, reduceMotion: false) == 0)
-    #expect(e.ticked == [.pop, .borderWarms, .glyphPopIn, .handOffSheen, .paragraphFade])  // kept
+    #expect(e.ticked == [.pop, .borderWarms, .glyphPopIn, .handOff, .paragraphFade])  // kept
     e.toggle()  // back, with the ticks
     #expect(e.plays(.borderWarms, reduceMotion: false) && e.plays(.pop, reduceMotion: false))
     e.choose(.pop)  // while on: unticks
@@ -44,7 +44,7 @@ private typealias Item = Effects.Item
     e.choose(.borderWarms)
     e.choose(.wordSheen)
     #expect(e.ticked.count == 6)
-    #expect(Item.allCases.filter(\.moves) == [.pop, .glyphPopIn, .wordSheen, .handOffSheen])
+    #expect(Item.allCases.filter(\.moves) == [.pop, .glyphPopIn, .wordSheen, .handOff])
     for item in Item.allCases {
         #expect(e.plays(item, reduceMotion: true) == !item.moves)  // the paragraph fade and the border's warmth stay
         #expect(Effects.available(item, reduceMotion: true) == !item.moves && Effects.available(item, reduceMotion: false))
@@ -60,12 +60,13 @@ private typealias Item = Effects.Item
     e.choose(.wordSheen)
     e.toggle()
     #expect(e.kept == ["on": false, "pop": false, "borderWarms": false, "glyphPopIn": true, "wordSheen": true,
-                       "handOffSheen": true, "paragraphFade": true])
+                       "handOff": true, "paragraphFade": true])
     #expect(Effects(kept: e.kept) == e)
     #expect(Effects(kept: nil) == Effects() && Effects(kept: [:]) == Effects())  // a first launch
     var sheen = Effects()
     sheen.choose(.wordSheen)
     #expect(Effects(kept: ["wordSheen": true, "gone": false]) == sheen)  // missing keys default, unknown ones are ignored
+    #expect(Effects(kept: ["handOffSheen": false]) == Effects())  // E1's old tick: the motion starts ticked
 }
 
 @Test func theTuningIsPlainToSee() {
@@ -74,7 +75,11 @@ private typealias Item = Effects.Item
     #expect(T.open == 0.300 && T.openScale == 0.87 && T.close == 0.200)  // subtle: 0.250, 0.95, 0.160
     #expect(T.popIn == 0.160 && T.popInScale == 0.70 && T.popInRise == 3)  // subtle: 0.120, 0.95, 0
     #expect(T.paragraphFade == 0.200 && T.dim == 0.5)  // subtle: 0.120; the dim unchanged
-    #expect(T.handOffSheen == 0.350 && T.handOffPeak == 0.35 && T.wordSheen == 0.300 && T.wordPeak == 0.7)
+    #expect(T.wordSheen == 0.300 && T.wordPeak == 0.7)
+    // Pass 17b, the hand-off (H1 on easeOutQuint, C1), in E1's place (a sheen, peak 0.35 over 0.350 s).
+    #expect(T.exit == 0.200 && T.exitStagger == 0.007 && T.exitStaggerCap == 0.120)
+    #expect(T.sendReach == 1.0 && T.riseReach == 1.25)
+    #expect(T.lift == 0.160 && T.collapseAt == 0.120 && T.collapse == 0.160 && T.collapseScale == 0.9)
     #expect(T.warmIn == 0.150 && T.coolAfter == 0.5 && T.coolOver == 1.0)  // subtle: cooling over 1.5 s
     #expect(T.warm == Style.accent && T.cooled == Style.line)
 }

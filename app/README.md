@@ -14,7 +14,8 @@ glyph pop-in, the sheens, the paragraph fade and Session › Effects ▸; then p
 their magnitudes in one table, and the colours back to Lemna's own; then pass 15: the ambience (A1), seven scenes on the
 dim around the box fed by the keys, on a Metal layer of their own, and Session › Ambience ▸; then pass 15b: the crash at
 Esc with a mode on fixed; then pass 16: the ambience plain to see and following where each key is on the keyboard;
-then pass 17a: the second between ⌘⏎ and the paste gone, and a timing log of the hand-off.
+then pass 17a: the second between ⌘⏎ and the paste gone, and a timing log of the hand-off; then pass 17b: the
+hand-off's motion, the line's glyphs leaving the box from the key-down on (in place of the sheen).
 Swift +
 AppKit, SwiftPM with the Command Line Tools only (no Xcode), two package dependencies by path (`../lib/LemnaJournal`,
 `../lib/LemnaClicks`) and one Objective-C function of its own (`Sources/LemnaCatch`), signed with a self-signed certificate or ad-hoc (there is no Developer ID yet).
@@ -57,7 +58,10 @@ back in the text, the text after it shown) and `move-left-70ms.png` (70 ms into 
 `paragraph-25ms.png` and `paragraph-fade-25ms.png` (25 ms after a Return, without and with the ` ¶ `'s fade), and since
 pass 15 `ambience-<mode>.png` for each of the seven modes (after 10 s of typing, 0.6 s after a Return, Fireworks 1 s,
 drawn by the Metal pipeline over a dimmed dark app with the box; skipped without a Metal device), and since pass 16
-`ambience-grid-keyboard.png` ("the quick brown fox" at 20 keys/s, the keys lit as a keyboard); the mark test writes
+`ambience-grid-keyboard.png` ("the quick brown fox" at 20 keys/s, the keys lit as a keyboard), and since pass 17b
+`handoff-send-60ms.png`, `handoff-send-120ms.png`, `handoff-send-200ms.png` and `handoff-rise-120ms.png` (the box over
+a light app 60, 120 and 200 ms after ⌘⏎, and 120 ms after ⌘⇧⏎; composed as Core Animation composes the app's layers);
+the mark test writes
 `mark-M3-1x.png` and `mark-M3-2x.png` (16 and 32 px, black on clear). `app/build/` and `app/renders/` are
 git-ignored.
 
@@ -78,16 +82,19 @@ git-ignored.
   mark and when the Bluetooth notice shows, `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
   holds the line (`Surface`) and when a click outside hides the box (`ClickOutside`), `Paste.swift` the paste's
   decision table, and since pass 17a its steps in order (`Paste.acts`) and the wait for Return to come up
-  (`ReturnUp`).
+  (`ReturnUp`), `Handoff.swift` (pass 17b) the hand-off's motion: the line cut into its glyphs, when each sets off
+  and where it is, the box's collapse, the dim's lift, and when it plays.
 - `Sources/Lemna`: `main.swift` the app, window, menus, clicks and the sound toggle, the Effects submenu, summoning and the two containers
   (`apply()`), a click outside the box, and the end of a session (Done's paste or copy, Copy, Save, Discard, each
   finishing at once); `Box.swift` the box (the non-activating panel, the dim overlays, the line in it; since pass 14 its
-  face, the border and the sheen, its open and close, the last look that fades, the warming border); `Paste.swift`
+  face, the border and the sheen, its open and close, the last look that fades, the warming border; since pass 17b
+  the hand-off's glyph layers, the collapse, and the ghost carrying them on); `Paste.swift`
   the pasteboard (Copy's item; since pass 11 nothing is read from it), the posted ⌘V and since pass 17a the hand-off's
   timing log (`Timing`); `Keeper.swift` the journal in
   the app (open and restore, append, the flushes); `LineView.swift` the view (text input, the keys of B4, edits as
   journal edits and clicks, the two glides, display link; since pass 15 each key handed on to the ambience after its
-  frame); `Ambient.swift` the ambience on each dim (the scene thread, the Metal layer and its display link);
+  frame; since pass 17b the hand-off's cut of its last frame); `Ambient.swift` the ambience on each dim (the scene
+  thread, the Metal layer and its display link);
   `Sources/LemnaCatch` one Objective-C function that catches an Objective-C exception, which Swift cannot (the display
   link's callback runs inside it);
   `Strip.swift` the Metal band (Core Graphics into a shared
@@ -107,7 +114,8 @@ git-ignored.
   `nextDrawable`, Esc during typing and during the close's and the dim's fades in every mode and Off, a hand-off, a
   close at once, a new show, the end 4 s after the last key, the Esc sequence on a real layer and link
   (`AmbienceLinkTests`); since pass 16 the keymap (`KeyboardTests`) and where each mode's sprites start for a key;
-  since pass 17a the paste's steps and the wait for Return (`PasteTests`).
+  since pass 17a the paste's steps and the wait for Return (`PasteTests`); since pass 17b the hand-off's cut, its
+  schedule for a paste and a copy, the collapse and the lift, when it plays, and its renders (`HandoffTests`).
 
 ## What it covers
 
@@ -617,7 +625,59 @@ a delay we can't get around"):
 - Expected now: ⌘V about 35 ms after Return comes up, so the hold of Return (about 100 ms for a tap) plus 35 ms from
   the key-down; Copy's box goes as Return comes up.
 
+Pass 17b, the hand-off's motion (DESIGN.md F1's E1 replaced by H1 A0 T1 C1, F0, W2, S1, O1+O2+O3 amended; 2026-10-29;
+the user: "Right now the animation that is used is really lackluster and not well done. This can be improved a lot.",
+then the picks `H1 A0 T1 C1` of `docs/design-panel-lemna-handoff.html`, H1 on easeOutQuint):
+
+- The schedule (`Handoff`, LemnaCore): `pieces` cuts the line as `Line.draw` showed it into one `Piece` per glyph with
+  some alpha (its cell: the glyph's advance where the band showed it, clipped at the caret, the band's edge or 95 %,
+  and the font's ascent and descent and 0.1 em, on whole pixels), ranked by how many glyphs stand between it and the
+  caret; `Piece.start` is 7 ms a rank up to 120 ms (`exitStagger`, `exitStaggerCap`), and 0 for the text after the
+  caret on a send (it is ahead); `reach` is the box's width for a send, 1.25 times its height for a rise (`sendReach`,
+  `riseReach`); `offset` runs a piece over it on `Curve.easeOutQuint` in 200 ms (`exit`); `box(at:)` the collapse from
+  120 ms to 0.9 and transparent over 160 ms (`collapseAt`, `collapse`, `collapseScale`), `dim(at:)` the lift over
+  160 ms (`lift`), `end` 280 ms; `leaving` says whether a hand-off moves (Effects ▸ Hand-off), fades as Esc (Pop) or
+  goes at once (Reduce Motion, Off).
+- The cut (`LineView.cut`): the strip's last frame (`Strip.lastFrame`), the offsets that frame drew the line at, the
+  band's place in the box and the scale; the strip hidden, its caret with it, until the line is loaded (the session
+  finished) or resumed (the hand-off did not happen); no frame is drawn into it meanwhile.
+- The motion (`Box.handOff`, from `done`, `copyText` and the save panel's completion, before the wait for Return): in
+  one transaction, the strip hidden and one `CALayer` per piece in the face (`Face.send`: under the border, clipped by
+  the content's rounded corners), its contents the piece's crop of the last frame (`CGImage.cropping`, no copy), its
+  `position.x` (send) or `position.y` (rise) animated by `reach` over 200 ms on `quint`, `beginTime` the key's time plus
+  its start, `fillMode` backwards; the box's shadow off; the content layer's collapse (`transform` about its middle and
+  `opacity`, `beginTime` 120 ms on, `fillMode` both); the dims' shades and the ambience's layers fading to 0 over
+  160 ms, the scenes closing; then `CATransaction.flush()`, so the first frame goes out whatever the key's turn does
+  next. A box that stays (⌘⏎ copied instead) gets the rise alone. `Timing` logs `motion started`.
+- The handover (`Box.hide`, at `Paste.acts`' hide or Copy's and Save's `leave`): while a motion runs, the ghost window
+  gets the same pieces and the same collapse with the same absolute times (`carryOn`), no shadow, is put in front and
+  flushed, and the box goes; the ghost goes at the motion's end, the dims once the lift is over. Core Animation keeps
+  the times, so nothing jumps and nothing of it runs on the main thread, which then posts the ⌘V and finishes the
+  session. Hand-off off: P1's fade as before (Esc's), or at once. `unsend` puts a box back whose hand-off failed after
+  its motion began (the pasteboard refused, ⌘V could not be made).
+- Band vs ghost: the panel's cost line had the exit in `Line.draw` and the ghost only for the collapse, with the ghost
+  as the fallback "if the panel cannot stay up without the keys, or a frame slips". Chosen: the ghost's way from the
+  first frame. The band draws on the main thread, which at the paste writes the clipboard and right after the ⌘V runs
+  the finish (30–90 ms), and AppKit animates a window's alpha from there too; and the strip is only the band (2 em),
+  where a rise has to cross the box's top edge 27 pt above it. The first frame is still built on the key event.
+- Effects ▸ Hand-off (`Effects.Item.handOff`, raw value `handOff`) replaces Hand-off sheen (`handOffSheen`, whose kept
+  tick is now ignored, so it starts ticked); it moves, so Reduce Motion greys it. `Box.sweep` (E1 on a box that stays)
+  and the sheen's tuning are gone; `Face.sweep` stays for the word sheen (K3).
+- The ghost and the dims have `canHide` off: `handBack` hides Lemna after a question or the save panel, which until now
+  took the ghost and the dims with it at once.
+- Renders (`handOffRenders`): the band drawn by `Line.draw` at 2×, cut by `Handoff.pieces`, the pieces drawn at their
+  offsets into the box, shrunk and faded by `Handoff.box`, over a white page with grey lines dimmed by `Handoff.dim`.
+- Build: the executable is 1.36 MB (1,355,504 bytes; 1,298,960 in pass 17a), no `/Users/` path in it; signed with
+  "Lemna Dev".
+
 ## Known gaps
+
+- Pass 17b is not tried: nothing was launched. Untried: that the hidden strip and the glyph layers reach the screen in
+  the same frame (a doubled or a blank frame at ⌘⏎ would say not); that the ghost takes over without a jump at Return's
+  key-up (Core Animation's `beginTime` in the past on new layers); that AppKit leaves the content layer's collapse
+  animations alone; that `canHide` off keeps the ghost and the dims up through `NSApp.hide`; how the shadow going at
+  the first frame looks over a light app; the motion's feel at 60 Hz, where the glyph at the caret shows in one or two
+  frames. The latency budget (key → presented p50/p90 no worse than the spike's 42/60 ms) is not measured.
 
 - Pass 17a is not tried: nothing was launched. Untried: that the monitor gets Return's key-up in the non-activating box
   (the probe sent it through `NSApp.sendEvent` without a window; the 50 ms read of the key's state covers a miss);

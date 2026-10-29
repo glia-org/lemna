@@ -474,7 +474,8 @@
   keeps the box up to the cap, and the paste's steps with nothing slow before the ⌘V); LemnaJournal 16 (the keychain
   test skipped) and LemnaClicks 14 (`--skip playReturnsInMicroseconds`), untouched. `make-app.sh` builds, signs with
   "Lemna Dev" (`Authority=Lemna Dev`) and verifies; the executable is 1.30 MB (1,298,960 bytes), with no `/Users/` path
-  in it. `app/README.md` (Pass 17a) says what each part does. Not tried: nothing was launched.
+  in it. `app/README.md` (Pass 17a) says what each part does. Tried by the user on 2026-10-29: "pasting now is super
+  fast".
   The timing log, off by default: `defaults write dev.lemna.app LemnaTiming -bool true` (read at each Done and Copy;
   if no line shows, quit and reopen Lemna), then in a terminal `log stream --predicate 'process == "Lemna"'`, or
   afterwards `log show --last 2m --predicate 'process == "Lemna"'`. One line per step, `Lemna timing: <step> at <ms>
@@ -493,12 +494,78 @@
   - Secure Input: a password field focused in Safari, summon, write, ⌘⏎: the box goes and comes back with `Secure input
     is on: copied instead`, nothing in the field. If the text lands in the field instead, 30 ms was too short for it to
     turn Secure Input on again: say so.
-  - The last look: with Effects ▸ Hand-off sheen ticked, ⌘⏎: the sheen crosses the text you wrote as it fades.
+  - The last look: with Effects ▸ Hand-off sheen ticked, ⌘⏎: the sheen crosses the text you wrote as it fades. (Gone
+    in pass 17b, which replaces the sheen.)
   - Copy ⌘⇧⏎: the box goes as Return comes up, the clipboard holds R1's text. Save… ⌘S: the box goes at Save.
   - After a question (the menu-bar item's Discard…, Cancel: Lemna is active), ⌘⏎: `target not in front`, `activation
     requested`, `target active`, `⌘V posted` about 120 ms after `box hidden`.
-- Next: the user tries pass 17a with the timing log on (its numbers say whether the 30 ms hold), then quits Flow and
-  tries pass 16 with pass 15b and pass 15, pass 14b (its list replaces pass 14's), pass 13, then pass 12, pass 11
+- App, pass 17b (2026-10-29; DESIGN.md F1's E1 replaced by H1 A0 T1 C1, and F0, W2, S1, O1+O2+O3 amended; the user,
+  of the hand-off: "Right now the animation that is used is really lackluster and not well done. This can be improved
+  a lot.", then the picks `H1 A0 T1 C1` of `docs/design-panel-lemna-handoff.html`, H1 on easeOutQuint, the panel's
+  "H1 on quint"): the hand-off's motion. At ⌘⏎'s key-down, in that key's own turn and before the wait for Return, the
+  line is cut into one layer per glyph from the band's last frame and the glyphs leave off the box's right edge from
+  the caret outwards: the one at the caret at once, each further one 7 ms after its neighbour, those past 120 ms all
+  with the last (about 19 glyphs show in the box on a 1512 pt screen); each travels the box's width over 200 ms on
+  easeOutQuint, aimed far past the edge, so it crosses it at speed (at the first 120 Hz frame the glyph at the caret
+  has gone 42 % of its way to the edge); the text after the caret leaves at once with the glyph at the caret, which is
+  behind it, so none runs into another; the caret goes at the first frame; the dim lifts from the first frame over
+  160 ms, the box's shadow with it; from 120 ms the box shrinks to 90 % about its middle and fades over 160 ms: 280 ms
+  in all, the line gone by about 170 ms. Copy ⌘⇧⏎ and Save… ⌘S (once the save panel has written the file) the same,
+  the glyphs rising off the top edge (C1); a ⌘⏎ that copied instead rises too and the box stays with its note. No cue
+  in the app behind (A0). Esc unchanged: P1's plain fade. Nothing waits for the motion and the motion waits for
+  nothing (T1): pass 17a's sequence runs as it was, and when the box goes at Return's key-up while the glyphs still
+  leave (the usual case), the ghost window builds the same layers and the same collapse at the same times and carries
+  on. **Band vs ghost:** the ghost's way, Core Animation layers per glyph from the first frame (cut on the key event,
+  the strip hidden in the same transaction), not the band: the band draws on the main thread, which at the paste
+  writes the clipboard and right after the ⌘V finishes the session (30–90 ms, pass 17a), and AppKit animates a
+  window's alpha from there too, so a frame-by-frame handover would stall exactly then; and the strip is the band
+  alone, 2 em tall, while a copy's glyphs must cross the box's top edge, 27 pt above it. Effects ▸ Hand-off replaces
+  Hand-off sheen (the tick starts afresh, ticked); unticked, a hand-off fades as Esc does (or goes at once without
+  Pop); Reduce Motion and Effects ▸ Off: at once, as before. The ghost and the dims no longer hide with Lemna
+  (`canHide` off), so the motion plays after a question or the save panel, where Lemna hides itself, and Esc's fade
+  there too. Every magnitude is in `Effects.Tuning`, with E1's old values beside them. **One number differs from the
+  brief:** the stagger's cap is 120 ms (the panel's "staggers over at most 120 ms"), not the brief's "the last glyph
+  of a 2,500-char line starts by ~60 ms": at 60 ms the 7 ms steps would hold for only the 9 glyphs nearest the caret,
+  the faded half going as one block at 60 ms and the line gone by about 110 ms; the length of the line plays no part
+  either way, since only the glyphs that show are cut. `Effects.Tuning.exitStaggerCap` is the one knob. Tests: the
+  app's 97 (91 before; 6 new in `HandoffTests`: the cut, one piece per glyph shown, tiled, the caret in none; the send
+  from the caret outwards, 30 % of the way at the first frame, 7 ms apart up to the cap, a short line and a
+  2,500-character one gone by 200 ms, none running into another at any frame; the text after the caret and the rise
+  both ways, 30 % at the first frame, gone by 200 ms; the dim's lift and the box's collapse, 280 ms; at once under
+  Reduce Motion and Off, P1's fade with Hand-off unticked; the renders; changed: `EffectsTests` for the item's new
+  name and the tuning), LemnaJournal 16 (the keychain test skipped) and LemnaClicks 14 (`--skip
+  playReturnsInMicroseconds`), untouched. Renders: `app/renders/handoff-send-60ms.png`, `handoff-send-120ms.png`,
+  `handoff-send-200ms.png` and `handoff-rise-120ms.png`, composed as Core Animation composes the layers (the pieces
+  cut from a band drawn by `Line.draw`, the box and the dim at their times) over a light app. `make-app.sh` builds,
+  signs with "Lemna Dev" (`Authority=Lemna Dev`) and verifies; the executable is 1.36 MB (1,355,504 bytes, was
+  1,298,960), with no `/Users/` path in it. `app/README.md` (Pass 17b) says what each part does. Not tried: nothing
+  was launched. Try, after quitting the running Lemna, `app/make-app.sh` and `open app/build/Lemna.app`, with every
+  Effects item as it is (Hand-off ticked) and the timing log on if you like (pass 17a):
+  - The renders first: the four `app/renders/handoff-*.png`.
+  - ⌘⏎ at speed: summon over TextEdit, write a sentence, ⌘⏎ as you usually do: the letters stream off to the right
+    from the caret from the first frame, the screen undims at once, the emptied box shrinks away; the text lands in
+    TextEdit as Return comes up, as in pass 17a. The log: `motion started` right after `R1 applied`, before `Return up`.
+    Does it read as the text going into the app? Too quick to see, or too much? (`exit`, `exitStagger`,
+    `exitStaggerCap`, `sendReach` in `Effects.Tuning`; `exitStaggerCap` 0.060 is the brief's quicker version.)
+  - A long paragraph (a few hundred characters): it leaves in the same time as a short line, the faded part last.
+  - The caret in the middle (⌥← a few words back), ⌘⏎: the text after the caret goes with the glyph at the caret; no
+    glyph runs over another.
+  - Hold ⌘⏎ for most of a second: the motion plays out while the box waits for Return; nothing repeats into the app;
+    the paste comes as Return comes up.
+  - ⌘⇧⏎: the glyphs rise off the top edge, the box shrinks away, the clipboard holds the text. ⌘S, then Save in the
+    panel: the glyphs rise as the panel goes. A ⌘⏎ that copies instead (a password field focused in Safari: Secure
+    Input; or no Accessibility grant): the glyphs rise, the box stays with the empty line and its note.
+  - Esc: the plain fade, as before; type straight after it: the letters go to the app behind.
+  - With each ambience mode on (Drift, Rain, Rings, Beams, Grid, Fireworks, Swarm): ⌘⏎ and Esc: the scene fades with
+    the dim; no crash.
+  - Reduce Motion on: ⌘⏎: the box and the dim go at once, the text lands; Effects ▸ Hand-off grey. Effects ▸ Off: at
+    once. Hand-off unticked, Pop ticked: the box fades as at Esc.
+  - Watch for a doubled or a blank frame at ⌘⏎ (the band and the glyph layers swapping), a jump when Return comes up
+    (the ghost taking over), and the shadow going at the first frame over a light app: say which, if any.
+  - After a question (the menu-bar item's Discard…, Cancel), ⌘⏎: the motion plays although Lemna is the active app
+    and hands the keys back.
+- Next: the user tries pass 17b (the timing log on: its numbers also say whether pass 17a's 30 ms hold), then quits
+  Flow and tries pass 16 with pass 15b and pass 15, pass 14b (its list replaces pass 14's), pass 13, then pass 12, pass 11
   and pass 10, and what of v1, pass 6, pass 7b's click outside and pass 8 is still untried; then DESIGN.md's Open
   items.
 

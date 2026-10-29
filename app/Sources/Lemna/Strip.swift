@@ -55,7 +55,8 @@ final class Strip: NSView {
         drawn = false
     }
 
-    /// The last frame presented, as an image (a copy of its bitmap), for the box's last look as it fades (P1, E1).
+    /// The last frame presented, as an image (a copy of its bitmap), for the box's last look as it fades (P1) and a
+    /// hand-off's glyphs (H1, C1).
     func lastFrame() -> CGImage? { drawn ? ring[next].context.makeImage() : nil }
 
     /// Draws a frame with `draw` (in points, origin at the bottom left) and presents it.

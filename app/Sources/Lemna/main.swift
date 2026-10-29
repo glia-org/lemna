@@ -260,8 +260,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     private var container: NSWindow { surface.mode == .box ? box.panel : window }
 
     /// Makes the screen match `surface`: at most one container on screen, the line in it. Off screen, a hand-off's note
-    /// goes: the next summon shows the line alone. `leaving`: how a box that goes leaves (P1's fade, E1's sheen at a
-    /// hand-off); for the window it goes at once.
+    /// goes: the next summon shows the line alone. `leaving`: how a box that goes leaves (P1's fade; at a hand-off its
+    /// motion carried on, H1 and C1); for the window it goes at once.
     private func apply(leaving: Box.Leaving = .fade) {
         let on = surface.onScreen
         let recoloured = on != nil && readContrast()
@@ -431,7 +431,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
 
     /// Done (⌘⏎): into the app that was in front when the box was summoned (O3). Decided first (`Paste.decide`); when
     /// it cannot paste, and always in the window (no app behind it), it copies and the bottom edge says why. Either way
-    /// the session is finished at once.
+    /// the session is finished at once. In the box the hand-off's motion starts here, on the key-down (F1's H1 and C1,
+    /// T1): a paste's glyphs leave right while the box waits for Return to come up; a copy's rise, and the box stays.
     @objc func done(_ sender: Any?) {
         timing = .from(NSApp.currentEvent)
         timing.mark("Done")
@@ -443,22 +444,25 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         switch Paste.decide(secureInput: IsSecureEventInputEnabled(), mayPost: CGPreflightPostEventAccess(),
                             hasTarget: app != nil) {
         case .copy(let note, let ask):
+            if box.handOff(.rise, stays: true) { timing.mark("motion started") }
             // macOS's Accessibility prompt, once (seen 2026-10-28: CGRequestPostEventAccess brought none, this does; the
             // Accessibility grant covers posting events too)
             if ask { _ = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary) }
             copyOut(text, note: note)
         case .paste:
+            if box.handOff(.send) { timing.mark("motion started") }
             afterReturnIsUp { [unowned self] in self.paste(text, into: app!) }  // `decide` pastes only with a target
         }
     }
 
     /// Copy (⌘⇧⏎, O1): R1's text on the clipboard; the session is finished and the box (or the window) goes, as after a
-    /// paste.
+    /// paste. In the box its glyphs rise from the key-down on (C1).
     @objc func copyText(_ sender: Any?) {
         timing = .from(NSApp.currentEvent)
         timing.mark("Copy")
         guard let text = handOff() else { return }
         timing.mark("R1 applied")
+        if surface.onScreen == .box, box.handOff(.rise) { timing.mark("motion started") }
         afterReturnIsUp { [unowned self] in self.copyOut(text, note: nil) }  // ⌘⇧⏎ held, as with ⌘⏎
     }
 
@@ -470,7 +474,6 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         timing.mark("clipboard written")
         guard let note else { return leave() }
         guard finished() else { return }
-        if surface.onScreen == .box { box.sweep() }  // E1 on the box that stays
         edge.showNote(note)
     }
 
@@ -493,7 +496,10 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// on the clipboard: a ⌘V that did not land is one more ⌘V away, and Lemna never reads the clipboard. The next
     /// summon shows an empty line.
     private func paste(_ text: String, into app: NSRunningApplication) {
-        guard let keys = CommandV() else { return copyOut(text, note: "Copied · ⌘V could not be made") }
+        guard let keys = CommandV() else {
+            box.unsend()  // the box stays, with the note
+            return copyOut(text, note: "Copied · ⌘V could not be made")
+        }
         let inFront = NSWorkspace.shared.frontmostApplication == app
         timing.mark(inFront ? "target in front" : "target not in front")
         run(Paste.acts(targetInFront: inFront)[...], text: text, into: app, keys: keys)
@@ -613,6 +619,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
                 return self.notHandedOff("Not saved: \(describe(error)).")
             }
             UserDefaults.standard.set(url.deletingLastPathComponent().path, forKey: Self.folderKey)
+            if self.surface.onScreen == .box { self.box.handOff(.rise) }  // C1, once the file is written
             self.leave()
         }
     }
@@ -635,6 +642,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// could not be written, said at the bottom edge; nil: the save panel was cancelled.
     private func notHandedOff(_ why: String?) {
         session.back()
+        box.unsend()  // a motion that began: the box as it was
         view.resume()
         guard let why else { return }
         showSurface()
