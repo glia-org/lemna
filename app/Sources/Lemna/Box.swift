@@ -1,10 +1,10 @@
 // The box (DESIGN.md W2, F1, A1): a small floating panel over whatever the user is doing, with the rest of every screen
 // dimmed. It takes the keys without activating Lemna, so the app behind stays the active one (and is where Paste goes,
 // O3). The line moves into it from the window and back (one LineView). Its effects (F1) run on layers of its own
-// through Core Animation, off the main thread: the open and the close (P1, the dim with them, D1), the accent border
-// (B1) and its warmth (B2), the word sheen (K3), and the hand-off's motion (H1, C1: the line's glyphs as layers of
-// their own, the box's collapse, carried on in the ghost once the box has gone). The ambience (A1) plays on the dims, on a
-// Metal layer over each shade (Ambient.swift). Nothing runs at rest or while it is hidden.
+// through Core Animation, off the main thread: the open and the close (P1, the dim with them, D1) and the hand-off's
+// motion (H1, C1: the line's glyphs as layers of their own, the box's collapse, carried on in the ghost once the box has
+// gone); its accent border (B1) is still. The ambience (A1) plays on the dims, on a Metal layer over each shade
+// (Ambient.swift). Nothing runs at rest or while it is hidden.
 import AppKit
 import LemnaCore
 import QuartzCore
@@ -31,15 +31,13 @@ final class BoxPanel: NSPanel {
 let quint = CAMediaTimingFunction(controlPoints: Float(Curve.controlPoints.x1), Float(Curve.controlPoints.y1),
                                   Float(Curve.controlPoints.x2), Float(Curve.controlPoints.y2))
 
-/// The box's face (F1), over the line: a hand-off's glyphs (H1, C1), over them the accent border (B1, its warmth B2)
-/// and above it the sheen (K3), so the word sheen lights the border itself. A layer tree of Lemna's own (a layer-hosting
-/// view, which AppKit leaves alone) that lets the mouse through. The box's last look as it goes has one too, with the
-/// line's last frame under it (Esc) or the hand-off's glyphs going on.
+/// The box's face (F1), over the line: a hand-off's glyphs (H1, C1) and over them the still accent border (B1). A layer
+/// tree of Lemna's own (a layer-hosting view, which AppKit leaves alone) that lets the mouse through. The box's last look
+/// as it goes has one too, with the line's last frame under it (Esc) or the hand-off's glyphs going on.
 final class Face: NSView {
     /// B1: 1 pt, the siblings' 1 px line, on the box's whole points, so it is sharp at 1× and 2×.
     static let borderWidth: CGFloat = 1, cornerRadius: CGFloat = 10
-    private let shot = CALayer(), pieces = CALayer(), border = CALayer(), sheen = CALayer(), band = CAGradientLayer(),
-                ring = CAShapeLayer()
+    private let shot = CALayer(), pieces = CALayer(), border = CALayer()
 
     init() {
         super.init(frame: .zero)
@@ -50,19 +48,7 @@ final class Face: NSView {
         border.borderWidth = Self.borderWidth
         border.cornerRadius = Self.cornerRadius
         border.borderColor = Style.accent
-        sheen.cornerRadius = Self.cornerRadius
-        sheen.masksToBounds = true
-        band.startPoint = CGPoint(x: 0, y: 0.5)
-        band.endPoint = CGPoint(x: 1, y: 0.5)
-        band.isHidden = true
-        var lean = CATransform3DIdentity
-        lean.m21 = 1  // x moves by y about its middle: the band leans right at 45°
-        band.transform = lean
-        sheen.addSublayer(band)
-        ring.fillColor = nil
-        ring.strokeColor = CGColor(gray: 0, alpha: 1)
-        ring.lineWidth = Self.borderWidth
-        for l in [shot, pieces, border, sheen] { root.addSublayer(l) }
+        for l in [shot, pieces, border] { root.addSublayer(l) }
     }
     required init?(coder: NSCoder) { fatalError() }
 
@@ -72,53 +58,14 @@ final class Face: NSView {
         super.setFrameSize(size)
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        for l in [pieces, border, sheen, ring] { l.frame = bounds }
-        let half = Self.borderWidth / 2, r = Self.cornerRadius - half  // the border's own band
-        ring.path = CGPath(roundedRect: bounds.insetBy(dx: half, dy: half), cornerWidth: r, cornerHeight: r, transform: nil)
+        for l in [pieces, border] { l.frame = bounds }
         CATransaction.commit()
     }
 
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         let s = window?.backingScaleFactor ?? 2
-        for l in [layer, shot, pieces, border, sheen, band, ring].compactMap({ $0 }) { l.contentsScale = s }
-    }
-
-    /// The border's colour as it shows now, also mid-change.
-    var shownBorder: CGColor? { border.presentation()?.borderColor ?? border.borderColor }
-
-    /// The border's colour, from wherever it stands, over `d` on `curve` (0: at once).
-    func borderColor(_ color: CGColor, over d: Double, curve: CAMediaTimingFunction = quint) {
-        let from = shownBorder
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        border.borderColor = color
-        border.removeAnimation(forKey: "warmth")
-        if d > 0, let from {
-            let a = CABasicAnimation(keyPath: "borderColor")
-            (a.fromValue, a.toValue, a.duration, a.timingFunction) = (from, color, d, curve)
-            border.add(a, forKey: "warmth")
-        }
-        CATransaction.commit()
-    }
-
-    /// One band of light across the box, left to right at 45°, at an even pace over `d` (as Omarchy's sheen moves): a
-    /// gradient from clear to white at `peak` and back, as wide as the box is tall; over the whole box, or only on its
-    /// border (K3, `borderOnly`; E1's band across the box, until pass 17b). It rests past the right edge, out of sight.
-    func sweep(peak: CGFloat, borderOnly: Bool, over d: Double) {
-        guard d > 0 else { return }
-        let b = bounds, w = b.height, reach = (w + b.height) / 2  // half the leaning band's width
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        band.colors = [CGColor(gray: 1, alpha: 0), CGColor(gray: 1, alpha: peak), CGColor(gray: 1, alpha: 0)]
-        band.bounds = CGRect(x: 0, y: 0, width: w, height: b.height)
-        band.position = CGPoint(x: b.maxX + reach, y: b.midY)
-        band.isHidden = false
-        sheen.mask = borderOnly ? ring : nil
-        let move = CABasicAnimation(keyPath: "position.x")
-        (move.fromValue, move.toValue, move.duration) = (b.minX - reach, b.maxX + reach, d)
-        band.add(move, forKey: "sweep")
-        CATransaction.commit()
+        for l in [layer, shot, pieces, border].compactMap({ $0 }) { l.contentsScale = s }
     }
 
     /// The line's last frame where the line was: the box's last look. The box itself shows none (the line is live).
@@ -158,20 +105,12 @@ final class Face: NSView {
         CATransaction.commit()
     }
 
-    /// A hand-off's glyphs gone.
+    /// A hand-off's glyphs gone: the face back at rest.
     func unsend() {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         pieces.sublayers = nil
         CATransaction.commit()
-    }
-
-    /// Back at rest: no sheen, no hand-off's glyphs, the border's colour where its change was heading.
-    func stop() {
-        border.removeAllAnimations()
-        band.removeAllAnimations()
-        band.isHidden = true
-        unsend()
     }
 }
 
@@ -194,16 +133,14 @@ final class Box {
     private var dims: [Dim] = []
     private let lineHeight: CGFloat, style: Style
     private weak var line: LineView?
-    /// The Effects submenu (F1), set by the app; Reduce Motion is read with it at each show, hide and key.
-    var effects = Effects() { didSet { effectsChanged() } }
+    /// The Effects submenu (F1), set by the app; Reduce Motion is read with it at each show, hide and hand-off.
+    var effects = Effects()
     /// The Ambience submenu (A1), set by the app; Reduce Motion is read with it at each show and change.
     var ambience = Ambience() { didSet { if panel.isVisible { stageAmbience(on: panel.screen) } } }
     /// The dims' ambiences that play in this show: the ones the line's keys go to.
     private var ambients: [Ambient] = []
-    /// Moved on at each show and hide: a fade's end or the border's cooling that finds a later one does nothing.
+    /// Moved on at each show and hide: a fade's end that finds a later one does nothing.
     private var turn = 0
-    /// B2: when the line last took a key, whether the border has the accent, and the one timer that cools it.
-    private var lastKey = 0.0, warm = true, cooling: Timer?
     /// A hand-off's motion under way while the box is up (H1, C1): its way, when it began, the line's cut and how far
     /// each glyph travels; the ghost takes it over when the box goes (`hide`).
     private struct Sending {
@@ -211,7 +148,7 @@ final class Box {
     }
     private var sending: Sending?
 
-    /// Every magnitude (the open and close, the dim, the border's warmth, the sheen, the hand-off) is `Effects.Tuning`'s.
+    /// Every magnitude (the open and close, the dim, the hand-off) is `Effects.Tuning`'s.
     private typealias T = Effects.Tuning
 
     /// `lineHeight`: the box's height while it holds the line (`BoxFrame.height`).
@@ -269,18 +206,12 @@ final class Box {
             let open = effects.duration(.pop, T.open, reduceMotion: still)
             turn += 1
             ghost.orderOut(nil)  // the last look of a close still under way goes at once
-            ghostFace.stop()
+            ghostFace.unsend()
             if let l = card.layer { uncollapse(l) }
             sending = nil
             panel.hasShadow = true  // a hand-off took it away
             panel.setFrame(BoxFrame.line(in: screen.visibleFrame, height: lineHeight), display: false)
-            face.stop()
-            face.borderColor(T.warm, over: 0)
-            warm = true
-            if effects.plays(.borderWarms, reduceMotion: still) {  // as if a key came: it cools if none does
-                lastKey = CACurrentMediaTime()
-                coolLater(T.coolAfter)
-            }
+            face.unsend()
             dim(over: open)
             stageAmbience(on: screen)
             panel.alphaValue = open > 0 ? 0 : 1
@@ -304,8 +235,6 @@ final class Box {
         let moving = leaving == .atOnce ? nil : sending
         sending = nil
         turn += 1
-        cooling?.invalidate()
-        cooling = nil
         if let moving {
             let left = moving.t0 + Handoff.end - CACurrentMediaTime()
             if panel.isVisible, left > 0 { carryOn(moving, for: left) }
@@ -318,7 +247,7 @@ final class Box {
             l.removeAnimation(forKey: "pop")
             uncollapse(l)
         }
-        face.stop()
+        face.unsend()
         NSAnimationContext.runAnimationGroup { $0.duration = 0; panel.animator().alphaValue = 1 }  // ends an open's fade
         if let moving { afterLift(from: moving.t0) } else { undim(over: fade) }
     }
@@ -376,25 +305,6 @@ final class Box {
         stageAmbience(on: panel.screen)
     }
 
-    /// A key's frame is on screen (`LineView.onShown`, after the frame): B2 keeps the border warm while keys come, K3
-    /// sweeps along it on Space. Steady typing touches no layer: only the first key after a pause animates (the accent
-    /// back in `warmIn`), and one timer per pause cools it.
-    func keyShown(_ typed: String) {
-        guard panel.isVisible else { return }
-        let still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        if effects.plays(.borderWarms, reduceMotion: still) {
-            lastKey = CACurrentMediaTime()
-            if !warm {
-                face.borderColor(T.warm, over: T.warmIn)
-                warm = true
-            }
-            if cooling == nil { coolLater(T.coolAfter) }
-        }
-        if let last = typed.last, last.isWhitespace, !last.isNewline, effects.plays(.wordSheen, reduceMotion: still) {
-            face.sweep(peak: CGFloat(T.wordPeak), borderOnly: true, over: T.wordSheen)
-        }
-    }
-
     /// A key the line took, after its frame (A1): to the ambience of each screen where a mode plays, as a value.
     func ambientKey(_ k: Ambience.Key) {
         guard panel.isVisible else { return }  // window mode has no dim and no ambience
@@ -447,14 +357,13 @@ final class Box {
         }
     }
 
-    /// The box's last look where it was: the line's last frame under the face, the border as it showed, in the ghost
-    /// window; it fades out over `fading` on the curve.
+    /// The box's last look where it was: the line's last frame under the face, in the ghost window; it fades out over
+    /// `fading` on the curve.
     private func leaveLook(fading: Double) {
         guard let shot = line?.snapshot() else { return }  // nothing drawn yet: it goes at once
         ghost.setFrame(panel.frame, display: false)
         ghost.hasShadow = true
         ghostFace.show(shot.image, in: shot.frame, scale: panel.backingScaleFactor)
-        ghostFace.borderColor(face.shownBorder ?? T.warm, over: 0)
         ghost.alphaValue = panel.alphaValue  // a close during the open goes on from where the open was
         ghost.orderFrontRegardless()
         CATransaction.flush()  // its layers committed before the box goes, so no frame shows neither
@@ -468,7 +377,7 @@ final class Box {
             }, completionHandler: { [weak self] in
                 guard let self, self.turn == mine else { return }
                 self.ghost.orderOut(nil)
-                self.ghostFace.stop()
+                self.ghostFace.unsend()
             })
         }
     }
@@ -479,7 +388,6 @@ final class Box {
     private func carryOn(_ s: Sending, for left: Double) {
         ghost.setFrame(panel.frame, display: false)
         ghost.hasShadow = false
-        ghostFace.borderColor(face.shownBorder ?? T.warm, over: 0)
         ghostFace.send(s.cut, s.way, reach: s.reach, from: s.t0)
         if let l = card.layer {
             uncollapse(l)
@@ -492,7 +400,7 @@ final class Box {
         DispatchQueue.main.asyncAfter(deadline: .now() + left) { [weak self] in
             guard let self, self.turn == mine else { return }
             self.ghost.orderOut(nil)
-            self.ghostFace.stop()
+            self.ghostFace.unsend()
             if let l = self.card.layer { self.uncollapse(l) }
         }
     }
@@ -633,36 +541,5 @@ final class Box {
             l.add(a, forKey: "fade")
         }
         CATransaction.commit()
-    }
-
-    /// B2: after `after` seconds, the border cools if no key came in the last `coolAfter` (else it looks again then),
-    /// evenly over `coolOver`.
-    private func coolLater(_ after: Double) {
-        let mine = turn
-        cooling = Timer.scheduledTimer(withTimeInterval: after, repeats: false) { [weak self] _ in
-            guard let self, self.turn == mine else { return }
-            self.cooling = nil
-            let quiet = CACurrentMediaTime() - self.lastKey
-            guard quiet >= T.coolAfter else { return self.coolLater(T.coolAfter - quiet) }
-            self.face.borderColor(T.cooled, over: T.coolOver, curve: CAMediaTimingFunction(name: .linear))
-            self.warm = false
-        }
-    }
-
-    /// The submenu changed while the box is up: a border B2 left cool warms at once when B2 goes off; turned on, B2
-    /// starts watching for the pause.
-    private func effectsChanged() {
-        guard panel.isVisible else { return }
-        if effects.plays(.borderWarms, reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion) {
-            if cooling == nil, warm {
-                lastKey = CACurrentMediaTime()
-                coolLater(T.coolAfter)
-            }
-        } else {
-            cooling?.invalidate()
-            cooling = nil
-            if !warm { face.borderColor(T.warm, over: 0) }
-            warm = true
-        }
     }
 }

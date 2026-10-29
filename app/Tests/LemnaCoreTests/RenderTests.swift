@@ -14,7 +14,7 @@ let renders = #filePath.split(separator: "/", omittingEmptySubsequences: false).
 
 /// One frame as the app shows it: the background the view's layer paints, the strip's band across the middle.
 /// `offset` moves the text before the caret (an edit's glide), `moved` all of it (a caret move's); `newest` the glyphs
-/// a key just added (F1: K1, E2).
+/// a key just added, fading in (F1: K1, E2).
 func render(_ text: Text, marked: String = "", offset: CGFloat, moved: CGFloat = 0, newest: Newest = Newest(),
             name: String) -> [UInt8] {
     let style = Style(font: menlo), size = CGSize(width: 1200, height: 700), (w, h) = (2400, 1400)
@@ -59,11 +59,12 @@ func inkedColumns(_ px: [UInt8]) -> ClosedRange<Int> {
     let glide70 = render(after, offset: CGFloat(g.offset(at: 0.070)), name: "glide-70ms.png")
     let glide140 = render(after, offset: CGFloat(g.offset(at: 0.140)), name: "glide-140ms.png")
     let marked = render(before, marked: "´", offset: 0, name: "marked.png")
-    // The first 120 Hz frame after the key with the pop-in (K1): the "e" a quarter out from under the caret, at 22 %,
-    // 77 % of its size and 2.3 pt low; and a Return's ` ¶ ` 25 ms in (E2), at 48 %.
+    // The first 120 Hz frame after the key with the glyph fade (K1): the "e" a quarter out from under the caret, at
+    // 41 %; and a Return's ` ¶ ` 25 ms in (E2), at 48 %.
     let t1 = 1.0 / 120, entrance = Entrance.glyph(units: 1, at: 0)
-    let popping = render(after, offset: CGFloat(g.offset(at: t1)), newest: entrance.newest(at: t1), name: "pop-in-8ms.png")
-    #expect(popping != render(after, offset: CGFloat(g.offset(at: t1)), name: "glide-8ms.png"))
+    let fadingIn = render(after, offset: CGFloat(g.offset(at: t1)), newest: entrance.newest(at: t1),
+                         name: "glyph-fade-8ms.png")
+    #expect(fadingIn != render(after, offset: CGFloat(g.offset(at: t1)), name: "glide-8ms.png"))
     var returned = before
     returned.insert("\n")
     var r = Glide()
@@ -79,7 +80,7 @@ func inkedColumns(_ px: [UInt8]) -> ClosedRange<Int> {
     #expect(Array(idle[caretPixel..<caretPixel + 4]) == [0xf0, 0xa7, 0x7a, 0xff])
     #expect(glide70 != glide0 && glide140 != glide70 && marked != idle)
     let caretEnd = 2 * (720 + 2), fadeEnd = 2 * Int(300 - advance)  // a glyph centred at 25 % reaches half a cell left
-    for frame in [idle, glide0, glide70, glide140, marked, popping, fading] {
+    for frame in [idle, glide0, glide70, glide140, marked, fadingIn, fading] {
         let ink = inkedColumns(frame)
         #expect(ink.upperBound < caretEnd)  // nothing right of the caret
         #expect(ink.lowerBound >= fadeEnd)  // nothing left of the fade's end

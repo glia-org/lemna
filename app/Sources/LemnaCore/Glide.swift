@@ -1,6 +1,6 @@
 // The glide (DESIGN.md S1 B4): an offset for a part of the line (the text before the caret, or the whole text on a
-// caret move), so nothing on screen jumps when a key lands mid-glide; and the newest glyphs' entrance (F1: K1, E2). Both
-// run on Omarchy's one curve, easeOutQuint (F1: G1).
+// caret move), so nothing on screen jumps when a key lands mid-glide; and the newest glyphs' entrance (F1: K1, E2), a
+// fade. Both run on Omarchy's one curve, easeOutQuint (F1: G1).
 
 /// easeOutQuint, cubic-bezier(0.23, 1, 0.32, 1): Omarchy's curve for every animation since 2026-10-28, and Lemna's
 /// (F1). Over the glide's 140 ms it covers 25, 46 and 63 % in the first three 120 Hz frames and 90 % at 51 ms (the
@@ -67,22 +67,20 @@ public struct Glide {
 }
 
 /// The newest glyphs' entrance (F1): what a key just added before the caret, the last `units` of the line's UTF-16
-/// units before it, fades in from nothing on the curve; a typed glyph also grows about its own baseline-left and rises
-/// from below the baseline (K1, `glyph`), a Return's ` ¶ ` only fades (E2, `paragraph`); the magnitudes are
-/// `Effects.Tuning`'s. One at a time: the next key's entrance takes its place and the glyph before it is drawn whole; a
-/// delete, a caret move or a dead key's pending mark ends it. It changes how the band draws in frames the glide draws
-/// anyway.
+/// units before it, fades in from nothing on the curve, opacity alone: a typed glyph over `Tuning.glyphFade` (K1,
+/// `glyph`; until pass 18 it also grew and rose), a Return's ` ¶ ` over `Tuning.paragraphFade` (E2, `paragraph`). One at
+/// a time: the next key's entrance takes its place and the glyph before it is drawn whole; a delete, a caret move or a
+/// dead key's pending mark ends it. It changes how the band draws in frames the glide draws anyway.
 public struct Entrance: Equatable {
-    public var units = 0, start = 0.0, duration = 0.0, scaleFrom = 1.0, rise = 0.0
+    public var units = 0, start = 0.0, duration = 0.0
     public init() {}
-    init(units: Int, start: Double, duration: Double, scaleFrom: Double = 1, rise: Double = 0) {
-        (self.units, self.start, self.duration, self.scaleFrom, self.rise) = (units, start, duration, scaleFrom, rise)
+    init(units: Int, start: Double, duration: Double) {
+        (self.units, self.start, self.duration) = (units, start, duration)
     }
 
-    /// K1: a typed glyph, from `Tuning.popInScale` and `popInRise` points below over `popIn`.
+    /// K1: a typed glyph, over `Tuning.glyphFade`.
     public static func glyph(units: Int, at t: Double) -> Entrance {
-        Entrance(units: units, start: t, duration: Effects.Tuning.popIn, scaleFrom: Effects.Tuning.popInScale,
-                 rise: Effects.Tuning.popInRise)
+        Entrance(units: units, start: t, duration: Effects.Tuning.glyphFade)
     }
 
     /// E2: a Return's ` ¶ `, fading in alone over `Tuning.paragraphFade`.
@@ -95,7 +93,6 @@ public struct Entrance: Equatable {
     /// The newest glyphs as the band draws them at `t`; at rest, or once it is over, as the rest of the line.
     public func newest(at t: Double) -> Newest {
         guard active(at: t) else { return Newest() }
-        let e = Curve.easeOutQuint((t - start) / duration)
-        return Newest(units: units, alpha: e, scale: scaleFrom + (1 - scaleFrom) * e, dy: -rise * (1 - e))
+        return Newest(units: units, alpha: Curve.easeOutQuint((t - start) / duration))
     }
 }

@@ -2,8 +2,8 @@
 // between them, W2), its layer paints the background, and the line is drawn into the strip across its middle on each
 // key and, while a glide or an entrance runs, on each display refresh. The caret moves through the text and edits
 // anywhere (B4); every change to the text leaves as a journal edit (E2) and, ahead of the drawing, as a click (K1). The
-// newest glyph pops in and a Return's ` ¶ ` fades in, in the same frames (F1: K1, E2). After each key's frame the key
-// goes on to the ambience as a value (A1).
+// newest glyph and a Return's ` ¶ ` fade in, in the same frames (F1: K1, E2). After each key's frame the key goes on to
+// the ambience as a value (A1).
 import AppKit
 import LemnaClicks
 import LemnaCore
@@ -27,11 +27,8 @@ final class LineView: NSView, NSTextInputClient {
     var onKey: () -> Void = {}
     /// False during a hand-off (Done, Copy, Save…): keys do nothing and the line keeps its last frame.
     private(set) var accepting = true
-    /// The Effects submenu (F1), for the glyph pop-in (K1) and the paragraph fade (E2); set by the app.
+    /// The Effects submenu (F1), for the glyph fade (K1) and the paragraph fade (E2); set by the app.
     var effects = Effects()
-    /// After a key's frame is on screen: what the key added before the caret ("" for a delete, a move, a dead key), for
-    /// the box's border (B2) and the word sheen (K3). Called after the frame, so they never delay it.
-    var onShown: (String) -> Void = { _ in }
     /// Each key that changes the text, for the ambience (A1), handed on as a value after the key's frame, with the line
     /// as now shaped and how far the edit moved the text before the caret; the box passes it to the scene thread.
     var onAmbient: (Ambience.Key) -> Void = { _ in }
@@ -143,15 +140,14 @@ final class LineView: NSView, NSTextInputClient {
         keyFrame = now
         render(at: shown)
         if animating(at: shown) { link?.isPaused = false }
-        onShown(typed ?? "")
     }
 
-    /// The entrance for what a key added (F1): a Return's ` ¶ ` fades in (E2), anything else typed pops in (K1); none
-    /// while that effect is off, or Reduce Motion stops it.
+    /// The entrance for what a key added (F1): a Return's ` ¶ ` fades in (E2), and so does anything else typed (K1); none
+    /// while that effect is off.
     private func entering(_ typed: String?, at t: Double, reduceMotion: Bool) -> Entrance {
         guard let typed, !typed.isEmpty else { return Entrance() }
         let paragraph = typed == "\n"
-        guard effects.plays(paragraph ? .paragraphFade : .glyphPopIn, reduceMotion: reduceMotion) else { return Entrance() }
+        guard effects.plays(paragraph ? .paragraphFade : .glyphFade, reduceMotion: reduceMotion) else { return Entrance() }
         let units = typed.replacingOccurrences(of: "\n", with: Line.paragraphEnd).utf16.count  // as the line shows it
         return paragraph ? .paragraph(units: units, at: t) : .glyph(units: units, at: t)
     }

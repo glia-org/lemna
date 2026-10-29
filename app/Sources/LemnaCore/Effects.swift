@@ -7,44 +7,43 @@ import CoreGraphics
 /// glide's curve (G1) are no items: they are always so.
 public struct Effects: Equatable {
     public enum Item: String, CaseIterable {
-        /// P1, the box's open and close; B2, the border warming with the keys; K1, the newest glyph's pop-in; K3, a sheen
-        /// along the border on Space; H1 and C1, the hand-off's motion (`Handoff`; since pass 17b, where E1's sheen
-        /// across the box was, `handOffSheen`); E2, the ` ¶ ` fading in on Return.
-        case pop, borderWarms, glyphPopIn, wordSheen, handOff, paragraphFade
+        /// P1, the box's open and close; K1, the newest glyph fading in (a pop-in until pass 18, `glyphPopIn`); H1 and
+        /// C1, the hand-off's motion (`Handoff`; since pass 17b, where E1's sheen across the box was, `handOffSheen`);
+        /// E2, the ` ¶ ` fading in on Return. Pass 18 removed B2 (the border warming with the keys, `borderWarms`) and
+        /// K3 (a sheen along the border on Space, `wordSheen`): a kept tick of theirs is ignored.
+        case pop, glyphFade, handOff, paragraphFade
 
         /// The submenu's item, in `allCases`' order.
         public var title: String {
             switch self {
             case .pop: "Pop"
-            case .borderWarms: "Border warms"
-            case .glyphPopIn: "Glyph pop-in"
-            case .wordSheen: "Word sheen"
+            case .glyphFade: "Glyph fade"
             case .handOff: "Hand-off"
             case .paragraphFade: "Paragraph fade"
             }
         }
 
-        /// Ticked at a first launch: the user's picks P1, K1, H1 and E2; B2 and K3 are opt-in.
-        public var byDefault: Bool { self != .borderWarms && self != .wordSheen }
+        /// The key its tick was kept under before, read when its own is missing: the glyph fade takes the pop-in's.
+        var former: String? { self == .glyphFade ? "glyphPopIn" : nil }
 
-        /// Moves something: a scale (the pop, the glyph's pop-in), a sweep (the word sheen) or the glyphs and the box
-        /// (the hand-off). Reduce Motion stops these; the paragraph fade (opacity alone) and the border's warmth (a
-        /// colour) move nothing and stay.
-        public var moves: Bool { self != .borderWarms && self != .paragraphFade }
+        /// Moves something: a scale (the pop) or the glyphs and the box (the hand-off). Reduce Motion stops these; the
+        /// glyph fade and the paragraph fade (opacity alone) move nothing and stay.
+        public var moves: Bool { self == .pop || self == .handOff }
     }
 
     public private(set) var ticked: Set<Item>
     public private(set) var on: Bool
 
-    /// A first launch: the defaults, on.
-    public init() { (ticked, on) = (Set(Item.allCases.filter(\.byDefault)), true) }
+    /// A first launch: every effect ticked (the user's picks P1, K1, H1 and E2), on.
+    public init() { (ticked, on) = (Set(Item.allCases), true) }
 
-    /// As kept across launches (`kept`); an item or Off that is not in it takes its default.
+    /// As kept across launches (`kept`); an item or Off that is not in it (nor under its former key) is ticked, on.
     public init(kept: [String: Bool]?) {
         self.init()
         guard let kept else { return }
         for item in Item.allCases {
-            if kept[item.rawValue] ?? item.byDefault { ticked.insert(item) } else { ticked.remove(item) }
+            let tick = kept[item.rawValue] ?? item.former.flatMap { kept[$0] } ?? true
+            if tick { ticked.insert(item) } else { ticked.remove(item) }
         }
         on = kept[Self.onKey] ?? true
     }
@@ -92,9 +91,9 @@ extension Effects {
         public static let open = 0.300, openScale = 0.87, close = 0.200
         /// D1, the dim's opacity (the box's background at it). Unchanged.
         public static let dim: Float = 0.5
-        /// K1, the newest glyph: from `popInScale` about its baseline-left, rising `popInRise` points from below the
-        /// baseline, fading in. Subtle: 0.120 s from 0.95, no rise.
-        public static let popIn = 0.160, popInScale = 0.70, popInRise = 3.0
+        /// K1, the newest glyph, fading in: opacity alone (pass 18; the glyph fade). Was the pop-in (pass 14b): 0.160 s
+        /// from 70 % about its baseline-left, rising 3 pt from below the baseline (subtle: 0.120 s from 0.95, no rise).
+        public static let glyphFade = 0.080
         /// E2, a Return's ` ¶ `, opacity alone. Subtle: 0.120 s.
         public static let paragraphFade = 0.200
         /// H1 and C1 (pass 17b), the hand-off (`Handoff`): each glyph travels `sendReach` of the box's width to the
@@ -109,13 +108,7 @@ extension Effects {
         public static let exit = 0.200, exitStagger = 0.007, exitStaggerCap = 0.120
         public static let sendReach: CGFloat = 1.0, riseReach: CGFloat = 1.25
         public static let lift = 0.160, collapseAt = 0.120, collapse = 0.160, collapseScale = 0.9
-        /// K3, a band of light along the border alone, on Space (E1's band, masked to the border). Subtle: peak 0.35
-        /// (the duration as it was).
-        public static let wordSheen = 0.300, wordPeak = 0.7
-        /// B2: the border `warm` (the accent at full) while keys come, back in `warmIn` at the first key after a
-        /// pause; `coolAfter` after the last key it cools evenly (not on the curve) to `cooled` over `coolOver`.
-        /// Subtle: the same, but cooling over 1.5 s.
-        public static let warmIn = 0.150, coolAfter = 0.5, coolOver = 1.0
-        public static let warm = Style.accent, cooled = Style.line
+        /// Removed in pass 18: K3's word sheen (0.300 s, peak 0.7) and B2's warming border (back in 0.150 s, cooling
+        /// over 1.0 s from 0.5 s after the last key).
     }
 }
