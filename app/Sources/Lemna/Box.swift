@@ -501,7 +501,7 @@ final class Box {
     }
 
     /// The ambience on the dims (A1): this show's mode, none under Reduce Motion, on the box's screen, and on the other
-    /// screens for the modes that play on every one (Rain, Beams); each dim's layer gets its screen's stage, the box and
+    /// screens for the mode that plays on every one (Rain); each dim's layer gets its screen's stage, the box and
     /// its line where they are on it. A dim gets its layer the first time a mode plays on it.
     private func stageAmbience(on boxScreen: NSScreen?) {
         let mode = ambience.playing(reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)

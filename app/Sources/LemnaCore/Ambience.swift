@@ -11,24 +11,22 @@ import CoreText
 /// and greys the modes, and keeps the pick for when it is turned off again.
 public struct Ambience: Equatable {
     public enum Mode: String, CaseIterable {
-        /// M1 to M7 of `docs/design-panel-lemna-ambience.html`, in the submenu's order (M8 Burn was not picked).
-        case drift, rain, rings, beams, grid, fireworks, swarm
+        /// M1, M2, M3 and M5 of `docs/design-panel-lemna-ambience.html`, in the submenu's order (M8 Burn was not
+        /// picked; pass 18 removed M4 Beams, M6 Fireworks and M7 Swarm, whose kept `ambience` is now Off).
+        case drift, rain, rings, grid
 
         public var title: String {
             switch self {
             case .drift: "Drift"
             case .rain: "Rain"
             case .rings: "Rings"
-            case .beams: "Beams"
             case .grid: "Grid"
-            case .fireworks: "Fireworks"
-            case .swarm: "Swarm"
             }
         }
 
-        /// Plays on every screen's dim, not only on the box's: Rain falls over the whole dim and Return's beam crosses
-        /// every screen. The others come from the box and stay on its screen.
-        public var everyScreen: Bool { self == .rain || self == .beams }
+        /// Plays on every screen's dim, not only on the box's: Rain falls over the whole dim. The others come from the
+        /// box and stay on its screen.
+        public var everyScreen: Bool { self == .rain }
     }
 
     public private(set) var mode: Mode?
@@ -56,8 +54,8 @@ extension Ambience {
     /// 15: "The ambience effects are way too subtle") made every mode plain from its first frame, about two to three
     /// times pass 15's alphas, larger where that reads better, a little longer where the fade took them early; pass
     /// 15's values, the panel's, stand beside each as "subtle". Times in seconds, lengths in points, alphas over the
-    /// dim. The colours are the box's (C1): text for glyphs, rings, grid lines and bubbles, the accent for heads, beams
-    /// and lit cells.
+    /// dim. The colours are the box's (C1): text for glyphs, rings and grid lines, the accent for the rain's heads and the
+    /// lit cells.
     public enum Tuning {
         /// Every mode: at most this many sprites a frame (the panel's 2,000 particles), stepped and drawn at 60 Hz.
         public static let cap = 2000, frameRate = 60.0
@@ -70,15 +68,14 @@ extension Ambience {
         /// The typing rate is the keys of the last `rateWindow`; magnitudes set by it reach their top at `fastRate`
         /// keys a second (about 100 words a minute).
         public static let rateWindow = 2.0, fastRate = 10.0
-        /// C1: the box's text and accent (`Style.text`, `Style.accent`), and the beams' white head.
-        public static let text: UInt32 = 0xd8dce3, accent: UInt32 = 0x7aa7f0, white: UInt32 = 0xffffff
+        /// C1: the box's text and accent (`Style.text`, `Style.accent`).
+        public static let text: UInt32 = 0xd8dce3, accent: UInt32 = 0x7aa7f0
 
         /// Where a key is (pass 16, `Keyboard`): across the screen, Rain's columns from the left to the right end of
-        /// `screenSpan`; along the box, where Rings, Fireworks and Swarm start, `boxSpan` of its width; down the
-        /// keyboard, Rain's start from the top of `rainRows` (the number row) to its bottom (the space bar's), and the
-        /// beams' height from the top of `beamRows` to its bottom, shares of the screen's height. A key with no
-        /// position (an arrow, the accent menu's pick) takes the caret's x.
-        public static let screenSpan = 0.1...0.9, boxSpan = 0.05...0.95, rainRows = 0.55...0.95, beamRows = 0.1...0.85
+        /// `screenSpan`; along the box, where Rings start, `boxSpan` of its width; down the keyboard, Rain's start from
+        /// the top of `rainRows` (the number row) to its bottom (the space bar's), a share of the screen's height. A key
+        /// with no position (an arrow, the accent menu's pick) takes the caret's x.
+        public static let screenSpan = 0.1...0.9, boxSpan = 0.05...0.95, rainRows = 0.55...0.95
 
         /// M1 Drift: a glyph that leaves the box's left edge fades in over `driftIn` to `driftPeak`, holds it for
         /// `driftHold` and fades out by `driftLife`. It leaves at the line's own speed (its advance times the typing
@@ -106,14 +103,6 @@ extension Ambience {
         public static let ringPeak = 0.6, ringWidth = 2.0, ringLife = 2.0, ringInward = 240.0, ringArc = 100.0
         public static let ringArcs = 96
 
-        /// M4 Beams: added light in the accent at `beamPeak` with a bright white head at `beamHead`. Space: one along
-        /// the bottom of the box's screen (`wordBeam`: its length a share of the screen's width, its life, its
-        /// height); Return: one across every screen at its row's height (`lineBeam`, at most `lineLongest`). Subtle:
-        /// 0.18 and 0.55; Space's 160 pt beside the box in 0.55 s, 2 pt; Return's at a random height in 0.9 s, 3 pt.
-        public static let beamPeak = 0.45, beamHead = 0.95
-        public static let wordBeam = (share: 0.25, life: 1.0, height: 3.0)
-        public static let lineBeam = (share: 0.35, life: 1.1, height: 4.0), lineLongest = 800.0
-
         /// M5 Grid: square cells of `gridCell` over the box's screen, the lines at `gridLines` fading in over `gridIn`
         /// at the first key; each key lights its own cells in a keyboard of 5 × 15 cells `gridGap` cells under the
         /// box (over it where there is no room), in the accent at `gridLit`, fading out by `gridLife`, so typing
@@ -122,21 +111,6 @@ extension Ambience {
         /// a random cell near the caret for every key.
         public static let gridCell = 32.0, gridLines = 0.12, gridIn = 0.3, gridLit = 0.6, gridLife = 0.9
         public static let gridGap = 1, gridReach = 3, gridNear = 150.0
-
-        /// M6 Fireworks: on Return a spark rises `fireRise` from the box's top edge where Return is in `fireLaunch`
-        /// and bursts into `fireSparks`: the last glyphs typed at `fireScale` and dots, text and accent by turns,
-        /// flung at 70–180 pt/s, slowed by `fireDrag`, falling by `fireGravity`, from `firePeak` to nothing over
-        /// `fireLife`. Subtle: peak 0.42, 24 sparks, half size, 60–150 pt/s, 1.6 s, from the caret, a rise of 130 pt.
-        public static let firePeak = 0.9, fireLaunch = 0.45, fireRise = 160.0, fireSparks = 48, fireScale = 0.7
-        public static let fireSpeed = 70.0...180.0, fireDrag = 1.2, fireGravity = 140.0, fireLife = 2.0
-
-        /// M7 Swarm: each glyph or Space lets one bubble (a ring of `swarmStroke`) rise from the box's top edge where
-        /// the key is (Return five), at `swarmRise` plus `swarmRiseRate` per key a second, then join a swarm circling
-        /// `swarmHeight` above the caret at 0.5 rad/s plus `swarmTurnRate` per key a second; a bubble lives 2.5–4 s at
-        /// up to `swarmPeak`, then pops (`swarmPop`). Subtle: peak 0.3, 1.2 pt, radius 4–10 pt, near the caret.
-        public static let swarmPeak = 0.6, swarmStroke = 2.0, swarmLife = 2.5...4.0, swarmRadius = 6.0...14.0
-        public static let swarmPop = 0.2, swarmRise = 30.0, swarmRiseRate = 6.0, swarmHeight = 120.0
-        public static let swarmTurnRate = 0.2
     }
 }
 
@@ -219,17 +193,16 @@ func mix(_ r: ClosedRange<Double>, _ u: Double) -> Double { r.lowerBound + (r.up
 
 /// One sprite: a quad centred at (x, y), w × h points, turned by `rotation` radians about its centre, at `alpha` (times
 /// the run's), in `colour` (0xRRGGBB packed as the shader unpacks it). `shape`: the kind in its low byte and a
-/// parameter above it (a glyph's atlas slot; a stroke's width in 1/64 pt; a beam's head alpha in 1/255). 32 bytes, the
-/// layout the shader reads.
+/// parameter above it (a glyph's atlas slot; a bend's radius and stroke width). 32 bytes, the layout the shader reads.
 public struct Sprite: Equatable {
     public var x: Float, y: Float, w: Float, h: Float, rotation: Float, alpha: Float, colour: UInt32, shape: UInt32
 
     public enum Kind: UInt32 {
-        /// A glyph from the atlas; a filled rectangle; a filled disc; a circle's stroke (its outer edge at the quad's);
-        /// a stretch of a large circle's stroke (`bend`: the circle's centre lies below the quad's middle by the radius,
-        /// on its turned y axis, and the stroke is cut square at the quad's ends, so arcs side by side make the circle);
-        /// a beam, its alpha rising along x to a white head.
-        case glyph, rect, dot, ring, bend, beam
+        /// A glyph from the atlas; a filled rectangle; a stretch of a large circle's stroke (`bend`: the circle's centre
+        /// lies below the quad's middle by the radius, on its turned y axis, and the stroke is cut square at the quad's
+        /// ends, so arcs side by side make the circle). Pass 18 took out the disc, the small circle's stroke and the
+        /// beam, which only the removed modes drew.
+        case glyph, rect, bend
     }
 
     public init(x: Double, y: Double, w: Double, h: Double, rotation: Double = 0, alpha: Double, colour: UInt32,
@@ -247,9 +220,6 @@ public struct Sprite: Equatable {
     public static func packed(_ rgb: UInt32) -> UInt32 {
         (rgb >> 16 & 0xff) | (rgb >> 8 & 0xff) << 8 | (rgb & 0xff) << 16 | 0xff << 24
     }
-
-    /// A stroke's width as a parameter.
-    static func stroke(_ w: Double) -> UInt32 { UInt32((w * 64).rounded()) }
 
     /// A bend's radius (in half points, to 8,191 pt) and stroke width (in sixteenths, to 63 pt) as a parameter.
     static func bend(radius r: Double, width w: Double) -> UInt32 {
@@ -277,7 +247,7 @@ extension Ambience {
         public let ids: [CGGlyph]
         /// One cell in the atlas's pixels, and where a glyph's baseline-left sits in it, in points from its bottom-left.
         public let pixels: (w: Int, h: Int), origin: CGPoint
-        /// The slots of a to z, for rain's and the bursts' other glyphs.
+        /// The slots of a to z, for rain's other glyphs.
         public let letters: [Int]
         private let byCharacter: [Character: Int], byGlyph: [CGGlyph: Int]
 
@@ -333,7 +303,7 @@ extension Ambience {
 // MARK: Scenes and their run
 
 extension Ambience {
-    /// One mode's scene on one stage: particles on the CPU, stepped once a frame (Scenes.swift has the seven).
+    /// One mode's scene on one stage: particles on the CPU, stepped once a frame (Scenes.swift has the four).
     public protocol Scene {
         init(stage: Stage, glyphs: Glyphs, seed: UInt64)
         /// Moves the scene on by `dt` seconds, `events` having come since the last step, at the typing `rate` (keys a
@@ -349,10 +319,7 @@ extension Ambience {
         case .drift: Drift(stage: stage, glyphs: glyphs, seed: seed)
         case .rain: Rain(stage: stage, glyphs: glyphs, seed: seed)
         case .rings: Rings(stage: stage, glyphs: glyphs, seed: seed)
-        case .beams: Beams(stage: stage, glyphs: glyphs, seed: seed)
         case .grid: Grid(stage: stage, glyphs: glyphs, seed: seed)
-        case .fireworks: Fireworks(stage: stage, glyphs: glyphs, seed: seed)
-        case .swarm: Swarm(stage: stage, glyphs: glyphs, seed: seed)
         }
     }
 

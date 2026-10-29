@@ -55,18 +55,20 @@ private func near(_ a: Double, _ b: Double, _ tolerance: Double) -> Bool { abs(a
 
 @Test func ambienceStartsOffAndKeepsAModeAcrossLaunches() {
     #expect(Ambience().mode == nil && Ambience().kept == "off")  // D0
-    #expect(Mode.allCases.map(\.title) == ["Drift", "Rain", "Rings", "Beams", "Grid", "Fireworks", "Swarm"])
+    #expect(Mode.allCases.map(\.title) == ["Drift", "Rain", "Rings", "Grid"])  // pass 18: Beams, Fireworks, Swarm gone
     for mode in Mode.allCases {
         #expect(Ambience(kept: Ambience(mode).kept) == Ambience(mode) && Ambience(mode).kept == mode.rawValue)
     }
     #expect(Ambience(kept: nil) == Ambience() && Ambience(kept: "off") == Ambience())
-    #expect(Ambience(kept: "burn") == Ambience())  // M8, never built, or a mode since removed: Off
+    for gone in ["burn", "beams", "fireworks", "swarm"] {  // M8, never built, or a mode removed in pass 18: Off
+        #expect(Ambience(kept: gone) == Ambience() && Ambience(kept: gone).playing(reduceMotion: false) == nil)
+    }
     var a = Ambience()
     a.choose(.rain)
     #expect(a.mode == .rain && a.playing(reduceMotion: false) == .rain)
     a.choose(nil)
     #expect(a == Ambience())
-    #expect(Mode.allCases.filter(\.everyScreen) == [.rain, .beams])  // the rest stay on the box's screen
+    #expect(Mode.allCases.filter(\.everyScreen) == [.rain])  // the rest stay on the box's screen
 }
 
 @Test func reduceMotionForcesOffAndKeepsThePick() {
@@ -82,10 +84,7 @@ private func near(_ a: Double, _ b: Double, _ tolerance: Double) -> Bool { abs(a
     #expect(T.driftPeak == 0.7 && T.driftHold == 1.5 && T.driftLife == 4 && T.driftCurrent == 8...40)  // 0.35, no hold
     #expect(T.rainHead == 0.8 && T.rainTrailStart == 0.55 && T.rainLife == 3 && T.rainScale == 1)  // 0.3, 0.18, 2.5, 0.8
     #expect(T.ringPeak == 0.6 && T.ringWidth == 2 && T.ringLife == 2 && T.ringInward == 240)  // 0.25, 1, 1.5, 160
-    #expect(T.beamPeak == 0.45 && T.beamHead == 0.95)  // 0.18, 0.55
     #expect(T.gridCell == 32 && T.gridLines == 0.12 && T.gridLit == 0.6 && T.gridLife == 0.9)  // 24, 0.06, 0.2, 0.6
-    #expect(T.firePeak == 0.9 && T.fireSparks == 48 && T.fireLife == 2)  // 0.42, 24, 1.6
-    #expect(T.swarmPeak == 0.6 && T.swarmStroke == 2)  // 0.3, 1.2
     // C1: the box's text and accent.
     func hex(_ c: CGColor) -> UInt32 {
         c.components!.prefix(3).reduce(0) { $0 << 8 | UInt32(($1 * 255).rounded()) }
@@ -96,8 +95,8 @@ private func near(_ a: Double, _ b: Double, _ tolerance: Double) -> Bool { abs(a
 @Test func aSpriteIsThe32BytesTheShaderReads() {
     #expect(MemoryLayout<Sprite>.size == 32 && MemoryLayout<Sprite>.stride == 32)
     #expect(Sprite.packed(0x7aa7f0) == 0xfff0_a77a)  // red in the low byte, as unpack_unorm4x8 reads it
-    let s = Sprite(x: 1, y: 2, w: 3, h: 4, alpha: 1.5, colour: 0xffffff, kind: .ring, parameter: Sprite.stroke(1))
-    #expect(s.kind == .ring && s.parameter == 64 && s.alpha == 1)  // alpha clamped
+    let s = Sprite(x: 1, y: 2, w: 3, h: 4, alpha: 1.5, colour: 0xffffff, kind: .bend, parameter: 64)
+    #expect(s.kind == .bend && s.parameter == 64 && s.alpha == 1 && s.shape == 2 | 64 << 8)  // alpha clamped
     let b = Sprite.bend(radius: 1234.5, width: 2)  // half points and sixteenths
     #expect(b & 0x3fff == 2469 && b >> 14 == 32 && Sprite.bend(radius: 99_999, width: 99) == 0x3fff | 1023 << 14)
 }
@@ -287,29 +286,6 @@ private func circleOf(_ out: [Sprite]) -> (x: Double, y: Double, r: Double) {
     #expect(play(&other, [.typed(slot: m, at: nil)], for: 0.1).isEmpty)
 }
 
-@Test func beamsSweepAtTheKeysRowSpaceAlongTheBottomReturnAcross() {
-    var s = scene(.beams)
-    #expect(play(&s, [.typed(slot: m, at: key("m")), .backspace(nil)], for: 0.2).isEmpty)
-    var word = play(&s, [.space(Keyboard.position(of: 0x31))], for: 0.1)
-    #expect(word.count == 1 && word[0].kind == .beam && word[0].colour == Sprite.packed(T.accent) && word[0].h == 3)
-    #expect(abs(Double(word[0].y) - 0.1 * 982) <= 0.02 * 982 + 1)  // the space bar's row: along the bottom
-    #expect(word[0].parameter > 200)  // a bright head
-    let x = word[0].x
-    word = play(&s, for: 0.3)
-    #expect(word[0].x > x)  // sweeping right
-    #expect(play(&s, for: 0.7).isEmpty)  // 1 s
-    var line = scene(.beams)
-    let start = play(&line, [.paragraph(Keyboard.position(of: 0x24))], for: 0.2)[0], later = play(&line, for: 0.4)[0]
-    #expect(start.h == 4 && later.x > start.x + 400 && later.w >= start.w)  // across the screen, growing in
-    #expect(abs(Double(start.y) - 0.475 * 982) <= 0.02 * 982 + 1)  // Return's row, the home row
-    #expect(near(Double(play(&line, for: 1.0 / 60)[0].alpha), 0.45, 0.01))  // the accent at its peak mid-way
-    var iso = scene(.beams)
-    let tall = play(&iso, [.paragraph(Keyboard.position(of: 0x24, on: .iso))], for: 0.2)[0]
-    #expect(abs(Double(tall.y) - (0.85 - 0.75 * 1.5 / 4) * 982) <= 0.02 * 982 + 1)  // ISO's Return, rows 1 and 2
-    var other = scene(.beams, on: elsewhere)
-    #expect(play(&other, [.space(nil)], for: 0.1).isEmpty && play(&other, [.paragraph(nil)], for: 0.1).count == 1)
-}
-
 @Test func gridLightsTheKeysCellsInAKeyboardUnderTheBox() {
     var s = scene(.grid)
     #expect(play(&s, for: 0.5).isEmpty)  // no key yet: no grid
@@ -348,59 +324,6 @@ private func circleOf(_ out: [Sprite]) -> (x: Double, y: Double, r: Double) {
     #expect(play(&other, [.typed(slot: m, at: nil)], for: 0.3).isEmpty)
 }
 
-@Test func fireworksBurstAboveTheBoxWhereReturnIs() {
-    var s = scene(.fireworks)
-    #expect(play(&s, [.typed(slot: m, at: nil), .typed(slot: glyphs.slot("e"), at: nil), .space(nil)], for: 0.2).isEmpty)
-    let enter = Keyboard.position(of: 0x24)!, x = Double(box.minX) + Double(box.width) * (0.05 + 0.9 * enter.across)
-    var out = play(&s, [.paragraph(enter)], for: 0.1)
-    #expect(out.count == 2)
-    #expect(out.allSatisfy { near(Double($0.x), x, 0.01) && Double($0.y) >= Double(box.maxY) })  // Return's x
-    out = play(&s, for: 0.4)
-    #expect(out.count == 3 * T.fireSparks)  // burst: 48 sparks, each with two trailing dots
-    let sparks = out.filter { $0.kind == .glyph }
-    let recent = [UInt32(m), UInt32(glyphs.slot("e")!)]
-    #expect(sparks.count == T.fireSparks / 2 && sparks.allSatisfy { recent.contains($0.parameter) })  // the last typed
-    #expect(out.allSatisfy { Double($0.y) > Double(box.maxY) + 80 } && near(Double(sparks[0].alpha), 0.9, 0.05))
-    out = play(&s, for: 2)
-    #expect(out.isEmpty)
-    var caret = scene(.fireworks)
-    #expect(near(Double(play(&caret, [.paragraph(nil)], for: 0.1)[0].x), Double(stage.caret), 0.01))  // no position
-    var other = scene(.fireworks, on: elsewhere)
-    #expect(play(&other, [.paragraph(nil)], for: 0.6).isEmpty)
-}
-
-@Test func swarmBubblesRiseFromWhereTheKeyIsWithTheRhythmAndPop() {
-    var s = scene(.swarm)
-    var out = play(&s, [.typed(slot: m, at: nil)], for: 1.0 / 60)
-    #expect(out.count == 1 && out[0].kind == .ring && Double(out[0].y) > Double(box.maxY) && out[0].parameter == 128)
-    #expect(abs(Double(out[0].x) - Double(stage.caret)) <= 7)  // no position: at the caret
-    let y = out[0].y
-    out = play(&s, for: 0.5)
-    #expect(out[0].y > y + 10)  // rising
-    _ = play(&s, [.paragraph(nil), .space(nil), .backspace(nil)], for: 1.0 / 60)
-    #expect(s.count == 4 * 7)  // Return lets five go, Space one, ⌫ none
-    var popped = false
-    for _ in 0..<258 {
-        let ticks = play(&s, for: 1.0 / 60).contains { $0.kind == .rect }
-        popped = popped || ticks
-    }
-    #expect(popped && s.count == 0)  // each popped into its ticks within 4.2 s, then gone
-    for x in [0.5, 14.5] {
-        var k = scene(.swarm)
-        let at = play(&k, [.typed(slot: m, at: column(x))], for: 1.0 / 60)[0].x
-        let edge = Double(box.minX) + Double(box.width) * (0.05 + 0.9 * x / 15)
-        #expect(abs(Double(at) - min(max(edge, Double(box.minX) + 10), Double(box.maxX) - 10)) <= 7, "\(x)")
-    }
-    func risen(rate: Double) -> Float {
-        var b = scene(.swarm)
-        let start = play(&b, [.space(nil)], for: 1.0 / 60, rate: rate)[0].y
-        return play(&b, for: 0.5, rate: rate)[0].y - start
-    }
-    #expect(risen(rate: 10) > risen(rate: 0) + 20)  // faster as you type faster
-    var other = scene(.swarm, on: elsewhere)
-    #expect(play(&other, [.typed(slot: m, at: nil)], for: 0.2).isEmpty)
-}
-
 @Test func everyModeStaysUnderTheCap() {
     var flood: [Event] = []
     let keys = [0x00, 0x0C, 0x12, 0x2E, 0x31, 0x24, 0x33].map { Keyboard.position(of: UInt16($0)) }
@@ -412,7 +335,7 @@ private func circleOf(_ out: [Sprite]) -> (x: Double, y: Double, r: Double) {
     }
     for mode in Mode.allCases {
         var s = scene(mode)
-        for seconds in [0.2, 0.4, 1] {  // Fireworks' bursts come 0.45 s after their Return
+        for seconds in [0.2, 0.4, 1] {  // the flood, then the scene carrying it on
             let out = play(&s, seconds == 0.2 ? flood : [], for: seconds)
             #expect(out.count <= T.cap && s.count <= T.cap, "\(mode) \(seconds)")
         }
@@ -429,13 +352,12 @@ private func circleOf(_ out: [Sprite]) -> (x: Double, y: Double, r: Double) {
     let renderer = try #require(Ambience.Renderer(font: menlo))
     #expect(Ambience.Renderer.compileSeconds > 0)
     print("ambience shader compiled in \(Int(Ambience.Renderer.compileSeconds * 1000)) ms")
-    let size = CGSize(width: 400, height: 100), accent = T.accent
-    let sprites = [
-        Sprite(x: 50, y: 50, w: 20, h: 20, alpha: 1, colour: accent, kind: .rect),
-        Sprite(x: 150, y: 50, w: 60, h: 60, alpha: 1, colour: T.text, kind: .ring, parameter: Sprite.stroke(2)),
+    let size = CGSize(width: 400, height: 100)
+    var sprites = [
+        Sprite(x: 50, y: 50, w: 20, h: 20, alpha: 1, colour: T.accent, kind: .rect),
         glyphs.sprite(glyphs.slot("M")!, centre: CGPoint(x: 250, y: 50), alpha: 1, colour: T.text),
-        Sprite(x: 350, y: 50, w: 80, h: 4, alpha: 1, colour: accent, kind: .beam, parameter: 255),
     ]
+    circle(x: 150, y: 50, radius: 29, width: 2, alpha: 1, colour: T.text, on: size, into: &sprites)  // as Rings draws
     let px = try #require(renderer.offscreen(sprites, size: size, scale: 2))
     func pixel(_ x: Double, _ y: Double) -> [UInt8] {  // points, origin at the bottom left
         let i = 4 * (Int((size.height - y) * 2) * 800 + Int(x * 2))
@@ -443,13 +365,12 @@ private func circleOf(_ out: [Sprite]) -> (x: Double, y: Double, r: Double) {
     }
     #expect(pixel(50, 50) == [0xf0, 0xa7, 0x7a, 0xff])  // the accent, opaque, BGRA
     #expect(pixel(2, 2) == [0, 0, 0, 0] && pixel(150, 50) == [0, 0, 0, 0])  // clear around, and inside the ring
-    #expect(pixel(179.4, 50)[3] > 200)  // on the ring's 2 pt stroke
+    #expect(pixel(150 + 29 * cos(Double.pi / 8), 50 + 29 * sin(Double.pi / 8))[3] > 200)  // on the ring's 2 pt stroke
     var inked = 0
     for y in stride(from: 30.0, to: 70, by: 0.5) {
         for x in stride(from: 240.0, to: 260, by: 0.5) where pixel(x, y)[3] > 128 { inked += 1 }
     }
     #expect(inked > 100)  // the M from the atlas
-    #expect(pixel(389, 50)[3] > pixel(330, 50)[3] && pixel(389, 50)[0] > 0xf0)  // the beam brighter toward its white head
     let half = try #require(renderer.offscreen([sprites[0]], size: size, scale: 2, alpha: 0.5))
     #expect(abs(Int(half[4 * (100 * 800 + 100) + 3]) - 128) <= 1)  // the run's alpha multiplies every sprite
 }
@@ -515,14 +436,14 @@ private func typing(_ typed: [Character], _ mode: Mode, rate: Double, after: Dou
     return (out, alpha, text)
 }
 
-/// Each mode after 10 s of typing at 6 keys a second and 0.6 s after a Return (Fireworks 1 s), drawn by the Metal
+/// Each mode after 10 s of typing at 6 keys a second and 0.6 s after a Return, drawn by the Metal
 /// pipeline over a dimmed dark app with the box on it, as the box's screen shows it: app/renders/ambience-<mode>.png;
 /// and the grid after "the quick brown fox" at 20 keys a second, its keyboard lit (ambience-grid-keyboard.png).
 @Test(.enabled(if: Ambience.Renderer.available)) func ambienceRenders() throws {
     let renderer = try #require(Ambience.Renderer(font: menlo))
     let words = "the boats sat low in the water and the reeds bent over them"
     for mode in Mode.allCases {
-        let r = typing(Array(words) + ["\n"] + Array("as"), mode, rate: 6, after: mode == .fireworks ? 0.67 : 0.27)
+        let r = typing(Array(words) + ["\n"] + Array("as"), mode, rate: 6, after: 0.27)
         let a = try #require(r.alpha, "\(mode)")
         #expect(!r.out.isEmpty, "\(mode)")
         try compose(try #require(renderer.offscreen(r.out, size: screen, scale: 2, alpha: a)), text: r.text,

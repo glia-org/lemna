@@ -1,6 +1,6 @@
 // The ambience's drawing (DESIGN.md A1, R1): one Metal pipeline that draws a frame's sprites as instanced quads,
-// glyphs from an atlas of the line's font drawn once with Core Text, the rings, beams, dots and grid cells as shapes in
-// the fragment shader. The shader is Metal source compiled at runtime once per device (`makeLibrary(source:)`): the
+// glyphs from an atlas of the line's font drawn once with Core Text, the rings' arcs and the grid's lines and cells as
+// shapes in the fragment shader. The shader is Metal source compiled at runtime once per device (`makeLibrary(source:)`): the
 // Command Line Tools have no Metal compiler, and the system compiles it in a few milliseconds. The app draws into a
 // CAMetalLayer's drawable on the scene's thread; the tests draw into an offscreen texture.
 import CoreGraphics
@@ -132,8 +132,8 @@ extension Ambience {
         }
 
         /// The atlas: every glyph of `glyphs` drawn once in white on black with Core Text at `Glyphs.scale`, one cell
-        /// each, rows from the top, into an 8-bit texture with two mipmap levels below it (the bursts' glyphs are drawn
-        /// at half size).
+        /// each, rows from the top, into an 8-bit texture with two mipmap levels below it (a 1× screen draws the glyphs
+        /// at half the atlas's size).
         private static func atlas(_ glyphs: Glyphs, device: MTLDevice, queue: MTLCommandQueue) -> MTLTexture? {
             let (w, h) = glyphs.atlas, (cw, ch) = glyphs.pixels, s = Glyphs.scale
             guard w > 0, h > 0, let c = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w,
@@ -223,26 +223,11 @@ extension Ambience {
                 cover = saturate(min(e.x, e.y));
                 break;
             }
-            case 2u:  // a disc
-                cover = saturate((h.x - length(p)) * px + 0.5);
-                break;
-            case 3u: {  // a circle's stroke, its outer edge at the quad's
-                float w = q.parameter / 64.0, d = abs(length(p) - (h.x - w * 0.5));
-                cover = saturate((w * 0.5 - d) * px + 0.5);
-                break;
-            }
-            case 4u: {  // a stretch of a large circle's stroke, its centre the radius below the quad's middle
+            case 2u: {  // a stretch of a large circle's stroke, its centre the radius below the quad's middle
                 uint k = uint(q.parameter);
                 float r = float(k & 0x3fffu) / 2.0, w = float(k >> 14) / 16.0;
                 float d = abs(length(p + float2(0.0, r)) - r);
                 cover = saturate((w * 0.5 - d) * px + 0.5) * step(abs(p.x), h.x);  // cut square at the quad's ends
-                break;
-            }
-            case 5u: {  // a beam: its alpha rising along x, then to a white head
-                float u = saturate(p.x / h.x * 0.5 + 0.5), s = saturate((u - 0.82) / 0.18);
-                cover = saturate((h.y - abs(p.y)) * px + 0.5);
-                rgb = mix(rgb, float3(1.0), s);
-                a = u < 0.82 ? a * u / 0.82 : mix(a, q.parameter / 255.0 * f.alpha, s);
                 break;
             }
             default:
