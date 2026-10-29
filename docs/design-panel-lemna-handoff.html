@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lemna Hand-off Motion Design Options</title>
+<style>
+/* One page, four decisions on Lemna's hand-off motion: what the box does from the first frame after ⌘⏎ until the text
+   is in the app behind. Same language as design-panel-lemna-effects.html: one mono font, 1 px lines, glyph + colour.
+   Readable without scripts; the pick line updates where scripts run. */
+:root{
+  color-scheme:dark;
+  --bg:#0e1013; --surface:#14171b; --raise:#1b1f25; --line:#262b32; --line-2:#3a414c;
+  --fg:#d9dde3; --muted:#8d95a0; --faint:#5c646f;
+  --accent:#7aa7f0; --accent-soft:rgba(122,167,240,.13); --on-accent:#0e1013;
+  --work:#e2a03a; --need:#f06a43; --done:#52b87c;
+  --ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"CaskaydiaCove Nerd Font Mono","Cascadia Code","Cascadia Mono","Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --w-bg:#1a1b26; --w-raised:#16161e; --w-line:#3b4261; --w-fg:#c0caf5; --w-mid:#a9b1d6; --w-low:#7f88b2; --w-sel:#283457;
+  --w-accent:#7aa2f7; --w-work:#e0af68; --w-need:#f7768e; --w-done:#9ece6a; --w-idle:#6b7399;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--ui);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin-inline:auto;padding:32px clamp(16px,4vw,32px) 120px;display:flex;flex-direction:column;gap:52px}
+h1,h2,h3,p,ul,figure{margin:0}
+ul{padding:0;list-style:none}
+code{font:12.5px/1 var(--mono);white-space:nowrap}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font:600 clamp(24px,4vw,34px)/1.15 var(--mono);letter-spacing:-.02em}
+.lede{max-width:78ch;color:var(--muted);font-size:15px}
+.lede b{color:var(--fg);font-weight:600}
+.top{display:flex;flex-direction:column;gap:14px}
+.bundle{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.bundle-l{font:500 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:5px 9px;border-radius:6px;background:var(--accent-soft);text-decoration:none;font-size:13px;white-space:nowrap;color:inherit}
+.chip b{font:600 12px/1 var(--mono);color:var(--accent)}
+.sec{display:flex;flex-direction:column;gap:18px}
+.sec-h{display:flex;gap:14px;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:12px}
+.num{font:600 28px/1 var(--mono);color:var(--accent)}
+.sec-h h2{font:600 19px/1.2 var(--mono)}
+.sec-h p{color:var(--muted);margin-top:3px;max-width:80ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,500px),1fr));gap:16px}
+.card{min-width:0;display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.card.wide{grid-column:1/-1}
+.card:has(.pick input:checked){border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.card-h{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.oid{font:600 13px/1 var(--mono);padding:5px 7px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.card-h h3{font:600 16px/1.2 var(--ui)}
+.tag{font:500 11px/1 var(--mono);padding:4px 6px;border-radius:4px;border:1px solid var(--line-2);color:var(--muted);white-space:nowrap}
+.tag.rec{border-color:var(--done);color:var(--done)}
+.tag.ask{border-color:var(--work);color:var(--work)}
+.tag.no{border-color:var(--need);color:var(--need)}
+.pick{margin-left:auto;display:inline-flex;gap:6px;align-items:center;font:500 12px/1 var(--mono);color:var(--muted);cursor:pointer;padding:5px 8px;border:1px solid var(--line);border-radius:6px}
+.pick input{accent-color:var(--accent);margin:0}
+.pick:has(input:checked){color:var(--fg);border-color:var(--accent)}
+.pitch{font-size:15px;max-width:76ch}
+.how{display:flex;flex-direction:column;gap:5px;color:var(--muted)}
+.how li{padding-left:14px;position:relative;max-width:78ch}
+.how li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--faint)}
+.how b{color:var(--fg);font-weight:600}
+figcaption{font-size:12px;color:var(--muted);margin-top:6px;max-width:72ch}
+.risk{font-size:13px;color:var(--muted);border-left:2px solid var(--line-2);padding-left:10px;max-width:76ch}
+.risk b{color:var(--fg)}
+.ledger{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:10px}
+.ledger div{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13px;color:var(--muted)}
+.ledger b{display:block;color:var(--fg);font:600 12px/1.6 var(--mono)}
+.ledger .urgent{border-color:var(--need)} .ledger .urgent b{color:var(--need)}
+.ledger .ok b{color:var(--done)}
+.order{counter-reset:o;display:flex;flex-direction:column;gap:6px;padding:0;list-style:none}
+.order li{counter-increment:o;padding-left:28px;position:relative;max-width:84ch;color:var(--muted)}
+.order li::before{content:counter(o);position:absolute;left:0;top:0;font:600 13px/1.5 var(--mono);color:var(--accent)}
+.order b{color:var(--fg)}
+table.keys{border-collapse:collapse;font-size:13px;color:var(--muted)}
+table.keys td,table.keys th{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+table.keys th{font:500 12px/1.3 var(--mono);color:var(--fg)}
+table.keys code{color:var(--fg)}
+table.keys a{color:var(--accent)}
+
+/* ---------- the app, drawn at real size: 1 CSS px = 1 pt ---------- */
+.real{display:flex;flex-wrap:wrap;gap:22px 26px;padding:18px 20px;background:var(--w-bg);border:1px solid var(--line-2);overflow-x:auto}
+.real figure{display:flex;flex-direction:column;gap:8px}
+.real figcaption{margin:0;font:12px/1.4 var(--mono);color:var(--w-low);max-width:640px}
+.real figcaption b{color:var(--w-fg);font-weight:500}
+.mock{overflow-x:auto}
+
+/* picks bar */
+.picks{position:sticky;bottom:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-inline:calc(-1 * clamp(8px,2vw,16px));padding:10px clamp(8px,2vw,16px);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 -6px 24px rgba(0,0,0,.35)}
+.picks-l{font:500 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.picks code{font:600 14px/1.3 var(--mono);color:var(--fg);user-select:all;white-space:normal}
+.picks button{margin-left:auto;font:600 13px/1 var(--ui);padding:8px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);cursor:pointer}
+</style>
+<style>
+/* additions for this panel: links, a findings grid, refs, the figures, and the drawings at real size */
+.wrap a:not(.chip){color:var(--accent);text-decoration:none}
+.wrap a:not(.chip):hover{text-decoration:underline}
+.finding{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
+.finding div{padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13.5px;color:var(--muted)}
+.finding b{color:var(--fg);display:block;margin-bottom:4px;font-weight:600}
+.refs{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:13px;max-width:96ch}
+.refs li{padding-left:14px;position:relative}
+.refs li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--faint)}
+.refs b{color:var(--fg);font-weight:600}
+.mock table.keys{width:100%;min-width:760px}
+table.keys td:first-child{color:var(--fg)}
+.kind{font:500 11px/1.4 var(--mono);color:var(--muted)}
+/* cards: three to a row, so each figure shows at its drawn size */
+.grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))}
+.ledger.one{grid-template-columns:1fr;gap:6px}
+.ledger.one b{display:inline;margin-right:8px}
+.note{font-size:13px;color:var(--muted)}
+/* figures: inline SVG in the panel's language. 1 px lines in --line-2, text in --fg, --muted for dimmed text,
+   --accent only for the caret, status colours only on ✓ ✗ and their words. 1 viewBox unit = 1 CSS px at full size. */
+.fig{display:block;width:100%;max-width:320px;height:auto;font:11px var(--mono);font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}
+.fig.w{max-width:none;min-width:640px}
+.fig.fx{width:var(--w);max-width:100%}
+.figw,.figs{overflow-x:auto}
+.figs{display:flex;flex-wrap:wrap;gap:20px 32px;align-items:flex-start}
+.fig text{fill:var(--fg)}
+.fig .big{font-size:12px}
+.fig .b{font-weight:600}
+.fig .m{fill:var(--muted)} .fig .f{fill:var(--faint)}
+.fig .ok{fill:var(--done)} .fig .no{fill:var(--need)} .fig .wk{fill:var(--work)}
+.fig .bx{fill:var(--bg);stroke:var(--line-2)}
+.fig .bx2{fill:var(--raise);stroke:var(--line-2)}
+.fig .ln{fill:none;stroke:var(--line-2)}
+.fig .ar{fill:none;stroke:var(--muted)}
+.fig .sfg{fill:none;stroke:var(--fg)}
+.fig .sok{fill:none;stroke:var(--done)}
+.fig .sno{fill:none;stroke:var(--need)}
+.fig .swk{fill:none;stroke:var(--work)}
+.fig .cr{fill:var(--accent)}
+.fig .ip{fill:var(--fg)}
+.fig .dim{fill:var(--bg);opacity:.62}
+.fig .gs{stop-color:var(--fg)}
+/* this panel: the box's own colours, drawn exact (T1 Tokyo Night roles, T2 today's) */
+.fig .c1{fill:#c0caf5} .fig .m1{fill:#7f88b2} .fig .c2{fill:#d8dce3} .fig .m2{fill:#5c646f} .fig .q0t{fill:#bec8f2}
+.fig .k1g{font-size:24px} .fig .e2g{font-size:16px}
+.fig .sel{fill:var(--accent-soft)}
+.note{font-size:13px;color:var(--muted);max-width:84ch}
+.sub{font:600 15px/1.2 var(--mono);margin-top:6px}
+</style>
+
+<div class="wrap">
+<header class="top">
+<p class="eyebrow">Design panel · Lemna</p>
+<h1>Lemna hand-off motion design options</h1>
+<p class="lede">The user, 2026-10-29: "almost a second of delay" after ⌘⏎, and today's animation "really lackluster". A parallel pass cuts the delay; this panel designs a motion that <b>starts within one frame of ⌘⏎</b> and shows <b>the text leaving Lemna for the app behind</b>. <b>recommended</b> is the proposed pick, <b>ask</b> a matter of taste, <b>no</b> ruled out by evidence.</p>
+<div class="bundle"><span class="bundle-l">Picks</span><a class="chip" href="#opt-H1"><b>H1</b> send</a><a class="chip" href="#opt-A0"><b>A0</b> no arrival cue</a><a class="chip" href="#opt-T1"><b>T1</b> from the key-down</a><a class="chip" href="#opt-C1"><b>C1</b> copy rises</a></div>
+<p class="eyebrow">Pick line: <span id="pickline">H1 A0 T1 C1</span></p>
+</header>
+
+<section class="sec" aria-labelledby="s0h">
+<header class="sec-h"><span class="num">0</span><div><h2 id="s0h">What happens today</h2><p>From the code and DESIGN.md F1 (E1, P1), 2026-10-29.</p></div></header>
+<div class="finding">
+<div><b>It starts late.</b><code>done()</code> waits for Return's key-up (1 s at most) before <code>paste()</code> hides the box; nothing moves until then. AppKit gives a key-up with ⌘ down to no window, so the panel missed it and waited the whole second. The parallel pass (17a) catches it with a monitor; the box still waits for Return.</div>
+<div><b>It says "done", not "sent".</b>A 45° white band (peak α 0.35) crosses a still picture of the line in 350 ms, the fade from 150 ms. Nothing moves toward the app.</div>
+<div><b>The dim lags.</b><code>undim</code> holds the dim 150 ms, then fades it over 200: the target app clears only at 350 ms.</div>
+<div><b>The pieces exist.</b><code>Line.draw</code> places each glyph with its own alpha (K1 adds scale and shift); the ghost, the curve and <code>Effects.duration</code> exist.</div>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s1h">
+<header class="sec-h"><span class="num">1</span><div><h2 id="s1h">H: the motion</h2><p>Over a light app, the box in today's colours (T2) with its accent border (B1), at the first frame and at 60, 120 and 220 ms.</p></div></header>
+<div class="figw"><svg class="fig w" style="max-width:660px" viewBox="0 0 660 448" role="img"><title>Keyframes at 0, 60, 120 and 220 ms: H1 the line leaving to the right, H2 the box dropping, H3 the box folding</title>
+<defs><clipPath id="h00"><rect x="32" y="81" width="92" height="16" rx="3"/></clipPath><clipPath id="h01"><rect x="200" y="81" width="92" height="16" rx="3"/></clipPath><clipPath id="h02"><rect x="368" y="81" width="92" height="16" rx="3"/></clipPath><clipPath id="h03"><rect x="536" y="81" width="92" height="16" rx="3"/></clipPath><clipPath id="h10"><rect x="32" y="233" width="92" height="16" rx="3"/></clipPath><clipPath id="h11"><rect x="200" y="233" width="92" height="16" rx="3"/></clipPath><clipPath id="h20"><rect x="32" y="385" width="92" height="16" rx="3"/></clipPath><clipPath id="h21"><rect x="200" y="385" width="92" height="16" rx="3"/></clipPath><clipPath id="h22"><rect x="368" y="385" width="92" height="16" rx="3"/></clipPath></defs>
+<text class="b" x="0" y="12">H1</text><text class="m" x="24" y="12">send</text>
+<rect x="0.5" y="20.5" width="155" height="91" fill="#eceef1" stroke="var(--line-2)"/>
+<rect x="1" y="21" width="154" height="10" fill="#dfe2e6"/>
+<path d="M10 42h92M10 50h124M10 58h104M10 66h70" stroke="#aeb3ba" stroke-width="3"/>
+<rect x="31.5" y="80.5" width="93" height="17" rx="4" fill="#0e1013" stroke="#7aa7f0"/>
+<g clip-path="url(#h00)"><rect x="84.4" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="79.9" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="75.9" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="71.9" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="67.9" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="63.9" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="55.9" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="51.9" y="85.5" width="3" height="7" fill="#d8dce3" opacity="0.85"/><rect x="47.9" y="85.5" width="3" height="7" fill="#d8dce3" opacity="0.7"/><rect x="39.9" y="85.5" width="3" height="7" fill="#d8dce3" opacity="0.5"/><rect x="35.9" y="85.5" width="3" height="7" fill="#d8dce3" opacity="0.38"/><rect x="31.9" y="85.5" width="3" height="7" fill="#d8dce3" opacity="0.26"/></g>
+<text x="78" y="126" text-anchor="middle">0 · frame 1</text><text class="m" x="78" y="140" text-anchor="middle">dim, caret off</text>
+<rect x="168.5" y="20.5" width="155" height="91" fill="#eceef1" stroke="var(--line-2)"/>
+<rect x="169" y="21" width="154" height="10" fill="#dfe2e6"/>
+<path d="M178 42h92M178 50h124M178 58h104M178 66h70" stroke="#aeb3ba" stroke-width="3"/>
+<rect x="199.5" y="80.5" width="93" height="17" rx="4" fill="#0e1013" stroke="#7aa7f0"/>
+<g clip-path="url(#h01)"><rect x="269.1" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="262.8" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="256.1" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="249.2" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="242.3" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="235.6" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="224.1" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="219.9" y="85.5" width="3" height="7" fill="#d8dce3" opacity="0.85"/><rect x="215.9" y="85.5" width="3" height="7" fill="#d8dce3" opacity="0.7"/><rect x="207.9" y="85.5" width="3" height="7" fill="#d8dce3" opacity="0.5"/><rect x="203.9" y="85.5" width="3" height="7" fill="#d8dce3" opacity="0.38"/><rect x="199.9" y="85.5" width="3" height="7" fill="#d8dce3" opacity="0.26"/></g>
+<text x="246" y="126" text-anchor="middle">60 ms</text><text class="m" x="246" y="140" text-anchor="middle">7 moving, none out</text>
+<rect x="336.5" y="20.5" width="155" height="91" fill="#eceef1" stroke="var(--line-2)"/>
+<rect x="337" y="21" width="154" height="10" fill="#dfe2e6"/>
+<path d="M346 42h92M346 50h124M346 58h104M346 66h70" stroke="#aeb3ba" stroke-width="3"/>
+<rect x="367.5" y="80.5" width="93" height="17" rx="4" fill="#0e1013" stroke="#7aa7f0"/>
+<g clip-path="url(#h02)"><rect x="456.6" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="449.3" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="441.5" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="424.5" y="85.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="415.5" y="85.5" width="3" height="7" fill="#d8dce3" opacity="0.85"/><rect x="406.3" y="85.5" width="3" height="7" fill="#d8dce3" opacity="0.7"/><rect x="388.1" y="85.5" width="3" height="7" fill="#d8dce3" opacity="0.5"/><rect x="379.5" y="85.5" width="3" height="7" fill="#d8dce3" opacity="0.38"/><rect x="371.7" y="85.5" width="3" height="7" fill="#d8dce3" opacity="0.26"/></g>
+<text x="414" y="126" text-anchor="middle">120 ms</text><text class="m" x="414" y="140" text-anchor="middle">3 out, 9 moving</text>
+<rect x="504.5" y="20.5" width="155" height="91" fill="#eceef1" stroke="var(--line-2)"/>
+<rect x="505" y="21" width="154" height="10" fill="#dfe2e6"/>
+<path d="M514 42h92M514 50h124M514 58h104M514 66h70" stroke="#aeb3ba" stroke-width="3"/>
+<rect x="535.5" y="80.5" width="93" height="17" rx="4" fill="#0e1013" stroke="#7aa7f0"/>
+<g clip-path="url(#h03)"></g>
+<text x="582" y="126" text-anchor="middle">220 ms</text><text class="m" x="582" y="140" text-anchor="middle">empty; shrinks to 380</text>
+<text class="b" x="0" y="164">H2</text><text class="m" x="24" y="164">drop</text>
+<rect x="0.5" y="172.5" width="155" height="91" fill="#eceef1" stroke="var(--line-2)"/>
+<rect x="1" y="173" width="154" height="10" fill="#dfe2e6"/>
+<path d="M10 194h92M10 202h124M10 210h104M10 218h70" stroke="#aeb3ba" stroke-width="3"/>
+<rect x="1" y="173" width="154" height="90" fill="#0e1013" opacity="0.42"/>
+<g transform="translate(0 1.9)" opacity="0.83"><rect x="31.5" y="232.5" width="93" height="17" rx="4" fill="#0e1013" stroke="#7aa7f0"/><g clip-path="url(#h10)"><rect x="83.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="79.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="75.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="71.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="67.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="63.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="55.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="51.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="0.85"/><rect x="47.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="0.7"/><rect x="39.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="0.5"/><rect x="35.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="0.38"/><rect x="31.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="0.26"/></g><rect x="87.4" y="235.0" width="1.5" height="12" fill="#7aa7f0"/></g>
+<text x="78" y="278" text-anchor="middle">0 · frame 1</text><text class="m" x="78" y="292" text-anchor="middle">17 % down, dim .42</text>
+<rect x="168.5" y="172.5" width="155" height="91" fill="#eceef1" stroke="var(--line-2)"/>
+<rect x="169" y="173" width="154" height="10" fill="#dfe2e6"/>
+<path d="M178 194h92M178 202h124M178 210h104M178 218h70" stroke="#aeb3ba" stroke-width="3"/>
+<rect x="169" y="173" width="154" height="90" fill="#0e1013" opacity="0.09"/>
+<g transform="translate(0 9.4)" opacity="0.19"><rect x="199.5" y="232.5" width="93" height="17" rx="4" fill="#0e1013" stroke="#7aa7f0"/><g clip-path="url(#h11)"><rect x="251.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="247.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="243.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="239.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="235.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="231.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="223.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="219.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="0.85"/><rect x="215.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="0.7"/><rect x="207.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="0.5"/><rect x="203.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="0.38"/><rect x="199.9" y="237.5" width="3" height="7" fill="#d8dce3" opacity="0.26"/></g><rect x="255.4" y="235.0" width="1.5" height="12" fill="#7aa7f0"/></g>
+<text x="246" y="278" text-anchor="middle">60 ms</text><text class="m" x="246" y="292" text-anchor="middle">81 % · α .19</text>
+<rect x="336.5" y="172.5" width="155" height="91" fill="#eceef1" stroke="var(--line-2)"/>
+<rect x="337" y="173" width="154" height="10" fill="#dfe2e6"/>
+<path d="M346 194h92M346 202h124M346 210h104M346 218h70" stroke="#aeb3ba" stroke-width="3"/>
+<rect class="ln" x="367.5" y="232.5" width="93" height="17" rx="4" stroke-dasharray="2 2"/>
+<text x="414" y="278" text-anchor="middle">120 ms</text><text class="m" x="414" y="292" text-anchor="middle">99.7 %</text>
+<rect x="504.5" y="172.5" width="155" height="91" fill="#eceef1" stroke="var(--line-2)"/>
+<rect x="505" y="173" width="154" height="10" fill="#dfe2e6"/>
+<path d="M514 194h92M514 202h124M514 210h104M514 218h70" stroke="#aeb3ba" stroke-width="3"/>
+<rect class="ln" x="535.5" y="232.5" width="93" height="17" rx="4" stroke-dasharray="2 2"/>
+<text x="582" y="278" text-anchor="middle">220 ms</text><text class="m" x="582" y="292" text-anchor="middle">gone at 140</text>
+<text class="b" x="0" y="316">H3</text><text class="m" x="24" y="316">fold</text>
+<rect x="0.5" y="324.5" width="155" height="91" fill="#eceef1" stroke="var(--line-2)"/>
+<rect x="1" y="325" width="154" height="10" fill="#dfe2e6"/>
+<path d="M10 346h92M10 354h124M10 362h104M10 370h70" stroke="#aeb3ba" stroke-width="3"/>
+<g transform="translate(0 393.0) scale(1 0.996) translate(0 -393.0)"><rect x="31.5" y="384.5" width="93" height="17" rx="4" fill="#0e1013" stroke="#7aa7f0"/><g clip-path="url(#h20)"><rect x="84.4" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="79.9" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="75.9" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="71.9" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="67.9" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="63.9" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="55.9" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="51.9" y="389.5" width="3" height="7" fill="#d8dce3" opacity="0.85"/><rect x="47.9" y="389.5" width="3" height="7" fill="#d8dce3" opacity="0.7"/><rect x="39.9" y="389.5" width="3" height="7" fill="#d8dce3" opacity="0.5"/><rect x="35.9" y="389.5" width="3" height="7" fill="#d8dce3" opacity="0.38"/><rect x="31.9" y="389.5" width="3" height="7" fill="#d8dce3" opacity="0.26"/></g></g>
+<text x="78" y="430" text-anchor="middle">0 · frame 1</text><text class="m" x="78" y="444" text-anchor="middle">dim off · 99.6 % tall</text>
+<rect x="168.5" y="324.5" width="155" height="91" fill="#eceef1" stroke="var(--line-2)"/>
+<rect x="169" y="325" width="154" height="10" fill="#dfe2e6"/>
+<path d="M178 346h92M178 354h124M178 362h104M178 370h70" stroke="#aeb3ba" stroke-width="3"/>
+<g transform="translate(0 393.0) scale(1 0.844) translate(0 -393.0)"><rect x="199.5" y="384.5" width="93" height="17" rx="4" fill="#0e1013" stroke="#7aa7f0"/><g clip-path="url(#h21)"><rect x="269.1" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="262.8" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="256.1" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="249.2" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="242.3" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="235.6" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="224.1" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="219.9" y="389.5" width="3" height="7" fill="#d8dce3" opacity="0.85"/><rect x="215.9" y="389.5" width="3" height="7" fill="#d8dce3" opacity="0.7"/><rect x="207.9" y="389.5" width="3" height="7" fill="#d8dce3" opacity="0.5"/><rect x="203.9" y="389.5" width="3" height="7" fill="#d8dce3" opacity="0.38"/><rect x="199.9" y="389.5" width="3" height="7" fill="#d8dce3" opacity="0.26"/></g></g>
+<text x="246" y="430" text-anchor="middle">60 ms</text><text class="m" x="246" y="444" text-anchor="middle">84 % tall</text>
+<rect x="336.5" y="324.5" width="155" height="91" fill="#eceef1" stroke="var(--line-2)"/>
+<rect x="337" y="325" width="154" height="10" fill="#dfe2e6"/>
+<path d="M346 346h92M346 354h124M346 362h104M346 370h70" stroke="#aeb3ba" stroke-width="3"/>
+<g transform="translate(0 393.0) scale(1 0.488) translate(0 -393.0)"><rect x="367.5" y="384.5" width="93" height="17" rx="4" fill="#0e1013" stroke="#7aa7f0"/><g clip-path="url(#h22)"><rect x="456.6" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="449.3" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="441.5" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="424.5" y="389.5" width="3" height="7" fill="#d8dce3" opacity="1"/><rect x="415.5" y="389.5" width="3" height="7" fill="#d8dce3" opacity="0.85"/><rect x="406.3" y="389.5" width="3" height="7" fill="#d8dce3" opacity="0.7"/><rect x="388.1" y="389.5" width="3" height="7" fill="#d8dce3" opacity="0.5"/><rect x="379.5" y="389.5" width="3" height="7" fill="#d8dce3" opacity="0.38"/><rect x="371.7" y="389.5" width="3" height="7" fill="#d8dce3" opacity="0.26"/></g></g>
+<text x="414" y="430" text-anchor="middle">120 ms</text><text class="m" x="414" y="444" text-anchor="middle">49 % tall</text>
+<rect x="504.5" y="324.5" width="155" height="91" fill="#eceef1" stroke="var(--line-2)"/>
+<rect x="505" y="325" width="154" height="10" fill="#dfe2e6"/>
+<path d="M514 346h92M514 354h124M514 362h104M514 370h70" stroke="#aeb3ba" stroke-width="3"/>
+<rect class="ln" x="535.5" y="384.5" width="93" height="17" rx="4" stroke-dasharray="2 2"/>
+<text x="582" y="430" text-anchor="middle">220 ms</text><text class="m" x="582" y="444" text-anchor="middle">gone at 180</text>
+</svg></div>
+<div class="ledger one">
+<div class="urgent"><b>Conflict: ease-in against frame 1.</b>H1 and H3 use ease-in as briefed, which starts slowest: in the first 120 Hz frame the glyph at the caret moves 4 pt of its 363 (1 %), on easeOutQuint 123 pt (34 %); at 60 ms no glyph has left (computed). Omarchy: "Never an ease-in curve on UI: it starts slowest at the moment the eye is on it." For it: Material's accelerated easing for exits, no braking at the edge. Both at once: easeOutQuint aimed well past the edge, so a glyph crosses it at speed and slows once clipped. Drawn as briefed; "H1 on quint" takes the other.</div>
+</div>
+<div class="grid">
+<article class="card" id="opt-H1"><div class="card-h"><span class="oid">H1</span><h3>Send</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="H" value="H1" checked> pick</label></div>
+<p class="pitch">The line leaves: from the caret leftwards each glyph sets off ~8 ms after its right neighbour and accelerates off the box's right edge (ease-in, ~220 ms in all); the empty box then shrinks to 90 % and fades over 160 ms.</p>
+<ul class="how">
+<li><b>Frame 1:</b> the dim and the caret go at ⌘⏎; the app is in full view before a glyph has left. The siblings: "Overlays brighten at once."</li>
+<li>It shows where the text went: rightwards, like text typed into the target; shrinking reads as going back into the screen.</li>
+<li>The bright clause (~19 glyphs, Menlo 28, a 907 pt box) staggers over at most 120 ms; the faded rest goes with the last (computed).</li>
+<li>Esc keeps P1's plain fade: a hand-off never looks like a dismissal.</li>
+</ul>
+<p class="risk"><b>Risk.</b> 380 ms, longer than the 300 ms open; Omarchy wants exits at two thirds of the entrance. Collapsing from 120 ms ends at 280.</p></article>
+<article class="card" id="opt-H2"><div class="card-h"><span class="oid">H2</span><h3>Drop</h3><label class="pick"><input type="radio" name="H" value="H2"> pick</label></div>
+<p class="pitch">The whole box falls an eighth of the screen with a fade, 140 ms ease-out (the terminal app's push), the dim lifting with it; the text unchanged.</p>
+<ul class="how"><li>A sibling's motion reused; the shortest; 17 % of the way at frame 1 (computed).</li></ul>
+<p class="risk"><b>Risk.</b> Down is not toward the app, which is behind. A box that sinks and fades reads as dismissed, close to Esc's fade.</p></article>
+<article class="card" id="opt-H3"><div class="card-h"><span class="oid">H3</span><h3>Fold</h3><label class="pick"><input type="radio" name="H" value="H3"> pick</label></div>
+<p class="pitch">The box folds flat about its middle (height to 0 over 180 ms, ease-in) while the line streams out to the right as in H1; the dim lifts at once.</p>
+<p class="risk"><b>Risk.</b> Two motions at once, the text squashed as it goes; a fold reads as closed, a screen switching off. 0.4 % of the fold at frame 1 (computed).</p></article>
+<article class="card" id="opt-H4"><div class="card-h"><span class="oid">H4</span><h3>Today's sheen, faster</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="H" value="H4"> pick</label></div>
+<p class="pitch">The 45° band, brighter and quicker, from frame 1.</p>
+<p class="risk"><b>No.</b> Light passing over still text says "done", not "leaves"; it is what the user called lackluster.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s2h">
+<header class="sec-h"><span class="num">2</span><div><h2 id="s2h">A: a cue where the text arrives</h2><p>Something in the target app, after the motion.</p></div></header>
+<div class="figw"><svg class="fig w" style="max-width:660px" viewBox="0 0 660 130" role="img"><title>A0 the pasted text, A1 a window outline, A2 a caret dot</title>
+<rect x="0.5" y=".5" width="199" height="95" fill="#c9cdd3" stroke="var(--line-2)"/>
+<rect x="16" y="8" width="168" height="80" fill="#eceef1"/><rect x="16" y="8" width="168" height="10" fill="#dfe2e6"/>
+<path d="M26 30h120M26 40h90" stroke="#aeb3ba" stroke-width="3"/><path d="M26 52h112M26 62h64" stroke="#4b5059" stroke-width="3"/>
+<text x="0" y="112">A0 · the text appears</text>
+<text class="m" x="0" y="126">nothing added</text>
+<rect x="230.5" y=".5" width="199" height="95" fill="#c9cdd3" stroke="var(--line-2)"/>
+<rect x="246" y="8" width="168" height="80" fill="#eceef1"/><rect x="246" y="8" width="168" height="10" fill="#dfe2e6"/>
+<path d="M256 30h120M256 40h90" stroke="#aeb3ba" stroke-width="3"/><path d="M256 52h112M256 62h64" stroke="#4b5059" stroke-width="3"/>
+<rect x="245.5" y="7.5" width="169" height="81" fill="none" stroke="#7aa7f0"/>
+<text x="230" y="112">A1 · window outline</text>
+<text class="m" x="230" y="126">1 px accent, ~150 ms at the ⌘V</text>
+<rect x="460.5" y=".5" width="199" height="95" fill="#c9cdd3" stroke="var(--line-2)"/>
+<rect x="476" y="8" width="168" height="80" fill="#eceef1"/><rect x="476" y="8" width="168" height="10" fill="#dfe2e6"/>
+<path d="M486 30h120M486 40h90" stroke="#aeb3ba" stroke-width="3"/><path d="M486 52h112M486 62h64" stroke="#4b5059" stroke-width="3"/>
+<circle cx="556" cy="62" r="3.5" fill="#7aa7f0"/>
+<text x="460" y="112">A2 · dot at the caret</text>
+<text class="m" x="460" y="126"><tspan class="no">✗</tspan> caret bounds unreliable</text>
+</svg></div>
+<div class="grid">
+<article class="card" id="opt-A0"><div class="card-h"><span class="oid">A0</span><h3>None</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="A" value="A0" checked> pick</label></div>
+<p class="pitch">The pasted text appearing in the app is the cue.</p>
+<p class="risk"><b>Risk.</b> A slow paste leaves a gap after the motion; the parallel pass closes it.</p></article>
+<article class="card" id="opt-A1"><div class="card-h"><span class="oid">A1</span><h3>Window outline</h3><span class="tag ask">ask</span><label class="pick"><input type="radio" name="A" value="A1"> pick</label></div>
+<p class="pitch">A 1 px accent outline flashes around the target window's frame, ~150 ms, at the ⌘V.</p>
+<ul class="how"><li>The frame from Accessibility, whose permission the ⌘V already has; one more overlay window.</li></ul>
+<p class="risk"><b>Risk.</b> As late as the paste; an onset at the window's edge, not where the text goes.</p></article>
+<article class="card" id="opt-A2"><div class="card-h"><span class="oid">A2</span><h3>Caret dot</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="A" value="A2"> pick</label></div>
+<p class="pitch">A small accent dot at the target's caret.</p>
+<p class="risk"><b>No.</b> Caret bounds through Accessibility are missing or wrong in many apps (unverified per app).</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s3h">
+<header class="sec-h"><span class="num">3</span><div><h2 id="s3h">T: timing against the paste</h2><p>Today as met on 2026-10-29: the key-up missed, ⌘V at 1120 ms.</p></div></header>
+<div class="figw"><svg class="fig w" style="max-width:660px" viewBox="0 0 660 200" role="img"><title>Timelines from ⌘⏎: today, T1 and T2</title>
+<text class="b" x="0" y="29">today</text>
+<rect class="ln" x="78.5" y="20.5" width="400" height="10" stroke-dasharray="3 2"/>
+<rect class="sfg" x="478.5" y="20.5" width="140" height="10"/>
+<path class="sno" d="M526.5 14v22"/><text x="526" y="10" text-anchor="middle">⌘V</text>
+<text class="m" x="78" y="46">box still, line stopped, until Return's key-up (1 s fallback)</text><text class="m" x="548" y="46" text-anchor="middle">sheen + fade</text>
+<text class="b" x="0" y="91">T1</text>
+<path class="sfg" d="M78.5 76v22"/><text x="78" y="72">dim off</text>
+<rect class="sfg" x="78.5" y="82.5" width="88" height="10"/>
+<rect class="ar" x="166.5" y="82.5" width="64" height="10"/>
+<text class="m" x="122" y="108" text-anchor="middle">line out</text><text class="m" x="198" y="108" text-anchor="middle">collapse</text>
+<path class="ar" d="M526.5 76v22" stroke-dasharray="2 2"/><text x="526" y="72" text-anchor="middle">⌘V</text>
+<text x="536" y="91"><tspan class="ok">✓</tspan> when it comes</text>
+<text class="b" x="0" y="153">T2</text>
+<rect class="sfg" x="78.5" y="144.5" width="448" height="10"/>
+<path class="sno" d="M526.5 138v22"/><text x="526" y="134" text-anchor="middle">⌘V</text>
+<text x="536" y="153"><tspan class="no">✗</tspan> stretched to it</text>
+<path class="ln" d="M78.0 176.5h560M78.5 176v4M230.5 176v4M478.5 176v4M637.5 176v4"/>
+<text class="m" x="78" y="194" text-anchor="middle">⌘⏎ down</text><text class="m" x="230" y="194" text-anchor="middle">380</text><text class="m" x="478" y="194" text-anchor="middle">1000</text><text class="m" x="638" y="194" text-anchor="end">1400 ms</text>
+</svg></div>
+<div class="grid">
+<article class="card" id="opt-T1"><div class="card-h"><span class="oid">T1</span><h3>From the key-down</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="T" value="T1" checked> pick</label></div>
+<p class="pitch">The motion starts at ⌘⏎'s key-down and never waits for the paste; a ⌘V before its end is fine. At most 400 ms.</p>
+<ul class="how"><li>Moves the start from <code>paste()</code> into <code>done()</code>, while the box still holds the keys that would auto-repeat ⌘⏎ into the app.</li></ul>
+<p class="risk"><b>Risk.</b> The box must give up the keys at Return's key-up while H1's line is still leaving (Cost).</p></article>
+<article class="card" id="opt-T2"><div class="card-h"><span class="oid">T2</span><h3>Ends at the ⌘V</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="T" value="T2"> pick</label></div>
+<p class="pitch">The motion is timed to end exactly when ⌘V is posted.</p>
+<p class="risk"><b>No.</b> It stretches with the delay it should hide, and needs the paste's time measured first.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s4h">
+<header class="sec-h"><span class="num">4</span><div><h2 id="s4h">C: Copy and Save</h2><p>⌘⇧⏎ and ⌘S hand off too, to the clipboard or a file.</p></div></header>
+<div class="figw"><svg class="fig w" style="max-width:660px" viewBox="0 0 660 100" role="img"><title>A paste leaves right; a copy or a save rises</title>
+<defs><clipPath id="cP"><rect x="1" y="21" width="298" height="34" rx="5"/></clipPath><clipPath id="cC"><rect x="361" y="21" width="298" height="34" rx="5"/></clipPath></defs>
+<rect x="0.5" y="20.5" width="299" height="35" rx="6" fill="#0e1013" stroke="#7aa7f0"/>
+<g clip-path="url(#cP)">
+<rect x="259.7" y="31" width="7" height="14" fill="#d8dce3" opacity="1"/>
+<rect x="241.4" y="31" width="7" height="14" fill="#d8dce3" opacity="1"/>
+<rect x="222.0" y="31" width="7" height="14" fill="#d8dce3" opacity="1"/>
+<rect x="201.7" y="31" width="7" height="14" fill="#d8dce3" opacity="1"/>
+<rect x="180.8" y="31" width="7" height="14" fill="#d8dce3" opacity="1"/>
+<rect x="159.6" y="31" width="7" height="14" fill="#d8dce3" opacity="1"/>
+<rect x="118.6" y="31" width="7" height="14" fill="#d8dce3" opacity="1"/>
+<rect x="100.1" y="31" width="7" height="14" fill="#d8dce3" opacity="0.85"/>
+<rect x="83.9" y="31" width="7" height="14" fill="#d8dce3" opacity="0.7"/>
+<rect x="61.5" y="31" width="7" height="14" fill="#d8dce3" opacity="0.5"/>
+<rect x="51.5" y="31" width="7" height="14" fill="#d8dce3" opacity="0.38"/>
+<rect x="41.5" y="31" width="7" height="14" fill="#d8dce3" opacity="0.26"/>
+</g>
+<rect x="360.5" y="20.5" width="299" height="35" rx="6" fill="#0e1013" stroke="#7aa7f0"/>
+<g clip-path="url(#cC)">
+<rect x="531.5" y="14.4" width="7" height="14" fill="#d8dce3" opacity="1"/>
+<rect x="521.5" y="17.0" width="7" height="14" fill="#d8dce3" opacity="1"/>
+<rect x="511.5" y="19.5" width="7" height="14" fill="#d8dce3" opacity="1"/>
+<rect x="501.5" y="21.8" width="7" height="14" fill="#d8dce3" opacity="1"/>
+<rect x="491.5" y="23.9" width="7" height="14" fill="#d8dce3" opacity="1"/>
+<rect x="481.5" y="25.8" width="7" height="14" fill="#d8dce3" opacity="1"/>
+<rect x="461.5" y="28.9" width="7" height="14" fill="#d8dce3" opacity="1"/>
+<rect x="451.5" y="30.0" width="7" height="14" fill="#d8dce3" opacity="0.85"/>
+<rect x="441.5" y="30.7" width="7" height="14" fill="#d8dce3" opacity="0.7"/>
+<rect x="421.5" y="31.0" width="7" height="14" fill="#d8dce3" opacity="0.5"/>
+<rect x="411.5" y="31.0" width="7" height="14" fill="#d8dce3" opacity="0.38"/>
+<rect x="401.5" y="31.0" width="7" height="14" fill="#d8dce3" opacity="0.26"/>
+</g>
+<path class="ar" d="M306 38.5h40m-5-4 5 4-5 4"/>
+<path class="ar" d="M510.5 14V2m-4 5 4-5 4 5"/>
+<text x="0" y="76">⌘⏎ paste · right, into the app</text><text class="m" x="0" y="92">H1</text>
+<text x="360" y="76">⌘⇧⏎ copy, ⌘S save · up</text><text class="m" x="360" y="92">C1, the same timing</text>
+</svg></div>
+<div class="grid">
+<article class="card" id="opt-C1"><div class="card-h"><span class="oid">C1</span><h3>The glyphs rise</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="C" value="C1" checked> pick</label></div>
+<p class="pitch">The same send, upward: up to the clipboard. Save the same, once the sheet has written the file.</p>
+<ul class="how"><li>A ⌘⏎ that copied instead (no permission, Secure Input) rises too, and the box stays with its note.</li></ul>
+<p class="risk"><b>Risk.</b> Up as "clipboard" is a convention to learn.</p></article>
+<article class="card" id="opt-C2"><div class="card-h"><span class="oid">C2</span><h3>As the paste</h3><label class="pick"><input type="radio" name="C" value="C2"> pick</label></div>
+<p class="pitch">Copy and Save leave right, as a paste.</p>
+<p class="risk"><b>Risk.</b> A copy then looks like a paste that went nowhere.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s5h">
+<header class="sec-h"><span class="num">5</span><div><h2 id="s5h">S: the switch, and what it costs</h2><p>Not a pick.</p></div></header>
+<div class="ledger one">
+<div><b>Switch.</b>Session › Effects ▸ Hand-off replaces Hand-off sheen and drives the whole hand-off; Pop keeps the open and Esc's fade. Reduce Motion and Effects ▸ Off: the box and the dim go at once.</div>
+<div><b>Where it runs.</b>The exit: one more x term per glyph in <code>Line.draw</code> for 220 ms; then the ghost's shrink and fade on Core Animation. Budget: key → presented p50 / p90 no worse than the spike's 42 / 60 ms, measured with <code>os_signpost</code>.</div>
+<div class="urgent"><b>Risk: the band's window.</b>The band presents only while its window is on screen, and draws on the main thread, which at ⌘⏎ also writes the clipboard and the journal. If the panel cannot stay up without the keys, or a frame slips, the exit moves to the ghost: one layer per glyph cut from the last frame, moved off the main thread.</div>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s6h">
+<header class="sec-h"><span class="num">6</span><div><h2 id="s6h">Sources</h2><p>Read 2026-10-29.</p></div></header>
+<ul class="refs">
+<li><b>Effects notes</b>: <a href="../research_notes/Lemna%20effects/omarchy.md">Omarchy's motion rules and curves</a> (§2, §6.1), <a href="../research_notes/Lemna%20effects/siblings.md">the siblings' motions</a>.</li>
+<li><b>Decisions</b>: <a href="../DESIGN.md">DESIGN.md</a> rows F1 (E1, P1), W2, S1, V2, O1+O2+O3; the earlier <a href="design-panel-lemna-effects.html">effects panel</a>.</li>
+<li><b>Code</b>: <code>Box.swift</code>, <code>main.swift</code>, <code>Line.swift</code>.</li>
+<li><b>Exit easing</b>: <a href="https://m2.material.io/design/motion/speed.html">Material Design, speed</a>: accelerated easing for elements leaving the screen.</li>
+</ul>
+<p class="note">Computed: ease-in <code>cubic-bezier(0.42, 0, 1, 1)</code>, easeOutQuint <code>cubic-bezier(0.23, 1, 0.32, 1)</code>, Menlo 0.602 em, a 1512 pt screen.</p>
+</section>
+
+<div class="picks"><span class="picks-l">Picks</span><code id="picks">H1 A0 T1 C1</code><button type="button" id="copy" hidden>Copy picks</button></div>
+</div>
+<script>function picks(){const v=n=>[...document.querySelectorAll(`input[name="${n}"]:checked`)].map(i=>i.value).join('+')||'–';const s=['H','A','T','C'].map(v).join(' ');document.getElementById('pickline').textContent=s;document.getElementById('picks').textContent=s;}document.querySelectorAll('.pick input').forEach(i=>i.addEventListener('change',picks));const cb=document.getElementById('copy');if(navigator.clipboard){cb.hidden=false;cb.addEventListener('click',()=>navigator.clipboard.writeText(document.getElementById('picks').textContent).then(()=>{cb.textContent='Copied';setTimeout(()=>{cb.textContent='Copy picks'},1200)},()=>{}));}picks();</script>
+</html>
