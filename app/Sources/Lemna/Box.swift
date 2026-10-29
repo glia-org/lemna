@@ -11,13 +11,11 @@ import QuartzCore
 /// A non-activating panel that can be key although it is borderless (AppKit's `canBecomeKey` is true only for titled
 /// windows).
 final class BoxPanel: NSPanel {
-    /// Each key that comes up while the box has the keys: Paste waits for Return's.
-    var onKeyUp: (UInt16) -> Void = { _ in }
-
     override var canBecomeKey: Bool { true }
 
+    // Paste's wait for Return to come up watches the key-ups with a local monitor (`afterReturnIsUp`), not here: AppKit
+    // gives a key-up with ⌘ down to no window.
     override func sendEvent(_ e: NSEvent) {
-        if e.type == .keyUp { onKeyUp(e.keyCode) }
         // Lemna is not the active app while the box has the keys. Should AppKit then leave out the main menu's key
         // equivalents (Done ⌘⏎, Copy ⌘⇧⏎, Save… ⌘S, Open Window ⌃⌘F, Sound ⌘K, Quit ⌘Q), the menu gets them here; only
         // a key no menu item took reaches this, so nothing runs twice.

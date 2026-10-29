@@ -2,7 +2,7 @@
 
 `DESIGN.md` holds the decisions and the plan. This file says what is done and what is next.
 
-## State (2026-10-28)
+## State (2026-10-29)
 
 - Research, panel, report: done (`docs/`, `reports/`, `research_notes/`).
 - Spike GPUI vs AppKit: done, results in `DESIGN.md`; the user chose T2 (Swift + AppKit).
@@ -452,7 +452,53 @@
   - Fireworks: Return: the burst rises over the right part of the box. Swarm: bubbles rise where the keys are.
   - Beams: Space sweeps along the bottom of the screen, Return across the middle, on a second screen too.
   - The CPU in Activity Monitor while typing with Rain, as in pass 15; the line's latency with each mode on.
-- Next: the user quits Flow and tries pass 16 with pass 15b and pass 15, pass 14b (its list replaces pass 14's), pass 13, then pass 12, pass 11
+- App, pass 17a (2026-10-29; DESIGN.md O1+O2+O3 and E2 amended, F1's E1; the user: "there is almost a second of
+  delay when hitting cmd+enter to paste the text until the text is actually pasted. This is probably a delay we can't
+  get around"): nearly all of it could go. Where it went (from the code, and measured where that needs no launch): the
+  wait for Return to come up ran its whole 1 s cap whenever ⌘ was still down as Return came up, the usual way to let
+  go of ⌘⏎, because AppKit gives a key-up with ⌘ down to no window and the box's `sendEvent` was where it watched
+  (GLFW's Cocoa backend works around the same with a local key-up monitor; a probe here: such a monitor sees a ⌘ key-up
+  sent through `NSApp.sendEvent`); then the session's finish before the box went (keychain delete, the next session's
+  key and file: 30 ms median, 89 ms at most, over 15 runs against the login keychain under a scratch service, cleaned
+  up); then the fixed 120 ms settle. R1 (0.25 ms for 2,500 characters) and the pasteboard (0.3 ms) cost nothing; the
+  app behind is already in front, so there is nothing to activate. ⌘⏎ → ⌘V was about 1.15 s; when ⌘ came up first, the
+  hold of Return plus about 155 ms. Changed: the wait takes Return's key-up from a local event monitor and the key's
+  own state (read at once and every 50 ms, in case the key-up goes elsewhere), still at most 1 s for a key held down
+  (`ReturnUp`, LemnaCore); the paste's steps run in `Paste.acts`' order: pasteboard, box gone, the app brought forward
+  only when it is not in front, a settle of 30 ms when it was in front (120 ms, as before, when it had to be brought
+  forward), Secure Input again, ⌘V, and only then the session finished; Copy and Save… let the box go first and finish
+  after it. The box's last look is now the text handed off (the finish used to clear the line before the box went, so
+  the hand-off sheen crossed an empty line). Expected ⌘⏎ → ⌘V: the hold of Return (about 100 ms for a tap) plus about
+  35 ms. Tests: the app's 91 (86 before; 5 new in `PasteTests`: only a Return or Enter key-down waits, the key-up ends
+  the wait whatever its modifiers, a key-down with no key-up waits only until the next read of the key, a key held
+  keeps the box up to the cap, and the paste's steps with nothing slow before the ⌘V); LemnaJournal 16 (the keychain
+  test skipped) and LemnaClicks 14 (`--skip playReturnsInMicroseconds`), untouched. `make-app.sh` builds, signs with
+  "Lemna Dev" (`Authority=Lemna Dev`) and verifies; the executable is 1.30 MB (1,298,960 bytes), with no `/Users/` path
+  in it. `app/README.md` (Pass 17a) says what each part does. Not tried: nothing was launched.
+  The timing log, off by default: `defaults write dev.lemna.app LemnaTiming -bool true` (read at each Done and Copy;
+  if no line shows, quit and reopen Lemna), then in a terminal `log stream --predicate 'process == "Lemna"'`, or
+  afterwards `log show --last 2m --predicate 'process == "Lemna"'`. One line per step, `Lemna timing: <step> at <ms>
+  ms` from the key-down: `Done`, `R1 applied`, `Return up (keyUp | released | cap)`, `target in front`, `clipboard
+  written`, `box hidden`, `⌘V posted`, `session finished`. Off again: `defaults delete dev.lemna.app LemnaTiming`.
+  Try, after quitting the running Lemna, `app/make-app.sh` and `open app/build/Lemna.app`, with the log on:
+  - Paste as you usually do: summon from TextEdit, write a line, ⌘⏎ (⌘ still down as Return comes up): the text lands
+    as Return comes up, no second's wait. The log: `Done` at a few ms, `Return up (keyUp)` at the hold of Return
+    (about 100 ms), `⌘V posted` about 35 ms after it, `session finished` some 30 ms later. Letting go of ⌘ first: the
+    same. `Return up (released)` means the monitor missed the key-up and the read of the key caught it; `(cap)` at
+    about 1,000 ms means neither did: say so, with the lines.
+  - Hold ⌘⏎ for about three quarters of a second (past the delay until repeat, 0.5 s here): the box stays until Return
+    comes up, then pastes once; nothing repeats into the app behind (try it in a chat app where ⌘⏎ sends).
+  - A ⌘V that came too early: the box went but the text is not in TextEdit (⌘V by hand pastes it). Say so with the
+    lines; `Paste.settleInFront` (30 ms, was 120) is the knob.
+  - Secure Input: a password field focused in Safari, summon, write, ⌘⏎: the box goes and comes back with `Secure input
+    is on: copied instead`, nothing in the field. If the text lands in the field instead, 30 ms was too short for it to
+    turn Secure Input on again: say so.
+  - The last look: with Effects ▸ Hand-off sheen ticked, ⌘⏎: the sheen crosses the text you wrote as it fades.
+  - Copy ⌘⇧⏎: the box goes as Return comes up, the clipboard holds R1's text. Save… ⌘S: the box goes at Save.
+  - After a question (the menu-bar item's Discard…, Cancel: Lemna is active), ⌘⏎: `target not in front`, `activation
+    requested`, `target active`, `⌘V posted` about 120 ms after `box hidden`.
+- Next: the user tries pass 17a with the timing log on (its numbers say whether the 30 ms hold), then quits Flow and
+  tries pass 16 with pass 15b and pass 15, pass 14b (its list replaces pass 14's), pass 13, then pass 12, pass 11
   and pass 10, and what of v1, pass 6, pass 7b's click outside and pass 8 is still untried; then DESIGN.md's Open
   items.
 

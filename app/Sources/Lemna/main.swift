@@ -30,6 +30,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     private var notice = BluetoothNotice()
     private var hotkey: Hotkey?
     private var statusItem: NSStatusItem?
+    /// The hand-off's timing log, set at each Done and Copy (off unless the `LemnaTiming` default is on).
+    private var timing = Timing.off
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.register(defaults: [Self.soundKey: true])
@@ -431,7 +433,10 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// it cannot paste, and always in the window (no app behind it), it copies and the bottom edge says why. Either way
     /// the session is finished at once.
     @objc func done(_ sender: Any?) {
+        timing = .from(NSApp.currentEvent)
+        timing.mark("Done")
         guard let text = handOff() else { return }
+        timing.mark("R1 applied")
         showSurface()  // the hotkey may have hidden it; the menu-bar item's Done comes from another app
         guard surface.mode == .box else { return copyOut(text, note: Paste.noTargetNote) }
         let app = target.flatMap { $0.isTerminated ? nil : $0 }
@@ -450,7 +455,10 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// Copy (⌘⇧⏎, O1): R1's text on the clipboard; the session is finished and the box (or the window) goes, as after a
     /// paste.
     @objc func copyText(_ sender: Any?) {
+        timing = .from(NSApp.currentEvent)
+        timing.mark("Copy")
         guard let text = handOff() else { return }
+        timing.mark("R1 applied")
         afterReturnIsUp { [unowned self] in self.copyOut(text, note: nil) }  // ⌘⇧⏎ held, as with ⌘⏎
     }
 
@@ -459,38 +467,87 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// goes, as after a paste.
     private func copyOut(_ text: String, note: String?) {
         guard Clipboard.write(text) else { return notHandedOff("Not copied.") }
+        timing.mark("clipboard written")
+        guard let note else { return leave() }
         guard finished() else { return }
-        if let note {
-            if surface.onScreen == .box { box.sweep() }  // E1 on the box that stays
-            return edge.showNote(note)
-        }
+        if surface.onScreen == .box { box.sweep() }  // E1 on the box that stays
+        edge.showNote(note)
+    }
+
+    /// Copied or saved: the container goes, its last look the text as it was handed off, then the session is finished
+    /// (the keychain's part, 30 ms or so, no longer holds the box up; pass 17a).
+    private func leave() {
+        guard session.handedOff() else { return }
         surface.hide()
         apply(leaving: .handOff)
         handBack()
+        timing.mark("box hidden")
+        end(discard: false)
+        timing.mark("session finished")
     }
 
     // MARK: Paste (O3)
 
-    /// The pasteboard as Copy writes it, the session finished, the box and the dim gone, the app behind in front, and ⌘V
-    /// posted 120 ms later. The text stays on the clipboard: a ⌘V that did not land is one more ⌘V away, and Lemna
-    /// never reads the clipboard. The next summon shows an empty line.
+    /// The pasteboard as Copy writes it, the box and the dim gone, the app behind in front, ⌘V posted 30 ms later (120
+    /// ms when it had to be brought forward), then the session finished: `Paste.acts`' order (pass 17a). The text stays
+    /// on the clipboard: a ⌘V that did not land is one more ⌘V away, and Lemna never reads the clipboard. The next
+    /// summon shows an empty line.
     private func paste(_ text: String, into app: NSRunningApplication) {
         guard let keys = CommandV() else { return copyOut(text, note: "Copied · ⌘V could not be made") }
-        guard Clipboard.write(text) else { return notHandedOff("Not pasted.") }
-        guard finished() else { return }
-        surface.hide()
-        apply(leaving: .handOff)  // the box is gone at once, its look fading: the ⌘V reaches the app behind
-        bringForward(app)
-        DispatchQueue.main.asyncAfter(deadline: .now() + Paste.settle) { [weak self] in
-            guard let self else { return }
-            // Again, now that the app has its keys back: a password field turns Secure Input on only while its window
-            // is key, and the box had taken that. The text stays on the pasteboard, as a copy, and the box comes back
-            // saying so.
-            if IsSecureEventInputEnabled() {
-                self.showSurface()
-                return self.edge.showNote(Paste.secureNote)
+        let inFront = NSWorkspace.shared.frontmostApplication == app
+        timing.mark(inFront ? "target in front" : "target not in front")
+        run(Paste.acts(targetInFront: inFront)[...], text: text, into: app, keys: keys)
+    }
+
+    /// `acts` in order; a settle goes on with the rest once it is over.
+    private func run(_ acts: ArraySlice<Paste.Act>, text: String, into app: NSRunningApplication, keys: CommandV) {
+        for (i, act) in zip(acts.indices, acts) {
+            switch act {
+            case .write:
+                guard Clipboard.write(text) else { return notHandedOff("Not pasted.") }
+                guard session.handedOff() else { return }
+                timing.mark("clipboard written")
+            case .hide:
+                surface.hide()
+                apply(leaving: .handOff)  // the box is gone at once, its look fading: the ⌘V reaches the app behind
+                timing.mark("box hidden")
+            case .bringForward:
+                if timing.on { watchActivation(of: app) }
+                bringForward(app)
+                timing.mark("activation requested")
+            case .settle(let d):
+                return DispatchQueue.main.asyncAfter(deadline: .now() + d) { [weak self] in
+                    self?.run(acts[(i + 1)...], text: text, into: app, keys: keys)
+                }
+            case .checkSecureInput:
+                // Again, now that the app has its keys back: a password field turns Secure Input on only while its
+                // window is key, and the box had taken that. The text stays on the pasteboard, as a copy, and the box
+                // comes back saying so.
+                guard IsSecureEventInputEnabled() else { continue }
+                timing.mark("Secure Input on: copied instead")
+                guard end(discard: false) else { return }
+                showSurface()
+                return edge.showNote(Paste.secureNote)
+            case .post:
+                keys.post()
+                timing.mark("⌘V posted")
+            case .finish:
+                end(discard: false)  // refused: the alert comes up after the paste, and the session stays
+                timing.mark("session finished")
             }
-            keys.post()
+        }
+    }
+
+    /// The timing log's line for the moment the app to paste into is active, when it had to be brought forward.
+    private func watchActivation(of app: NSRunningApplication) {
+        let center = NSWorkspace.shared.notificationCenter
+        var token: NSObjectProtocol?
+        token = center.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil,
+                                   queue: .main) { [unowned self] n in
+            guard n.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication == app else { return }
+            self.timing.mark("target active")
+            if let t = token { center.removeObserver(t) }
+            token = nil
         }
     }
 
@@ -503,26 +560,43 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         if !app.activate(from: NSRunningApplication.current, options: []) { app.activate(options: []) }
     }
 
-    /// Runs `then` once Return (or Enter) is up again, at most a second on: ⌘⏎ held into the app behind would reach it
-    /// as auto-repeated ⌘⏎ (which sends a message in many apps) once the box is gone. While the box waits, the repeats
-    /// find Done off (the hand-off is under way) and the line not taking keys. Done from the menu-bar item runs `then`
-    /// at once.
+    /// Runs `then` once Return (or Enter) is up again, at most a second after its key-down: ⌘⏎ held into the app
+    /// behind would reach it as auto-repeated ⌘⏎ (which sends a message in many apps) once the box is gone. While the
+    /// box waits, the repeats find Done off (the hand-off is under way) and the line not taking keys. The key-up comes
+    /// through a local monitor, which sees every event before AppKit dispatches it: AppKit gives a key-up with ⌘ down
+    /// to no window, so the box's own `sendEvent` never saw Return come up while ⌘ was still held, the usual way to let
+    /// go of ⌘⏎, and the wait ran its whole second (pass 17a; GLFW's Cocoa backend works around the same with the same
+    /// monitor). The key's own state, read at once and every 50 ms, ends the wait too, should the key-up go elsewhere.
+    /// Done from the menu-bar item runs `then` at once.
     private func afterReturnIsUp(_ then: @escaping () -> Void) {
-        guard let e = NSApp.currentEvent, e.type == .keyDown, [36, 76].contains(e.keyCode) else { return then() }
-        var ran = false
-        let once = { [unowned self] in
-            guard !ran else { return }
+        guard let e = NSApp.currentEvent, ReturnUp.waits(keyDown: e.type == .keyDown, code: e.keyCode) else {
+            return then()
+        }
+        let wait = ReturnUp(at: e.timestamp)
+        var monitor: Any?, poll: Timer?, ran = false
+        let take = { [unowned self] (signal: ReturnUp.Signal) in
+            guard !ran, let end = wait.take(signal, at: CACurrentMediaTime()) else { return }
             ran = true
-            self.box.panel.onKeyUp = { _ in }
+            if let m = monitor { NSEvent.removeMonitor(m) }
+            poll?.invalidate()
+            (monitor, poll) = (nil, nil)
+            self.timing.mark("Return up (\(end))")
             then()
         }
-        box.panel.onKeyUp = { if [36, 76].contains($0) { once() } }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { once() }
+        let down = { ReturnUp.keys.contains { CGEventSource.keyState(.combinedSessionState, key: CGKeyCode($0)) } }
+        take(.check(down: down()))  // up already: the key-down waited in the queue
+        guard !ran else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyUp) { e in
+            take(.keyUp(e.keyCode))
+            return e
+        }
+        poll = Timer.scheduledTimer(withTimeInterval: ReturnUp.poll, repeats: true) { _ in take(.check(down: down())) }
     }
 
     /// Save… (⌘S, O2): R1's text as Markdown, written atomically, to a folder the panel remembers; the session is then
     /// finished and the box (or the window) goes, as after a paste. Cancel: writing goes on.
     @objc func saveText(_ sender: Any?) {
+        timing = .off  // the save panel waits on the user: no timing to log
         guard let text = handOff() else { return }
         let panel = NSSavePanel()
         panel.allowedContentTypes = [UTType(filenameExtension: "md") ?? .plainText]
@@ -539,10 +613,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
                 return self.notHandedOff("Not saved: \(describe(error)).")
             }
             UserDefaults.standard.set(url.deletingLastPathComponent().path, forKey: Self.folderKey)
-            guard self.finished() else { return }
-            self.surface.hide()
-            self.apply(leaving: .handOff)
-            self.handBack()
+            self.leave()
         }
     }
 
@@ -554,7 +625,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         return f
     }()
 
-    /// Pasted, copied or saved: the session is finished at once. False when the key store refused (`end` says so).
+    /// Copied with a note: the session is finished at once. False when the key store refused (`end` says so).
     private func finished() -> Bool {
         guard session.handedOff() else { return false }
         return end(discard: false)

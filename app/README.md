@@ -13,7 +13,8 @@ the effects (F1): Tokyo Night's colours, the box's pop, accent border and theme 
 glyph pop-in, the sheens, the paragraph fade and Session › Effects ▸; then pass 14b: the effects made plain to see,
 their magnitudes in one table, and the colours back to Lemna's own; then pass 15: the ambience (A1), seven scenes on the
 dim around the box fed by the keys, on a Metal layer of their own, and Session › Ambience ▸; then pass 15b: the crash at
-Esc with a mode on fixed; then pass 16: the ambience plain to see and following where each key is on the keyboard.
+Esc with a mode on fixed; then pass 16: the ambience plain to see and following where each key is on the keyboard;
+then pass 17a: the second between ⌘⏎ and the paste gone, and a timing log of the hand-off.
 Swift +
 AppKit, SwiftPM with the Command Line Tools only (no Xcode), two package dependencies by path (`../lib/LemnaJournal`,
 `../lib/LemnaClicks`) and one Objective-C function of its own (`Sources/LemnaCatch`), signed with a self-signed certificate or ad-hoc (there is no Developer ID yet).
@@ -76,12 +77,14 @@ git-ignored.
   the deterministic pass R1, `Session.swift` the end of a session as a state machine, `Summoning.swift` the menu-bar
   mark and when the Bluetooth notice shows, `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
   holds the line (`Surface`) and when a click outside hides the box (`ClickOutside`), `Paste.swift` the paste's
-  decision table.
+  decision table, and since pass 17a its steps in order (`Paste.acts`) and the wait for Return to come up
+  (`ReturnUp`).
 - `Sources/Lemna`: `main.swift` the app, window, menus, clicks and the sound toggle, the Effects submenu, summoning and the two containers
   (`apply()`), a click outside the box, and the end of a session (Done's paste or copy, Copy, Save, Discard, each
   finishing at once); `Box.swift` the box (the non-activating panel, the dim overlays, the line in it; since pass 14 its
   face, the border and the sheen, its open and close, the last look that fades, the warming border); `Paste.swift`
-  the pasteboard (Copy's item; since pass 11 nothing is read from it) and the posted ⌘V; `Keeper.swift` the journal in
+  the pasteboard (Copy's item; since pass 11 nothing is read from it), the posted ⌘V and since pass 17a the hand-off's
+  timing log (`Timing`); `Keeper.swift` the journal in
   the app (open and restore, append, the flushes); `LineView.swift` the view (text input, the keys of B4, edits as
   journal edits and clicks, the two glides, display link; since pass 15 each key handed on to the ambience after its
   frame); `Ambient.swift` the ambience on each dim (the scene thread, the Metal layer and its display link);
@@ -103,7 +106,8 @@ git-ignored.
   renders (`AmbienceTests`); since pass 15b the display link's lifecycle: a real layer driven by a link refuses
   `nextDrawable`, Esc during typing and during the close's and the dim's fades in every mode and Off, a hand-off, a
   close at once, a new show, the end 4 s after the last key, the Esc sequence on a real layer and link
-  (`AmbienceLinkTests`); since pass 16 the keymap (`KeyboardTests`) and where each mode's sprites start for a key.
+  (`AmbienceLinkTests`); since pass 16 the keymap (`KeyboardTests`) and where each mode's sprites start for a key;
+  since pass 17a the paste's steps and the wait for Return (`PasteTests`).
 
 ## What it covers
 
@@ -575,7 +579,51 @@ keyboard."):
   GPU 0.39–0.58 ms for 2,000 glyph sprites at the line's size over a 3024 × 1964 drawable, 0.13 ms for 20 rings of
   300–1,060 pt (446 arcs).
 
+Pass 17a, the paste's lost second (DESIGN.md O1+O2+O3 and E2 amended, F1's E1; 2026-10-29; the user: "there is
+almost a second of delay when hitting cmd+enter to paste the text until the text is actually pasted. This is probably
+a delay we can't get around"):
+
+- Where the time went, from the code and measured where that needs no launch: the wait for Return to come up ran its
+  whole 1 s cap whenever ⌘ was still down as Return came up, the usual way to let go of ⌘⏎. `-[NSApplication
+  sendEvent:]` gives a key-up with ⌘ down to no window, so `BoxPanel.sendEvent`'s key-up hook never fired (GLFW's
+  Cocoa backend forwards such key-ups from a local monitor for the same reason; a probe here: a local monitor sees a
+  ⌘ key-up sent through `NSApp.sendEvent`). The key-down itself was right: ⌘⏎ reaches Done as the main menu's key
+  equivalent (AppKit's dispatch or the box's `sendEvent`), with `NSApp.currentEvent` the key-down either way, so the
+  wait began; only its end never came. Next, before the box went, the session's finish: the key deleted from the login
+  keychain, the file deleted, the next session's key added and its file made, 30 ms median and 89 ms at most over 15
+  runs (the delete 12 ms, the add 13; with a full flush queued just before, as Done queues one; a scratch keychain
+  service, cleaned up). Then the 120 ms settle. R1 (0.25 ms for 2,500 characters), the pasteboard (0.3 ms) and
+  `bringForward` (nothing to do while the app is in front) cost nothing. ⌘⏎ → ⌘V was about 1,000 + 30 + 120 ms, some
+  1.15 s, and the hold of Return plus about 155 ms when ⌘ came up first.
+- The wait (`afterReturnIsUp`; `ReturnUp` in LemnaCore): a local key-up monitor, which sees each event before AppKit
+  drops it, and the key's own state (`CGEventSource.keyState`, `.combinedSessionState`, Return and Enter), read at once
+  and every 50 ms in case the key-up goes elsewhere; whichever comes first. A key held down keeps the box at most 1 s,
+  as before (auto-repeat starts at the delay until repeat, 0.5 s on this Mac, and its repeats reach the box, where Done
+  is off). `BoxPanel.onKeyUp` is gone.
+- The order (`Paste.acts`, carried out by `App.run`): the pasteboard and the session handed off, the box gone, the app
+  brought forward only when it is not in front, the settle (`Paste.settleInFront`, 30 ms, when it was in front all
+  along, the usual case: the window server moves the keys back and a password field there turns Secure Input on
+  again; `Paste.settle`, 120 ms as before, when it had to be brought forward), Secure Input read again, ⌘V, and then
+  the session finished in the same turn. Copy and Save… let the box go first and finish after it (`leave`); a copy
+  with a note finishes first as before, since its box stays.
+- The box's last look is now the text as it was handed off: until now the finish cleared the line and drew the empty
+  line before the box went, so the hand-off sheen (E1) crossed an empty line.
+- The timing log (`Timing`, the app's `Paste.swift`): off unless `defaults write dev.lemna.app LemnaTiming -bool true`
+  (read at each Done and Copy); one line per step, `Lemna timing: <step> at <ms> ms`, counted from the key-down's own
+  timestamp: `Done` (or `Copy`), `R1 applied`, `Return up (keyUp | released | cap)`, `target in front` (or `not in
+  front`, then `activation requested` and `target active`), `clipboard written`, `box hidden`, `⌘V posted` (or `Secure
+  Input on: copied instead`), `session finished`. `log stream --predicate 'process == "Lemna"'` in a terminal, or
+  `log show --last 2m --predicate 'process == "Lemna"'` after; `defaults delete dev.lemna.app LemnaTiming` turns it off.
+- Expected now: ⌘V about 35 ms after Return comes up, so the hold of Return (about 100 ms for a tap) plus 35 ms from
+  the key-down; Copy's box goes as Return comes up.
+
 ## Known gaps
+
+- Pass 17a is not tried: nothing was launched. Untried: that the monitor gets Return's key-up in the non-activating box
+  (the probe sent it through `NSApp.sendEvent` without a window; the 50 ms read of the key's state covers a miss);
+  whether 30 ms is enough for every app behind to have its keys back before the ⌘V (a ⌘V that comes too early goes to
+  no window: the text stays on the clipboard) and for a password field to turn Secure Input on again (too early: the
+  ⌘V goes into the field); the timing log's numbers on this Mac.
 
 - Pass 16 is not tried: nothing was launched. The physical layout comes from KBGetLayoutType, which the SDK no longer
   declares: if a macOS drops it, ISO keyboards take ANSI's places (only the four keys that differ move). A keyboard
@@ -610,11 +658,11 @@ keyboard."):
   measurement (`lib/LemnaClicks/THIRD_PARTY.md`). On a MacBook the Soft pack may double the key under the fingers.
 
 - Pass 10 is not tried (the builder shows no windows; the note was not drawn).
-- A paste finishes the session before its ⌘V goes out: if the ⌘V does not land (no text field has the keys in the
-  target, the target ignores posted keys), the text is no longer in Lemna, but since pass 11 it is still on the
-  clipboard, one ⌘V away. Before pass 11 the old clipboard came back 250 ms after the ⌘V and the text was then
-  nowhere; before pass 10 the 10 s grace's Undo covered it. The clipboard the user had before a paste is gone, as
-  after any copy.
+- A paste finishes the session right after its ⌘V goes out (before it until pass 17a): if the ⌘V does not land (no text
+  field has the keys in the target, the target ignores posted keys), the text is no longer in Lemna, but since pass 11
+  it is still on the clipboard, one ⌘V away. Before pass 11 the old clipboard came back 250 ms after the ⌘V and the text
+  was then nowhere; before pass 10 the 10 s grace's Undo covered it. The clipboard the user had before a paste is gone,
+  as after any copy.
 - Done from the menu-bar item with the box hidden brings the box up first (to record the app in front and to have a
   place for a note), so on a paste it shows for a moment before it goes.
 - Pass 8 is not tried (the builder shows no windows; the line was drawn offscreen, `editing.png`,
@@ -657,7 +705,8 @@ keyboard."):
 - An ad-hoc signed rebuild changes the app's signature, so macOS may ask once whether Lemna may use its keychain item
   when a session is restored (not with the "Lemna Dev" certificate, see above). Deny: the "not kept" alert, the old session stays on disk for the next launch.
 - If the key store refuses to destroy the key at the end, an alert says "Not finished: …" and the session stays, on
-  the line and on disk.
+  the line and on disk; since pass 17a that comes after the paste, Copy or Save went out, with the box back for the
+  alert.
 - Journals `open` reports as unreadable (noise of finished sessions) are left on disk.
 - Whether a frame presented while one is already waiting for the same refresh replaces it or queues behind it is not
   documented; with two drawables a queue costs at most one frame. Measure if typing during a glide feels behind.
