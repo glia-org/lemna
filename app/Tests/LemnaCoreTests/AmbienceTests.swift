@@ -136,8 +136,9 @@ private func near(_ a: Double, _ b: Double, _ tolerance: Double) -> Bool { abs(a
     #expect(run.frame(at: 15, dt: 1.0 / 60, into: &out) == nil && out.isEmpty)
     var closed = Ambience.Run(mode: .rings, stage: stage, glyphs: glyphs, seed: 1)
     closed.take([Ambience.Key(t: 0, kind: .glyph("a"))])
-    closed.close(at: 1, over: 0.2)  // the box went: fading with the dim
-    #expect(near(closed.alpha(at: 1.1), 0.5, 1e-9) && closed.frame(at: 1.21, dt: 0.1, into: &out) == nil)
+    closed.close(at: 1, over: 0.2)  // the box went: fading with the dim, on its curve (pass 18; evenly before)
+    #expect(near(closed.alpha(at: 1.1), 1 - Curve.easeOutQuint(0.5), 1e-9) && closed.alpha(at: 1.1) < 0.04)
+    #expect(closed.alpha(at: 1 + 1.0 / 60) > 0.6 && closed.frame(at: 1.21, dt: 0.1, into: &out) == nil)
     var atOnce = Ambience.Run(mode: .rings, stage: stage, glyphs: glyphs, seed: 1)
     atOnce.take([Ambience.Key(t: 0, kind: .glyph("a"))])
     atOnce.close(at: 1, over: 0)

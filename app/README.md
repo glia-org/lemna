@@ -15,7 +15,9 @@ their magnitudes in one table, and the colours back to Lemna's own; then pass 15
 dim around the box fed by the keys, on a Metal layer of their own, and Session › Ambience ▸; then pass 15b: the crash at
 Esc with a mode on fixed; then pass 16: the ambience plain to see and following where each key is on the keyboard;
 then pass 17a: the second between ⌘⏎ and the paste gone, and a timing log of the hand-off; then pass 17b: the
-hand-off's motion, the line's glyphs leaving the box from the key-down on (in place of the sheen).
+hand-off's motion, the line's glyphs leaving the box from the key-down on (in place of the sheen); then pass 18: the
+motion revised, the glyph pop-in a fade, Border warms, Word sheen and the ambience's Beams, Fireworks and Swarm
+removed, one curve and one scale of durations.
 Swift +
 AppKit, SwiftPM with the Command Line Tools only (no Xcode), two package dependencies by path (`../lib/LemnaJournal`,
 `../lib/LemnaClicks`) and one Objective-C function of its own (`Sources/LemnaCatch`), signed with a self-signed certificate or ad-hoc (there is no Developer ID yet).
@@ -54,9 +56,10 @@ The tests need no window and no keychain (the journal test keeps its key in memo
 window's content as the app does (1200 × 700 pt at 2×) and writes `app/renders/idle.png`, `glide-0.png`,
 `glide-70ms.png`, `glide-140ms.png` (after a new key), `marked.png` (a pending `´` at the caret), `editing.png` (the caret
 back in the text, the text after it shown) and `move-left-70ms.png` (70 ms into a ← there), and since pass 14
-`glide-8ms.png` and `pop-in-8ms.png` (the first 120 Hz frame after a key, without and with the glyph pop-in) and
+`glide-8ms.png` and `glyph-fade-8ms.png` (the first 120 Hz frame after a key, without and with the glyph fade;
+`pop-in-8ms.png` with the pop-in until pass 18) and
 `paragraph-25ms.png` and `paragraph-fade-25ms.png` (25 ms after a Return, without and with the ` ¶ `'s fade), and since
-pass 15 `ambience-<mode>.png` for each of the seven modes (after 10 s of typing, 0.6 s after a Return, Fireworks 1 s,
+pass 15 `ambience-<mode>.png` for each of the modes, four since pass 18 (after 10 s of typing, 0.6 s after a Return,
 drawn by the Metal pipeline over a dimmed dark app with the box; skipped without a Metal device), and since pass 16
 `ambience-grid-keyboard.png` ("the quick brown fox" at 20 keys/s, the keys lit as a keyboard), and since pass 17b
 `handoff-send-60ms.png`, `handoff-send-120ms.png`, `handoff-send-200ms.png` and `handoff-rise-120ms.png` (the box over
@@ -74,7 +77,7 @@ git-ignored.
   (`Curve.easeOutQuint`) and the newest glyphs' entrance (`Entrance`), `Effects.swift` the Effects submenu's choice and
   every effect's magnitude (`Effects.Tuning`), `Ambience.swift` the Ambience submenu's choice, every magnitude of the
   ambience (`Ambience.Tuning`), what the line sends and a scene is told, the stage, the sprite, the atlas's index and the
-  run of a scene (`Ambience.Run`), `Scenes.swift` the seven scenes, `Particles.swift` the Metal pipeline that draws them
+  run of a scene (`Ambience.Run`), `Scenes.swift` the four scenes, `Particles.swift` the Metal pipeline that draws them
   (`Ambience.Renderer`: the shader's source, the glyph atlas, an offscreen frame for the tests), `Keyboard.swift` where
   each physical key is on a MacBook's main block, ANSI and ISO (pass 16),
   `Mechanical.swift`
@@ -87,8 +90,8 @@ git-ignored.
 - `Sources/Lemna`: `main.swift` the app, window, menus, clicks and the sound toggle, the Effects submenu, summoning and the two containers
   (`apply()`), a click outside the box, and the end of a session (Done's paste or copy, Copy, Save, Discard, each
   finishing at once); `Box.swift` the box (the non-activating panel, the dim overlays, the line in it; since pass 14 its
-  face, the border and the sheen, its open and close, the last look that fades, the warming border; since pass 17b
-  the hand-off's glyph layers, the collapse, and the ghost carrying them on); `Paste.swift`
+  face and its still border, its open and close, the last look that fades (the sheen and the warming border until
+  pass 18); since pass 17b the hand-off's glyph layers, the collapse, and the ghost carrying them on); `Paste.swift`
   the pasteboard (Copy's item; since pass 11 nothing is read from it), the posted ⌘V and since pass 17a the hand-off's
   timing log (`Timing`); `Keeper.swift` the journal in
   the app (open and restore, append, the flushes); `LineView.swift` the view (text input, the keys of B4, edits as
@@ -107,7 +110,8 @@ git-ignored.
   the Bluetooth notice, the muted colour's contrast (`FrameTests`); the box's frame and its clamps, one container at a
   time, the paste's decision table, the click-outside guard's table (`BoxTests`); the Sound submenu's default, a
   pack's choice and ⌘K (`SoundTests`); the Effects submenu's defaults, Off, Reduce Motion and its round trip through a
-  dictionary, the entrance on the curve, the newest glyph's fade and scale (`EffectsTests`); the Ambience submenu's
+  dictionary, the entrance on the curve, the newest glyph's fade, the old keys read, every duration on the scale
+  (`EffectsTests`); the Ambience submenu's
   default, round trip and Reduce Motion, the tuning, the sprite's layout, the stage, the typing rate, a run's 4 s and its
   close, the glyph that leaves the box's edge, each mode's coupling, the cap, the shader and one frame offscreen, the
   renders (`AmbienceTests`); since pass 15b the display link's lifecycle: a real layer driven by a link refuses
@@ -670,7 +674,36 @@ then the picks `H1 A0 T1 C1` of `docs/design-panel-lemna-handoff.html`, H1 on ea
 - Build: the executable is 1.36 MB (1,355,504 bytes; 1,298,960 in pass 17a), no `/Users/` path in it; signed with
   "Lemna Dev".
 
+Pass 18, the motion revised (DESIGN.md F1 and A1 amended, Plan item 13; 2026-10-29; the user: "Use the installed
+frontend-design skill to revise all the animation and remove them if they are not good or revise them."):
+
+- Kept as they were: the box's pop open and close fade (P1), the glide (G1), the ` ¶ `'s fade (E2), the dim (D1), the
+  still accent border (B1) and the hand-off (H1 C1), the one bold moment.
+- The glyph fade (K1, `Effects.Item.glyphFade`, "Glyph fade"): `Entrance.glyph` fades the newest glyph in over 80 ms
+  (`Tuning.glyphFade`), opacity alone; `Newest` and `Entrance` lose their scale and rise, `Line.draw` its scaled path.
+  It moves nothing, so Reduce Motion leaves it on, as the paragraph fade. `Effects(kept:)` reads a missing `glyphFade`
+  from the old `glyphPopIn`.
+- Removed from the box: Border warms (B2) and Word sheen (K3): the face's sheen layer, gradient band and ring mask,
+  `Face.borderColor`, `shownBorder`, `sweep` and `stop`, the box's cooling timer, `keyShown` and `effectsChanged`,
+  `LineView.onShown`, their tuning and `Style.line`; every item now starts ticked (`byDefault` gone); a kept
+  `borderWarms` or `wordSheen` is ignored.
+- Removed from the ambience: Beams, Fireworks and Swarm (their scenes, their rows of `Ambience.Tuning`, `beamRows`, the
+  unused `white`), and the shader's disc, small ring and beam with `Sprite.stroke`: `Sprite.Kind` is `glyph`, `rect`
+  and `bend` (2 now); a kept `ambience` naming a removed mode reads as Off.
+- One curve, one scale: easeOutQuint wherever a curve is used, now also a scene's fade at a close (`Run.alpha`; the
+  even fade over the linger's last second stays, a decay); durations 80, 140, 200 and 300 ms, so the hand-off's `lift`
+  and `collapse` are 140 ms (were 160) and `Handoff.end` 260 ms (was 280).
+- Menus: Effects ▸ Pop, Glyph fade, Hand-off, Paragraph fade, Off; Ambience ▸ Drift, Rain, Rings, Grid, Off.
+- Build: `make-app.sh` built the release and assembled the bundle; the executable is 1,266,632 bytes before signing
+  (1.27 MB; pass 17b's 1,355,504 was signed), no `/Users/` path in it. The signing with "Lemna Dev" waited on macOS's
+  keychain question (codesign asking to use the key) for 24 minutes unanswered and was stopped, so `build/Lemna.app`
+  is not signed with "Lemna Dev" until `make-app.sh` runs again with the question answered.
+
 ## Known gaps
+
+- Pass 18 is not tried: nothing was launched. Untried: whether the 80 ms glyph fade reads at speed or not at all
+  (`Tuning.glyphFade`; 0.140 is the scale's next step); the hand-off at 260 ms; the glyph fade left on under Reduce
+  Motion.
 
 - Pass 17b is not tried: nothing was launched. Untried: that the hidden strip and the glyph layers reach the screen in
   the same frame (a doubled or a blank frame at ⌘⏎ would say not); that the ghost takes over without a jump at Return's

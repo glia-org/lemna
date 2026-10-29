@@ -2,8 +2,9 @@
 // used is really lackluster and not well done. This can be improved a lot."; the picks H1 A0 T1 C1 of
 // docs/design-panel-lemna-handoff.html, H1 on easeOutQuint): from the key-down on, the line's glyphs leave the box one
 // after another from the caret outwards, off its right edge at a paste or up off its top edge at a copy or a save; the
-// dim lifts from the first frame and the emptied box collapses. Where each glyph is and when, as pure functions: the
-// app's Core Animation layers and the tests' renders take their places and times from here. Free of AppKit.
+// dim lifts from the first frame and the emptied box collapses, 260 ms in all. Where each glyph is and when, as pure
+// functions: the app's Core Animation layers and the tests' renders take their places and times from here. Free of
+// AppKit.
 import CoreGraphics
 import CoreText
 
@@ -89,7 +90,7 @@ public enum Handoff {
     /// The dim's share of its strength `t` seconds after the key: it lifts from the key on, over `Tuning.lift`.
     public static func dim(at t: Double) -> Double { 1 - Curve.easeOutQuint(t / T.lift) }
 
-    /// Seconds from the key to the motion's end, the box gone: 280 ms.
+    /// Seconds from the key to the motion's end, the box gone: 260 ms (280 until pass 18).
     public static var end: Double { T.collapseAt + T.collapse }
 
     /// How a box goes at a hand-off.

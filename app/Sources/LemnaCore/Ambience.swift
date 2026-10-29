@@ -59,8 +59,9 @@ extension Ambience {
     public enum Tuning {
         /// Every mode: at most this many sprites a frame (the panel's 2,000 particles), stepped and drawn at 60 Hz.
         public static let cap = 2000, frameRate = 60.0
-        /// Nothing new after the last key, and the scene is gone `linger` after it, fading out over the last `fadeOut`;
-        /// then the display link pauses.
+        /// Nothing new after the last key, and the scene is gone `linger` after it, fading out evenly over the last
+        /// `fadeOut` (a decay nobody triggered, kept off the curve, so the scene does not drop half of itself in the
+        /// first tenth of a second at a moment the writer did not choose; pass 18); then the display link pauses.
         public static let linger = 4.0, fadeOut = 1.0
         /// At the box's close the scene fades out over the dim's wait and fade less `closeAhead`, so its cleared frames
         /// are out and the link pauses while the dim is still on screen (a window gone gets no more frames).
@@ -353,7 +354,8 @@ extension Ambience {
 
     /// One scene from the first key until it has died out: the keys turned into its events (what left the box's left
     /// edge found from each key's push), the typing rate, and the alpha every sprite is drawn at, 1 until the last
-    /// second of `Tuning.linger` after the last key, or fading over a close (the box going). Stepped by the scene's
+    /// second of `Tuning.linger` after the last key (fading evenly), or fading over a close (the box going, on the
+    /// curve, as the dim it goes with). Stepped by the scene's
     /// thread once a frame; `frame` says when it is over, and the caller pauses.
     public struct Run {
         public let mode: Mode, stage: Stage
@@ -407,11 +409,11 @@ extension Ambience {
             if closing == nil { closing = (t, d) }
         }
 
-        /// The alpha every sprite is drawn at, at `t`: the last second before `linger` after the last key fades, and a
-        /// close fades over its time; 0 when it is over.
+        /// The alpha every sprite is drawn at, at `t`: the last second before `linger` after the last key fades
+        /// evenly, and a close fades over its time on the curve (evenly until pass 18); 0 when it is over.
         public func alpha(at t: Double) -> Double {
             var a = min(max((lastKey + Tuning.linger - t) / Tuning.fadeOut, 0), 1)
-            if let c = closing { a *= c.over > 0 ? min(max(1 - (t - c.at) / c.over, 0), 1) : 0 }
+            if let c = closing { a *= c.over > 0 ? 1 - Curve.easeOutQuint((t - c.at) / c.over) : 0 }
             return a
         }
 

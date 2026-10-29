@@ -84,7 +84,10 @@ public struct Effects: Equatable {
 extension Effects {
     /// Every magnitude of the effects in one place (F1). Pass 14b (the user, having tried pass 14 with every item ticked:
     /// "Where are the new animations, I can barely see anything.") made them plain to see; pass 14's values, the panel's,
-    /// stand beside each as "subtle". Durations in seconds, all on the curve (`Curve`) unless said otherwise.
+    /// stand beside each as "subtle". Durations in seconds, all on the curve (`Curve`), and since pass 18 on one scale,
+    /// 80, 140, 200 and 300 ms: the glyph fade; the glide (`Line.glideDuration`), the dim's lift and the box's collapse;
+    /// the close, the ` ¶ `'s fade and a glyph's exit; the open. The stagger's 7 ms steps, its 120 ms cap and the
+    /// collapse's start at 120 ms are offsets, not durations.
     public enum Tuning {
         /// P1, the box: open from `openScale` with a fade, close in a fade. Omarchy's released window open was 410 ms
         /// from 87 %. Subtle: 0.250 s from 0.95, close 0.160 s.
@@ -102,12 +105,13 @@ extension Effects {
         /// past `exitStaggerCap` all with the last (in the box on a 1512 pt screen about 19 glyphs show: 18 of them
         /// 7 ms apart, the faded rest at 120 ms; a cap of 0.060 would send the faded half as one block at 60 ms and
         /// empty the line by about 110 ms); the dim lifts from the key over `lift`; from `collapseAt` the box shrinks to
-        /// `collapseScale` about its middle and fades over `collapse`: 280 ms in all. The panel's H1 had ease-in over
+        /// `collapseScale` about its middle and fades over `collapse`: 260 ms in all (pass 18: the lift and the collapse
+        /// 140 ms on the scale, were 160, 280 ms in all). The panel's H1 had ease-in over
         /// ~220 ms, ~8 ms apart, the clause over at most 120 ms. Was E1 (pass 14b): a 45° band of light across the
         /// box, peak 0.35 over 0.350 s at an even pace, the close's fade from 0.150 s (subtle: peak 0.14 over 0.300 s).
         public static let exit = 0.200, exitStagger = 0.007, exitStaggerCap = 0.120
         public static let sendReach: CGFloat = 1.0, riseReach: CGFloat = 1.25
-        public static let lift = 0.160, collapseAt = 0.120, collapse = 0.160, collapseScale = 0.9
+        public static let lift = 0.140, collapseAt = 0.120, collapse = 0.140, collapseScale = 0.9
         /// Removed in pass 18: K3's word sheen (0.300 s, peak 0.7) and B2's warming border (back in 0.150 s, cooling
         /// over 1.0 s from 0.5 s after the last key).
     }

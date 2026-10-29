@@ -78,7 +78,11 @@ private typealias Item = Effects.Item
     // Pass 17b, the hand-off (H1 on easeOutQuint, C1), in E1's place (a sheen, peak 0.35 over 0.350 s).
     #expect(T.exit == 0.200 && T.exitStagger == 0.007 && T.exitStaggerCap == 0.120)
     #expect(T.sendReach == 1.0 && T.riseReach == 1.25)
-    #expect(T.lift == 0.160 && T.collapseAt == 0.120 && T.collapse == 0.160 && T.collapseScale == 0.9)
+    #expect(T.lift == 0.140 && T.collapseAt == 0.120 && T.collapse == 0.140 && T.collapseScale == 0.9)  // 0.160 before
+    // Pass 18: every duration on one scale, 80, 140, 200, 300 ms.
+    for d in [T.glyphFade, Line.glideDuration, T.lift, T.collapse, T.close, T.paragraphFade, T.exit, T.open] {
+        #expect([0.080, 0.140, 0.200, 0.300].contains(d), "\(d)")
+    }
 }
 
 @Test func anEntranceFadesInOnTheCurve() {

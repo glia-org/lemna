@@ -564,8 +564,51 @@
     (the ghost taking over), and the shadow going at the first frame over a light app: say which, if any.
   - After a question (the menu-bar item's Discard…, Cancel), ⌘⏎: the motion plays although Lemna is the active app
     and hands the keys back.
-- Next: the user tries pass 17b (the timing log on: its numbers also say whether pass 17a's 30 ms hold), then quits
-  Flow and tries pass 16 with pass 15b and pass 15, pass 14b (its list replaces pass 14's), pass 13, then pass 12, pass 11
+- App, pass 18 (2026-10-29; DESIGN.md F1 and A1 amended, Plan item 13; the user: "Use the installed frontend-design
+  skill to revise all the animation and remove them if they are not good or revise them."): every animation weighed
+  against the skill's motion principles (motion nobody asked for, sparingly; one orchestrated moment rather than
+  scattered effects; a fade-and-slide-up entrance on every element reads as generated; motion that answers an action
+  is welcome when it shows what changed; boldness in one place; remove one accessory; Reduce Motion respected). Kept as
+  they were: the box's pop open and close fade, the glide, the ` ¶ `'s fade, the dim, the still accent border and the
+  hand-off, the one bold moment. Revised: the glyph pop-in is a fade, opacity alone, over 80 ms (Effects ▸ Glyph fade,
+  was 160 ms growing from 70 % and rising 3 pt); as it moves nothing, Reduce Motion now leaves it on, as the paragraph
+  fade; an unticked Glyph pop-in stays unticked. Removed: Border warms and Word sheen (the sheen's layers, the border's
+  colour animation, the cooling timer), and the ambience's Beams, Fireworks and Swarm (their scenes, tuning, tests,
+  renders, and the shader's shapes only they drew); a kept tick or mode of theirs is ignored, the ambience then Off.
+  Unified: one curve, easeOutQuint, wherever a curve is used (new: a scene's fade at a close; the even fade over the
+  last second of the 4 s linger stays, a decay nobody triggered); one scale of durations, 80, 140, 200, 300 ms: the
+  glyph fade 80; the glide 140; the hand-off's dim lift and box collapse 140 (were 160), so it ends at 260 ms (was 280);
+  the close, the ` ¶ `'s fade and a glyph's exit 200; the open 300. Every removed piece can be reinstated from 5ed9259.
+  Menus: Effects ▸ Pop, Glyph fade, Hand-off, Paragraph fade, Off; Ambience ▸ Drift, Rain, Rings, Grid, Off. Tests:
+  the app's 94, all passing (97 before: the Beams, Fireworks and Swarm tests went; `EffectsTests` rewritten for the four
+  items, the old keys read, the fade on the curve and every duration on the scale; `HandoffTests` for 260 ms;
+  `AmbienceTests` for the removed names read as Off, a scene's close on the curve and the bend drawn where the ring
+  and the beam were; the Esc and lifecycle tests and the hand-off's unchanged and passing); renders regenerated for
+  the kept modes (`ambience-drift`, `-rain`, `-rings`, `-grid`, `-grid-keyboard`), `glyph-fade-8ms.png` in place of
+  `pop-in-8ms.png`, the hand-off's four again. LemnaJournal 16 (the keychain test skipped), untouched. LemnaClicks,
+  untouched: its 12 tests outside the engine suite pass; the engine suite hung on this Mac in CoreAudio
+  (`AudioDeviceGetProperty` never returned, in parallel and serial runs), so it did not run. `make-app.sh` built the
+  release and assembled the bundle (the executable 1,266,632 bytes before signing, pass 17b's 1,355,504 signed; no
+  `/Users/` path), but codesign waited 24 minutes on macOS's keychain question (to use the "Lemna Dev" key) with nobody
+  to answer it and was stopped: `build/Lemna.app` is unsigned (linker ad-hoc, `codesign --verify` fails) until
+  `make-app.sh` runs again and the question is answered (Always Allow, as after pass 14). `app/README.md` (Pass 18)
+  says what changed where. Not tried: nothing was launched. Try, after quitting the running Lemna, `app/make-app.sh`
+  (answer the keychain question) and `open app/build/Lemna.app`:
+  - The menus: Session › Effects ▸ (and the menu-bar item's) shows Pop, Glyph fade, Hand-off, Paragraph fade, Off, each
+    as you had it (Glyph fade as Glyph pop-in was); Ambience ▸ shows Drift, Rain, Rings, Grid, Off, and Off is ticked if
+    Beams, Fireworks or Swarm was.
+  - The glyph fade at speed (about 12 keys/s for half a minute): each letter comes out from under the caret faint for a
+    frame or two, no growth, no rise. Visible at all, calmer than the pop-in, or no different from Glyph fade unticked?
+    (`Effects.Tuning.glyphFade`, 0.080; the scale's next step is 0.140.)
+  - ⌘⏎ into TextEdit: the glyphs stream off to the right as in pass 17b; the screen undims a little quicker and the box
+    is gone by about a quarter second. Still reads as the text going into the app? Copy ⌘⇧⏎ and Save… ⌘S rise as before.
+  - Esc with each of Drift, Rain, Rings and Grid while typing: the scene fades with the dim, quicker at first than
+    before; Lemna stays.
+  - Reduce Motion on: Pop and Hand-off grey (the box comes and goes at once), Glyph fade and Paragraph fade still play,
+    the ambience's modes grey.
+- Next: the user tries pass 18, then pass 17b (the timing log on: its numbers also say whether pass 17a's 30 ms
+  hold; its items on the removed modes are gone), then quits Flow and tries pass 16 with pass 15b and pass 15, pass
+  14b (its list replaces pass 14's; its Border warms and Word sheen items are gone), pass 13, then pass 12, pass 11
   and pass 10, and what of v1, pass 6, pass 7b's click outside and pass 8 is still untried; then DESIGN.md's Open
   items.
 

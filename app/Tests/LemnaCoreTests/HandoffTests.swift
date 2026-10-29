@@ -110,13 +110,13 @@ private let long = Text(String(String(repeating: "the quick brown fox jumps over
     }
 }
 
-@Test func theDimLiftsAtOnceAndTheBoxCollapsesBy280ms() {
-    #expect(Handoff.end == 0.280)
-    #expect(Handoff.dim(at: 0) == 1 && Handoff.dim(at: 1.0 / 120) < 0.85 && Handoff.dim(at: 0.160) == 0)
+@Test func theDimLiftsAtOnceAndTheBoxCollapsesBy260ms() {
+    #expect(Handoff.end == 0.260)  // pass 18: 280 ms before, the lift and the collapse 160 ms
+    #expect(Handoff.dim(at: 0) == 1 && Handoff.dim(at: 1.0 / 120) < 0.8 && Handoff.dim(at: 0.140) == 0)
     #expect(Handoff.box(at: 0) == (1, 1) && Handoff.box(at: 0.120) == (1, 1))
     let early = Handoff.box(at: 0.120 + 1.0 / 120)
     #expect(early.alpha < 0.85 && early.scale < 0.99 && early.scale > 0.9)
-    let gone = Handoff.box(at: 0.280)
+    let gone = Handoff.box(at: 0.260)
     #expect(abs(gone.scale - 0.9) < 1e-12 && gone.alpha == 0 && Handoff.box(at: 1) == gone)
     #expect(Handoff.reach(.send, box: Geometry.box) == 907 && Handoff.reach(.rise, box: Geometry.box) == 140)
 }
@@ -212,7 +212,7 @@ private func handOffFrame(_ text: Text, _ way: Handoff.Way, at t: Double, name: 
     #expect(inked(at60, cols: caret + 6..<1990, rows: band))  // glyphs on their way past the caret's place
     #expect(inked(at120, cols: 400..<1990, rows: band))  // the faded rest still leaving as the collapse begins
     #expect(pixel(rest, 20, 20) != pixel(at200, 20, 20) && pixel(at200, 20, 20) == [0xff, 0xff, 0xff, 0xff])  // dim gone
-    #expect(pixel(at200, 1100, 300)[0] > 230)  // the box nearly gone at 200 ms (3 % left)
+    #expect(pixel(at200, 1100, 300)[0] > 240)  // the box nearly gone at 200 ms (2 % left)
     #expect(inked(rising, cols: 400..<1990, rows: 192..<244))  // risen above the band, still inside the box
     #expect(rising != at120)
 }
