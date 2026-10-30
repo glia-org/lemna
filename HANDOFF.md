@@ -4,6 +4,29 @@
 
 ## State (2026-10-30)
 
+- App, pass 20 (2026-10-30; DESIGN.md Y1; the user: "Add a autostart option to the app"; no panel, no design choice):
+  Start at Login in the menu-bar item's menu, after Ambience ▸, just above Quit Lemna. Lemna as a login item through
+  `SMAppService.mainApp` (ServiceManagement): choosing it registers or unregisters; the tick and the title are read
+  from the status each time the menu opens (`validateMenuItem`), nothing kept in the defaults, so a change in System
+  Settings shows. Waiting for approval there (`.requiresApproval`) it stays ticked as "Start at Login (approve in
+  System Settings)" and choosing it opens Login Items; an error from ServiceManagement goes to the system log
+  (`Lemna: Start at Login not changed: …`), no dialog. The registered item is the bundle at its current path: a moved
+  Lemna.app needs Start at Login turned off and on again (`app/README.md`, Known gaps). Code: `App.toggleLogin` and
+  `loginItem` in `main.swift`, the item in `Summon.swift`, `LoginItem` (the status's title, tick and act) in LemnaCore's
+  `Summoning.swift`. Tests: the app's 103, all passing (102 before; new: each status's title, tick and act; the
+  ServiceManagement calls have none). `LEMNA_VERSION=0.1.1 make-app.sh` built, signed with "Lemna Dev"
+  (`Authority=Lemna Dev`) and verified; the executable is 1,297,280 bytes, no `/Users/` path in it. Not tried: nothing
+  was launched, nothing registered. Try, after quitting the running Lemna and `open app/build/Lemna.app` (from where
+  the bundle will stay):
+  - Turn it on: the menu-bar item's menu, Start at Login; reopen the menu: ticked. A system notification may say a
+    login item was added.
+  - System Settings › General › Login Items: Lemna is listed under Open at Login.
+  - Log out and in, or restart: Lemna runs, nothing shows, the menu-bar mark is there and ⌃⌥Space summons the box.
+  - Turn it off: unticked; Login Items no longer lists Lemna.
+  - Change it in System Settings: turn it on in Lemna, remove Lemna from Login Items there (−), reopen the menu:
+    unticked. (Lemna added there with + is an older kind of login item, which the status may not count.) If the item
+    ever shows "(approve in System Settings)", choosing it opens that pane.
+
 - App, pass 19b (2026-10-30; DESIGN.md A1 amended; the user: "I want to revise the rain animation. I really like it
   and it is the one I'm using the most at the moment. I would really like it to be even more like the matrix rain
   animations. At the moment it only get's refreshed when I type and when the typing stops it's completely going away.

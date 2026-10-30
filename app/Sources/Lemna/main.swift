@@ -2,12 +2,13 @@
 // doing, or in an ordinary window for long sessions (W2), kept in the journal (E2), with key clicks (K1), summoning
 // (hotkey, menu-bar item), and the end of a session: Done pastes into the app behind the box, or Copy, Save… or
 // Discard…, with R1 applied silently and the session finished at once (O1 O2 O3 R1); the effects, switched in the
-// Effects submenu (F1); and the ambience on the dim, chosen in the Ambience submenu (A1).
+// Effects submenu (F1); the ambience on the dim, chosen in the Ambience submenu (A1); and Start at Login (Y1).
 import AppKit
 import Carbon.HIToolbox
 import LemnaClicks
 import LemnaCore
 import LemnaJournal
+import ServiceManagement
 import UniformTypeIdentifiers
 
 final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemValidation {
@@ -173,6 +174,32 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         ambience.choose(Ambience.Mode.allCases.indices.contains(sender.tag) ? Ambience.Mode.allCases[sender.tag] : nil)
         UserDefaults.standard.set(ambience.kept, forKey: Self.ambienceKey)
         box.ambience = ambience
+    }
+
+    // MARK: Start at Login (Y1)
+
+    /// The login item as its status says now: read each time the menu opens, since System Settings › General › Login
+    /// Items can change it. `SMAppService.mainApp` registers the bundle where it is (a moved Lemna.app needs a toggle).
+    private var loginItem: LoginItem {
+        switch SMAppService.mainApp.status {
+        case .enabled: return LoginItem(.enabled)
+        case .requiresApproval: return LoginItem(.requiresApproval)
+        default: return LoginItem(.notRegistered)  // not registered, or not found
+        }
+    }
+
+    /// The menu-bar item's Start at Login: on, off, or, while it waits for approval, System Settings' Login Items. A
+    /// refusal goes to the system log; the tick, read from the status, shows what holds.
+    @objc func toggleLogin(_ sender: Any?) {
+        do {
+            switch loginItem.act {
+            case .register: try SMAppService.mainApp.register()
+            case .unregister: try SMAppService.mainApp.unregister()
+            case .openSettings: SMAppService.openSystemSettingsLoginItems()
+            }
+        } catch {
+            NSLog("Lemna: Start at Login not changed: %@", String(describing: error))
+        }
     }
 
     // MARK: Summoning (W2)
@@ -414,6 +441,11 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             let mode = Ambience.Mode.allCases.indices.contains(item.tag) ? Ambience.Mode.allCases[item.tag] : nil
             item.state = ambience.playing(reduceMotion: still) == mode ? .on : .off
             return mode == nil || Ambience.available(reduceMotion: still)
+        case #selector(toggleLogin(_:)):  // the status read as the menu opens
+            let login = loginItem
+            item.title = login.title
+            item.state = login.ticked ? .on : .off
+            return true
         default: return true
         }
     }

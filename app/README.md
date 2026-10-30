@@ -19,7 +19,7 @@ hand-off's motion, the line's glyphs leaving the box from the key-down on (in pl
 motion revised, the glyph pop-in a fade, Border warms, Word sheen and the ambience's Beams, Fireworks and Swarm
 removed, one curve and one scale of durations; then pass 19a: a send sound per pack at ⌘⏎'s paste, Return's click at
 Copy, Save… and a ⌘⏎ that copies; then pass 19b: Rain as the films' rain, a fixed grid lit by stepping heads, falling
-from the summon to the close and raised by typing.
+from the summon to the close and raised by typing; then pass 20: Start at Login in the menu-bar item's menu.
 Swift +
 AppKit, SwiftPM with the Command Line Tools only (no Xcode), two package dependencies by path (`../lib/LemnaJournal`,
 `../lib/LemnaClicks`) and one Objective-C function of its own (`Sources/LemnaCatch`), signed with a self-signed certificate or ad-hoc (there is no Developer ID yet).
@@ -85,12 +85,12 @@ git-ignored.
   each physical key is on a MacBook's main block, ANSI and ISO (pass 16),
   `Mechanical.swift`
   the deterministic pass R1, `Session.swift` the end of a session as a state machine, `Summoning.swift` the menu-bar
-  mark and when the Bluetooth notice shows, `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
+  mark, when the Bluetooth notice shows and since pass 20 Start at Login's title and tick (`LoginItem`), `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
   holds the line (`Surface`) and when a click outside hides the box (`ClickOutside`), `Paste.swift` the paste's
   decision table, and since pass 17a its steps in order (`Paste.acts`) and the wait for Return to come up
   (`ReturnUp`), `Handoff.swift` (pass 17b) the hand-off's motion: the line cut into its glyphs, when each sets off
   and where it is, the box's collapse, the dim's lift, and when it plays.
-- `Sources/Lemna`: `main.swift` the app, window, menus, clicks and the sound toggle, the Effects submenu, summoning and the two containers
+- `Sources/Lemna`: `main.swift` the app, window, menus, clicks and the sound toggle, the Effects submenu, Start at Login, summoning and the two containers
   (`apply()`), a click outside the box, and the end of a session (Done's paste or copy, Copy, Save, Discard, each
   finishing at once); `Box.swift` the box (the non-activating panel, the dim overlays, the line in it; since pass 14 its
   face and its still border, its open and close, the last look that fades (the sheen and the warming border until
@@ -110,7 +110,7 @@ git-ignored.
   from the caret to 95 %, the renders (`CoreTests`, `RenderTests`); every key of B4, its boundaries, the word rules,
   Characters with é, 🙂 and 👩‍💻, the replay of every key's edits (`EditingTests`); R1's rules, counts and idempotence (`MechanicalTests`); the state machine (`SessionTests`); the
   journal round trip through the app's replay, edits in the middle included (`JournalReplayTests`); the menu-bar mark,
-  the Bluetooth notice, the muted colour's contrast (`FrameTests`); the box's frame and its clamps, one container at a
+  the Bluetooth notice, the muted colour's contrast, Start at Login per status (`FrameTests`); the box's frame and its clamps, one container at a
   time, the paste's decision table, the click-outside guard's table (`BoxTests`); the Sound submenu's default, a
   pack's choice and ⌘K (`SoundTests`); the Effects submenu's defaults, Off, Reduce Motion and its round trip through a
   dictionary, the entrance on the curve, the newest glyph's fade, the old keys read, every duration on the scale
@@ -755,7 +755,29 @@ of `docs/design-panel-lemna-rain.html`):
   no `/Users/` path in it. The signing with "Lemna Dev" waited on macOS's keychain question and was stopped at 240 s,
   so `build/Lemna.app` is not signed until `make-app.sh` runs again with the question answered.
 
+Pass 20, Start at Login (DESIGN.md Y1; 2026-10-30; the user: "Add a autostart option to the app"):
+
+- The item (`Summon.swift`): Start at Login in the menu-bar item's menu, after Ambience ▸, just above Quit Lemna. Not
+  in the main menu: it has no key equivalent for that menu to carry.
+- `App.toggleLogin` (`main.swift`): `SMAppService.mainApp`'s `register()` or `unregister()`, or, while the status is
+  `.requiresApproval`, `SMAppService.openSystemSettingsLoginItems()`; a thrown error goes to the system log
+  (`Lemna: Start at Login not changed: …`), no dialog. `validateMenuItem` reads `SMAppService.mainApp.status` each
+  time the menu opens and takes the title and the tick from `LoginItem` (`Summoning.swift`): not registered (or not
+  found) unticked, enabled ticked, requires approval ticked as "Start at Login (approve in System Settings)". Nothing
+  is kept in the defaults: the status is the setting, so a change in System Settings › General › Login Items shows at
+  the next opening of the menu.
+- Tests: 103 (102 before; new: `startAtLoginFollowsTheStatus` in `FrameTests`, each status's title, tick and act).
+  The ServiceManagement calls have none.
+- Build: `LEMNA_VERSION=0.1.1 make-app.sh`; the executable is 1,297,280 bytes, no `/Users/` path in it, linked
+  against ServiceManagement; signed with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
+
 ## Known gaps
+
+- Pass 20 is not tried: nothing was launched and nothing registered. `SMAppService.mainApp` registers the bundle at
+  the path it has then: if Lemna.app is moved, the login item breaks until Start at Login is turned off and on again,
+  so turn it on once Lemna.app is where it stays (Applications; a download opened in place may run from a translocated
+  path). Untried too: whether ServiceManagement takes the self-signed "Lemna Dev" signature (it wants a signed app; an
+  ad-hoc build may be refused), and what an ad-hoc rebuild does to a registered item.
 
 - Pass 19b is not tried: nothing was launched. Untried: whether the idle rain reads as low-key or too faint (head
   0.35, trail from 0.20 over the dim; matrix §6.2) and as "covering the whole screen" with about a quarter of the

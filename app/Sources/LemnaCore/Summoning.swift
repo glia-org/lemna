@@ -1,5 +1,5 @@
-// What the app shows around the surface (DESIGN.md W1 K1): the menu-bar mark and when the Bluetooth notice shows. Free
-// of AppKit, so the tests check them.
+// What the app shows around the surface (DESIGN.md W1 K1 G1): the menu-bar mark, when the Bluetooth notice shows and
+// Start at Login's item. Free of AppKit, so the tests check them.
 import CoreGraphics
 
 /// The menu-bar mark (W1; DESIGN.md L1, M3 of `docs/design-panel-hypha-logo.html`): the surface in 16 pt, a line with
@@ -50,5 +50,27 @@ public struct BluetoothNotice {
         guard bluetooth, sound, !shown else { return false }
         shown = true
         return true
+    }
+}
+
+/// Start at Login in the menu-bar item's menu (Y1): its title, its tick and what choosing it does, from the login
+/// item's status as the app reads it from ServiceManagement each time the menu opens (System Settings › General › Login
+/// Items can change it meanwhile). Waiting for approval there, it stays ticked and choosing it opens that pane.
+public struct LoginItem {
+    /// `SMAppService.Status`; its `notFound` counts as not registered.
+    public enum Status { case notRegistered, enabled, requiresApproval }
+    public enum Act { case register, unregister, openSettings }
+
+    public let title: String
+    public let ticked: Bool
+    public let act: Act
+
+    public init(_ status: Status) {
+        switch status {
+        case .notRegistered: (title, ticked, act) = ("Start at Login", false, .register)
+        case .enabled: (title, ticked, act) = ("Start at Login", true, .unregister)
+        case .requiresApproval:
+            (title, ticked, act) = ("Start at Login (approve in System Settings)", true, .openSettings)
+        }
     }
 }

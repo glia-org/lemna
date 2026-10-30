@@ -1,4 +1,4 @@
-// What surrounds the surface (W1 K1 L1): the menu-bar mark, the Bluetooth notice and the muted colour.
+// What surrounds the surface (W1 K1 L1 G1): the menu-bar mark, the Bluetooth notice, the muted colour, Start at Login.
 import CoreGraphics
 import Darwin
 import Testing
@@ -66,6 +66,17 @@ func drawMark(scale: Int, name: String) -> (CGFloat, CGFloat) -> UInt8 {
     var muted = BluetoothNotice()
     let off = muted.check(bluetooth: true, sound: false), on = muted.check(bluetooth: true, sound: true)
     #expect(!off && on)  // muted at launch: nothing to warn about, until the sound is turned on
+}
+
+@Test func startAtLoginFollowsTheStatus() {
+    func look(_ s: LoginItem.Status) -> (String, Bool, LoginItem.Act) {
+        let i = LoginItem(s)
+        return (i.title, i.ticked, i.act)
+    }
+    #expect(look(.notRegistered) == ("Start at Login", false, .register))
+    #expect(look(.enabled) == ("Start at Login", true, .unregister))
+    // Turned off in System Settings, or waiting there: ticked, and choosing it opens Login Items rather than undoing it.
+    #expect(look(.requiresApproval) == ("Start at Login (approve in System Settings)", true, .openSettings))
 }
 
 @Test func theColoursReachTheHIGsContrast() {
