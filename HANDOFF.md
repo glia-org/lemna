@@ -4,6 +4,41 @@
 
 ## State (2026-10-29)
 
+- App, pass 19a (2026-10-30; DESIGN.md K1 amended; the user: "One additional thing is that I would like to have a really
+  satisfying sound when sending the text off to a app. I like the default keychron sounds, they sound well, so something
+  in the spirit of that. Maybe the sendoff sounds should be tied to the sound pack used."; the picks S1 P1 E1 of
+  `docs/design-panel-lemna-rain.html`, from `research_notes/Lemna rain/sendoff.md`): ⌘⏎ plays a send sound once at its
+  key-down when it pastes, with the hand-off's motion, one per pack and cut from the pack's own recordings: Keychron the
+  K10's Enter with the release its Return is cut before (290 ms, the release at 98 ms); Typewriter the carriage's run
+  and its stop at the margin, no bell (440 ms, the stop at 257 ms); Soft the FUJITSU Enter with its release (240 ms, the
+  release at 121 ms); Electric the clutch's impact spliced onto the end of the carriage's run (E1; 420 ms, the margin
+  stop at about 250 ms; the CC BY credit line now says "spliced"). The motion ends at 260 ms. All peak at -6 dBFS as the
+  clicks, no gain. Copy ⌘⇧⏎, Save… ⌘S (once the file is written) and a ⌘⏎ that copies instead play the pack's Return
+  click, never the send (P1); Sound Off plays nothing; Reduce Motion and Effects off take the motion away, not the
+  sound; no key-up sound (U1). In `lib/LemnaClicks` a fifth kind, `send`, one `send-1.wav` in each `pack.json` (a pack
+  without one does not load); `tools/cut_click.py` gained `splice`, `tools/build_packs.sh` the four cuts (it also
+  remakes the three packs' 36 clicks byte for byte); `THIRD_PARTY.md` the four recordings, their licences checked
+  2026-10-30, the previews' SHA-256, the commands and the measures. Every number sendoff.md gives held in the files as
+  cut: the lengths and M max exactly, the arrivals and the -40 dB points within 5 ms. Tests: LemnaClicks 17, all
+  passing, the engine suite too (it ran this time); new: every pack has one send of 0.2–0.45 s peaking at -6 dBFS, the
+  picker returns a pack's one send sample; changed for the fifth kind: a pack.json without `send` is refused, the credit
+  line says "spliced", 13 files a pack, 52 samples in the player; the app's 94, all passing (LemnaCore untouched; the
+  calls in `main.swift` have no tests). `make-app.sh` built, signed with "Lemna Dev" (`Authority=Lemna Dev`, no keychain
+  question this time) and verified; the executable is 1,278,576 bytes, no `/Users/` path in it. `app/README.md` (Pass
+  19a) says what changed where. Not tried: nothing was launched, nothing listened to. Try, after quitting the running
+  Lemna and `open app/build/Lemna.app`, over TextEdit:
+  - Each pack in turn (Session › Sound ▸ Keychron, Typewriter, Soft, Electric): write a line, ⌘⏎. The send with the
+    glyphs leaving: a whole Enter keystroke (Keychron, Soft), the carriage running home and stopping (Typewriter), the
+    clutch, a short run and the margin stop (Electric). Satisfying? Does the release or the stop land with the motion's
+    end? Too quiet or too loud beside Return (type a Return first)? The Typewriter is the likeliest to be weak
+    (`--gain +2` in `build_packs.sh` is the first step); does Electric's splice sound made?
+  - ⌘⇧⏎ (Copy): Return's click as the glyphs rise, no send. ⌘S, then Save in the panel: Return's click as the glyphs
+    rise; Cancel: no sound.
+  - The fallback: ⌘⏎ in the window (⌃⌘F), which always copies ("Copied · no app to paste into"), and ⌘⏎ with a
+    password field focused behind the box (Secure Input): Return's click, never the send; the note stays.
+  - Sound ▸ Off (⌘K): ⌘⏎, ⌘⇧⏎ and ⌘S are silent.
+  - Hold ⌘⏎ for most of a second: one send, nothing repeats.
+
 - Research, panel, report: done (`docs/`, `reports/`, `research_notes/`).
 - Spike GPUI vs AppKit: done, results in `DESIGN.md`; the user chose T2 (Swift + AppKit).
 - App, milestone 1 (surface): built in `app/` from `spikes/appkit-line`, tests pass (`app/README.md`), not yet tried

@@ -17,7 +17,8 @@ Esc with a mode on fixed; then pass 16: the ambience plain to see and following 
 then pass 17a: the second between ⌘⏎ and the paste gone, and a timing log of the hand-off; then pass 17b: the
 hand-off's motion, the line's glyphs leaving the box from the key-down on (in place of the sheen); then pass 18: the
 motion revised, the glyph pop-in a fade, Border warms, Word sheen and the ambience's Beams, Fireworks and Swarm
-removed, one curve and one scale of durations.
+removed, one curve and one scale of durations; then pass 19a: a send sound per pack at ⌘⏎'s paste, Return's click at
+Copy, Save… and a ⌘⏎ that copies.
 Swift +
 AppKit, SwiftPM with the Command Line Tools only (no Xcode), two package dependencies by path (`../lib/LemnaJournal`,
 `../lib/LemnaClicks`) and one Objective-C function of its own (`Sources/LemnaCatch`), signed with a self-signed certificate or ad-hoc (there is no Developer ID yet).
@@ -184,7 +185,7 @@ Milestone 4 in the app, the clicks (K1):
   characters (and a dead key's pending mark, a key that shows), `.space` for white space, `.paragraph` for Return,
   `.backspace` for a backspace that deletes. A blocked backspace (after a space, at a paragraph's start) is silent, as
   are keys during a hand-off and ⌘ chords. Volume stays at the library's default. (Since pass 8 every delete key
-  that deletes clicks `.backspace`; caret moves are silent.)
+  that deletes clicks `.backspace`; caret moves are silent. Since pass 19a ⌘⏎'s paste plays `.send`, below.)
 - Session › Sound (⌘K, and in the menu-bar item) with a check mark, kept in UserDefaults as `sound` (default on). Off
   pauses the engine. (Since pass 11 a submenu of packs, below.)
 - Bluetooth: when the output is Bluetooth at launch, after the output device changes, or when the sound is turned on,
@@ -699,7 +700,31 @@ frontend-design skill to revise all the animation and remove them if they are no
   keychain question (codesign asking to use the key) for 24 minutes unanswered and was stopped, so `build/Lemna.app`
   is not signed with "Lemna Dev" until `make-app.sh` runs again with the question answered.
 
+Pass 19a, the send sound (DESIGN.md K1 amended; 2026-10-30; the user: "One additional thing is that I would like to
+have a really satisfying sound when sending the text off to a app. I like the default keychron sounds, they sound well,
+so something in the spirit of that. Maybe the sendoff sounds should be tied to the sound pack used.", then the picks
+`S1 P1 E1` of `docs/design-panel-lemna-rain.html`):
+
+- The new kind: `KeyKind.send` in `lib/LemnaClicks`, one `send-1.wav` in each pack's `pack.json` (a pack without it
+  does not load), cut from the pack's own recordings: Keychron the Enter take with its release (290 ms), Typewriter the
+  carriage's run and its stop (440 ms), Soft the FUJITSU Enter with its release (240 ms), Electric the clutch's impact
+  spliced onto the end of the carriage's run (420 ms; its credit line says "spliced"). `lib/LemnaClicks/THIRD_PARTY.md`
+  has the sources, licences, commands and measures; `tools/build_packs.sh` makes them. The player takes 52 samples now
+  (13 a pack, 0.67 MB as files).
+- When (`done`, `copyText`, `saveText`): ⌘⏎ plays `.send` once, when `Paste.decide` says paste, just before
+  `box.handOff(.send)` builds the motion's first frame (the timing log's `motion started` follows it); a ⌘⏎ that
+  copies instead (the `.copy` case, and the window, where it always copies), Copy ⌘⇧⏎ and Save… ⌘S (once the file is
+  written) play `.paragraph`, Return's click. Sound ▸ Off: nothing. Reduce Motion and Effects off take the motion away,
+  not the sound. No key-up sound (U1).
+- Build: the executable is 1,278,576 bytes (1.28 MB), no `/Users/` path in it; signed with "Lemna Dev"
+  (`Authority=Lemna Dev`) and verified.
+
 ## Known gaps
+
+- Pass 19a is not tried: nothing was launched and nothing listened to. Untried: whether each pack's send sounds
+  satisfying and in its pack's material, whether it lands with the motion (the release or the stop at 98–257 ms, the
+  motion's end at 260 ms), whether the Typewriter's send is too quiet beside its Return (`--gain +2` is the first step,
+  sendoff.md §4), and whether Electric's splice sounds made.
 
 - Pass 18 is not tried: nothing was launched. Untried: whether the 80 ms glyph fade reads at speed or not at all
   (`Tuning.glyphFade`; 0.140 is the scale's next step); the hand-off at 260 ms; the glyph fade left on under Reduce
