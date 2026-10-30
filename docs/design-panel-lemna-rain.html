@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lemna Rain and Send-off Design Options</title>
+<style>
+/* One page, nine decisions on Lemna's Rain (M2 of DESIGN A1) and a send-off sound per pack. Same language as
+   design-panel-lemna-ambience.html and design-panel-lemna-handoff.html: one mono font, 1 px lines, glyph + colour.
+   Readable without scripts; the pick line updates where scripts run. */
+:root{
+  color-scheme:dark;
+  --bg:#0e1013; --surface:#14171b; --raise:#1b1f25; --line:#262b32; --line-2:#3a414c;
+  --fg:#d9dde3; --muted:#8d95a0; --faint:#5c646f;
+  --accent:#7aa7f0; --accent-soft:rgba(122,167,240,.13); --on-accent:#0e1013;
+  --work:#e2a03a; --need:#f06a43; --done:#52b87c;
+  --ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"CaskaydiaCove Nerd Font Mono","Cascadia Code","Cascadia Mono","Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --w-bg:#1a1b26; --w-raised:#16161e; --w-line:#3b4261; --w-fg:#c0caf5; --w-mid:#a9b1d6; --w-low:#7f88b2; --w-sel:#283457;
+  --w-accent:#7aa2f7; --w-work:#e0af68; --w-need:#f7768e; --w-done:#9ece6a; --w-idle:#6b7399;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--ui);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin-inline:auto;padding:32px clamp(16px,4vw,32px) 120px;display:flex;flex-direction:column;gap:52px}
+h1,h2,h3,p,ul,figure{margin:0}
+ul{padding:0;list-style:none}
+code{font:12.5px/1 var(--mono);white-space:nowrap}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font:600 clamp(24px,4vw,34px)/1.15 var(--mono);letter-spacing:-.02em}
+.lede{max-width:78ch;color:var(--muted);font-size:15px}
+.lede b{color:var(--fg);font-weight:600}
+.top{display:flex;flex-direction:column;gap:14px}
+.bundle{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.bundle-l{font:500 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:5px 9px;border-radius:6px;background:var(--accent-soft);text-decoration:none;font-size:13px;white-space:nowrap;color:inherit}
+.chip b{font:600 12px/1 var(--mono);color:var(--accent)}
+.sec{display:flex;flex-direction:column;gap:18px}
+.sec-h{display:flex;gap:14px;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:12px}
+.num{font:600 28px/1 var(--mono);color:var(--accent)}
+.sec-h h2{font:600 19px/1.2 var(--mono)}
+.sec-h p{color:var(--muted);margin-top:3px;max-width:80ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,500px),1fr));gap:16px}
+.card{min-width:0;display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.card.wide{grid-column:1/-1}
+.card:has(.pick input:checked){border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.card-h{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.oid{font:600 13px/1 var(--mono);padding:5px 7px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.card-h h3{font:600 16px/1.2 var(--ui)}
+.tag{font:500 11px/1 var(--mono);padding:4px 6px;border-radius:4px;border:1px solid var(--line-2);color:var(--muted);white-space:nowrap}
+.tag.rec{border-color:var(--done);color:var(--done)}
+.tag.ask{border-color:var(--work);color:var(--work)}
+.tag.no{border-color:var(--need);color:var(--need)}
+.pick{margin-left:auto;display:inline-flex;gap:6px;align-items:center;font:500 12px/1 var(--mono);color:var(--muted);cursor:pointer;padding:5px 8px;border:1px solid var(--line);border-radius:6px}
+.pick input{accent-color:var(--accent);margin:0}
+.pick:has(input:checked){color:var(--fg);border-color:var(--accent)}
+.pitch{font-size:15px;max-width:76ch}
+.how{display:flex;flex-direction:column;gap:5px;color:var(--muted)}
+.how li{padding-left:14px;position:relative;max-width:78ch}
+.how li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--faint)}
+.how b{color:var(--fg);font-weight:600}
+figcaption{font-size:12px;color:var(--muted);margin-top:6px;max-width:72ch}
+.risk{font-size:13px;color:var(--muted);border-left:2px solid var(--line-2);padding-left:10px;max-width:76ch}
+.risk b{color:var(--fg)}
+.ledger{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:10px}
+.ledger div{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13px;color:var(--muted)}
+.ledger b{display:block;color:var(--fg);font:600 12px/1.6 var(--mono)}
+.ledger .urgent{border-color:var(--need)} .ledger .urgent b{color:var(--need)}
+.ledger .ok b{color:var(--done)}
+.order{counter-reset:o;display:flex;flex-direction:column;gap:6px;padding:0;list-style:none}
+.order li{counter-increment:o;padding-left:28px;position:relative;max-width:84ch;color:var(--muted)}
+.order li::before{content:counter(o);position:absolute;left:0;top:0;font:600 13px/1.5 var(--mono);color:var(--accent)}
+.order b{color:var(--fg)}
+table.keys{border-collapse:collapse;font-size:13px;color:var(--muted)}
+table.keys td,table.keys th{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+table.keys th{font:500 12px/1.3 var(--mono);color:var(--fg)}
+table.keys code{color:var(--fg)}
+table.keys a{color:var(--accent)}
+
+/* ---------- the app, drawn at real size: 1 CSS px = 1 pt ---------- */
+.real{display:flex;flex-wrap:wrap;gap:22px 26px;padding:18px 20px;background:var(--w-bg);border:1px solid var(--line-2);overflow-x:auto}
+.real figure{display:flex;flex-direction:column;gap:8px}
+.real figcaption{margin:0;font:12px/1.4 var(--mono);color:var(--w-low);max-width:640px}
+.real figcaption b{color:var(--w-fg);font-weight:500}
+.mock{overflow-x:auto}
+
+/* picks bar */
+.picks{position:sticky;bottom:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-inline:calc(-1 * clamp(8px,2vw,16px));padding:10px clamp(8px,2vw,16px);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 -6px 24px rgba(0,0,0,.35)}
+.picks-l{font:500 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.picks code{font:600 14px/1.3 var(--mono);color:var(--fg);user-select:all;white-space:normal}
+.picks button{margin-left:auto;font:600 13px/1 var(--ui);padding:8px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);cursor:pointer}
+</style>
+<style>
+/* additions for this panel: links, a findings grid, refs, the figures, the one live demo */
+.wrap a:not(.chip){color:var(--accent);text-decoration:none}
+.wrap a:not(.chip):hover{text-decoration:underline}
+.finding{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
+.finding div{padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13.5px;color:var(--muted)}
+.finding b{color:var(--fg);display:block;margin-bottom:4px;font-weight:600}
+.refs{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:13px;max-width:96ch}
+.refs li{padding-left:14px;position:relative}
+.refs li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--faint)}
+.refs b{color:var(--fg);font-weight:600}
+.mock table.keys{width:100%;min-width:760px}
+table.keys td:first-child{color:var(--fg)}
+/* cards: three to a row */
+.grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))}
+.ledger.one{grid-template-columns:1fr;gap:6px}
+.ledger.one b{display:inline;margin-right:8px}
+.note{font-size:13px;color:var(--muted);max-width:84ch}
+.risk.ask{border-left-color:var(--work)}
+.risk.ask b{color:var(--work)}
+/* figures: inline SVG in the panel's language. 1 px lines in --line-2, text in --fg, --muted for dimmed text.
+   1 viewBox unit = 1 CSS px at full size. */
+.fig{display:block;width:100%;max-width:320px;height:auto;font:11px var(--mono);font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}
+.fig.w{max-width:none;min-width:640px}
+.figw{overflow-x:auto}
+.fig text{fill:var(--fg)}
+.fig .b{font-weight:600}
+.fig .m{fill:var(--muted)} .fig .f{fill:var(--faint)}
+.fig .ln{fill:none;stroke:var(--line-2)}
+.fig .ar{fill:none;stroke:var(--muted)}
+.fig .sfg{fill:none;stroke:var(--fg)}
+.fig .sol{fill:var(--line-2);stroke:var(--fg)}
+/* the glyph sets, in the box's text colour */
+.glyphs{font:500 20px/1.5 var(--mono);color:#d8dce3;letter-spacing:.32em;font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}
+.glyphs.k2{font-size:16px;letter-spacing:.2em}
+/* the demo: the one thing on the page that moves */
+.demo{display:flex;flex-direction:column;gap:10px}
+.seg{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.seg button{font:500 12px/1 var(--mono);color:var(--muted);padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:var(--surface);cursor:pointer}
+.seg button[aria-pressed="true"]{color:var(--fg);border-color:var(--accent);background:var(--accent-soft)}
+.seg .sp{width:14px}
+.readout{margin-left:auto;font:500 12px/1 var(--mono);color:var(--muted);white-space:nowrap}
+canvas.rain{display:block;width:100%;max-width:1110px;height:auto;background:#0e1013;border:1px solid var(--line-2)}
+.demo figcaption{margin:0;max-width:96ch}
+</style>
+
+<div class="wrap">
+<header class="top">
+<p class="eyebrow">Design panel · Lemna</p>
+<h1>Lemna rain and send-off design options</h1>
+<p class="lede">The user, 2026-10-30: "I want to revise the rain animation. I really like it and it is the one I'm using the most at the moment. I would really like it to be even more like the matrix rain animations. At the moment it only get's refreshed when I type and when the typing stops it's completely going away. I would like to have it ambient in the background (low key, but still covering more or less the whole screen) and then it should simply get more intense when writing. Maybe take a look how the animation is actually looking in the matrix movies. One additional thing is that I would like to have a really satisfying sound when sending the text off to a app. I like the default keychron sounds, they sound well, so something in the spirit of that. Maybe the sendoff sounds should be tied to the sound pack used."</p>
+<p class="lede">Nine decisions: six on <b>Rain</b> (M2 of DESIGN A1), from the films' rain measured in <a href="../research_notes/Lemna%20rain/matrix.md">matrix.md</a>, and three on <b>a send-off sound per pack</b>, from <a href="../research_notes/Lemna%20rain/sendoff.md">sendoff.md</a>; the cards cite them by section. <b>recommended</b> is the proposed pick, <b>ask</b> a pick that amends a decision, <b>no</b> ruled out by evidence.</p>
+<div class="bundle"><span class="bundle-l">Picks</span><a class="chip" href="#opt-G1"><b>G1</b> fixed grid, light moves</a><a class="chip" href="#opt-I1"><b>I1</b> ambient from the summon</a><a class="chip" href="#opt-T1"><b>T1</b> ramp + key drops</a><a class="chip" href="#opt-C2"><b>C2</b> pale head</a><a class="chip" href="#opt-K1"><b>K1</b> the films' glyphs</a><a class="chip" href="#opt-W1"><b>W1</b> every screen</a><a class="chip" href="#opt-S1"><b>S1</b> a send per pack</a><a class="chip" href="#opt-P1"><b>P1</b> Copy = Return</a><a class="chip" href="#opt-E1"><b>E1</b> spliced</a></div>
+<p class="eyebrow">Pick line: <span id="pickline">G1 I1 T1 C2 K1 W1 S1 P1 E1</span></p>
+</header>
+
+<section class="sec" aria-labelledby="s0h">
+<header class="sec-h"><span class="num">0</span><div><h2 id="s0h">What Rain does today</h2><p>From <code>Scenes.swift</code> (<code>struct Rain</code>), <code>Ambience.Tuning</code> and DESIGN A1 (pass 16, pass 18).</p></div></header>
+<div class="finding">
+<div><b>Fed by keys alone.</b>Each glyph key drops one column where the key is across the screen (column 0 of the keyboard at a tenth of the width, the last at nine tenths), higher the higher its row (55–95 % of the screen's height); Space and Return none. A drop lives 3 s: the dim is clear 3 s after the last key and the link pauses at 4 s (<code>linger</code>).</div>
+<div><b>The string slides.</b>The typed glyph heads the drop in the accent at α 0.8; 4–8 letters in the text colour sit at fixed offsets above it, from 0.55, each 0.75 of the one below, so the whole string moves down a row at a time, 150–300 pt/s: 4–8 rows/s on 37 pt rows (matrix §6.1).</div>
+<div><b>Large and few.</b><code>rainScale</code> 1.0: Menlo 28 in 21 × 37 pt cells, 26 rows on a 982 pt screen (matrix §6.1, §7). Trail letters a–z, each swapping 1.5 times a second; 60 Hz; on every screen's dim; at most 2,000 sprites.</div>
+<div><b>What the films do instead.</b>Glyphs fixed in a grid, lit by a head that steps down; a pale head over a coloured, linear trail 23–90 rows long; speeds 2:1 per column; every glyph changing in place; the whole frame covered (matrix takeaway 1–8).</div>
+</div>
+<div class="ledger one">
+<div class="ok"><b>Decided, and kept.</b>A1: Rain is one mode of Session › Ambience ▸, Off at first (D0); Reduce Motion ticks Off and plays none; no mode touches the line; a scene fades with the dim at a close. K1: four packs; no bell (C1), no ambient bed (D1), no key-up sounds (U1). F1: the hand-off H1 starts at ⌘⏎'s key-down and ends at 260 ms; Copy's glyphs rise (C1).</div>
+<div><b>Amended by these picks.</b>I1 or I2 amends A1's "typing feeds and silence starves", its 4 s end and the paused link (R1). C2 amends A1's C1 (head in the accent, trail in the text colour). S1 or S2 adds a sound kind to K1; U1 is untouched.</div>
+<div><b>IDs.</b>This panel's own: DESIGN.md's K1, S1, T1, P1, E1, I1 and W2 are other decisions. C1 here is A1's C1, today's colours.</div>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s1h">
+<header class="sec-h"><span class="num">1</span><div><h2 id="s1h">G: the rain's motion</h2><p>How a drop moves. The demo plays the recommended picks of sections 1–4 at real size; nothing else on this page moves.</p></div></header>
+<figure class="demo">
+<div class="seg" id="seg" role="group" aria-label="Demo" hidden>
+<button type="button" data-m="idle" aria-pressed="true">Idle</button><button type="button" data-m="typing" aria-pressed="false">Typing</button><button type="button" data-m="today" aria-pressed="false">Today (G0)</button><span class="sp"></span><button type="button" data-c="C2" aria-pressed="true">C2 pale head</button><button type="button" data-c="C1" aria-pressed="false">C1 accent head</button><span class="readout" id="ro"></span>
+</div>
+<canvas class="rain" id="rain" width="1110" height="444" role="img" aria-label="The proposed rain on the dim around Lemna's box: glyphs fixed in a grid, heads stepping down columns, trails dimming in place"></canvas>
+<figcaption><b>G1 on the dim</b>, #0e1013, 1 CSS px = 1 pt: a 1110 × 444 pt piece of a screen, 60 × 24 cells at the 18.5 pt pitch, 14 pt glyphs of K1; the box (907 × 112 pt, <code>BoxFrame</code> at Menlo 28) at its foot covers what falls behind it. <b>Idle</b>: I1's values (section 2). <b>Typing</b>: T1, a sentence typed at 6 keys/s, a drop at each letter's key (an ANSI layout, as pass 16 places them), the ramp up with τ 0.25 s and, back on Idle, down with τ 1.2 s from 0.8 s after the last key. <b>Today (G0)</b>: pass 18's drops at their own size (Menlo 28 on 37 pt rows), fed by the same keys; without keys there is none. The colour buttons apply to all three. 30 Hz while idle, 60 while typing. With reduced motion: one still frame per button.</figcaption>
+<p class="note" id="nojs">The demo runs where scripts run.</p>
+</figure>
+<div class="grid">
+<article class="card" id="opt-G1"><div class="card-h"><span class="oid">G1</span><h3>Fixed grid, light moves</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="G" value="G1" checked> pick</label></div>
+<p class="pitch">The glyphs stay put; the light moves. A head steps down a column a cell at a time and lights the glyph it reaches, which then dims in place.</p>
+<ul class="how">
+<li><b>Grid:</b> 14 pt glyphs (<code>rainScale</code> 0.5) at an 18.5 pt square pitch, 81 × 53 cells on a 1512 × 982 pt screen; Rezmason's 80 × 50 (matrix §6.2).</li>
+<li><b>Evidence:</b> Animal Logic made "certain characters ... appear to repeat or 'stick' in the same place"; Rezmason: "The 2D glyphs are in a <i>fixed grid</i> and <i>don't move</i>"; jwz: "definitely scrolled a character at a time, not a pixel at a time" (matrix takeaway 1–2, §2).</li>
+<li><b>Trail:</b> linear in place, the classic 2003 look (0.6 → 0 on Rezmason's palette, matrix §1.3); here from the trail's top α to 0 over trail ÷ speed seconds, each cell fading smoothly while the head jumps.</li>
+<li><b>Speeds</b> constant per column, about 2:1 between columns; drops in a column share it and "can never collide" (matrix §2).</li>
+<li><b>Every lit glyph changes in place,</b> 0.3/s idle to 1.5/s typing, an instant swap (tte 0.3/s, Rezmason 1.8/s; matrix §1.3, §6.2). A drop ends when its trail has left the screen, not at 3 s.</li>
+</ul>
+<p class="risk"><b>Risk.</b> A new scene, not a tweak: a cell array of 4,293 cells on 1512 × 982 pt, 10,764 on 2560 × 1440 pt, where typing passes the 2,000-sprite cap (≈ 2,050–2,200) and the dimmest trail cells go first (matrix §6.2). The films are soft ("pixel effects and blurs and glows", matrix §1.3); Lemna draws no blur, and the optional head glow of matrix §6.2 is untested.</p></article>
+<article class="card" id="opt-G0"><div class="card-h"><span class="oid">G0</span><h3>Today's sliding drops, denser</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="G" value="G0"> pick</label></div>
+<p class="pitch">Keep today's drops, the trail drawn at fixed offsets above the head so the whole string travels with it, only denser and running without keys.</p>
+<ul class="how"><li>The least code: the scene as it is, its spawn and life changed.</li></ul>
+<p class="risk"><b>No.</b> It keeps the one difference that most gives it away (matrix takeaway 1), first on the list of what separates a real rain from the cheap one: "Sliding strings instead of fixed glyphs" (matrix §4, item 1). The ask is "even more like the matrix".</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s2h">
+<header class="sec-h"><span class="num">2</span><div><h2 id="s2h">I: the idle state</h2><p>What the rain does while the box is open and no key comes. Values at I = 0 of section 3's table.</p></div></header>
+<div class="grid">
+<article class="card" id="opt-I1"><div class="card-h"><span class="oid">I1</span><h3>Ambient from the summon</h3><span class="tag rec">recommended, the user's ask</span><span class="tag ask">ask: amends A1</span><label class="pick"><input type="radio" name="I" value="I1" checked> pick</label></div>
+<p class="pitch">The rain runs from the moment the box opens until it closes, low-key, over the whole screen; typing only raises it (section 3).</p>
+<ul class="how">
+<li><b>Low-key:</b> about 30 % of columns showing a drop, 5–10 rows/s (93–185 pt/s), trails 6–18 rows, head α 0.35, trail top α 0.20, glyphs changing 0.3/s, at 30 Hz (matrix §6.2).</li>
+<li><b>Spread, sparse:</b> ≈ 2.8 new drops a second and ≈ 290 sprites on a 1512 × 982 pt screen (matrix §6.2), about 7 % of its 4,293 cells (computed), against the films' 55 % (matrix §1.4).</li>
+<li><b>30 Hz loses nothing:</b> the heads step a cell at a time and the films run at 24 fps (<code>preferredFrameRateRange</code> 24–30), half the frames (matrix §5).</li>
+<li><b>The first frame:</b> from a blank dim the first heads reach the bottom 5–11 s after the summon (computed: 53 rows at 5–10 rows/s); the scene can be stepped ahead at the show, undrawn, to open mid-rain, as the demo does [inference].</li>
+</ul>
+<p class="risk ask"><b>Ask: against A1 and F0.</b> A1's rule for every mode is "typing feeds and silence starves": nothing new after the last key, gone 4 s after it, the display link paused (R1). F0's evidence is against continuous motion beside the text: travelling motion beside a text task is the most distracting kind measured (Bartram 2003; Maglio &amp; Campbell 2000), and a screen-wide idle rain is that, in peripheral vision, for the whole session (matrix §5). The user's ask overrides both; A1 gets a line. The stop stays: Ambience ▸ Off and Reduce Motion, the mechanism WCAG 2.2.2 asks of moving content that "starts automatically, lasts more than five seconds" and runs beside other content (matrix §5).</p>
+<p class="risk"><b>Cost.</b> The display link and WindowServer stay busy for as long as the box is open, on every screen with W1: "Every time your app updates ... content to screen, it requires the CPU, GPU, and screen to be active" (Apple's energy guide, matrix §5). The GPU's 0.39–0.58 ms a frame (A1) is not the cost, and no watt figure exists for a full-screen overlay: measure on the build with <code>sudo powermetrics --samplers gpu_power,cpu_power -i 1000</code>, the box open, Ambience Off against Rain idle, before it lands.</p></article>
+<article class="card" id="opt-I2"><div class="card-h"><span class="oid">I2</span><h3>Ambient after the first key</h3><span class="tag ask">ask: amends A1</span><label class="pick"><input type="radio" name="I" value="I2"> pick</label></div>
+<p class="pitch">Nothing until the first key; from then on the rain never dies while the box is up.</p>
+<ul class="how"><li>A summon only to read, copy or paste moves nothing; after the first key it is I1.</li></ul>
+<p class="risk"><b>Risk.</b> The same conflict and cost as I1 once typing starts; half of "ambient in the background", and the first key starts a whole screen at once.</p></article>
+<article class="card" id="opt-I0"><div class="card-h"><span class="oid">I0</span><h3>Today's rule</h3><label class="pick"><input type="radio" name="I" value="I0"> pick</label></div>
+<p class="pitch">Nothing without keys; nothing new after the last key, gone 4 s after it, the link paused.</p>
+<ul class="how"><li>A1 and F0 as decided; no frames, no power at rest.</li></ul>
+<p class="risk"><b>Risk.</b> What the user asked to change: "when the typing stops it's completely going away".</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s3h">
+<header class="sec-h"><span class="num">3</span><div><h2 id="s3h">T: how typing makes it intense</h2><p>One intensity I, 0 idle to 1 typing, drives every value between the two columns (matrix §6.2). Values marked per drop are read when a drop starts, so a drop keeps its speed and length.</p></div></header>
+<div class="mock"><table class="keys">
+<thead><tr><th>Parameter</th><th>Idle (I = 0)</th><th>Typing (I = 1)</th><th>Based on (matrix §6.2)</th></tr></thead>
+<tbody>
+<tr><td>Glyphs, grid</td><td colspan="2">14 pt (<code>rainScale</code> 0.5) at an 18.5 pt pitch, 81 × 53 on 1512 × 982 pt</td><td>Rezmason classic, 80 × 50</td></tr>
+<tr><td>Columns showing a drop</td><td>30 %</td><td>70 %</td><td>glmatrix 20 %, xmatrix 75 %, Rezmason 100 %</td></tr>
+<tr><td>New drops a screen-second</td><td>≈ 2.8</td><td>≈ 18, + one per key</td><td>active × columns × speed ÷ (rows + trail)</td></tr>
+<tr><td>Column speed, per drop</td><td>5–10 rows/s (93–185 pt/s)</td><td>15–30 rows/s (278–555 pt/s)</td><td>Rezmason classic 15–30, 2:1; twilight 5–10</td></tr>
+<tr><td>Trail, per drop</td><td>6–18 rows</td><td>10–30 rows</td><td>log-uniform: Rezmason's p95 ≈ 4 × p5</td></tr>
+<tr><td>Gap before the next drop</td><td>≥ 3 rows</td><td>≥ 2 rows</td><td>"can never collide"</td></tr>
+<tr><td>Head α</td><td>0.35</td><td>0.85</td><td>A1's subtle 0.3 and pass 16's 0.8</td></tr>
+<tr><td>Trail top α</td><td>0.20</td><td>0.50</td><td>≈ 0.58 of the head; Rezmason ≈ 0.75 by luminance</td></tr>
+<tr><td>Glyph change, per lit glyph</td><td>0.3/s</td><td>1.5/s</td><td>tte 0.3/s, Rezmason 1.8/s</td></tr>
+<tr><td>Frame rate</td><td>30 Hz</td><td>60 Hz</td><td>the films' 24 fps; Apple's energy guide</td></tr>
+<tr><td>Sprites, 1512 × 982 pt</td><td>≈ 290</td><td>≈ 1,100 + 200–340 from keys</td><td>cap 2,000</td></tr>
+</tbody></table></div>
+<div class="figw"><svg class="fig w" style="max-width:660px" viewBox="0 0 660 180" role="img"><title>T1's ramp, computed: keys at 6 a second for 5 s with one 0.5 s word gap; the target follows the key rate of the last 2 s; I rises with τ 0.25 s, holds through the gap, and falls with τ 1.2 s from 0.8 s after the last key, at 0.10 four seconds after it</title>
+<text class="b" x="0" y="21">keys</text><path class="sfg" d="M70.0 12v10M79.5 12v10M89.0 12v10M98.5 12v10M108.0 12v10M117.5 12v10M127.0 12v10M136.5 12v10M146.0 12v10M155.5 12v10M165.0 12v10M174.5 12v10M184.0 12v10M193.5 12v10M203.0 12v10M212.5 12v10M241.0 12v10M250.5 12v10M260.0 12v10M269.5 12v10M279.0 12v10M288.5 12v10M298.0 12v10M307.5 12v10M317.0 12v10M326.5 12v10M336.0 12v10M345.5 12v10M355.0 12v10"/><text class="m" x="366" y="21">6 keys/s, one 0.5 s word gap</text>
+<text x="0" y="40">I = 1</text><text x="0" y="130">I = 0</text><text class="m" x="0" y="144">idle, I1</text>
+<path class="ln" d="M70 36.5H640M70 126.5H640"/>
+<path class="ar" stroke-dasharray="2 2" d="M70.0 118.5 75.7 118.5 81.4 111.0 87.1 111.0 92.8 103.5 98.5 96.0 104.2 96.0 109.9 88.5 115.6 88.5 121.3 81.0 127.0 73.5 132.7 73.5 138.4 66.0 144.1 66.0 149.8 58.5 155.5 51.0 161.2 51.0 166.9 43.5 172.6 43.5 178.3 36.0 184.0 36.0 189.7 36.0 195.4 36.0 201.1 36.0 206.8 36.0 212.5 36.0 218.2 36.0 223.9 43.5 229.6 43.5 235.3 51.0 241.0 51.0 246.7 51.0 252.4 51.0 258.1 51.0 263.8 51.0 269.5 51.0 275.2 51.0 280.9 51.0 286.6 51.0 292.3 51.0 298.0 51.0 303.7 51.0 309.4 51.0 315.1 51.0 320.8 51.0 326.5 51.0 332.2 51.0 337.9 43.5 343.6 43.5 349.3 36.0 355.0 36.0 360.7 36.0 366.4 43.5 372.1 43.5 377.8 51.0 383.5 58.5 389.2 58.5 394.9 66.0 400.6 66.0 406.3 73.5 412.0 81.0 417.7 81.0 423.4 88.5 429.1 88.5 434.8 96.0 440.5 103.5 446.2 103.5 451.9 111.0 457.6 111.0 463.3 118.5 469.0 126.0 474.7 126.0 480.4 126.0 486.1 126.0 491.8 126.0 497.5 126.0 503.2 126.0 508.9 126.0 514.6 126.0 520.3 126.0 526.0 126.0 531.7 126.0 537.4 126.0 543.1 126.0 548.8 126.0 554.5 126.0 560.2 126.0 565.9 126.0 571.6 126.0 577.3 126.0 583.0 126.0 588.7 126.0 594.4 126.0 600.1 126.0 605.8 126.0 611.5 126.0 617.2 126.0 622.9 126.0 628.6 126.0 634.3 126.0 640.0 126.0"/>
+<path class="sfg" stroke-width="1.5" d="M70.0 125.9 75.7 123.4 81.4 120.8 87.1 117.6 92.8 113.6 98.5 110.1 104.2 105.5 109.9 101.4 115.6 97.1 121.3 92.4 127.0 88.5 132.7 83.6 138.4 79.3 144.1 74.9 149.8 70.1 155.5 66.1 161.2 61.2 166.9 56.8 172.6 52.4 178.3 47.7 184.0 43.8 189.7 41.2 195.4 39.5 201.1 38.4 206.8 37.6 212.5 37.1 218.2 36.7 223.9 36.5 229.6 36.5 235.3 36.5 241.0 36.5 246.7 36.5 252.4 36.5 258.1 36.5 263.8 36.5 269.5 36.5 275.2 36.5 280.9 36.5 286.6 36.5 292.3 36.5 298.0 36.5 303.7 36.5 309.4 36.5 315.1 36.5 320.8 36.5 326.5 36.5 332.2 36.5 337.9 36.5 343.6 36.5 349.3 36.4 355.0 36.3 360.7 36.2 366.4 36.1 372.1 36.1 377.8 36.1 383.5 36.1 389.2 36.1 394.9 36.1 400.6 36.1 406.3 39.0 412.0 41.7 417.7 44.9 423.4 48.0 429.1 51.2 434.8 54.6 440.5 58.0 446.2 61.6 451.9 65.2 457.6 68.8 463.3 72.6 469.0 76.3 474.7 80.3 480.4 84.0 486.1 87.3 491.8 90.4 497.5 93.3 503.2 95.9 508.9 98.3 514.6 100.5 520.3 102.5 526.0 104.4 531.7 106.1 537.4 107.7 543.1 109.2 548.8 110.5 554.5 111.8 560.2 112.9 565.9 114.0 571.6 114.9 577.3 115.8 583.0 116.6 588.7 117.4 594.4 118.1 600.1 118.7 605.8 119.3 611.5 119.8 617.2 120.3 622.9 120.8 628.6 121.2 634.3 121.6 640.0 121.9"/>
+<path class="ln" stroke-dasharray="2 3" d="M355.5 28v104M400.5 28v104M583.5 28v104"/>
+<text class="m" x="150" y="88">rises, τ 0.25 s</text><text class="m" x="236" y="62">I* dips; I holds</text>
+<text x="351" y="144" text-anchor="end">last key</text><text x="404" y="144">+0.8 s: falls, τ 1.2 s</text><text x="587" y="104">+4 s: 0.10</text>
+<path class="ln" d="M70 156.5H640M70.5 156v4M127.5 156v4M184.5 156v4M241.5 156v4M298.5 156v4M355.5 156v4M412.5 156v4M469.5 156v4M526.5 156v4M583.5 156v4M640.5 156v4"/>
+<text class="m" x="70" y="174" text-anchor="middle">0</text><text class="m" x="184" y="174" text-anchor="middle">2 s</text><text class="m" x="298" y="174" text-anchor="middle">4</text><text class="m" x="412" y="174" text-anchor="middle">6</text><text class="m" x="526" y="174" text-anchor="middle">8</text><text class="m" x="640" y="174" text-anchor="middle">10</text>
+</svg></div>
+<p class="note">Computed with matrix §6.2's rule. Solid: I; dashed: its target I*, the keys of the last 2 s ÷ 2 s ÷ 6 keys/s. The demo's Typing and Idle buttons play the same ramp.</p>
+<div class="grid">
+<article class="card" id="opt-T1"><div class="card-h"><span class="oid">T1</span><h3>Ramp and key drops</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="T" value="T1" checked> pick</label></div>
+<p class="pitch">Both: the whole rain rises with the key rate, and each key starts a head of its own where the key is.</p>
+<ul class="how">
+<li><b>The ramp:</b> density to 70 % of columns, speed 15–30 rows/s, trails 10–30, head α 0.85, trail 0.50, glyph change 1.5/s, 60 Hz; one rain clock at 1/3 + 2/3 I scales speeds and changes together, as Rezmason's <code>animationSpeed</code> (matrix §6.2).</li>
+<li><b>Its target</b> I* is the keys of the last 2 s ÷ 2 s ÷ 6 keys/s, at most 1; 6 keys/s is about 70 words a minute, so ordinary typing reaches 0.5–0.8 (matrix §6.2).</li>
+<li><b>Its time:</b> up with τ 0.25 s, down with τ 1.2 s from 0.8 s after the last key, so the pauses between words (0.2–0.5 s) do not make it pulse, and it is back near idle about 4 s after the last key, as today's <code>linger</code> (matrix §6.2; the figure). Precedent: Rezmason's Playdate port, its clock 0.15× → 1× at 0.07 a frame (matrix §3).</li>
+<li><b>Key drops:</b> every glyph key (Space and Return none) starts a head in the key's column at the key's row height, pass 16's coupling kept (column 0 at a tenth of the width); the typed glyph at the head at α 0.95, its trail in the accent from 0.55, 8–20 rows, at its column's speed so it never cuts through a background drop; where they overlap a cell takes the brighter (matrix §6.2).</li>
+</ul>
+<p class="risk"><b>Risk.</b> Keep the ramp at 0.25 s or slower, so the screen never pulses (WCAG 2.3.1, matrix §5). I falls only in a pause of 0.8 s or more: slower typing after a fast run keeps it high (computed from the rule).</p></article>
+<article class="card" id="opt-T2"><div class="card-h"><span class="oid">T2</span><h3>Ramp only</h3><label class="pick"><input type="radio" name="T" value="T2"> pick</label></div>
+<p class="pitch">The whole rain rises and falls with the key rate; a key starts nothing of its own.</p>
+<p class="risk"><b>Risk.</b> Loses pass 16's coupling, asked for by the user ("more reactive depending on where the key is on the keyboard", A1); a key shows only through the ramp, τ 0.25 s after it.</p></article>
+<article class="card" id="opt-T3"><div class="card-h"><span class="oid">T3</span><h3>Key drops only</h3><label class="pick"><input type="radio" name="T" value="T3"> pick</label></div>
+<p class="pitch">The idle rain stays as it is; each key adds a drop at its place on top of it.</p>
+<p class="risk"><b>Risk.</b> "More intense" is then 6 key drops a second at 6 keys/s beside the idle ≈ 2.8 (matrix §6.2); the background never speeds up, lengthens or brightens.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s4h">
+<header class="sec-h"><span class="num">4</span><div><h2 id="s4h">C: colours</h2><p>Which of the box's two colours the head takes. The demo's C2 / C1 buttons switch it.</p></div></header>
+<div class="grid">
+<article class="card" id="opt-C2"><div class="card-h"><span class="oid">C2</span><h3>The films' mapping, pale head</h3><span class="tag rec">recommended</span><span class="tag ask">ask: amends A1's C1</span><label class="pick"><input type="radio" name="C" value="C2" checked> pick</label></div>
+<p class="pitch">Head in the text colour <code>#d8dce3</code>, the palest cell; trail in the accent <code>#7aa7f0</code>, fading in place. The films' mapping in Lemna's palette, no green.</p>
+<ul class="how">
+<li>The head is the palest, not only the brightest cell in every version read: Rezmason's a near-white at 2× intensity over the trail's colour, tte's <code>#dbffdb</code> over <code>#92be92</code> → <code>#185318</code>, cmatrix's and neo's white and bold: "paler, not only brighter" (matrix §1.3).</li>
+<li>"Heads not distinct" is item 5 of what gives a cheap rain away (matrix §4); C1 is "the reverse" of the films' (matrix takeaway 2).</li>
+<li>A key's head keeps the typed glyph legible: the text colour at α 0.95 (matrix §6.2).</li>
+</ul>
+<p class="risk"><b>Risk.</b> Amends A1's C1, which needs the user's OK (matrix §6.1). Over a light app either mapping nearly vanishes: 1.1:1 at α 0.3 against a dimmed white app (A1).</p></article>
+<article class="card" id="opt-C1"><div class="card-h"><span class="oid">C1</span><h3>Today's: accent head</h3><label class="pick"><input type="radio" name="C" value="C1"> pick</label></div>
+<p class="pitch">Head in the accent, trail in the text colour, as A1 decided.</p>
+<ul class="how"><li>Nothing to amend; the same two colours.</li></ul>
+<p class="risk"><b>Risk.</b> A pale trail under a blue head, the reverse of the films' mapping (matrix takeaway 2).</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s5h">
+<header class="sec-h"><span class="num">5</span><div><h2 id="s5h">K: the glyphs</h2><p>What the cells show. Lemna's atlas holds ASCII 33–126 and Latin-1, no katakana (<code>Ambience.Glyphs</code>; matrix §1.2).</p></div></header>
+<div class="grid">
+<article class="card" id="opt-K1"><div class="card-h"><span class="oid">K1</span><h3>The films' set, as far as ASCII has it</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="K" value="K1" checked> pick</label></div>
+<p class="glyphs" aria-label="0 1 2 3 4 5 7 8 9 Z z colon full stop quotation mark equals asterisk plus minus less-than greater-than bar underscore">012345789Zz:."=*+-&lt;&gt;|_</p>
+<p class="pitch">These 22 in every cell, plus the typed glyph at a key-started head; not mirrored.</p>
+<ul class="how">
+<li>The overlap of the films' set (Rezmason's font: digits without 6, <code>z</code>, <code>: . " = * + &lt; &gt; |</code>, 33 katakana) and tte's (<code>2 5 9 8 Z * ) : . " = + - ¦ | _</code>, 34 katakana): what the atlas can draw (matrix §1.2).</li>
+<li>"Get the right glyphs. Like the actual ones" (Rezmason); among the wrong ones "plain Latin text" (matrix §4, item 9).</li>
+<li><b>Not mirrored:</b> the films turned the glyphs "back to front" (Whiteley, matrix §1.1), but whether a sprite of negative width draws mirrored in Lemna's shader is UNVERIFIED (matrix §6.2); a later try.</li>
+<li>Letters stay the writer's: letters in the rain could read as words beside the line [inference]; Drift is already the mode made of the text (A1).</li>
+</ul>
+<p class="risk"><b>Risk.</b> 22 glyphs against the films' 57 (matrix §1.2), and none of the katakana that make up most of them: the closest the atlas comes.</p></article>
+<article class="card" id="opt-K2"><div class="card-h"><span class="oid">K2</span><h3>Letters, as today</h3><label class="pick"><input type="radio" name="K" value="K2"> pick</label></div>
+<p class="glyphs k2" aria-label="a to z">abcdefghijklmnopqrstuvwxyz</p>
+<p class="pitch">The trail's glyphs stay a–z (<code>Glyphs.letters</code>); the head is the typed glyph.</p>
+<ul class="how"><li>Lemna's own (matrix §6.1: "a–z is Lemna's own").</li></ul>
+<p class="risk"><b>Risk.</b> "Plain Latin text" is on Rezmason's list of wrong glyphs (matrix §4, item 9); letters beside the line.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s6h">
+<header class="sec-h"><span class="num">6</span><div><h2 id="s6h">W: where</h2><p>Which dims the rain plays on. The box's screen only matters with more than one.</p></div></header>
+<div class="grid">
+<article class="card" id="opt-W1"><div class="card-h"><span class="oid">W1</span><h3>Every screen</h3><span class="tag rec">recommended, as today</span><label class="pick"><input type="radio" name="W" value="W1" checked> pick</label></div>
+<p class="pitch">Every screen's dim rains, as Rain does today; the other modes stay on the box's screen.</p>
+<ul class="how"><li>Rain's reach today: each dim has its own layer, and Rain falls on all of them (A1, <code>everyScreen</code>); "covering more or less the whole screen".</li></ul>
+<p class="risk"><b>Risk.</b> With I1 every screen moves for as long as the box is open: on three screens three times W2's frames, and travelling motion at the edge of sight on the ones you are not looking at (matrix §6.3, item 3; §5).</p></article>
+<article class="card" id="opt-W2"><div class="card-h"><span class="oid">W2</span><h3>The box's screen only</h3><label class="pick"><input type="radio" name="W" value="W2"> pick</label></div>
+<p class="pitch">The rain on the box's screen; the others keep a plain dim, as under Drift, Rings and Grid.</p>
+<ul class="how"><li>A third of the cost on three screens, and nothing moving at the edge of sight on the others (matrix §6.3, item 3); the ambience panel's own first proposal (other screens a plain dim, A1).</li></ul>
+<p class="risk"><b>Risk.</b> A change from today's Rain; with one screen W1 and W2 are the same.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s7h">
+<header class="sec-h"><span class="num">7</span><div><h2 id="s7h">S: the send-off sound</h2><p>What ⌘⏎ sounds like when the text goes to the app behind. Today ⌘⏎ and ⌘⇧⏎ play nothing (<code>done</code>, <code>copyText</code>); Return's click is the <code>paragraph</code> sample.</p></div></header>
+<div class="mock"><table class="keys">
+<thead><tr><th>Pack</th><th>Source</th><th>Licence</th><th>Length</th><th>What lands when, from ⌘⏎'s key-down</th><th>M max (send − Return, − letter)</th></tr></thead>
+<tbody>
+<tr><td>Keychron</td><td>Keychron k10 Enter, <a href="https://freesound.org/people/Sadiquecat/sounds/789629/">789629</a>, Sadiquecat</td><td>CC0</td><td>290&nbsp;ms</td><td>the Enter press at 0, its release at 97 ms, −40 dB at 240 ms; the pack's Return is cut 6 ms before the release</td><td>−28.0 LUFS (+0.2, +4.2 LU)</td></tr>
+<tr><td>Typewriter</td><td>Silver Typewriter (Margin Release and Carriage Return), <a href="https://freesound.org/people/moodyfingers/sounds/734314/">734314</a>, moodyfingers</td><td>CC0, no bell</td><td>440&nbsp;ms</td><td>the carriage's run (its last 235 ms, faded in over 30 ms), the stop at 257 ms, −40 dB at 390 ms</td><td>−25.1 LUFS (−2.8, +6.6 LU)</td></tr>
+<tr><td>Soft</td><td>FUJITSU Enter key Press Mono, <a href="https://freesound.org/people/Sadiquecat/sounds/799116/">799116</a>, Sadiquecat</td><td>CC0</td><td>240&nbsp;ms</td><td>the Enter press at 8 ms, its release 116 ms later (≈ 124 ms), −40 dB at 210 ms</td><td>−27.2 LUFS (+0.5, +6.0 LU)</td></tr>
+<tr><td>Electric</td><td>typewriter_electric_return.wav, <a href="https://freesound.org/people/magedu/sounds/319945/">319945</a>, magedu</td><td>CC BY 4.0, credited; "spliced"</td><td>420&nbsp;ms</td><td>the clutch's impact at 8 ms, its burst to 120 ms, the run's last 130 ms, the margin stop at ≈ 245 ms, −40 dB at 340 ms (E1)</td><td>−26.8 LUFS (−1.3, −0.2 LU)</td></tr>
+</tbody></table></div>
+<p class="note">The cuts, commands and SHA-256 of the previews in sendoff §2.1–2.4; loudness in §4. All peak at −6 dBFS. Typewriter: the whole return, lever included, puts the stop at 610 ms (sendoff §2.2).</p>
+<div class="figw"><svg class="fig w" style="max-width:660px" viewBox="0 0 660 222" role="img"><title>From ⌘⏎'s key-down: the hand-off motion to 260 ms; Return's key-up at about 100 ms and the ⌘V 35 ms later; each pack's send with its arrival: Keychron's release at 97 ms, the Typewriter's stop at 257, Soft's release at 124, Electric's stop at 245</title>
+<path class="ln" stroke-dasharray="2 3" d="M220.5 14v172M262.5 14v172M412.5 14v172"/>
+<text class="m" x="217" y="10" text-anchor="end">Return up ≈ 100</text><text class="m" x="265" y="10">⌘V ≈ 135</text><text class="m" x="415" y="10">H1 ends, 260</text>
+<text class="b" x="0" y="30">H1 motion</text><rect class="sfg" x="100.5" y="21.5" width="312" height="9"/><text class="m" x="420" y="30">the line gone by ≈ 170</text>
+<text class="b" x="0" y="70">Keychron</text><rect class="ln" x="100.5" y="61.5" width="348" height="9"/><rect class="sol" x="100.5" y="61.5" width="288" height="9"/><path class="sfg" d="M102.5 57v18M216.5 57v18"/><text class="m" x="216" y="53" text-anchor="middle">release 97</text>
+<text class="b" x="0" y="105">Typewriter</text><rect class="ln" x="100.5" y="96.5" width="528" height="9"/><rect class="sol" x="100.5" y="96.5" width="468" height="9"/><path class="sfg" d="M408.5 92v18"/><text class="m" x="160" y="88" text-anchor="middle">run, faded in</text><text class="m" x="408" y="88" text-anchor="middle">stop 257</text>
+<text class="b" x="0" y="140">Soft</text><rect class="ln" x="100.5" y="131.5" width="288" height="9"/><rect class="sol" x="100.5" y="131.5" width="252" height="9"/><path class="sfg" d="M109.5 127v18M248.5 127v18"/><text class="m" x="248" y="123" text-anchor="middle">release ≈ 124</text>
+<text class="b" x="0" y="175">Electric</text><rect class="ln" x="100.5" y="166.5" width="504" height="9"/><rect class="sol" x="100.5" y="166.5" width="408" height="9"/><path class="sfg" d="M109.5 162v18M394.5 162v18"/><text class="m" x="110" y="158" text-anchor="middle">impact 8</text><text class="m" x="394" y="158" text-anchor="middle">stop ≈ 245</text>
+<path class="ln" d="M100 196.5H640M100.5 196v4M220.5 196v4M340.5 196v4M460.5 196v4M580.5 196v4"/>
+<text class="m" x="100" y="214" text-anchor="middle">0</text><text class="m" x="220" y="214" text-anchor="middle">100</text><text class="m" x="340" y="214" text-anchor="middle">200</text><text class="m" x="460" y="214" text-anchor="middle">300</text><text class="m" x="580" y="214" text-anchor="middle">400 ms</text>
+</svg></div>
+<p class="note">Filled: each cut until −40 dB; outline: its tail. Ticks: the press or impact, and the arrival. The timings of the motion and the paste from DESIGN F1 and sendoff §1.4.</p>
+<div class="grid">
+<article class="card" id="opt-S1"><div class="card-h"><span class="oid">S1</span><h3>One per pack, from its own recordings</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="S" value="S1" checked> pick</label></div>
+<p class="pitch">Each pack gets one send sample, cut from the recordings it already uses, played once at ⌘⏎'s key-down with the hand-off motion; its arrival, a key's release or a carriage's stop, lands inside the motion's 260 ms.</p>
+<ul class="how">
+<li><b>In line with the motion:</b> "it's so much more satisfying when everything lines up nicely … pushing it back or forward by as little as ten milliseconds sometimes makes a difference" (Hugo Verweij, Apple, WWDC 2017 session 803; sendoff §1.2). Arrivals at 97–257 ms; Apple's own sent sounds peak at 220 ms (Messages) and 310 ms (Mail) (sendoff §1.1).</li>
+<li><b>In the pack's material,</b> as asked ("tied to the sound pack used"): the same uploaders and, for three packs, the same files (sendoff takeaway 2, §2); Apple recorded the Watch's sounds from its own materials so they seem "made by the device itself" (sendoff §1.2).</li>
+<li><b>U1 stands:</b> the release is part of one sample started at key-down; there is no key-up path (sendoff §5).</li>
+<li><b>No gain:</b> peaks at −6 dBFS like the clicks; from length alone a send lands −2.8 to +0.5 LU of its pack's Return and 4–7 LU over its letters, Electric level with both (sendoff §4). Same player: volume 0.6, ±3 % rate, which moves an arrival by 8 ms at most (sendoff §4).</li>
+<li><b>Cost:</b> a <code>send</code> kind and one file per <code>pack.json</code>, ≈ 133 KB beside the packs' ≈ 541 KB, one of the mixer's 16 voices for ≤ 0.45 s, a <code>THIRD_PARTY.md</code> row per pack (sendoff §5).</li>
+</ul>
+<p class="risk"><b>Risk.</b> Nothing was listened to (sendoff §7): the releases are found by timing and level, the Typewriter's stop by its level after the run, and the smartphone recording's noise reduction may smear the whirr. Try by ear first; if a send is weak beside Return, <code>--gain +2</code> first, the Typewriter the likeliest (sendoff §4).</p></article>
+<article class="card" id="opt-S2"><div class="card-h"><span class="oid">S2</span><h3>One send for every pack</h3><label class="pick"><input type="radio" name="S" value="S2"> pick</label></div>
+<p class="pitch">The Keychron cut, whatever the pack.</p>
+<ul class="how"><li>One file and one licence row; the user likes the Keychron sounds.</li></ul>
+<p class="risk"><b>Risk.</b> A keyboard's Enter after a typewriter's strikes: not "tied to the sound pack used", the user's own suggestion.</p></article>
+<article class="card" id="opt-S0"><div class="card-h"><span class="oid">S0</span><h3>No send sound</h3><label class="pick"><input type="radio" name="S" value="S0"> pick</label></div>
+<p class="pitch">⌘⏎ stays silent, as today.</p>
+<ul class="how"><li>"Silence is golden", "we definitely don't do this for every interaction" (Verweij); "You never want to play a sound just to play a sound" (Conor O'Sullivan, Google); Gmail plays none, as users report, UNVERIFIED (sendoff §1.2).</li></ul>
+<p class="risk"><b>Risk.</b> The user asked for "a really satisfying sound when sending the text off".</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s8h">
+<header class="sec-h"><span class="num">8</span><div><h2 id="s8h">P: Copy ⌘⇧⏎, and a ⌘⏎ that copies</h2><p>⌘⏎ copies instead of pasting with no Accessibility permission, under Secure Input, with no app behind, or from the window (<code>done</code>; sendoff §3).</p></div></header>
+<div class="grid">
+<article class="card" id="opt-P1"><div class="card-h"><span class="oid">P1</span><h3>Copy plays Return; send only for a paste</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="P" value="P1" checked> pick</label></div>
+<p class="pitch">Copy plays the pack's existing Return sample (<code>paragraph</code>), the press alone; the send plays only when ⌘⏎ pastes. A ⌘⏎ that copies instead plays Copy's sound.</p>
+<ul class="how">
+<li><b>Copy's sound per pack:</b> Keychron and Soft the Enter press without its release; Typewriter the platen ratchet, the paper rolling up as Copy's glyphs rise (F1 C1); Electric the clutch's impact and the run's start. No new file (sendoff §3).</li>
+<li><b>Two related sounds:</b> Apple's two transition sounds so "you know if you're moving forward or backward"; Facebook's send and sent "sonically have the same characteristics" (sendoff §1.2, §3).</li>
+<li><b>Chosen with the outcome:</b> after <code>Paste.decide</code>, in the same handler; the ⌘V is posted blind, so "sent" means decided, not confirmed (sendoff §1.4).</li>
+<li>A "sent" sound when nothing was sent is what users called "very deceiving" of Mail's swoosh on iOS 6 (MacRumors, 2012; sendoff §1.2).</li>
+</ul>
+<p class="risk"><b>Risk.</b> Copy sounds like typing Return; the motion (the glyphs rise, the box goes) tells them apart (sendoff §3).</p></article>
+<article class="card" id="opt-P2"><div class="card-h"><span class="oid">P2</span><h3>Copy plays the send too</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="P" value="P2"> pick</label></div>
+<p class="pitch">⌘⇧⏎ and a ⌘⏎ that copies play the send sound.</p>
+<p class="risk"><b>No.</b> A "sent" sound for text that went only to the clipboard: the iOS 6 Mail complaint, and a fallback that sounds like success before its note is read (sendoff §1.2, §3).</p></article>
+<article class="card" id="opt-P0"><div class="card-h"><span class="oid">P0</span><h3>Copy silent</h3><label class="pick"><input type="radio" name="P" value="P0"> pick</label></div>
+<p class="pitch">⌘⇧⏎ plays nothing, as today; a ⌘⏎ that copies plays nothing either.</p>
+<p class="risk"><b>Risk.</b> With S1, the silence after ⌘⏎ is the only cue that nothing was pasted, until the note is read.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s9h">
+<header class="sec-h"><span class="num">9</span><div><h2 id="s9h">E: the Electric cut</h2><p>Electric's return is a motor's: 1.3 s from the clutch to the margin stop (sendoff takeaway 2, §2.4). Matters only with S1.</p></div></header>
+<div class="grid">
+<article class="card" id="opt-E1"><div class="card-h"><span class="oid">E1</span><h3>Spliced</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="E" value="E1" checked> pick</label></div>
+<p class="pitch">The clutch's impact (0.305–0.45 s) crossfaded over 30 ms onto the run's end (1.45–1.76 s): 420 ms, the stop at ≈ 245 ms.</p>
+<ul class="how">
+<li>The stop lands on the motion's end, as the other packs' arrivals do (sendoff §2.4).</li>
+<li>The credit line's "Changed for Lemna" gains "spliced" (CC BY 4.0).</li>
+</ul>
+<p class="risk"><b>Risk.</b> A made sound: "a motor-driven carriage does not get shorter" (sendoff §2.4). The stop is a dull thud, 15 dB under the impact in the cut.</p></article>
+<article class="card" id="opt-E2"><div class="card-h"><span class="oid">E2</span><h3>The whole return, plain</h3><label class="pick"><input type="radio" name="E" value="E2"> pick</label></div>
+<p class="pitch">From the clutch, 1,440 ms: the stop at ≈ 1.27 s; M max −25.5 LUFS.</p>
+<ul class="how"><li>The machine as recorded, nothing made.</li></ul>
+<p class="risk"><b>Risk.</b> Its first 600 ms are the pack's <code>paragraph</code>, Copy's sound under P1, so send and copy sound the same until then; the stop arrives about a second after the text did (sendoff §2.4).</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s10h">
+<header class="sec-h"><span class="num">10</span><div><h2 id="s10h">Sources</h2><p>Read 2026-10-30.</p></div></header>
+<ul class="refs">
+<li><b>Research notes</b>: <a href="../research_notes/Lemna%20rain/matrix.md">matrix.md</a> (the films' rain: takeaway, §1–§6) and <a href="../research_notes/Lemna%20rain/sendoff.md">sendoff.md</a> (the send-off sound: §1–§5), both 2026-10-30; nothing in them was watched frame by frame or listened to.</li>
+<li><b>The rain</b>: <a href="https://github.com/Rezmason/matrix">Rezmason/matrix</a>; <a href="https://beforesandafters.com/2019/03/27/secrets-of-the-matrix-code/">befores &amp; afters, 2019</a> (Animal Logic); <a href="https://en.wikipedia.org/wiki/Matrix_digital_rain">Wikipedia, Matrix digital rain</a>; <a href="https://github.com/ChrisBuilds/terminaltexteffects">terminaltexteffects</a>; xscreensaver's <code>xmatrix.c</code>, <code>glmatrix.c</code>.</li>
+<li><b>Accessibility and cost</b>: <a href="https://www.w3.org/WAI/WCAG22/Understanding/pause-stop-hide.html">WCAG 2.2.2 Pause, Stop, Hide</a>; <a href="https://www.w3.org/WAI/WCAG22/Understanding/animation-from-interactions.html">WCAG 2.3.3</a>; <a href="https://developer.apple.com/library/archive/documentation/Performance/Conceptual/power_efficiency_guidelines_osx/UsingEfficientGraphics.html">Apple, Energy Efficiency Guide for Mac Apps</a>; <a href="https://www.interruptions.net/literature/Bartram-IJHCS03.pdf">Bartram 2003</a>.</li>
+<li><b>The sound</b>: <a href="https://developer.apple.com/videos/play/wwdc2017/803/">WWDC 2017 session 803, Designing Sound</a>; <a href="https://www.20k.org/episodes/facebook-and-google-pixel">Twenty Thousand Hertz</a>; <a href="https://forums.macrumors.com/threads/1453491/">MacRumors, 2012</a>; Freesound <a href="https://freesound.org/people/Sadiquecat/sounds/789629/">789629</a>, <a href="https://freesound.org/people/moodyfingers/sounds/734314/">734314</a>, <a href="https://freesound.org/people/Sadiquecat/sounds/799116/">799116</a>, <a href="https://freesound.org/people/magedu/sounds/319945/">319945</a>.</li>
+<li><b>Decisions</b>: <a href="../DESIGN.md">DESIGN.md</a> rows A1 (M2, R1, S1, C1), K1 (U1, C1, D1), F0, F1 (H1, C1); the <a href="design-panel-lemna-ambience.html">ambience panel</a> and the <a href="design-panel-lemna-handoff.html">hand-off panel</a>.</li>
+<li><b>Code</b>: <code>Scenes.swift</code> (<code>struct Rain</code>), <code>Ambience.swift</code> (<code>Tuning</code>, <code>Glyphs</code>), <code>Keyboard.swift</code>, <code>Box.swift</code> (<code>BoxFrame</code>), <code>main.swift</code> (<code>done</code>, <code>copyText</code>).</li>
+</ul>
+<p class="note">Numbers marked computed are arithmetic on the notes' values: 290 ÷ 4,293 cells lit; 53 rows ÷ 5–10 rows/s; the ramp, stepped at 5 ms with §6.2's rule.</p>
+</section>
+
+<div class="picks"><span class="picks-l">Picks</span><code id="picks">G1 I1 T1 C2 K1 W1 S1 P1 E1</code><button type="button" id="copy" hidden>Copy picks</button></div>
+</div>
+<script>function picks(){const v=n=>[...document.querySelectorAll(`input[name="${n}"]:checked`)].map(i=>i.value).join('+')||'–';const s=['G','I','T','C','K','W','S','P','E'].map(v).join(' ');document.getElementById('pickline').textContent=s;document.getElementById('picks').textContent=s;}document.querySelectorAll('.pick input').forEach(i=>i.addEventListener('change',picks));const cb=document.getElementById('copy');if(navigator.clipboard){cb.hidden=false;cb.addEventListener('click',()=>navigator.clipboard.writeText(document.getElementById('picks').textContent).then(()=>{cb.textContent='Copied';setTimeout(()=>{cb.textContent='Copy picks'},1200)},()=>{}));}picks();</script>
+<script>
+/* The demo: G1 with I1's and T1's values on a 60 × 24 piece of the grid at the 18.5 pt pitch (matrix §6.2), and
+   today's Rain (G0) at its own size. Still under reduced motion; paused off screen. */
+(()=>{
+const cv=document.getElementById('rain'),ctx=cv.getContext&&cv.getContext('2d');if(!ctx)return;
+document.getElementById('nojs').remove();document.getElementById('seg').hidden=false;
+const W=1110,H=444,P=18.5,N=60,R=24,D=Math.min(window.devicePixelRatio||1,2);
+cv.width=W*D;cv.height=H*D;ctx.scale(D,D);ctx.textAlign='center';ctx.textBaseline='middle';
+const MONO=getComputedStyle(document.documentElement).getPropertyValue('--mono').trim()||'monospace';
+const K1='012345789Zz:."=*+-<>|_',AZ='abcdefghijklmnopqrstuvwxyz',TEXT='#d8dce3',ACC='#7aa7f0',BG='#0e1013';
+const BOX={x:101.5,y:316.5,w:907,h:112};  // BoxFrame at Menlo 28: 907 × 112 pt, a 1 pt accent border, radius 10
+const SENT='the light runs down the glass while the line goes on ';
+const KB=[['1234567890',1.5],['qwertyuiop',2],['asdfghjkl',2.25],['zxcvbnm',2.75]];  // ANSI rows: keys, first key's column
+const rnd=Math.random,pick=s=>s[rnd()*s.length|0],lerp=(a,b,t)=>a+(b-a)*t,logu=(a,b)=>a*Math.pow(b/a,rnd());
+const rm=matchMedia('(prefers-reduced-motion: reduce)'),ro=document.getElementById('ro');
+let mode='idle',col='C2',I=0,C=0,now=0,last=-1e9,nextKey=0,ki=30,keys=[],typed=SENT.slice(0,30),old=[];
+// G1: one glyph and one lighting per cell (when, how long its fade, its top alpha), the heads per column
+const G=Uint8Array.from({length:N*R},()=>rnd()*K1.length|0),T0=new Float64Array(N*R).fill(-1e9);
+const F=new Float32Array(N*R).fill(1),TOP=new Float32Array(N*R),HD=new Uint8Array(N*R);
+const u=Array.from({length:N},()=>0.5+0.5*rnd()),drops=Array.from({length:N},()=>[]);  // speeds 2:1 per column
+function light(c,r,d){if(r>=0&&r<R){const i=r*N+c;T0[i]=C;F[i]=d.L/(30*u[c]);TOP[i]=d.top}}
+function spawn(c,y,L,g,top){const d={y,L,g,top};drops[c].push(d);light(c,Math.floor(y),d)}
+function key(ch){
+  typed=(typed+ch).slice(-46);
+  if(mode==='typing'){keys.push(now);last=now}
+  let k=null;KB.forEach(([s,o],r)=>{const i=s.indexOf(ch);if(i>=0)k={across:(o+i)/15,down:r/4}});
+  if(!k)return;  // Space starts none
+  if(mode==='typing')spawn(Math.min(N-1,Math.floor(N*(0.1+0.8*k.across))),Math.floor(R*(0.05+0.4*k.down)),logu(8,20),ch,0.55);
+  else old.push({x:(Math.floor(W*(0.1+0.8*k.across)/21)+0.5)*21,top:H*(0.05+0.4*k.down+(rnd()-0.5)*0.06),
+    fall:lerp(150,300,rnd()),age:0,h:ch,tr:Array.from({length:4+(rnd()*5|0)},()=>pick(AZ))});
+}
+function step(dt){
+  now+=dt;
+  if(mode!=='idle')while(nextKey<=now){key(SENT[ki++%SENT.length]);nextKey+=1/6}  // 6 keys/s
+  keys=keys.filter(t=>now-t<2);
+  const tgt=mode==='typing'?Math.min(keys.length/2/6,1):0;  // I*: keys of the last 2 s ÷ 2 s ÷ 6 keys/s
+  if(tgt>I)I+=(tgt-I)*(1-Math.exp(-dt/0.25));else if(now-last>=0.8)I+=(tgt-I)*(1-Math.exp(-dt/1.2));
+  const s=1/3+2/3*I,dc=dt*s,act=lerp(0.3,0.7,I),lo=lerp(6,10,I),hi=lerp(18,30,I),gap=I<0.5?3:2;
+  C+=dc;  // the rain clock: speeds 5–10 rows/s idle, 15–30 typing
+  const lam=act*N*22.5*s/(R+(hi-lo)/Math.log(hi/lo));  // new drops a second: active × columns × speed ÷ (rows + trail)
+  for(let n=lam*dt;rnd()<n;n--)for(let t=0;t<4;t++){const c=rnd()*N|0;if(drops[c].every(d=>d.y-d.L>=gap)){spawn(c,0,logu(lo,hi),null,0);break}}
+  for(let c=0;c<N;c++){const v=30*u[c];drops[c]=drops[c].filter(d=>{const r0=Math.floor(d.y);d.y+=v*dc;
+    for(let r=r0+1;r<=Math.floor(d.y);r++)light(c,r,d);return d.y-d.L<R})}
+  const m=lerp(0.3,1.5,I);  // glyph changes a second, per lit glyph
+  for(let i=0;i<N*R;i++)if(C-T0[i]<F[i]&&rnd()<m*dt)G[i]=rnd()*K1.length|0;
+  old=old.filter(d=>(d.age+=dt)<3);
+  for(const d of old)for(let k=0;k<d.tr.length;k++)if(rnd()<1.5*dt)d.tr[k]=pick(AZ);
+}
+function draw(){
+  const hc=col==='C2'?TEXT:ACC,tc=col==='C2'?ACC:TEXT;let n=0;
+  ctx.globalAlpha=1;ctx.fillStyle=BG;ctx.fillRect(0,0,W,H);
+  if(mode==='today'){  // pass 18: the string slides, 37 pt rows, 3 s a drop
+    ctx.font='28px '+MONO;
+    for(const d of old){
+      const rows=Math.floor(d.fall*d.age/37),y=d.top+rows*37,f=Math.min(d.age/0.08,1)*Math.min((3-d.age)/0.6,1);
+      ctx.fillStyle=hc;ctx.globalAlpha=0.8*f;ctx.fillText(d.h,d.x,y);n++;
+      ctx.fillStyle=tc;let a=0.55*f;
+      for(let k=0;k<Math.min(d.tr.length,rows);k++){ctx.globalAlpha=a;ctx.fillText(d.tr[k],d.x,y-(k+1)*37);a*=0.75;n++}
+    }
+  }else{  // G1: trails dim in place, linear; heads on top
+    const tt=lerp(0.2,0.5,I),ha=lerp(0.35,0.85,I);
+    ctx.font='14px '+MONO;HD.fill(0);
+    for(let c=0;c<N;c++)for(const d of drops[c]){const r=Math.floor(d.y);if(r>=0&&r<R)HD[r*N+c]=1}
+    ctx.fillStyle=tc;
+    for(let i=0;i<N*R;i++){const a=(TOP[i]||tt)*(1-(C-T0[i])/F[i]);
+      if(a>0.02&&!HD[i]){ctx.globalAlpha=a;ctx.fillText(K1[G[i]],(i%N+0.5)*P,((i/N|0)+0.5)*P);n++}}
+    ctx.fillStyle=hc;
+    for(let c=0;c<N;c++)for(const d of drops[c]){const r=Math.floor(d.y);if(r<0||r>=R)continue;
+      ctx.globalAlpha=d.g?0.95:ha;ctx.fillText(d.g||K1[G[r*N+c]],(c+0.5)*P,(r+0.5)*P);n++}
+  }
+  ctx.globalAlpha=1;ctx.fillStyle=BG;ctx.strokeStyle=ACC;ctx.lineWidth=1;ctx.beginPath();
+  ctx.roundRect?ctx.roundRect(BOX.x,BOX.y,BOX.w,BOX.h,10):ctx.rect(BOX.x,BOX.y,BOX.w,BOX.h);ctx.fill();ctx.stroke();
+  ctx.font='28px '+MONO;ctx.textAlign='left';ctx.fillStyle=TEXT;ctx.fillText(typed,BOX.x+28,BOX.y+BOX.h/2);
+  ctx.fillStyle=ACC;ctx.fillRect(BOX.x+29+ctx.measureText(typed).width,BOX.y+BOX.h/2-17,2,34);ctx.textAlign='center';
+  return n;
+}
+const hz=()=>mode==='today'||I>0.05?60:30;  // 30 Hz idle, 60 typing
+const say=(n,still)=>{ro.textContent=`${mode==='today'?'today':'I '+I.toFixed(2)} · ${still?'still frame':hz()+' Hz'} · ${n} glyphs`};
+let raf=0,prev=0,shown=0,vis=true;
+function frame(t){
+  raf=vis&&!rm.matches?requestAnimationFrame(frame):0;
+  if(prev&&t-prev<1000/hz()-4)return;
+  const dt=prev?Math.min((t-prev)/1000,0.1):1/60;prev=t;
+  step(dt);const n=draw();
+  if(t-shown>250){shown=t;say(n,false)}
+}
+function still(){for(let i=0;i<120;i++)step(1/30);say(draw(),true)}  // 4 s of the state, one frame
+function run(){if(rm.matches){cancelAnimationFrame(raf);raf=0;still()}else if(vis&&!raf){prev=0;raf=requestAnimationFrame(frame)}}
+for(let i=0;i<180;i++)step(1/30);  // 6 s ahead, undrawn: the demo opens mid-rain
+document.querySelectorAll('#seg button').forEach(b=>b.addEventListener('click',()=>{
+  if(b.dataset.m){mode=b.dataset.m;nextKey=now}
+  if(b.dataset.c)col=b.dataset.c;
+  document.querySelectorAll('#seg button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.m?x.dataset.m===mode:x.dataset.c===col)));
+  if(rm.matches)still();
+}));
+if('IntersectionObserver' in window)new IntersectionObserver(e=>{vis=e[0].isIntersecting;if(vis)run()}).observe(cv);
+if(rm.addEventListener)rm.addEventListener('change',run);
+say(draw(),rm.matches);run();
+})();
+</script>
+</html>
