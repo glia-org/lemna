@@ -1,9 +1,10 @@
 // The ambience (DESIGN.md A1): a scene that plays on the dim around the box while you type and dies out within seconds
-// of silence, one mode at a time from Session › Ambience ▸, Off at first. Here, free of AppKit and Metal: the choice,
-// every magnitude (`Ambience.Tuning`), what the line sends (`Key`), what a scene is told (`Event`), where it plays
-// (`Stage`), what it draws (`Sprite`), the atlas's index (`Glyphs`), the scenes' protocol and the run of one scene from
-// the first key to its last particle (`Run`), so the tests step every mode without a window. The scenes themselves are
-// in Scenes.swift, the Metal pipeline that draws the sprites in Particles.swift.
+// of silence (Rain, since pass 19b, from the show to the close), one mode at a time from Session › Ambience ▸, Off at
+// first. Here, free of AppKit and Metal: the choice, every magnitude (`Ambience.Tuning`), what the line sends (`Key`),
+// what a scene is told (`Event`), where it plays (`Stage`), what it draws (`Sprite`), the atlas's index (`Glyphs`), the
+// scenes' protocol and the run of one scene from the first key to its last particle (`Run`), so the tests step every
+// mode without a window. The scenes themselves are in Scenes.swift, the Metal pipeline that draws the sprites in
+// Particles.swift.
 import CoreGraphics
 import CoreText
 
@@ -27,6 +28,10 @@ public struct Ambience: Equatable {
         /// Plays on every screen's dim, not only on the box's: Rain falls over the whole dim. The others come from the
         /// box and stay on its screen.
         public var everyScreen: Bool { self == .rain }
+
+        /// Plays from the show until the close, keys or none (pass 19b, I1): Rain. The others start at the first key
+        /// and are gone `Tuning.linger` after the last.
+        public var ambient: Bool { self == .rain }
     }
 
     public private(set) var mode: Mode?
@@ -54,14 +59,16 @@ extension Ambience {
     /// 15: "The ambience effects are way too subtle") made every mode plain from its first frame, about two to three
     /// times pass 15's alphas, larger where that reads better, a little longer where the fade took them early; pass
     /// 15's values, the panel's, stand beside each as "subtle". Times in seconds, lengths in points, alphas over the
-    /// dim. The colours are the box's (C1): text for glyphs, rings and grid lines, the accent for the rain's heads and the
-    /// lit cells.
+    /// dim. The colours are the box's (C1): text for glyphs, rings and grid lines, the accent for the lit cells; Rain's
+    /// heads in the text colour and its trails in the accent (C2, pass 19b).
     public enum Tuning {
-        /// Every mode: at most this many sprites a frame (the panel's 2,000 particles), stepped and drawn at 60 Hz.
+        /// Every mode: at most this many sprites a frame (the panel's 2,000 particles), stepped and drawn at 60 Hz
+        /// (Rain at rest at `rainIdleRate`).
         public static let cap = 2000, frameRate = 60.0
         /// Nothing new after the last key, and the scene is gone `linger` after it, fading out evenly over the last
         /// `fadeOut` (a decay nobody triggered, kept off the curve, so the scene does not drop half of itself in the
-        /// first tenth of a second at a moment the writer did not choose; pass 18); then the display link pauses.
+        /// first tenth of a second at a moment the writer did not choose; pass 18); then the display link pauses. Not
+        /// for an ambient mode (Rain), which plays until the close.
         public static let linger = 4.0, fadeOut = 1.0
         /// At the box's close the scene fades out over the dim's wait and fade less `closeAhead`, so its cleared frames
         /// are out and the link pauses while the dim is still on screen (a window gone gets no more frames).
@@ -87,15 +94,35 @@ extension Ambience {
         public static let driftCarry = 1.0, driftCurrent = 8.0...40.0, driftRise = -6.0...18.0, driftWander = 6.0
         public static let driftTurn = 0.05...0.2
 
-        /// M2 Rain: each glyph key drops one column where the key is across the screen (anywhere within its width),
-        /// higher the higher its row, the
-        /// typed glyph at its head in the accent at `rainHead`, a trail of 4–8 glyphs in the text colour above it from
-        /// `rainTrailStart`, each `rainTrailFall` of the one below, a trail glyph swapping `rainSwap` times a second;
-        /// falling 150–300 pt/s, row by row, for `rainLife`, its last `rainOut` fading. Space and Return drop none.
-        /// The glyphs at `rainScale` of the line's size. Subtle: head 0.3, the trail from 0.18 by 0.6, 2.5 s, 0.8 of
-        /// the line's size.
-        public static let rainHead = 0.8, rainTrailStart = 0.55, rainTrailFall = 0.75, rainLife = 3.0, rainOut = 0.6
-        public static let rainScale = 1.0, rainSwap = 1.5, rainFall = 150.0...300.0, rainTrail = 4...8
+        /// M2 Rain (pass 19b; G1 I1 T1 C2 K1 W1 of `docs/design-panel-lemna-rain.html`, matrix §6.2): glyphs at
+        /// `rainScale` of the line's size in a fixed grid of square cells, `rainPitch` of the glyph's cell height on a
+        /// side (14 pt glyphs on 18.5 pt at Menlo 28: 81 × 54 cells on 1512 × 982 pt), each cell holding one glyph of
+        /// `Glyphs.rainSet`. A head steps down its column a cell at a time and lights the cell it enters; the cell then
+        /// dims in place, linearly from the trail's top alpha to nothing over the head's trail (in cells, so the fade
+        /// takes the trail ÷ the column's speed). A column's speed is its own share of `rainSpeed`; it holds at most
+        /// two heads, starts the next at the top after a random pause (when its last head's trail is `rainGap` cells
+        /// down) so that about `rainActive` of the columns show one, and a head ends below the bottom. Every lit glyph
+        /// changes in place `rainChange` times a second. Each pair is (idle, typing): one intensity, 0 at rest, 1 at
+        /// `rainFast` keys a second (the keys of the last `rateWindow`), sets every magnitude between them, linearly;
+        /// it rises with τ `rainRise` and falls with τ `rainSettle` from `rainHold` after the last key (so the pauses
+        /// between words do not make it pulse; back near rest about 4 s after the last key). A trail is a head's from
+        /// its start; a column's speed follows the intensity, all its heads together, so they keep their distance. The
+        /// head in the text colour, the trail in the accent (C2). Each glyph key also starts a head in its column where
+        /// the key is (`screenSpan`, `rainRows`), the typed glyph at it at `rainKeyHead`, its trail from
+        /// `rainKeyTrailTop` over `rainKeyTrail` cells; Space and Return none. From the show to the close
+        /// (`Mode.ambient`), stepped `rainAhead` ahead at its birth so the summon finds it falling; at `rainIdleRate`
+        /// frames a second while the intensity is at most `rainCalm` and no key came in the last `rainHold`. A cell is
+        /// drawn above `rainShown`. Pass 16's drops (until pass 19b): the typed glyph in the accent at 0.8 over 4–8
+        /// trail glyphs in the text colour sliding with it, from 0.55 by 0.75, 3 s a drop, at the line's size; nothing
+        /// without keys.
+        public static let rainScale = 0.5, rainPitch = 1.0, rainActive = (idle: 0.3, typing: 0.7)
+        public static let rainSpeed = (idle: 5.0...10.0, typing: 15.0...30.0)
+        public static let rainTrail = (idle: 6.0...18.0, typing: 10.0...30.0), rainGap = (idle: 3.0, typing: 2.0)
+        public static let rainHead = (idle: 0.35, typing: 0.85), rainTrailTop = (idle: 0.2, typing: 0.5)
+        public static let rainChange = (idle: 0.3, typing: 1.5)
+        public static let rainKeyHead = 0.95, rainKeyTrailTop = 0.55, rainKeyTrail = 8.0...20.0
+        public static let rainFast = 6.0, rainRise = 0.25, rainSettle = 1.2, rainHold = 0.8
+        public static let rainAhead = 20.0, rainIdleRate = 30.0, rainCalm = 0.05, rainShown = 0.02
 
         /// M3 Rings: each key sends one circle of `ringWidth` out from the box's top edge where the key is, to the
         /// screen's farthest corner on the curve, its alpha from `ringPeak` to nothing over `ringLife`; ⌫ (at its key)
@@ -248,8 +275,9 @@ extension Ambience {
         public let ids: [CGGlyph]
         /// One cell in the atlas's pixels, and where a glyph's baseline-left sits in it, in points from its bottom-left.
         public let pixels: (w: Int, h: Int), origin: CGPoint
-        /// The slots of a to z, for rain's other glyphs.
-        public let letters: [Int]
+        /// The slots of a to z; and of Rain's glyphs (K1, pass 19b): the films' set as far as ASCII has it, digits
+        /// without 6, Z z : . " = * + - < > | _, not mirrored.
+        public let letters: [Int], rainSet: [Int]
         private let byCharacter: [Character: Int], byGlyph: [CGGlyph: Int]
 
         public init(font: CTFont) {
@@ -272,6 +300,7 @@ extension Ambience {
             origin = CGPoint(x: p - left, y: p - ink.minY)
             (self.ids, self.byCharacter, self.byGlyph) = (ids, byCharacter, byGlyph)
             letters = "abcdefghijklmnopqrstuvwxyz".compactMap { byCharacter[$0] }
+            rainSet = "012345789Zz:.\"=*+-<>|_".compactMap { byCharacter[$0] }
         }
 
         /// A cell in points.
@@ -312,6 +341,8 @@ extension Ambience {
         mutating func step(dt: Double, events: [Event], rate: Double, into out: inout [Sprite])
         /// The most sprites it draws now, which never passes `Tuning.cap`: a scene spawns nothing that would.
         var count: Int { get }
+        /// The frames a second it wants now: `Tuning.frameRate`, Rain at rest fewer.
+        var frameRate: Double { get }
     }
 
     /// The scene of `mode`.
@@ -352,11 +383,11 @@ extension Ambience {
         mutating func unit() -> Double { Double.random(in: 0..<1, using: &self) }
     }
 
-    /// One scene from the first key until it has died out: the keys turned into its events (what left the box's left
-    /// edge found from each key's push), the typing rate, and the alpha every sprite is drawn at, 1 until the last
-    /// second of `Tuning.linger` after the last key (fading evenly), or fading over a close (the box going, on the
-    /// curve, as the dim it goes with). Stepped by the scene's
-    /// thread once a frame; `frame` says when it is over, and the caller pauses.
+    /// One scene from the first key until it has died out (an ambient mode's from the show until the close): the keys
+    /// turned into its events (what left the box's left edge found from each key's push), the typing rate, and the
+    /// alpha every sprite is drawn at, 1 until the last second of `Tuning.linger` after the last key (fading evenly;
+    /// an ambient mode stays at 1), or fading over a close (the box going, on the curve, as the dim it goes with).
+    /// Stepped by the scene's thread once a frame; `frame` says when it is over, and the caller pauses.
     public struct Run {
         public let mode: Mode, stage: Stage
         let glyphs: Glyphs
@@ -374,6 +405,8 @@ extension Ambience {
         }
 
         public var count: Int { scene.count }
+        /// The frames a second the scene wants now.
+        public var frameRate: Double { scene.frameRate }
 
         /// The keys since the last frame, in order.
         public mutating func take(_ keys: [Key]) {
@@ -410,9 +443,10 @@ extension Ambience {
         }
 
         /// The alpha every sprite is drawn at, at `t`: the last second before `linger` after the last key fades
-        /// evenly, and a close fades over its time on the curve (evenly until pass 18); 0 when it is over.
+        /// evenly (not in an ambient mode), and a close fades over its time on the curve (evenly until pass 18); 0 when
+        /// it is over.
         public func alpha(at t: Double) -> Double {
-            var a = min(max((lastKey + Tuning.linger - t) / Tuning.fadeOut, 0), 1)
+            var a = mode.ambient ? 1 : min(max((lastKey + Tuning.linger - t) / Tuning.fadeOut, 0), 1)
             if let c = closing { a *= c.over > 0 ? 1 - Curve.easeOutQuint((t - c.at) / c.over) : 0 }
             return a
         }
@@ -449,11 +483,12 @@ extension Ambience {
     /// nothing else ever does: `-[CAMetalLayer nextDrawable]` raises on a layer a CAMetalDisplayLink drives ("should not
     /// be called when using CAMetalDisplayLink"), which pass 15 called to clear the layer at a scene's end and so died
     /// at Esc. The layer is hidden at a close (its opacity fades with the dim, on the main thread) and shown again only
-    /// after a cleared frame is on screen, so the last frame of a scene cut short never shows at the next summon.
-    /// Free of Metal: the tests drive whole sequences.
+    /// after a cleared frame is on screen, so the last frame of a scene cut short never shows at the next summon. An
+    /// ambient mode's scene (Rain) is made at the show's first frame, keys or none, and plays until the close; the
+    /// link's frame rate follows what the scene wants (`Step.rate`). Free of Metal: the tests drive whole sequences.
     public struct Lifecycle {
         public enum Phase: Equatable {
-            /// The link is paused; the app's start runs it again at a key.
+            /// The link is paused; the app's start runs it again at a key (or at an ambient mode's show).
             case idle
             /// Frames come: a scene plays, or is waited for.
             case playing
@@ -463,9 +498,10 @@ extension Ambience {
 
         /// What one frame does: the sprites drawn at `alpha` into the link's drawable, or (nil) that drawable cleared;
         /// `resize` the drawable's size from the next frame on, set once this frame is committed; `show` the turn
-        /// whose layer may be shown again (a cleared frame of it is already out); `pause` the link after this frame.
+        /// whose layer may be shown again (a cleared frame of it is already out); `pause` the link after this frame;
+        /// `rate` the link's frames a second from now on, when it changes.
         public struct Step: Equatable {
-            public var alpha: Double?, resize: CGSize?, show: Int?, pause = false
+            public var alpha: Double?, resize: CGSize?, show: Int?, pause = false, rate: Double?
         }
 
         /// The drawable while nothing plays: one pixel, so the screen-sized ones go.
@@ -474,11 +510,13 @@ extension Ambience {
         public private(set) var phase = Phase.idle
         public private(set) var run: Run?
         private var plan: Plan?, fresh = false, showNext = false, last: Double?
+        /// The link's frames a second as last asked (it starts at `Tuning.frameRate`).
+        private var rate = Tuning.frameRate
 
         public init() {}
 
-        /// The first key after a pause: frames again, the drawable at the screen's size (the caller sets it, then runs
-        /// the link).
+        /// The first key after a pause, or the show of an ambient mode: frames again, the drawable at the screen's size
+        /// (the caller sets it, then runs the link).
         public mutating func start(_ plan: Plan?) -> CGSize? {
             (phase, last) = (.playing, nil)
             return plan?.pixels
@@ -498,7 +536,7 @@ extension Ambience {
             let dt = last.map { min(max(t - $0, 0), 0.05) } ?? 1 / Tuning.frameRate
             last = t
             if p?.turn != plan?.turn { (plan, run) = (p, nil) }  // a new show, or another mode: a new scene
-            if run == nil, let plan, let mode = plan.mode, !keys.isEmpty, closing == nil {
+            if run == nil, let plan, let mode = plan.mode, !keys.isEmpty || mode.ambient, closing == nil {
                 run = Run(mode: mode, stage: plan.stage, glyphs: glyphs, seed: UInt64(max(t, 0) * 1000))
                 (fresh, showNext, phase) = (true, false, .playing)
                 step.resize = plan.pixels
@@ -509,6 +547,7 @@ extension Ambience {
                 (step.show, showNext) = (plan?.turn, false)
             }
             if let a = run?.frame(at: t, dt: dt, into: &out) {
+                if let r = run?.frameRate, r != rate { (step.rate, rate) = (r, r) }
                 guard fresh else {
                     step.alpha = a
                     return step

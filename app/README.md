@@ -17,7 +17,8 @@ Esc with a mode on fixed; then pass 16: the ambience plain to see and following 
 then pass 17a: the second between ⌘⏎ and the paste gone, and a timing log of the hand-off; then pass 17b: the
 hand-off's motion, the line's glyphs leaving the box from the key-down on (in place of the sheen); then pass 18: the
 motion revised, the glyph pop-in a fade, Border warms, Word sheen and the ambience's Beams, Fireworks and Swarm
-removed, one curve and one scale of durations.
+removed, one curve and one scale of durations; then pass 19b: Rain as the films' rain, a fixed grid lit by stepping
+heads, falling from the summon to the close and raised by typing.
 Swift +
 AppKit, SwiftPM with the Command Line Tools only (no Xcode), two package dependencies by path (`../lib/LemnaJournal`,
 `../lib/LemnaClicks`) and one Objective-C function of its own (`Sources/LemnaCatch`), signed with a self-signed certificate or ad-hoc (there is no Developer ID yet).
@@ -63,7 +64,8 @@ pass 15 `ambience-<mode>.png` for each of the modes, four since pass 18 (after 1
 drawn by the Metal pipeline over a dimmed dark app with the box; skipped without a Metal device), and since pass 16
 `ambience-grid-keyboard.png` ("the quick brown fox" at 20 keys/s, the keys lit as a keyboard), and since pass 17b
 `handoff-send-60ms.png`, `handoff-send-120ms.png`, `handoff-send-200ms.png` and `handoff-rise-120ms.png` (the box over
-a light app 60, 120 and 200 ms after ⌘⏎, and 120 ms after ⌘⇧⏎; composed as Core Animation composes the app's layers);
+a light app 60, 120 and 200 ms after ⌘⏎, and 120 ms after ⌘⇧⏎; composed as Core Animation composes the app's layers),
+and since pass 19b `ambience-rain-idle.png` (Rain at rest, 3 s after the summon; `ambience-rain.png` is Rain typing);
 the mark test writes
 `mark-M3-1x.png` and `mark-M3-2x.png` (16 and 32 px, black on clear). `app/build/` and `app/renders/` are
 git-ignored.
@@ -699,7 +701,40 @@ frontend-design skill to revise all the animation and remove them if they are no
   keychain question (codesign asking to use the key) for 24 minutes unanswered and was stopped, so `build/Lemna.app`
   is not signed with "Lemna Dev" until `make-app.sh` runs again with the question answered.
 
+Pass 19b, Rain as the films' rain (DESIGN.md A1 amended; 2026-10-30; the user: "I would really like it to be even
+more like the matrix rain animations. [...] I would like to have it ambient in the background (low key, but still
+covering more or less the whole screen) and then it should simply get more intense when writing."; G1 I1 T1 C2 K1 W1
+of `docs/design-panel-lemna-rain.html`):
+
+- `Rain` (`Scenes.swift`): a fixed grid of square cells (`rainPitch` × the glyph's cell height at `rainScale` 0.5:
+  18.5 pt at Menlo 28), the cells' glyph, lighting, trail and top alpha in flat arrays sized to the grid, the heads in
+  one array reserved at the show (two a column and as many from keys), so a step allocates nothing but `out`. Each
+  column keeps its share of `rainSpeed` and its travel; a head lights the cells it steps into, a cell's alpha falls
+  linearly with its column's travel over the head's trail; a column starts a head at the top at the rate that keeps
+  `rainActive` of the columns falling, at most two, `rainGap` behind the last one's trail; heads draw first (one a
+  cell, a key's before the others), so the cap would take trail cells. The intensity follows `rate / rainFast` up with
+  τ `rainRise`, down with τ `rainSettle` after `rainHold`; every magnitude is a pair (idle, typing) in
+  `Ambience.Tuning`, interpolated linearly. A glyph key starts a head where pass 16 put its drop, the typed glyph at it.
+  The scene steps `rainAhead` (20 s) at its birth, at rest and undrawn; `frameRate` is 30 at rest, 60 from a key.
+- `Ambience.Glyphs.rainSet`: the slots of `012345789Zz:."=*+-<>|_` (K1), beside `letters`.
+- `Mode.ambient` (Rain): `Run.alpha` ignores the linger, `Lifecycle.frame` makes the run at the show's first frame
+  with no key (still a cleared frame before the layer shows), `Step.rate` carries the frame rate the scene wants when
+  it changes; `Ambient.begin` wakes the scene thread for it as a key would, `pause` goes on while it is up, and the
+  frame sets `preferredFrameRateRange` on the running link.
+- Tests: 102 (94 before; the old rain test replaced by the grid, the step and the trail dimming in place, the glyph
+  changes, a key's head, the ramp, the sprite count on 2560 × 1440, an ambient run, and two lifecycle sequences: born
+  at the show, 30/60 Hz, the close; a new show after a close; the real-link test runs Rain too and sets its rate).
+- Build: `make-app.sh` built the release and assembled the bundle; the executable is 1,276,856 bytes before signing,
+  no `/Users/` path in it. The signing with "Lemna Dev" waited on macOS's keychain question and was stopped at 240 s,
+  so `build/Lemna.app` is not signed until `make-app.sh` runs again with the question answered.
+
 ## Known gaps
+
+- Pass 19b is not tried: nothing was launched. Untried: whether the idle rain reads as low-key or too faint (head
+  0.35, trail from 0.20 over the dim; matrix §6.2) and as "covering the whole screen" with about a quarter of the
+  columns showing a head; that the link really runs at 30 Hz at rest (set, not measured); the cost of the link running
+  while the box is up (`powermetrics`, HANDOFF); the rain appearing a frame or two into the dim's 300 ms fade-in at
+  its full alpha, not fading in with it.
 
 - Pass 18 is not tried: nothing was launched. Untried: whether the 80 ms glyph fade reads at speed or not at all
   (`Tuning.glyphFade`; 0.140 is the scale's next step); the hand-off at 260 ms; the glyph fade left on under Reduce

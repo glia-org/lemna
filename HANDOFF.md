@@ -4,6 +4,43 @@
 
 ## State (2026-10-29)
 
+- App, pass 19b (2026-10-30; DESIGN.md A1 amended; the user: "I want to revise the rain animation. I really like it
+  and it is the one I'm using the most at the moment. I would really like it to be even more like the matrix rain
+  animations. At the moment it only get's refreshed when I type and when the typing stops it's completely going away.
+  I would like to have it ambient in the background (low key, but still covering more or less the whole screen) and
+  then it should simply get more intense when writing."; the picks G1 I1 T1 C2 K1 W1 of
+  `docs/design-panel-lemna-rain.html`): Rain rewritten as the films' rain and made ambient. Glyphs of
+  `012345789Zz:."=*+-<>|_` fixed in a grid of 18.5 pt cells over every screen (14 pt, half the line's size), lit by
+  heads stepping down the columns a cell at a time, the head in the text colour, each cell it leaves dimming in place
+  in the accent, the lit glyphs changing in place. It falls low-key from the summon until the box closes (about 30 % of
+  the columns, 5–10 rows/s, trails 6–18 cells, head 0.35, trail from 0.20, at 30 Hz), stepped 20 s ahead so the summon
+  finds it falling; typing raises one intensity toward 6 keys/s (70 % of the columns, 15–30 rows/s, trails 10–30,
+  head 0.85, trail 0.50, glyphs changing 1.5/s, 60 Hz), rising with τ 0.25 s and settling with τ 1.2 s from 0.8 s
+  after the last key; each glyph key also starts a head at its key's place, the typed glyph at it at 0.95. Drift,
+  Rings and Grid are unchanged (from the first key, gone 4 s after the last). Code: `Rain` in `Scenes.swift`,
+  `Ambience.Tuning`'s rain rows, `Mode.ambient`, `Glyphs.rainSet`, the run and the lifecycle (born at the show, alpha 1
+  until the close, `Step.rate`), `Ambient.swift` (the show wakes the link, the frame rate set on it). Tests: the app's
+  102, all passing (94 before: the old rain test replaced by six on the grid, the step, the trail dimming in place, the
+  glyph changes, a key's head and the ramp, plus the sprite count on 2560 × 1440, an ambient run and two lifecycle
+  sequences; the tuning test and the real-link test, now also with Rain and its frame rate, changed). Sprites at rest /
+  typing at 6 keys/s: about 210 / 720 on 1512 × 982, 340 / 1,160 (at most 1,330) on 2560 × 1440, under the cap; the
+  step 12–34 µs. Renders: `app/renders/ambience-rain.png` (typing) and `ambience-rain-idle.png` (at rest, 3 s after the
+  summon). `make-app.sh` built the release and assembled the bundle (the executable 1,276,856 bytes before signing, no
+  `/Users/` path), but codesign waited on macOS's keychain question and was stopped at 240 s: `build/Lemna.app` is
+  unsigned (`codesign --verify` fails) until `make-app.sh` runs again with the question answered (Always Allow). The
+  Lemna running from that bundle was left running. Not tried: nothing was launched. Try, after quitting the running Lemna, `app/make-app.sh` (answer the
+  keychain question) and `open app/build/Lemna.app`, with Session › Ambience ▸ Rain:
+  - Summon: the rain is already falling, low-key, over the whole dim of every screen, from the first frame; no blank
+    dim filling slowly, no frame of the last session.
+  - Type: within half a second it brightens, falls faster and thickens; each letter starts a head where its key is
+    (left keys left, the number row higher), the typed letter pale at its head.
+  - Stop: it holds for 0.8 s, then settles over about 4 s to the low-key rain; it does not go away.
+  - Esc while typing and at rest, and ⌘⏎ into TextEdit: the rain fades with the dim; Lemna stays; summon again: the
+    rain is there at once.
+  - Drift, Rings, Grid: as in pass 18. Reduce Motion on: the modes grey, a plain dim.
+  - The cost at rest: `sudo powermetrics --samplers gpu_power,cpu_power -i 1000`, a minute with the box open and
+    Ambience Off, then a minute with Rain at rest, untouched; the difference is what the idle rain costs.
+
 - Research, panel, report: done (`docs/`, `reports/`, `research_notes/`).
 - Spike GPUI vs AppKit: done, results in `DESIGN.md`; the user chose T2 (Swift + AppKit).
 - App, milestone 1 (surface): built in `app/` from `spikes/appkit-line`, tests pass (`app/README.md`), not yet tried

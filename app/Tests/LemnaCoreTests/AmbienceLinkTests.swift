@@ -3,7 +3,9 @@
 // CAMetalDisplayLink drives ("-nextDrawable should not be called when using CAMetalDisplayLink."): the exception
 // crossed the link's callback and Lemna died at Esc, and 4 s after the last key, whenever a scene played. Here: that
 // refusal on a real layer and link, and the lifecycle that replaces it, driven through Esc, the close's fade, the
-// dim's, a hand-off, a close at once, a new show, the end 4 s after the last key and Off. No Foundation here.
+// dim's, a hand-off, a close at once, a new show, the end 4 s after the last key and Off; and since pass 19b an ambient
+// mode's (Rain's), born at the show without a key, playing until the close at the frame rate it asks for. No
+// Foundation here.
 import CoreGraphics
 import LemnaCatch
 import Metal
@@ -22,14 +24,16 @@ private func plan(_ mode: Ambience.Mode?, turn: Int) -> Ambience.Plan {
     Ambience.Plan(mode: mode, stage: stage, pixels: pixels, scale: 2, turn: turn)
 }
 
-/// One screen driven as the scene thread drives it: the app's start at the first key while the link is paused, a frame
-/// every 60th of a second while the window is on screen (until `frames`), with the keys that came since the last frame
-/// and the close from its time on, and the dim's end (`stop`). The steps with their times.
+/// One screen driven as the scene thread drives it: the app's start at the first key while the link is paused (an
+/// ambient mode's at the show, `t0`), a frame every 60th of a second while the window is on screen (until `frames`),
+/// with the keys that came since the last frame and the close from its time on, and the dim's end (`stop`). The steps
+/// with their times.
 private func drive(_ life: inout Life, _ p: Ambience.Plan, from t0: Double, to t1: Double, keys: [Double],
                    close: (at: Double, over: Double)? = nil, stop: Double? = nil,
                    frames: Double = .infinity) -> [(t: Double, step: Life.Step)] {
     var steps: [(t: Double, step: Life.Step)] = [], out: [Sprite] = [], pending = keys.sorted(), stopped = false
     var t = t0
+    if p.mode?.ambient == true, life.phase == .idle { _ = life.start(p) }  // the show wakes the scene thread
     while t < t1 {
         t += 1.0 / 60
         if let s = stop, t >= s, !stopped {
@@ -138,43 +142,54 @@ private func lawful(_ steps: [(t: Double, step: Life.Step)]) -> Bool {
 }
 
 @Test(.enabled(if: Ambience.Renderer.available)) func theEscSequenceRunsOnARealLayerAndLinkWithoutAnException() throws {
-    // The same Esc as above, every step done to a real layer and link: the size between frames, the pause, and each
-    // frame drawn by the renderer into a texture standing in for the link's drawable.
+    // The same Esc as above, every step done to a real layer and link: the size between frames, the frame rate (Rain,
+    // pass 19b: 30 Hz at rest, 60 from its first key, set while the link runs), the pause, and each frame drawn by the
+    // renderer into a texture standing in for the link's drawable.
     let renderer = try #require(Ambience.Renderer(font: menlo))
     let layer = CAMetalLayer()
     (layer.device, layer.pixelFormat) = (renderer.device, .bgra8Unorm)
     let link = CAMetalDisplayLink(metalLayer: layer)
     link.isPaused = true
-    var life = Life(), out: [Sprite] = []
-    let p = plan(.rings, turn: 1)
     let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: 64, height: 64, mipmapped: false)
     d.usage = [.renderTarget]
     d.storageMode = .private
     let drawable = try #require(renderer.device.makeTexture(descriptor: d)), instances = renderer.makeInstances()
     var message = [CChar](repeating: 0, count: 256)
-    let threw = LemnaCatch({
-        if let size = life.start(p) { layer.drawableSize = size }
-        link.isPaused = false
-        var t = 0.0
-        while life.phase != .idle, t < 3 {
-            t += 1.0 / 60
-            let keys = t < 0.5 ? [Ambience.Key(t: t, kind: .space)] : []
-            let step = life.frame(at: t, plan: p, keys: keys, closing: t >= 0.6 ? (0.6, 0.2) : nil, glyphs: renderer.glyphs,
-                                  into: &out)
-            let commands = renderer.queue.makeCommandBuffer()!
-            out.withUnsafeBytes { raw in
-                if let base = raw.baseAddress, let instances { instances.contents().copyMemory(from: base, byteCount: raw.count) }
+    for mode in [Ambience.Mode.rings, .rain] {
+        var life = Life(), out: [Sprite] = [], rates: [Double] = []
+        let p = plan(mode, turn: 1), typing = mode == .rain ? 0.1 : 0  // Rain plays before its first key
+        let threw = LemnaCatch({
+            if let size = life.start(p) { layer.drawableSize = size }
+            link.isPaused = false
+            var t = 0.0
+            while life.phase != .idle, t < 3 {
+                t += 1.0 / 60
+                let keys = t < 0.5 && t > typing ? [Ambience.Key(t: t, kind: .space)] : []
+                let step = life.frame(at: t, plan: p, keys: keys, closing: t >= 0.6 ? (0.6, 0.2) : nil,
+                                      glyphs: renderer.glyphs, into: &out)
+                let commands = renderer.queue.makeCommandBuffer()!
+                out.withUnsafeBytes { raw in
+                    if let base = raw.baseAddress, let instances {
+                        instances.contents().copyMemory(from: base, byteCount: raw.count)
+                    }
+                }
+                renderer.encode(commands, instances: instances, count: step.alpha == nil ? 0 : out.count, into: drawable,
+                                viewport: screen, scale: 2, alpha: step.alpha ?? 0)
+                commands.commit()
+                if let size = step.resize { layer.drawableSize = size }  // after the frame is committed
+                if let hz = step.rate {
+                    link.preferredFrameRateRange = CAFrameRateRange(minimum: Float(hz), maximum: Float(hz),
+                                                                    preferred: Float(hz))
+                    rates.append(hz)
+                }
+                if step.pause { link.isPaused = true }
             }
-            renderer.encode(commands, instances: instances, count: step.alpha == nil ? 0 : out.count, into: drawable,
-                            viewport: screen, scale: 2, alpha: step.alpha ?? 0)
-            commands.commit()
-            if let size = step.resize { layer.drawableSize = size }  // after the frame is committed
-            if step.pause { link.isPaused = true }
-        }
-        if life.phase == .idle { life.stop() }  // the dim's end after the scene paused: nothing to do
-    }, &message, 256)
-    #expect(threw == 0, "\(String(cString: message))")
-    #expect(life.phase == .idle && layer.drawableSize == Life.parked && link.isPaused)
+            if life.phase == .idle { life.stop() }  // the dim's end after the scene paused: nothing to do
+        }, &message, 256)
+        #expect(threw == 0, "\(mode) \(String(cString: message))")
+        #expect(life.phase == .idle && layer.drawableSize == Life.parked && link.isPaused, "\(mode)")
+        #expect(rates == (mode == .rain ? [30, 60] : []), "\(mode)")  // Rain at rest, then from its first key
+    }
     link.invalidate()
 }
 
@@ -209,4 +224,46 @@ private func lawful(_ steps: [(t: Double, step: Life.Step)]) -> Bool {
             #expect(again[first].step.alpha == nil && again[first + 1].step.show == 2, "\(mode!) again")
         }
     }
+}
+
+@Test func rainIsBornAtTheShowAndPlaysUntilTheClose() {
+    // Pass 19b (I1): no key needed; a cleared frame first, then the layer shown and the rain drawn at alpha 1 for as
+    // long as the box is up (10 s of silence and more), the link never paused; 30 Hz at rest, 60 from a key, 30 again
+    // once it has settled; Esc fades it with the dim, parks and pauses before the dim is gone.
+    var life = Life()
+    let steps = drive(&life, plan(.rain, turn: 1), from: 0, to: 16, keys: [10, 10.2, 10.4],
+                      close: (15, 0.2 - Ambience.Tuning.closeAhead), stop: 15.2, frames: 15.2)
+    #expect(lawful(steps) && life.phase == .idle && life.run == nil)
+    #expect(steps[0].step.alpha == nil && steps[0].step.resize == pixels && steps[0].step.rate == 30)
+    #expect(steps[1].step.show == 1 && steps[1].step.alpha == 1)
+    #expect(steps.filter { $0.t > 0.05 && $0.t < 15 }.allSatisfy { $0.step.alpha == 1 && !$0.step.pause })
+    let rates = steps.compactMap { s in s.step.rate.map { (s.t, $0) } }
+    #expect(rates.count == 3 && rates[1].1 == 60 && abs(rates[1].0 - 10) < 0.02 && rates[2].1 == 30)
+    // Settled (I under 0.05) about 4 s after the last key: three keys in 2 s hold it near 0.2 until they leave the
+    // rate's window.
+    #expect(rates[2].0 > 12 && rates[2].0 < 15, "\(rates[2].0)")
+    let fading = steps.filter { $0.t > 15.01 && $0.step.alpha != nil }.map { $0.step.alpha! }
+    #expect(!fading.isEmpty && zip(fading, fading.dropFirst()).allSatisfy { $0 > $1 })  // the close's fade
+    let parked = steps.firstIndex { $0.step.resize == Life.parked }!
+    #expect(steps[parked].t <= 15.2 && steps[parked + 1].step.pause && steps.count == parked + 2)
+}
+
+@Test func aNewShowAfterACloseStartsTheRainAgainWithACleanFrame() {
+    // Esc at once (Pop off) at 2 s and a hand-off's close at 5 s, each window gone before the scene could clear itself;
+    // each next show starts the rain without a key, with a cleared frame before the layer shows; Off after it clears,
+    // parks and pauses.
+    var life = Life()
+    let first = drive(&life, plan(.rain, turn: 1), from: 0, to: 2.1, keys: [], close: (2, 0), stop: 2, frames: 2)
+    #expect(lawful(first) && first.contains { $0.step.alpha == 1 })
+    let again = drive(&life, plan(.rain, turn: 2), from: 3, to: 5.4, keys: [], close: (5, 0.35), stop: 5.35,
+                      frames: 5.35)
+    #expect(lawful(again) && again[0].step.alpha == nil && again[0].step.resize == pixels)
+    #expect(again[1].step.show == 2 && again[1].step.alpha == 1)
+    #expect(again.contains { $0.t > 4.9 && $0.t < 5 && $0.step.alpha == 1 })
+    let third = drive(&life, plan(.rain, turn: 3), from: 6, to: 7, keys: [6.5])
+    #expect(lawful(third) && third[0].step.alpha == nil && third[0].step.resize == pixels && third[1].step.show == 3)
+    #expect(life.phase == .playing && third.last!.step.alpha == 1)
+    let off = drive(&life, plan(nil, turn: 4), from: 7, to: 7.5, keys: [7.2])
+    #expect(off[0].step.alpha == nil && off[0].step.resize == Life.parked && off[1].step.pause && off.count == 2)
+    #expect(life.phase == .idle && life.run == nil)
 }

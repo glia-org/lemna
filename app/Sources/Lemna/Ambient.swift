@@ -1,7 +1,8 @@
 // The ambience on the dim (DESIGN.md A1, R1): over each screen's shade, a clear CAMetalLayer that its own
 // CAMetalDisplayLink draws at 60 Hz on the scene thread, from the first key until the scene has died out (4 s after the
 // last key, the last second fading, or with the dim as the box goes); then the link pauses and the layer holds one
-// cleared pixel, so idle costs nothing. The line's key path only hands it the key as a value (`key(_:)`: a lock and an
+// cleared pixel, so idle costs nothing. Rain (pass 19b, an ambient mode) runs it from the show until the close instead,
+// at 30 Hz while it is at rest. The line's key path only hands it the key as a value (`key(_:)`: a lock and an
 // append, after the key's frame); the scene is stepped and drawn off the main thread (`Ambience.Run`,
 // `Ambience.Lifecycle` and `Ambience.Renderer` in LemnaCore). The line's own display link and its band are untouched.
 // Every frame is drawn into the drawable the link hands its callback and into no other: `-[CAMetalLayer nextDrawable]`
@@ -107,8 +108,9 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
     // MARK: From the main thread
 
     /// At each show: the mode on this screen (nil: none) on `stage`, at the screen's `scale`. A scene still playing
-    /// gives way to a new one, which starts at the next key with a cleared frame; with a mode, the renderer is made
-    /// now on the scene thread, so the first key finds the shader compiled.
+    /// gives way to a new one, which starts at the next key with a cleared frame (an ambient mode's at once: the show
+    /// wakes the scene thread as a key would); with a mode, the renderer is made now on the scene thread, so the first
+    /// key finds the shader compiled.
     func begin(_ mode: Ambience.Mode?, on stage: Ambience.Stage, scale: CGFloat) {
         let frame = CGRect(origin: .zero, size: stage.size)
         if layer.frame != frame || layer.contentsScale != scale {  // a screen changed: else nothing to commit
@@ -118,13 +120,20 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
             CATransaction.commit()
         }
         let pixels = CGSize(width: (stage.size.width * scale).rounded(), height: (stage.size.height * scale).rounded())
-        open = mail.withLockUnchecked { m -> Int in
+        let wake: Bool
+        (open, wake) = mail.withLockUnchecked { m -> (Int, Bool) in
             let turn = (m.plan?.turn ?? 0) + 1
             m.plan = Ambience.Plan(mode: mode, stage: stage, pixels: pixels, scale: scale, turn: turn)
             m.closing = nil
-            return turn
+            guard mode?.ambient == true, !m.dead, !m.running else { return (turn, false) }
+            m.running = true
+            return (turn, true)
         }
-        if mode != nil { SceneThread.shared.perform { [self] in _ = prepare() } }
+        if wake {
+            SceneThread.shared.perform { [self] in start() }
+        } else if mode != nil {
+            SceneThread.shared.perform { [self] in _ = prepare() }
+        }
     }
 
     /// A key the line took, after its frame: a lock and an append. The first after a pause wakes the scene thread.
@@ -176,7 +185,7 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
         return Self.renderer
     }
 
-    /// The first key after a pause: the drawable back at the screen's size, the link running.
+    /// The first key after a pause, or an ambient mode's show: the drawable back at the screen's size, the link running.
     private func start() {
         guard prepare() != nil, let link, !mail.withLockUnchecked({ $0.dead }) else { return shutDown(nil) }
         if instances.isEmpty, let renderer = Self.renderer { instances = (0..<3).compactMap { _ in renderer.makeInstances() } }
@@ -194,7 +203,7 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
     }
 
     /// The mail taken, the lifecycle's step drawn into the link's own drawable and committed, then the drawable's
-    /// size changed, the layer shown or the link paused, as the step says.
+    /// size changed, the layer shown, the link's frame rate changed or the link paused, as the step says.
     private func frame(_ link: CAMetalDisplayLink, _ update: CAMetalDisplayLink.Update) {
         guard let renderer = Self.renderer else { return link.isPaused = true }
         let (plan, closing) = mail.withLockUnchecked { m -> (Ambience.Plan?, (at: Double, over: Double)?) in
@@ -207,13 +216,19 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
         draw(step.alpha == nil ? 0 : sprites.count, alpha: step.alpha ?? 0, plan: plan, into: update.drawable)
         if let size = step.resize { layer.drawableSize = size }  // after the frame is committed
         if let turn = step.show { show(turn) }
+        if let hz = step.rate {
+            link.preferredFrameRateRange = CAFrameRateRange(minimum: Float(hz), maximum: Float(hz), preferred: Float(hz))
+        }
         if step.pause { pause(link) }
     }
 
-    /// The lifecycle pauses: unless keys came since this frame took them, and then it goes on.
+    /// The lifecycle pauses: unless keys came since this frame took them, or an ambient mode's show (which found the
+    /// link running and so did not wake it), and then it goes on.
     private func pause(_ link: CAMetalDisplayLink) {
         let plan = mail.withLockUnchecked { m -> Ambience.Plan?? in
-            if !m.keys.isEmpty, m.plan?.mode != nil, m.closing == nil, !m.dead { return .some(m.plan) }
+            if !m.keys.isEmpty || m.plan?.mode?.ambient == true, m.plan?.mode != nil, m.closing == nil, !m.dead {
+                return .some(m.plan)
+            }
             m.running = false
             return nil
         }
