@@ -21,13 +21,20 @@ cp build/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 for pack in DefaultPack TypewriterPack SoftPack ElectricPack; do
   cp -R "../lib/LemnaClicks/Sources/LemnaClicks/$pack" "$app/Contents/Resources/$pack"
 done
-cat > "$app/Contents/Info.plist" <<'PLIST'
+# The version: LEMNA_VERSION, else 0.0.0; the build number is the commit count.
+version="${LEMNA_VERSION:-0.0.0}"
+build="$(git rev-list --count HEAD 2>/dev/null || echo 0)"
+cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>CFBundleIdentifier</key>
 	<string>dev.lemna.app</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$version</string>
+	<key>CFBundleVersion</key>
+	<string>$build</string>
 	<key>CFBundleName</key>
 	<string>Lemna</string>
 	<key>CFBundleExecutable</key>

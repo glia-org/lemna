@@ -7,9 +7,11 @@ an encrypted journal on your Mac until the text has gone out. Nothing leaves you
 
 The page: https://glia-org.github.io/lemna/
 
-## Build
+## Get it
 
-macOS 14 or later, Xcode Command Line Tools. There is no release yet.
+macOS 14 or later. Download `Lemna-<version>.zip` from the [releases](https://github.com/glia-org/lemna/releases),
+unzip, and move Lemna.app to Applications. The build is self-signed, not notarized: the first time, right-click
+Lemna.app › Open, and confirm. Or build it yourself with the Xcode Command Line Tools:
 
 ```
 app/make-cert.sh   # once: a self-signed "Lemna Dev" code-signing certificate in your login keychain
