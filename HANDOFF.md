@@ -2,7 +2,7 @@
 
 `DESIGN.md` holds the decisions and the plan. This file says what is done and what is next.
 
-## State (2026-10-29)
+## State (2026-10-30)
 
 - App, pass 19b (2026-10-30; DESIGN.md A1 amended; the user: "I want to revise the rain animation. I really like it
   and it is the one I'm using the most at the moment. I would really like it to be even more like the matrix rain
