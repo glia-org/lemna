@@ -1,6 +1,6 @@
 # A name for the flow writer (working name "Flow"), as of 2026-10-28
 
-Scope: a name for the small floating box summoned by a hotkey (one line, caret fixed, text glides left, one click per key, ⌘⏎ pastes into the app behind). Wanted: short (1–2 syllables, ≤ 8 letters), about flow, calm or unbroken attention, preferably a biology word used plain, like its siblings the terminal app (Greek "glue", the class of non-neuronal brain cells) and the brief app (a glial cell type: specialised ependymal glia lining the third ventricle, with one long process and no beating cilia; [Wikipedia: the brief app](https://en.wikipedia.org/wiki/the brief app)).
+Scope: a name for the small floating box summoned by a hotkey (one line, caret fixed, text glides left, one click per key, ⌘⏎ pastes into the app behind). Wanted: short (1–2 syllables, ≤ 8 letters), about flow, calm or unbroken attention, preferably a biology word used plain, like its siblings, the maintainer's other apps (Greek, cell-scale, both names of glial cells).
 
 Method (all on 2026-10-28):
 - **Domains:** registry RDAP, not WHOIS: Google Registry (`pubapi.registry.google/rdap`) for .app and .dev, Verisign (`rdap.verisign.com`) for .com, PIR for .org. 200 = registered, 404 = not registered that day. "Registered" says nothing about use; "free" says nothing about premium pricing. For some registered .app names the site was fetched to see who holds it.
@@ -12,10 +12,10 @@ Method (all on 2026-10-28):
 ## Takeaway
 
 - Every plain single word in this field is held somewhere; the question is only *where*. Words already used in the writing/focus/reading space are out (§3): Flow, Stream, Focus, Zen, Calm, Still, Drift, Hush, Glide, Saccade, Fovea.
-- **Recommended: 1 Hypha, 2 Ductus, 3 Raphe.** Hypha is the closest picture of the surface (a hypha grows only at its tip; everything behind it stays where it was laid) and the closest sibling in sound and kind to the terminal app (Greek, cell-scale, two syllables ending in -a); its conflicts are outside writing. Ductus is the word for the flow of handwriting (German *Duktus* is a living word for exactly that), with the cleanest conflict record of the strong candidates. Raphe joins gliding (diatoms glide on their raphe) and calm (the raphe nuclei make the brain's serotonin), and is the only strong candidate whose .app is free; its pronunciation is split.
+- **Recommended: 1 Hypha, 2 Ductus, 3 Raphe.** Hypha is the closest picture of the surface (a hypha grows only at its tip; everything behind it stays where it was laid) and the closest sibling in sound and kind to the maintainer's other apps (Greek, cell-scale; two syllables ending in -a, like one of them); its conflicts are outside writing. Ductus is the word for the flow of handwriting (German *Duktus* is a living word for exactly that), with the cleanest conflict record of the strong candidates. Raphe joins gliding (diatoms glide on their raphe) and calm (the raphe nuclei make the brain's serotonin), and is the only strong candidate whose .app is free; its pronunciation is split.
 - **Lotic** (of flowing water) is the best-sounding calm word, but LOTIC.AI LLC filed LOTIC in the US for downloadable app software (2022, status unverified). If that filing is dead, Lotic is a fair swap for Raphe.
 - **Fovea** fits best of all (the eye's fixed spot) and is not usable: two Mac apps and an iOS speed-reading app built on the same fixed-gaze idea already carry it.
-- **Schwann** is the only candidate that is literally another glial cell (the terminal app · the brief app · Schwann) and in German reads as "swan" (gliding); in German-speaking markets it reads as the pen maker Schwan-STABILO.
+- **Schwann** is the only candidate that is literally another glial cell (a third glial-cell name beside the other two apps') and in German reads as "swan" (gliding); in German-speaking markets it reads as the pen maker Schwan-STABILO.
 - Mindfulness words (sati, mushin, zazen, shoshin, dhyana, shunya, samu, ma) are all taken by meditation apps, and using them for a product falls under the published critique of commodified Buddhist practice; *sati* also names widow-burning in Hindi. Not recommended.
 
 ## 1. Long list (78 candidates)
@@ -190,7 +190,7 @@ Format per entry: **Fit** · **Say** (EN / DE) · **App Store** · **Software an
 - **Verdict:** shortlist. The best match for the mechanical click; not calm, three syllables, a consumer reading app with the exact name launches next month, and Kinesis is one letter away in keyboards.
 
 ### Schwann (1 syllable, 7 letters)
-- **Fit:** Schwann cells are the peripheral nervous system's glia; they wrap axons in myelin so the signal runs fast and unbroken. the terminal app · the brief app · Schwann would be three glial names. German *Schwan* = swan: gliding on still water.
+- **Fit:** Schwann cells are the peripheral nervous system's glia; they wrap axons in myelin so the signal runs fast and unbroken. Beside the maintainer's other apps it would be a third glial name. German *Schwan* = swan: gliding on still water.
 - **Say:** DE "shvan" (same as *Schwan*); EN "shwahn", and often misspelt (Schwan, Swann).
 - **App Store:** none.
 - **Products:** Schwan-STABILO, German writing-instrument maker; its swan logo (1875) is the oldest figurative mark registered at the German patent office ([Schwan-STABILO, 170 years](https://www.schwan-stabilo.com/en/170-years-schwan-stabilo)); Schwan's (US frozen food). Eponym of Theodor Schwann.
@@ -307,7 +307,7 @@ Pattern: calm English words and "-Writer" names are saturated; scientific words 
 
 | # | Name | One-line case | Icon motif |
 |---|---|---|---|
-| 1 | **Hypha** | grows only at its tip, everything behind stays: the surface itself; the terminal app's sibling in kind and sound | one filament running left, ending in a bright dot at the caret (the Spitzenkörper) |
+| 1 | **Hypha** | grows only at its tip, everything behind stays: the surface itself; a sibling of the maintainer's other apps in kind and sound | one filament running left, ending in a bright dot at the caret (the Spitzenkörper) |
 | 2 | **Ductus** | the word for the flow of a hand's strokes (German *Duktus*), and a duct that carries flow one way | one broad-nib stroke tapering off to the left into a fixed upright caret |
 | 3 | **Raphe** | the seam a diatom glides on, and the source of the brain's calm (serotonin); .app free | a pennate diatom: long ellipse with its central slit as the text line, the central nodule as the caret |
 | 4 | **Lotic** | water that keeps moving; calmest sound; blocked unless the LOTIC software filing is dead | three streamlines parting around one fixed stone (the caret) |
@@ -319,7 +319,7 @@ Not shortlisted although strong in meaning: Fovea and Calamus (held by Mac apps)
 
 ## 5. Recommended top 3
 
-1. **Hypha.** Most exact picture of how the line behaves; same family as the terminal app and the brief app (Greek, cell-scale; the terminal app/Hypha both two syllables ending in -a); soft sound; "web/weave" ties to "text"; no conflict in writing, focus or reading. Costs: no plain domain (hypha.app, .com, .dev taken; hyphawriter.app free); German readers may say "HÜ-fa"; mushroom and crypto namesakes on iOS.
+1. **Hypha.** Most exact picture of how the line behaves; same family as the maintainer's other apps (Greek, cell-scale; two syllables ending in -a, like one of them); soft sound; "web/weave" ties to "text"; no conflict in writing, focus or reading. Costs: no plain domain (hypha.app, .com, .dev taken; hyphawriter.app free); German readers may say "HÜ-fa"; mushroom and crypto namesakes on iOS.
 2. **Ductus.** Its ordinary meaning is the flow of writing, and German speakers know it as such; anatomical duct for the biology; no app, no software mark found; GitHub quiet. Costs: plosive, un-calm sound; HVAC and "duck" overtones; ductus.app/.com taken (ductusapp.com, ductuswriter.app free).
 3. **Raphe.** Gliding plus calm, both biological, plus "seam"; raphe.app free; no apps. Costs: "RAY-fee" or "RAF-ee" is unsettled, so people will say it differently; anatomy-of-the-groin overtone in medical readers.
 
@@ -329,7 +329,7 @@ Before committing to any: a TSDR and EUIPO/DPMA search in class 9 (and 42) for t
 
 - **Menu-bar item:** a glyph only, no text (an accessory app, no Dock icon). It is a template image (monochrome, adapts to light/dark menu bars). The current glyph, a short line with a caret bar, works for any name; a name-specific motif must stay legible at menu-bar size: Hypha's line-and-tip-dot is nearly the current glyph; Ductus's tapered stroke also; Raphe's ellipse with a slit is the most distinct at small size.
 - **Where the word is read:** the menu's items ("Show <Name>  ⌃⌥Space", "Open Window", "Discard…"); the Accessibility prompt and the list in System Settings › Privacy & Security › Accessibility (name + icon; the name must be recognisable there, since paste needs it); Login Items; the window title in window mode; Activity Monitor. A hotkey app is seldom seen by name, so recognisability in those lists matters more than a long story behind the word.
-- **Bundle identifier:** the siblings use `dev.example-a.app` and `dev.example-b.app`; the placeholder here is `org.flow.app` (`app/make-app.sh`) and the keychain service `org.flow.app.session` (`lib/FlowJournal/Sources/FlowJournal/KeyStore.swift`). Following the family: `dev.<name>.app` (e.g. `dev.hypha.app`, `dev.ductus.app`, `dev.raphe.app`). Apple asks for a unique reverse-DNS string; whether Developer ID signing or notarisation checks domain ownership was not verified here (I know of no such check).
+- **Bundle identifier:** the siblings use reverse-DNS ids of the form `dev.<name>.app`; the placeholder here is `org.flow.app` (`app/make-app.sh`) and the keychain service `org.flow.app.session` (`lib/FlowJournal/Sources/FlowJournal/KeyStore.swift`). Following the family: `dev.<name>.app` (e.g. `dev.hypha.app`, `dev.ductus.app`, `dev.raphe.app`). Apple asks for a unique reverse-DNS string; whether Developer ID signing or notarisation checks domain ownership was not verified here (I know of no such check).
 - **Cost of renaming:** a new bundle id voids the Accessibility grant (the README already notes `tccutil reset Accessibility org.flow.app`), orphans the keychain service and the journal folder (`~/Library/Application Support/Flow/…`), and changes what the self-signed dev certificate is called if it is renamed too. Rename once, after finishing or discarding open sessions, before any build goes to others. 28 Swift/shell files mention "Flow"; module names (`FlowJournal`, `FlowClicks`) are internal and need not change.
 
 ## Gaps

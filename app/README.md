@@ -415,7 +415,7 @@ Pass 13, the name (DESIGN.md N, 2026-10-28):
 Pass 14, the effects (DESIGN.md F1, amending F0, W2, S1's curve and G1 H1, 2026-10-28; pass 14b, below, changed
 the colours back and raised the magnitudes):
 
-- Colours (T1, `Style`): Tokyo Night's roles as the terminal app and the brief app use them, in the box and the window: background
+- Colours (T1, `Style`): Tokyo Night's roles as the maintainer's other apps use them, in the box and the window: background
   #1a1b26, text #c0caf5 (10.6:1), muted #7f88b2 (4.9:1; under Increase Contrast #a9b1d6, 8.1:1), caret #7aa2f7
   (`Style.accent`, 6.8:1), line #3b4261 (`Style.line`). The bottom edge's text takes the muted grey as before.
 - The box (`Box.swift`): opaque always (Q1; no Reduce Transparency case, nothing read for it). The panel's content is

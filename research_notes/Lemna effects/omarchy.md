@@ -172,7 +172,7 @@ Palettes as applied (quattro `themes/<name>/colors.toml`, identical in v4.0.6). 
 
 Every bordered box was then cyan `#33ccff` on `#1a1b26`, which the eye reads as a single "neon" accent. Since v3.3 the same boxes take `#7aa2f7`, the foreground or the accent.
 
-the terminal app already uses Tokyo Night `#1a1b26` / `#c0caf5` / `#7aa2f7` (see `siblings.md`). Lemna's box is `#0e1013` with text `#d8dce3` (`app/Sources/LemnaCore/Line.swift:22`), darker than any Omarchy dark theme except Vantablack (`#000000`) and Hackerman (`#0B0C16`).
+The maintainer's other apps already use Tokyo Night `#1a1b26` / `#c0caf5` / `#7aa2f7` (see `siblings.md`). Lemna's box is `#0e1013` with text `#d8dce3` (`app/Sources/LemnaCore/Line.swift:22`), darker than any Omarchy dark theme except Vantablack (`#000000`) and Hackerman (`#0B0C16`).
 
 ## 5. Effects tied to text and keys (asked for most)
 

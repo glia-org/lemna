@@ -7,7 +7,7 @@ description = "Spike: the sliding line in GPUI (see ../SPEC.md)"
 license = "Apache-2.0"
 
 [dependencies]
-# GPUI as the the terminal app app resolves it through gpui-kit 0.7.1. gpui-pre has no platform of its own:
+# GPUI as the maintainer's GPUI app resolves it through gpui-kit 0.7.1. gpui-pre has no platform of its own:
 # gpui-pre-platform supplies `application()` (MacPlatform). font-kit: the macOS text system;
 # runtime_shaders: Metal shaders compiled at launch, since the Command Line Tools have no `metal` compiler.
 gpui = { package = "gpui-pre", version = "=0.3.8" }

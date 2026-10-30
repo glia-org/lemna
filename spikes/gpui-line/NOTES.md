@@ -1,7 +1,7 @@
 # gpui-line: notes
 
-The GPUI half of the sliding-line spike (`../SPEC.md`). Rust 1.99, `gpui-pre =0.3.8` (the GPUI the the terminal app app
-resolves through gpui-kit 0.7.1), one binary crate with its own `target/`.
+The GPUI half of the sliding-line spike (`../SPEC.md`). Rust 1.99, `gpui-pre =0.3.8` (the GPUI the maintainer's
+GPUI app resolves through gpui-kit 0.7.1), one binary crate with its own `target/`.
 
 ## Run
 
@@ -35,15 +35,15 @@ The bench binary's summary reads three numbers it cannot know from the environme
 | linked system libraries | 19 (AppKit, Metal, QuartzCore, CoreText, CoreVideo, OpenGL, Carbon, CoreLocation, UserNotifications, …) |
 | source | 849 lines in 4 files, ≈ 570 without tests, comments and blank lines (SPEC: ~400; the excess is the IME input handler, the presented-time hook and the bench poster, none of which GPUI provides) |
 
-`Cargo.lock` was seeded from the the terminal app checkout's, so the build resolves the same versions offline (no Little
-Snitch prompt, no download).
+`Cargo.lock` was seeded from the one in the maintainer's GPUI app's checkout, so the build resolves the same versions
+offline (no Little Snitch prompt, no download).
 
 ## Where GPUI 0.3.8 forced a deviation, and what I did instead
 
 1. **`gpui-pre` alone has no platform.** `gpui::Application` must be given a `Platform` (`Application::with_platform`); `gpui-pre-platform`
    (`gpui_platform::application()`, which builds `MacPlatform`) is a second dependency, with `font-kit` (the macOS
    text system is behind it) and `runtime_shaders` (the default build compiles the Metal shaders with `xcrun metal`,
-   which the Command Line Tools lack; the terminal app enables the same through gpui-kit).
+   which the Command Line Tools lack; the maintainer's GPUI app enables the same through gpui-kit).
 2. **Key events carry no timestamp** (`KeyDownEvent { keystroke, is_held, prefer_character_input }`). The handler
    reads `NSApp.currentEvent.timestamp`: while AppKit dispatches the key-down (GPUI's `keyDown:` →
    `NSTextInputContext` → `insertText:` → our `EntityInputHandler`), the current event is that key-down, so `key_ts`
