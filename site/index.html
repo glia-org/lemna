@@ -64,41 +64,45 @@
 
   <section class="amb" aria-labelledby="amb-h">
     <h2 id="amb-h">Ambience</h2>
+    <template id="tile-stage">
+      <div class="stage quiet">
+        <div class="win">
+          <div class="bar"><i></i><i></i><i></i></div>
+          <div class="doc">
+            <b class="t" style="width:34%"></b>
+            <b style="width:94%"></b><b style="width:88%"></b><b style="width:97%"></b><b style="width:52%"></b>
+            <span class="gap"></span>
+            <b style="width:90%"></b><b style="width:64%"></b>
+            <p class="cur"><i class="ic"></i></p>
+          </div>
+        </div>
+        <div class="dim up"><canvas width="1100" height="620"></canvas></div>
+        <div class="box up">
+          <div class="ll-b"><span>Move the review to Thursday at ten and send the draft</span></div>
+          <i class="ll-c"></i>
+          <div class="ll-a"><span></span></div>
+        </div>
+      </div>
+    </template>
     <div class="tiles">
       <figure>
-        <img src="assets/img/ambience-drift.png" width="540" height="304" alt="Drift: letters that left the box's left edge drifting away in a loose, rising curve, fading as they go.">
+        <noscript><img src="assets/img/ambience-drift.png" width="540" height="304" alt="Drift: letters that left the box's left edge drifting away in a loose, rising curve, fading as they go."></noscript>
+        <div class="fit js tile" data-mode="drift" role="img" aria-label="Drift: letters that leave the box's left edge float away over the dim and fade."></div>
         <figcaption>Drift</figcaption>
       </figure>
       <figure>
-        <img class="still" src="assets/img/ambience-rain.png" width="540" height="304" alt="Rain: columns of glyphs falling on the dim around the box, each with a pale head and a blue trail that dims cell by cell.">
-        <div class="fit js" id="fit2">
-          <div class="stage quiet" aria-hidden="true">
-            <div class="win">
-              <div class="bar"><i></i><i></i><i></i></div>
-              <div class="doc">
-                <b class="t" style="width:34%"></b>
-                <b style="width:94%"></b><b style="width:88%"></b><b style="width:97%"></b><b style="width:52%"></b>
-                <span class="gap"></span>
-                <b style="width:90%"></b><b style="width:64%"></b>
-                <p class="cur"><i class="ic"></i></p>
-              </div>
-            </div>
-            <div class="dim up"><canvas id="rain" width="1100" height="620"></canvas></div>
-            <div class="box up">
-              <div class="ll-b"><span>Move the review to Thursday at ten and send the draft</span></div>
-              <i class="ll-c"></i>
-              <div class="ll-a"><span></span></div>
-            </div>
-          </div>
-        </div>
+        <noscript><img src="assets/img/ambience-rain.png" width="540" height="304" alt="Rain: columns of glyphs falling on the dim around the box, each with a pale head and a blue trail that dims cell by cell."></noscript>
+        <div class="fit js tile" data-mode="rain" role="img" aria-label="Rain: glyphs fixed in a grid on the dim, lit by heads stepping down the columns, faint at rest and denser while keys come."></div>
         <figcaption>Rain</figcaption>
       </figure>
       <figure>
-        <img src="assets/img/ambience-rings.png" width="540" height="304" alt="Rings: thin grey rings sent out from the box's top edge, crossing the dim.">
+        <noscript><img src="assets/img/ambience-rings.png" width="540" height="304" alt="Rings: thin grey rings sent out from the box's top edge, crossing the dim."></noscript>
+        <div class="fit js tile" data-mode="rings" role="img" aria-label="Rings: each key sends a thin ring out from the box's top edge, at the key's place along the box."></div>
         <figcaption>Rings</figcaption>
       </figure>
       <figure>
-        <img src="assets/img/ambience-grid.png" width="540" height="304" alt="Grid: a faint grid on the dim, with a few cells under the box lit in blue where keys were pressed.">
+        <noscript><img src="assets/img/ambience-grid.png" width="540" height="304" alt="Grid: a faint grid on the dim, with a few cells lit in blue where keys were pressed."></noscript>
+        <div class="fit js tile" data-mode="grid" role="img" aria-label="Grid: a faint grid on the dim; each key lights its own cells in a keyboard drawn by the box."></div>
         <figcaption>Grid</figcaption>
       </figure>
     </div>
