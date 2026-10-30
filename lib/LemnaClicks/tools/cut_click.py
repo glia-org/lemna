@@ -17,6 +17,11 @@ exceeds 150 ms. Choose SPAN_MS to end before the key's release, so the click is 
 --lead starts the cut MS before the peak instead of 2, for a key whose loudest moment comes well
 after its onset (SPAN_MS still counts from the cut's start); --fade is the fade-out in ms (25);
 --max raises the 150 ms limit, for a long sound such as a carriage return (paragraph).
+
+    cut_click.py splice take48.wav out.wav A0 A1 B0 B1 [--cross MS]
+        joins [A0, A1] s of the take to [B0, B1] s of it, the second laid over the first's last MS ms (30)
+        with an equal-power crossfade (quarter sines, as ffmpeg's acrossfade c1=qsin c2=qsin), unnormalised;
+        for a sound made shorter than it was recorded, which `cut` then cuts as any other
 """
 import array, math, sys, wave
 
@@ -78,6 +83,13 @@ def cut(x, at, span_ms, rate, gain_db=0.0, lead_ms=2.0, fade_ms=25.0, max_ms=MAX
     return [v * g for v in y]
 
 
+def splice(x, a0, a1, b0, b1, cross_ms=30.0):
+    a, b = x[int(a0 * FS):int(a1 * FS)], x[int(b0 * FS):int(b1 * FS)]
+    n = min(int(cross_ms * FS / 1000), len(a), len(b))
+    w = [math.pi / 2 * (k + 0.5) / n for k in range(n)]
+    return a[:len(a) - n] + [a[len(a) - n + k] * math.cos(w[k]) + b[k] * math.sin(w[k]) for k in range(n)] + b[n:]
+
+
 if __name__ == "__main__":
     a = sys.argv[1:]
     if len(a) == 2 and a[0] == "hits":
@@ -88,5 +100,7 @@ if __name__ == "__main__":
             sys.exit(__doc__)
         write(a[2], cut(read(a[1]), float(a[3]), int(a[4]), opts.get("--rate", 1.0), opts.get("--gain", 0.0),
                         opts.get("--lead", 2.0), opts.get("--fade", 25.0), opts.get("--max", MAX_MS)))
+    elif len(a) in (7, 9) and a[0] == "splice" and (len(a) == 7 or a[7] == "--cross"):
+        write(a[2], splice(read(a[1]), *map(float, a[3:7]), *map(float, a[8:9])))
     else:
         sys.exit(__doc__)

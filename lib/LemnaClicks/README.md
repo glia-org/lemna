@@ -12,7 +12,7 @@ import LemnaClicks
 let clicks = try ClickPlayer(pack: SoundPack.bundled())  // starts the engine, loads every sample
 let all = try ClickPlayer(packs: ["DefaultPack", "TypewriterPack"].map { try SoundPack.bundled($0) })
 all.pack = 1                      // which pack plays: an index, every pack is loaded already
-clicks.play(.letter)              // on key-down: .letter, .space, .paragraph (Return), .backspace
+clicks.play(.letter)              // on key-down: .letter, .space, .paragraph (Return), .backspace; .send (⌘⏎'s paste)
 clicks.enabled = false            // play() does nothing and the engine pauses
 clicks.volume = 0.6               // 0–1, the default
 clicks.isBluetoothOutput          // the default output device is Bluetooth (classic or LE)
@@ -70,7 +70,8 @@ A pack is a folder with clicks and a `pack.json`:
     "letter": ["letter-1.wav", "letter-2.wav", "letter-3.wav"],
     "space": ["space-1.wav", "space-2.wav"],
     "paragraph": ["return-1.wav", "return-2.wav"],
-    "backspace": ["backspace-1.wav", "backspace-2.wav"]
+    "backspace": ["backspace-1.wav", "backspace-2.wav"],
+    "send": ["send-1.wav"]
   }
 }
 ```
@@ -78,10 +79,12 @@ A pack is a folder with clicks and a `pack.json`:
 Every kind needs at least one file; two or more avoid repeats. `attribution` is optional: the credit line a
 licence such as CC BY asks for (the Electric pack's). Any WAV or CAF loads (other rates and stereo are
 converted), but keep to the default pack's format: 48 kHz mono 16-bit, at most 150 ms (a paragraph's sound, a
-carriage return, at most 1 s: paragraphs are rare), the press only, peaks at -6 dBFS. `tools/cut_click.py` cuts
-such clicks from a recording (`hits` lists the key hits, `cut` makes one file, with `--rate`, `--gain`,
-`--lead`, `--fade` and `--max`; see its header). Load a pack with `SoundPack(folder:)`; record where its sounds
-came from, their licence and every command that made them in `THIRD_PARTY.md`.
+carriage return, at most 1 s: paragraphs are rare), the press only, peaks at -6 dBFS. The send, the one sample of
+`send`, is a whole gesture, 240–440 ms in the four packs: a key's press and release, or a carriage's run and stop.
+`tools/cut_click.py` cuts such clicks from a recording (`hits` lists the key hits, `cut` makes one file, with
+`--rate`, `--gain`, `--lead`, `--fade` and `--max`; `splice` joins two spans of a take; see its header). Load a
+pack with `SoundPack(folder:)`; record where its sounds came from, their licence and every command that made them in
+`THIRD_PARTY.md`.
 
 The packs (`Sources/LemnaClicks/DefaultPack`, `TypewriterPack`, `SoftPack`, `ElectricPack`) are not SwiftPM
 resources: the generated `Bundle.module` writes the absolute build path into every binary that links the

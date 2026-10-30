@@ -7,15 +7,16 @@ public struct ClickError: Error, CustomStringConvertible {
     init(_ description: String) { self.description = description }
 }
 
-/// What a key-down sounds like. `paragraph` is Return.
+/// What a key-down sounds like. `paragraph` is Return; `send` is ⌘⏎ when it pastes the text into the app behind (the
+/// hand-off, played once at its key-down): longer than a click, a key's release or a carriage's stop in it.
 public enum KeyKind: Int, CaseIterable, Sendable {
-    case letter, space, paragraph, backspace
+    case letter, space, paragraph, backspace, send
 }
 
 /// A folder of WAV or CAF clicks with a `pack.json`:
 ///
 ///     {"name": "…", "licence": "CC0-1.0", "source": "https://…", "attribution": "…",
-///      "files": {"letter": ["a.wav", …], "space": […], "paragraph": […], "backspace": […]}}
+///      "files": {"letter": ["a.wav", …], "space": […], "paragraph": […], "backspace": […], "send": […]}}
 ///
 /// Every kind needs at least one file; two or more let the player avoid repeating itself. `attribution` is optional:
 /// the credit line a licence such as CC BY requires.

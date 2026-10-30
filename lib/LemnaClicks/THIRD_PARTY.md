@@ -10,7 +10,7 @@ switches, by the Freesound user **Sadiquecat** (recorded and uploaded on 2025-02
 |---|---|---|
 | Keychron k10 A to + individual keys (#789628) | https://freesound.org/people/Sadiquecat/sounds/789628/ | `letter-1` … `letter-6`, `backspace-1`, `backspace-2` |
 | Keychron k10 space_bar (#789630) | https://freesound.org/people/Sadiquecat/sounds/789630/ | `space-1`, `space-2` |
-| Keychron k10 Enter (#789629) | https://freesound.org/people/Sadiquecat/sounds/789629/ | `paragraph-1`, `paragraph-2` |
+| Keychron k10 Enter (#789629) | https://freesound.org/people/Sadiquecat/sounds/789629/ | `paragraph-1`, `paragraph-2`, `send-1` (below) |
 
 ### Licence: CC0 1.0 (public domain dedication)
 
@@ -71,6 +71,7 @@ recorded with a smartphone microphone, noise-reduced, normalised and converted t
 | Silver Typewriter (Keystroke) (#734313) | https://freesound.org/people/moodyfingers/sounds/734313/ | `letter-1` … `letter-6`, `backspace-1`, `backspace-2` |
 | Silver Typewriter (Space Bar) (#734318) | https://freesound.org/people/moodyfingers/sounds/734318/ | `space-1`, `space-2` |
 | Silver Typewriter (Carriage Return Lever 3) (#734312) | https://freesound.org/people/moodyfingers/sounds/734312/ | `paragraph-1`, `paragraph-2` |
+| Silver Typewriter (Margin Release and Carriage Return) (#734314) | https://freesound.org/people/moodyfingers/sounds/734314/ | `send-1` (below) |
 
 ### Licence: CC0 1.0 (public domain dedication)
 
@@ -84,8 +85,8 @@ and asks that the sounds not be used in "prohibited (obscene, misleading, politi
 content" nor "on AI apps, models or anything of the sorts". Lemna is none of these: it holds no AI model and trains
 none.
 
-Credit, as the uploader suggests: Silver Typewriter (Keystroke), (Space Bar) and (Carriage Return Lever 3) by
-moodyfingers on Freesound.org, CC0.
+Credit, as the uploader suggests: Silver Typewriter (Keystroke), (Space Bar), (Carriage Return Lever 3) and, for the
+send (below), (Margin Release and Carriage Return) by moodyfingers on Freesound.org, CC0.
 
 ### What was taken and what was done to it
 
@@ -146,7 +147,7 @@ by the uploader): the letters and the space bar of a MacBook Air M2, the Enter a
 | MBA R key mono (#799110) | https://freesound.org/people/Sadiquecat/sounds/799110/ | `letter-2`, `letter-5` |
 | MBA Regular keys Multi-take MS (#799111) | https://freesound.org/people/Sadiquecat/sounds/799111/ | `letter-3`, `letter-6` |
 | MBA Space-bar Multi-take MS (#799112) | https://freesound.org/people/Sadiquecat/sounds/799112/ | `space-1`, `space-2` |
-| FUJITSU Computers Keyboard - Enter key Press Mono (#799116) | https://freesound.org/people/Sadiquecat/sounds/799116/ | `paragraph-1`, `paragraph-2` |
+| FUJITSU Computers Keyboard - Enter key Press Mono (#799116) | https://freesound.org/people/Sadiquecat/sounds/799116/ | `paragraph-1`, `paragraph-2`, `send-1` (below) |
 | FUJITSU Computers Keyboard - Delete key Press Mono (#799115) | https://freesound.org/people/Sadiquecat/sounds/799115/ | `backspace-1`, `backspace-2` |
 
 ### Licence: CC0 1.0 (public domain dedication)
@@ -204,7 +205,7 @@ Cut from four recordings of one electric typewriter by the Freesound user **mage
 | typewriter_electric_typing_01.wav (#277721) | https://freesound.org/people/magedu/sounds/277721/ | `letter-1` … `letter-6`, `backspace-1`, `backspace-2` |
 | typewriter_electric_spacebar.wav (#277724) | https://freesound.org/people/magedu/sounds/277724/ | `space-1` |
 | typewriter_electric_spacebar_several_times.wav (#319944) | https://freesound.org/people/magedu/sounds/319944/ | `space-2` |
-| typewriter_electric_return.wav (#319945) | https://freesound.org/people/magedu/sounds/319945/ | `paragraph-1`, `paragraph-2` |
+| typewriter_electric_return.wav (#319945) | https://freesound.org/people/magedu/sounds/319945/ | `paragraph-1`, `paragraph-2`, `send-1` (below) |
 
 ### Licence: CC BY 4.0 (attribution required)
 
@@ -220,7 +221,10 @@ link to the licence, and a note of what was changed. The credit line, word for w
 > typewriter_electric_return.wav (https://freesound.org/people/magedu/sounds/319945/) by magedu
 > (https://freesound.org/people/magedu/), from the pack Typewriter (https://freesound.org/people/magedu/packs/17107/),
 > licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Changed for Lemna: cut into single key
-> sounds, high-pass filtered at 150 Hz, peak-normalised, some slowed and lowered in level. No warranties are given.
+> sounds, high-pass filtered at 150 Hz, peak-normalised, some slowed and lowered in level, the return also spliced
+> shorter (its clutch's impact onto the end of the carriage's run). No warranties are given.
+
+"spliced" came with the send (pass 19a, below), on 2026-10-30.
 
 ### What was taken and what was done to it
 
@@ -253,6 +257,65 @@ link to the licence, and a note of what was changed. The credit line, word for w
 - **Measured:** letters 3.2–4.2 kHz with 12–37 % of their energy above 5 kHz (mean 23 %, as the Typewriter pack's after
   its low-pass), -30 dB after 72–86 ms; no low-pass, as they sit near the Typewriter pack's brightness; space 3.1 kHz
   (9 and 11 %); Return 1.8–2.0 kHz.
+
+## The send sounds (`send-1.wav` in each pack, pass 19a)
+
+⌘⏎'s sound when it pastes (DESIGN.md K1, amended 2026-10-30): one sample per pack, cut from a recording by the pack's
+own uploader of the pack's own machine; for three packs the very file its Return was cut from. The evidence and the
+cuts are `research_notes/Lemna rain/sendoff.md` (§2, the Recommendation); nothing was listened to.
+
+| Pack | Recording | Page | Licence |
+|---|---|---|---|
+| Keychron (`DefaultPack`) | Keychron k10 Enter (#789629), Sadiquecat | https://freesound.org/people/Sadiquecat/sounds/789629/ | CC0 1.0 |
+| `TypewriterPack` | Silver Typewriter (Margin Release and Carriage Return) (#734314), moodyfingers | https://freesound.org/people/moodyfingers/sounds/734314/ | CC0 1.0 |
+| `SoftPack` | FUJITSU Computers Keyboard - Enter key Press Mono (#799116), Sadiquecat | https://freesound.org/people/Sadiquecat/sounds/799116/ | CC0 1.0 |
+| `ElectricPack` | typewriter_electric_return.wav (#319945), magedu | https://freesound.org/people/magedu/sounds/319945/ | CC BY 4.0 |
+
+### Licences
+
+Checked on 2026-10-30 on each of the four pages. 789629, 734314 and 799116: "Creative Commons 0", linked to
+http://creativecommons.org/publicdomain/zero/1.0/, with the uploaders' notes as quoted above (Sadiquecat:
+"Attribution is greatly appreciated but not required"; moodyfingers: credit not mandatory, and the two riders, no
+prohibited content, not on AI apps or models). 319945: "Attribution 4.0", linked to
+https://creativecommons.org/licenses/by/4.0/; already in the Electric pack's credit line, whose note of what was changed
+now says "spliced" (above). 734314 is new to the Typewriter pack (one of the pack's nine pages checked on 2026-10-28);
+its credit is in the Typewriter pack's line above.
+
+### What was taken and what was done to it
+
+- **Source files:** the HQ previews, as for the packs, downloaded again on 2026-10-30 from
+  `https://cdn.freesound.org/previews/<id ÷ 1000>/<id>_<uploader id>-hq.ogg` (Sadiquecat 5287430, moodyfingers
+  15504031, magedu 4877562). 789629, 799116 and 319945 have the SHA-256 given above, unchanged; new:
+  `2673ceed8d8841ddf4ec2a5433ffcf2ded99460702a26cc23672a12ab5038575` 734314-hq.ogg (Ogg Vorbis, 44.1 kHz stereo).
+- **Decoded** with each pack's own filter, as above: Keychron none, Typewriter the 3.5 kHz low-pass, Soft and Electric
+  the 150 Hz high-pass.
+- **Made** with `tools/cut_click.py` (`cut` as above; `splice` joins two spans of a take); `tools/build_packs.sh` holds
+  every command and makes the four files (run on 2026-10-30, it also remade the three packs' 36 clicks byte for byte as
+  shipped):
+
+  | File | From | Commands | Length |
+  |---|---|---|---|
+  | `DefaultPack/send-1` | 789629 | `cut 789629.wav send-1.wav 0.006 290 --fade 120 --max 400` | 290 ms |
+  | `TypewriterPack/send-1` | 734314 | decoded through `lowpass=f=3500:p=2,atrim=8.78:9.24,asetpts=PTS-STARTPTS,afade=t=in:d=0.03:curve=qsin` (the return's last 460 ms, its run faded in over 30 ms) into `734314-tail.wav`, then `cut 734314-tail.wav send-1.wav 0.0 440 --lead 30 --fade 60 --max 500` | 440 ms |
+  | `SoftPack/send-1` | 799116 | `cut 799116.wav send-1.wav 0.088 240 --lead 8 --fade 80 --max 300` | 240 ms |
+  | `ElectricPack/send-1` | 319945 | `splice 319945.wav 319945-splice.wav 0.305 0.45 1.45 1.76 --cross 30` (the clutch's impact and burst, then the carriage run's last 310 ms over a 30 ms equal-power crossfade), then `cut 319945-splice.wav send-1.wav 0.0 420 --lead 8 --fade 100 --max 500` | 420 ms |
+
+  133,616 bytes together. Every send peaks at -6 dBFS as the clicks do, no `--gain`.
+- **Keychron and Soft** keep what their Return's cut stops before: the key's release. **Typewriter**: the carriage's
+  run and its stop at the margin, not the lever (the pack's Return is the lever's ratchet); no bell, as the pack holds
+  none; the fade-in is made in the decode, as `cut` fades in over 0.5 ms only, which would click in the middle of the
+  run. **Electric**: a made sound, as a motor's carriage does not get shorter; the return as recorded puts the stop at
+  about 1.27 s, a second after the text has gone (the panel's E2, not taken).
+- **Measured** (sendoff.md §6's method: onsets in 2 ms RMS frames after two 200 Hz high-passes, envelopes in 5 and
+  10 ms RMS frames, M max the loudest 400 ms of ffmpeg's `ebur128` over the file padded with 0.5 s of silence), times
+  from the start of the file:
+
+  | Pack | What lands when | Last frame within 40 dB of the loudest | M max: send | Return (`paragraph-1`) | `letter-1` |
+  |---|---|---|---|---|---|
+  | Keychron | the press at 2 ms, its release at 98 ms, about 10 dB under it | 240 ms | -28.0 LUFS | -28.2 | -32.2 |
+  | Typewriter | the run, 11–19 dB under the stop; the stop at 257 ms, the file's peak | 385 ms | -25.1 LUFS | -22.3 | -31.7 |
+  | Soft | the press at 8 ms (-8.2 dBFS, 2.2 dB under its Return's), its release at 121 ms, the file's peak | 205 ms | -27.2 LUFS | -27.7 | -33.2 |
+  | Electric | the clutch's impact at 8 ms, the file's peak, its burst to about 120 ms, the run, the margin stop at about 250 ms, 17 dB under the impact | 335 ms | -26.8 LUFS | -25.5 | -26.6 |
 
 ## Open items
 
