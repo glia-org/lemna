@@ -432,35 +432,42 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// it cannot paste, and always in the window (no app behind it), it copies and the bottom edge says why. Either way
     /// the session is finished at once. In the box the hand-off's motion starts here, on the key-down (F1's H1 and C1,
     /// T1): a paste's glyphs leave right while the box waits for Return to come up; a copy's rise, and the box stays.
+    /// The sound starts with it (K1's S1 P1): the pack's send for a paste, Return's click for a copy, never the send.
     @objc func done(_ sender: Any?) {
         timing = .from(NSApp.currentEvent)
         timing.mark("Done")
         guard let text = handOff() else { return }
         timing.mark("R1 applied")
         showSurface()  // the hotkey may have hidden it; the menu-bar item's Done comes from another app
-        guard surface.mode == .box else { return copyOut(text, note: Paste.noTargetNote) }
+        guard surface.mode == .box else {
+            clicks?.play(.paragraph)
+            return copyOut(text, note: Paste.noTargetNote)
+        }
         let app = target.flatMap { $0.isTerminated ? nil : $0 }
         switch Paste.decide(secureInput: IsSecureEventInputEnabled(), mayPost: CGPreflightPostEventAccess(),
                             hasTarget: app != nil) {
         case .copy(let note, let ask):
+            clicks?.play(.paragraph)
             if box.handOff(.rise, stays: true) { timing.mark("motion started") }
             // macOS's Accessibility prompt, once (seen 2026-10-28: CGRequestPostEventAccess brought none, this does; the
             // Accessibility grant covers posting events too)
             if ask { _ = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary) }
             copyOut(text, note: note)
         case .paste:
+            clicks?.play(.send)  // before the motion's first frame is built, as a key's click comes before its glide
             if box.handOff(.send) { timing.mark("motion started") }
             afterReturnIsUp { [unowned self] in self.paste(text, into: app!) }  // `decide` pastes only with a target
         }
     }
 
     /// Copy (⌘⇧⏎, O1): R1's text on the clipboard; the session is finished and the box (or the window) goes, as after a
-    /// paste. In the box its glyphs rise from the key-down on (C1).
+    /// paste. In the box its glyphs rise from the key-down on (C1), with Return's click (K1's P1).
     @objc func copyText(_ sender: Any?) {
         timing = .from(NSApp.currentEvent)
         timing.mark("Copy")
         guard let text = handOff() else { return }
         timing.mark("R1 applied")
+        clicks?.play(.paragraph)
         if surface.onScreen == .box, box.handOff(.rise) { timing.mark("motion started") }
         afterReturnIsUp { [unowned self] in self.copyOut(text, note: nil) }  // ⌘⇧⏎ held, as with ⌘⏎
     }
@@ -618,6 +625,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
                 return self.notHandedOff("Not saved: \(describe(error)).")
             }
             UserDefaults.standard.set(url.deletingLastPathComponent().path, forKey: Self.folderKey)
+            self.clicks?.play(.paragraph)  // K1's P1, as Copy
             if self.surface.onScreen == .box { self.box.handOff(.rise) }  // C1, once the file is written
             self.leave()
         }
