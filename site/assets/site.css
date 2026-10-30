@@ -1,0 +1,98 @@
+/* Lemna's website: one page, the use case shown as it looks. Lemna's own colours (DESIGN.md T2: the box #0e1013,
+   text #d8dce3, muted #8d95a0 and #5c646f, the accent #7aa7f0, the line #262b32) and its box: a 1 px edge on a 10 px
+   radius (Face.cornerRadius in app/Sources/Lemna/Box.swift). The accent is for the caret, the box's edge and keyboard
+   focus only; the app window in the demo is neutral grey.
+   Font: the app draws in Menlo 28 (app/Sources/Lemna/main.swift), a system font that may not be served, and no
+   open-licence mono font of Lemna's own is at hand, so the page names Menlo first and downloads no font. */
+:root{
+  --box:#0e1013;--text:#d8dce3;--muted:#8d95a0;--dim:#5c646f;--accent:#7aa7f0;--line:#262b32;
+  --mono:Menlo,ui-monospace,"SF Mono",SFMono-Regular,Consolas,"DejaVu Sans Mono",monospace;--r:10px;color-scheme:dark}
+*{box-sizing:border-box}
+html{background:var(--box);color:var(--muted)}
+body{margin:0;font:15px/1.6 var(--mono);-webkit-font-smoothing:antialiased}
+h1,p,ul,figure{margin:0}
+a{color:var(--text);text-decoration:underline;text-decoration-color:var(--dim);text-underline-offset:.22em}
+a:hover{text-decoration-color:var(--text)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+kbd{font:inherit;color:var(--text)}
+.nojs .js{display:none!important}
+
+.wrap{max-width:1180px;margin:0 auto;padding:40px 40px 0}
+.top{display:flex;flex-direction:column;gap:14px;margin-bottom:32px}
+.brand{display:inline-flex;align-self:flex-start;align-items:center;gap:12px;font-size:18px;color:var(--text);text-decoration:none}
+.brand svg{display:block}
+h1{font-size:30px;line-height:1.3;font-weight:400;color:var(--text);max-width:54ch;text-wrap:balance}
+.lead{font-size:16px;color:var(--muted);max-width:72ch}
+.get{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;font-size:13px}
+.btn{display:inline-block;background:var(--text);color:var(--box);border-radius:var(--r);padding:6px 16px;text-decoration:none;font-size:15px;white-space:nowrap}
+.btn:hover{background:#fff}
+
+/* the demo: a 1100 × 620 px piece of a screen at actual size on a 2× display (1 px = 1 pt), scaled down to fit */
+.still{display:block;max-width:100%;height:auto;border-radius:var(--r)}
+.js-on .still{display:none}
+.fit{position:relative;width:100%;max-width:1100px;aspect-ratio:1100/620;overflow:hidden;border-radius:var(--r)}
+.stage{position:absolute;left:0;top:0;width:1100px;height:620px;transform-origin:0 0;background:#1d1e20;overflow:hidden;cursor:text}
+.stage:focus-visible{outline-offset:-3px}
+.win{position:absolute;left:170px;top:36px;width:760px;height:548px;background:#2b2c2f;border:1px solid #3b3c40;border-radius:10px;overflow:hidden}
+.win .bar{height:30px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#323336;border-bottom:1px solid #3b3c40}
+.win .bar i{width:11px;height:11px;border-radius:50%;background:#55565a}
+.doc{display:flex;flex-direction:column;gap:14px;padding:28px 40px}
+.doc b{display:block;height:10px;border-radius:2px;background:#45464a}
+.doc b.t{height:14px;background:#55565a;margin-bottom:8px}
+.doc .gap{height:4px}
+.cur{min-height:24px;margin-top:-7px;font-size:15px;line-height:24px;color:#d4d5d8;max-width:680px}
+.ic{display:inline-block;width:2px;height:18px;margin-left:1px;vertical-align:-4px;background:#c9cbcf}
+/* the dim: the box's background at α 0.5 (F1 D1), the rain on it */
+.dim{position:absolute;left:0;top:0;width:1100px;height:620px;background:rgba(14,16,19,.5);visibility:hidden;opacity:0}
+.dim canvas{position:absolute;left:0;top:0;width:1100px;height:620px}
+.hint{position:absolute;left:0;right:0;top:516px;display:flex;justify-content:center;gap:24px;opacity:0;pointer-events:none;color:var(--text);font-size:15px}
+.hint kbd{display:inline-block;background:var(--box);border:1px solid var(--dim);border-radius:var(--r);padding:6px 14px}
+.hint span{align-self:center;color:var(--text)}
+/* the box: 907 × 112 pt (60 % of a 1512 pt screen, 4 × Menlo 28), its centre two thirds down */
+.box{position:absolute;left:96px;top:357px;width:907px;height:112px;background:var(--box);border:1px solid var(--accent);border-radius:var(--r);font-size:28px;line-height:1;color:var(--text);overflow:hidden;visibility:hidden;opacity:0}
+.box.up,.dim.up{visibility:visible;opacity:1}
+.box:focus-within{outline:2px solid var(--accent);outline-offset:3px}
+/* the band (app/Sources/LemnaCore/Line.swift): the caret 2 px at 60 %; the text before it fading from 45 % to nothing
+   at 25 % of the width, the text after it from 80 % to 95 % */
+.ll-b,.ll-a{position:absolute;top:0;bottom:0;display:flex;align-items:center;overflow:hidden;white-space:pre}
+.ll-b{left:0;right:40%;justify-content:flex-end;-webkit-mask-image:linear-gradient(to right,transparent 41.667%,#000 75%);mask-image:linear-gradient(to right,transparent 41.667%,#000 75%)}
+.ll-a{left:calc(60% + 2px);right:5%;-webkit-mask-image:linear-gradient(to right,#000 57.143%,transparent 100%);mask-image:linear-gradient(to right,#000 57.143%,transparent 100%)}
+.ll-b>span,.ll-a>span{flex:none;display:block}
+.ll-c{position:absolute;left:60%;top:50%;width:2px;height:1.2em;margin-top:-.6em;background:var(--accent)}
+.box .new{animation:fadein 80ms cubic-bezier(.23,1,.32,1)}
+@keyframes fadein{from{opacity:0}}
+.box.off .ll-b,.box.off .ll-a,.box.off .ll-c{visibility:hidden}
+.ghost{position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none}
+.ghost span{position:absolute;top:0;bottom:0;display:flex;align-items:center;white-space:pre}
+.ll-in{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;border:0;margin:0;padding:0;font-size:16px;color:transparent;background:transparent;caret-color:transparent;cursor:text}
+
+.under{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 20px;max-width:1100px;margin-top:12px;font-size:13px}
+.snd{font:inherit;font-size:13px;color:var(--text);background:none;border:1px solid var(--line);border-radius:var(--r);padding:2px 12px;cursor:pointer}
+.snd:hover,.snd[aria-pressed="true"]{border-color:var(--muted)}
+
+.facts{list-style:none;padding:0;margin:28px 0 0;display:flex;flex-direction:column;gap:6px;font-size:14px;max-width:84ch}
+
+/* Ambience: four tiles at half the demo's size (540 × 304 px, the same piece of screen); Rain live, the others the
+   app's renders */
+.amb{margin-top:44px}
+.amb h2{margin:0 0 14px;font-size:15px;font-weight:400;color:var(--text)}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,540px));gap:20px}
+.tiles figure{margin:0;min-width:0}
+.tiles img{display:block;width:100%;height:auto;border-radius:var(--r)}
+.tiles .fit{max-width:540px}
+.tiles figcaption{margin-top:8px;font-size:13px;color:var(--text)}
+.stage.quiet{cursor:default}
+.cap{margin-top:14px;font-size:13px}
+
+.foot{max-width:1180px;margin:40px auto 0;padding:24px 40px 48px;display:flex;flex-direction:column;gap:4px;font-size:12px;line-height:1.6;
+  background:linear-gradient(var(--line),var(--line)) 40px 0/calc(100% - 80px) 1px no-repeat}
+.foot p{max-width:110ch}
+
+@media (max-width:760px){
+  .wrap{padding:24px 16px 0}
+  .foot{padding:20px 16px 40px;background-position:16px 0;background-size:calc(100% - 32px) 1px}
+  h1{font-size:22px}
+  .lead{font-size:14px}
+  .facts{font-size:13px}
+  .tiles{grid-template-columns:1fr}
+}

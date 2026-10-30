@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lemna · write a thought down in one go, without rereading it</title>
+<meta name="description" content="Write a thought down in one go, without rereading it. Summon Lemna over any Mac app with ⌃⌥Space, write forward while the text glides past the caret, and ⌘⏎ puts it into that app.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0e1013">
+<link rel="icon" href="assets/img/mark-M3.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/site.css">
+<!-- Licence: to be chosen. The repository has no LICENSE yet, so the page says "source", not "open source".
+     Every claim is of the build of 2026-10-30 (DESIGN.md, HANDOFF.md, app/README.md). Plain static files: no build
+     step, no third-party requests, complete without JavaScript. -->
+</head>
+<body class="nojs">
+<main class="wrap">
+  <header class="top">
+    <a class="brand" href="https://github.com/glia-org/lemna"><svg viewBox="0 0 16 16" width="32" height="32" aria-hidden="true"><path d="M2 7.75L8.5 7H14V8.5H8.5Z" fill="#d8dce3"/><rect x="8.5" y="3.5" width="1.5" height="8.5" fill="#7aa7f0"/></svg>Lemna</a>
+    <h1>Write a thought down in one go, without rereading it.</h1>
+    <p class="lead">Summon it over any app with <kbd>⌃⌥Space</kbd>, write forward while the text glides past the caret, and <kbd>⌘⏎</kbd> puts it into that app.</p>
+    <p class="get"><a class="btn" href="https://github.com/glia-org/lemna">Get it on GitHub</a><span>macOS 14 or later, build it yourself for now.</span></p>
+  </header>
+
+  <figure class="demo">
+    <img class="still" src="assets/img/summon-rain-idle.png" width="1000" height="500" alt="Lemna's box, one line tall with a thin blue edge, over a dimmed app. On the line: “eeds bent over them”, the older words fading toward the left, the caret at 60 % of the width. Faint columns of glyphs fall in the dim around it.">
+    <div class="fit js" id="fit">
+      <div class="stage" id="stage" tabindex="0" role="group" aria-label="Lemna over an app window. Return opens the box to write in.">
+        <div class="win" aria-hidden="true">
+          <div class="bar"><i></i><i></i><i></i></div>
+          <div class="doc">
+            <b class="t" style="width:34%"></b>
+            <b style="width:94%"></b><b style="width:88%"></b><b style="width:97%"></b><b style="width:52%"></b>
+            <span class="gap"></span>
+            <b style="width:90%"></b><b style="width:64%"></b>
+            <p class="cur" id="cur"><span id="pasted"></span><i class="ic"></i></p>
+          </div>
+        </div>
+        <div class="dim" id="dim"></div>
+        <div class="hint" id="hint" aria-hidden="true"></div>
+        <div class="box" id="box">
+          <div class="ll-b"><span></span></div>
+          <i class="ll-c"></i>
+          <div class="ll-a"><span></span></div>
+          <div class="ghost" id="ghost"></div>
+          <input class="ll-in" id="ll-in" type="text" aria-label="Write in Lemna's box; Return sends it into the app window" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+        </div>
+      </div>
+    </div>
+    <div class="under js">
+      <p>Click into the box to write your own; <kbd>⏎</kbd> sends it.</p>
+      <button type="button" class="snd" id="snd" aria-pressed="false">sound: off</button>
+    </div>
+  </figure>
+
+  <ul class="facts">
+    <li><kbd>⌃⌥Space</kbd> summons the box over the app you are in.</li>
+    <li><kbd>⌘⏎</kbd> pastes into the app behind; it needs the Accessibility permission, for the paste only.</li>
+    <li><kbd>⌘⇧⏎</kbd> copies, <kbd>⌘S</kbd> saves, <kbd>Esc</kbd> hides.</li>
+    <li>Every key is kept in an encrypted journal on your Mac until the text has gone out.</li>
+    <li>A click per key from four sound packs, or off; an ambience on the dim, or off.</li>
+    <li>Nothing leaves your Mac: no network, no account, no telemetry.</li>
+  </ul>
+
+  <section class="amb" aria-labelledby="amb-h">
+    <h2 id="amb-h">Ambience</h2>
+    <div class="tiles">
+      <figure>
+        <img src="assets/img/ambience-drift.png" width="540" height="304" alt="Drift: letters that left the box's left edge drifting away in a loose, rising curve, fading as they go.">
+        <figcaption>Drift</figcaption>
+      </figure>
+      <figure>
+        <img class="still" src="assets/img/ambience-rain.png" width="540" height="304" alt="Rain: columns of glyphs falling on the dim around the box, each with a pale head and a blue trail that dims cell by cell.">
+        <div class="fit js" id="fit2">
+          <div class="stage quiet" aria-hidden="true">
+            <div class="win">
+              <div class="bar"><i></i><i></i><i></i></div>
+              <div class="doc">
+                <b class="t" style="width:34%"></b>
+                <b style="width:94%"></b><b style="width:88%"></b><b style="width:97%"></b><b style="width:52%"></b>
+                <span class="gap"></span>
+                <b style="width:90%"></b><b style="width:64%"></b>
+                <p class="cur"><i class="ic"></i></p>
+              </div>
+            </div>
+            <div class="dim up"><canvas id="rain" width="1100" height="620"></canvas></div>
+            <div class="box up">
+              <div class="ll-b"><span>Move the review to Thursday at ten and send the draft</span></div>
+              <i class="ll-c"></i>
+              <div class="ll-a"><span></span></div>
+            </div>
+          </div>
+        </div>
+        <figcaption>Rain</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/img/ambience-rings.png" width="540" height="304" alt="Rings: thin grey rings sent out from the box's top edge, crossing the dim.">
+        <figcaption>Rings</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/img/ambience-grid.png" width="540" height="304" alt="Grid: a faint grid on the dim, with a few cells under the box lit in blue where keys were pressed.">
+        <figcaption>Grid</figcaption>
+      </figure>
+    </div>
+    <p class="cap">Optional, on the dim while you write: Drift, Rain, Rings or Grid, or off.</p>
+  </section>
+</main>
+
+<footer class="foot">
+  <p>Keychron pack: Keychron K10 key sounds by <a href="https://freesound.org/people/Sadiquecat/packs/38565/">Sadiquecat</a> on Freesound, CC0; the clicks on this page are from it.</p>
+  <p>Soft pack: MacBook Air M2 and FUJITSU key sounds by <a href="https://freesound.org/people/Sadiquecat/packs/38565/">Sadiquecat</a> on Freesound, CC0.</p>
+  <p>Typewriter pack: Silver Typewriter (Keystroke), (Space Bar), (Carriage Return Lever 3) and (Margin Release and Carriage Return) by <a href="https://freesound.org/people/moodyfingers/packs/40966/">moodyfingers</a> on Freesound, CC0.</p>
+  <p>Electric pack: <a href="https://freesound.org/people/magedu/sounds/277721/">typewriter_electric_typing_01.wav</a>, <a href="https://freesound.org/people/magedu/sounds/277724/">typewriter_electric_spacebar.wav</a>, <a href="https://freesound.org/people/magedu/sounds/319944/">typewriter_electric_spacebar_several_times.wav</a> and <a href="https://freesound.org/people/magedu/sounds/319945/">typewriter_electric_return.wav</a> by <a href="https://freesound.org/people/magedu/">magedu</a>, from the pack <a href="https://freesound.org/people/magedu/packs/17107/">Typewriter</a>, licensed under CC BY 4.0; changed for Lemna: cut into single key sounds, high-pass filtered at 150 Hz, peak-normalised, some slowed and lowered in level, the return also spliced shorter.</p>
+  <p>No cookies, no analytics, no third-party requests.</p>
+</footer>
+
+<script src="assets/site.js"></script>
+</body>
+</html>
