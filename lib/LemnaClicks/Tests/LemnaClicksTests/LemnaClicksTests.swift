@@ -34,7 +34,7 @@ private func defaultPack() throws -> SoundPack { try pack("DefaultPack") }
         #expect(file.fileFormat.sampleRate == 48_000, "\(name)")
         #expect(file.fileFormat.channelCount == 1, "\(name)")
         #expect(file.fileFormat.commonFormat == .pcmFormatInt16, "\(name)")
-        #expect(Double(file.length) / 48_000 <= 0.150, "\(name)")
+        #expect(Double(file.length) / 48_000 <= (name.hasPrefix("send-") ? 0.45 : 0.150), "\(name)")  // the send: below
         bytes += try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
     }
     #expect(bytes <= 600_000)
@@ -59,14 +59,35 @@ func packLoadsAndMapsEachKeyToItsOwnCuts(_ folder: String) throws {
             #expect(file.fileFormat.sampleRate == 48_000, "\(name)")
             #expect(file.fileFormat.channelCount == 1, "\(name)")
             #expect(file.fileFormat.commonFormat == .pcmFormatInt16, "\(name)")
-            // A carriage return may run long, as paragraphs are rare; every other key stays a click.
-            #expect(Double(file.length) / 48_000 <= (kind == .paragraph ? 1.0 : 0.150), "\(name)")
+            // A carriage return may run long, as paragraphs are rare, and so may the send; every other key stays a click.
+            #expect(Double(file.length) / 48_000 <= (kind == .paragraph ? 1.0 : kind == .send ? 0.45 : 0.150), "\(name)")
             bytes += try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
             count += 1
         }
     }
-    #expect(count == 12)
+    #expect(count == 13)
     #expect(bytes <= 1_000_000)
+}
+
+// MARK: The send (DESIGN.md K1, pass 19a)
+
+/// ⌘⏎'s sound in every pack: one sample cut from the pack's own recordings, longer than a click (a key's release or a
+/// carriage's stop in it), and peaking at -6 dBFS as the clicks do.
+@Test(arguments: ["DefaultPack", "TypewriterPack", "SoftPack", "ElectricPack"])
+func everyPackHasItsSend(_ folder: String) throws {
+    let urls = try pack(folder).files[.send] ?? []
+    #expect(urls.map(\.lastPathComponent) == ["send-1.wav"])
+    for url in urls {
+        let file = try AVAudioFile(forReading: url)
+        #expect(file.fileFormat.sampleRate == 48_000 && file.fileFormat.channelCount == 1)
+        #expect(file.fileFormat.commonFormat == .pcmFormatInt16)
+        let seconds = Double(file.length) / 48_000
+        #expect(seconds > 0.2 && seconds <= 0.45, "\(seconds) s")
+        let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length))!
+        try file.read(into: buffer)
+        let peak = UnsafeBufferPointer(start: buffer.floatChannelData![0], count: Int(buffer.frameLength)).map(abs).max() ?? 0
+        #expect(abs(20 * log10(peak) + 6) < 0.1, "peak \(peak)")
+    }
 }
 
 @Test func theCCBYPackCarriesItsCreditLine() throws {
@@ -74,6 +95,7 @@ func packLoadsAndMapsEachKeyToItsOwnCuts(_ folder: String) throws {
     #expect(credit.contains("by magedu") && credit.contains("CC BY 4.0"))
     #expect(credit.contains("https://creativecommons.org/licenses/by/4.0/"))
     #expect(credit.contains("https://freesound.org/people/magedu/packs/17107/"))
+    #expect(credit.contains("spliced"))  // the send, made shorter than the return was recorded (pass 19a)
     for id in [277721, 277724, 319944, 319945] {
         #expect(credit.contains("https://freesound.org/people/magedu/sounds/\(id)/"), "\(id)")
     }
@@ -89,13 +111,13 @@ func packLoadsAndMapsEachKeyToItsOwnCuts(_ folder: String) throws {
         let json = #"{"name": "t", "licence": "CC0-1.0", "source": "-", "files": {\#(files)}}"#
         try json.write(to: folder.appendingPathComponent("pack.json"), atomically: true, encoding: .utf8)
     }
-    try write(#""letter": ["a.wav"], "space": ["a.wav"], "paragraph": ["a.wav"], "backspace": ["a.wav"]"#)
-    #expect(try SoundPack(folder: folder).files.count == 4)
-    try write(#""letter": ["a.wav"], "space": ["a.wav"], "paragraph": ["a.wav"]"#)
+    try write(#""letter": ["a.wav"], "space": ["a.wav"], "paragraph": ["a.wav"], "backspace": ["a.wav"], "send": ["a.wav"]"#)
+    #expect(try SoundPack(folder: folder).files.count == 5)
+    try write(#""letter": ["a.wav"], "space": ["a.wav"], "paragraph": ["a.wav"], "backspace": ["a.wav"]"#)  // no send
     #expect(throws: ClickError.self) { try SoundPack(folder: folder) }
-    try write(#""letter": ["a.wav"], "space": ["a.wav"], "paragraph": ["a.wav"], "backspace": ["a.wav"], "enter": ["a.wav"]"#)
+    try write(#""letter": ["a.wav"], "space": ["a.wav"], "paragraph": ["a.wav"], "backspace": ["a.wav"], "send": ["a.wav"], "enter": ["a.wav"]"#)
     #expect(throws: ClickError.self) { try SoundPack(folder: folder) }
-    try write(#""letter": ["b.wav"], "space": ["a.wav"], "paragraph": ["a.wav"], "backspace": ["a.wav"]"#)
+    try write(#""letter": ["b.wav"], "space": ["a.wav"], "paragraph": ["a.wav"], "backspace": ["a.wav"], "send": ["a.wav"]"#)
     #expect(throws: ClickError.self) { try SoundPack(folder: folder) }
 }
 
@@ -121,7 +143,7 @@ func packLoadsAndMapsEachKeyToItsOwnCuts(_ folder: String) throws {
 // MARK: Picking
 
 @Test func roundRobinNeverRepeatsAndUsesEverySample() {
-    let counts = [6, 2, 2, 2]
+    let counts = [6, 2, 2, 2, 2]
     var picker = Picker(counts: counts, seed: 1)
     var first = 0
     for kind in KeyKind.allCases {
@@ -141,23 +163,29 @@ func packLoadsAndMapsEachKeyToItsOwnCuts(_ folder: String) throws {
 }
 
 @Test func eachPacksPickerStaysInItsPartOfTheTable() {
-    // The player lays the packs out one after the other: the second pack's 12 samples follow the first's 12.
-    var picker = Picker(counts: [6, 2, 2, 2], seed: 3, base: 12)
+    // The player lays the packs out one after the other: the second pack's 13 samples follow the first's 13.
+    var picker = Picker(counts: [6, 2, 2, 2, 1], seed: 3, base: 13)
     var seen: [KeyKind: Set<Int>] = [:]
     for i in 0..<10_000 {
-        let kind = KeyKind.allCases[i % 4]
+        let kind = KeyKind.allCases[i % 5]
         seen[kind, default: []].insert(picker.next(kind).sample)
     }
-    #expect(seen[.letter] == Set(12..<18) && seen[.space] == [18, 19])
-    #expect(seen[.paragraph] == [20, 21] && seen[.backspace] == [22, 23])
+    #expect(seen[.letter] == Set(13..<19) && seen[.space] == [19, 20])
+    #expect(seen[.paragraph] == [21, 22] && seen[.backspace] == [23, 24] && seen[.send] == [25])
+}
+
+@Test func sendPlaysThePacksOneSendSample() {
+    // A pack's one send, after its 12 clicks, every time (pass 19a): no other sample stands in for it.
+    var picker = Picker(counts: [6, 2, 2, 2, 1], seed: 5)
+    for _ in 0..<100 { #expect(picker.next(.send).sample == 12) }
 }
 
 @Test func rateStaysWithinThreePercent() {
-    var picker = Picker(counts: [6, 2, 2, 2], seed: 7)
+    var picker = Picker(counts: [6, 2, 2, 2, 1], seed: 7)
     var low: Float = 2
     var high: Float = 0
     for i in 0..<10_000 {
-        let rate = picker.next(KeyKind.allCases[i % 4]).rate
+        let rate = picker.next(KeyKind.allCases[i % 5]).rate
         low = min(low, rate)
         high = max(high, rate)
     }
@@ -261,7 +289,7 @@ private var hasOutput: Bool { OutputDevice.defaultID() != nil }
         let folders = ["DefaultPack", "TypewriterPack", "SoftPack", "ElectricPack"]
         let player = try ClickPlayer(packs: folders.map(pack))
         #expect(player.packs.map(\.name) == (try folders.map { try pack($0).name }))
-        #expect(player.mixer.sampleCount == 48)  // 12 per pack, all in one table
+        #expect(player.mixer.sampleCount == 52)  // 13 per pack, all in one table
         #expect(player.pack == 0)
         player.pack = 3
         #expect(player.pack == 3)
