@@ -25,6 +25,9 @@ cp build/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 for pack in DefaultPack TypewriterPack SoftPack ElectricPack; do
   cp -R "../lib/LemnaClicks/Sources/LemnaClicks/$pack" "$app/Contents/Resources/$pack"
 done
+# The bundled fonts (Fonts, one folder per family with its licence, THIRD_PARTY.md): the app registers every font file
+# in Contents/Resources/Fonts at launch (Theme.Typeface.register).
+cp -R Fonts "$app/Contents/Resources/Fonts"
 # The version: LEMNA_VERSION, else 0.0.0; the build number is the commit count.
 version="${LEMNA_VERSION:-0.0.0}"
 build="$(git rev-list --count HEAD 2>/dev/null || echo 0)"

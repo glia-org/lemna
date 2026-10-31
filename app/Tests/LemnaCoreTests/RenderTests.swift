@@ -14,14 +14,14 @@ let renders = #filePath.split(separator: "/", omittingEmptySubsequences: false).
 
 /// One frame as the app shows it: the background the view's layer paints, the strip's band across the middle.
 /// `offset` moves the text before the caret (an edit's glide), `moved` all of it (a caret move's); `newest` the glyphs
-/// a key just added, fading in (F1: K1, E2).
+/// a key just added, fading in (F1: K1, E2); `style` the theme as it shows, Lemna's unless given.
 func render(_ text: Text, marked: String = "", offset: CGFloat, moved: CGFloat = 0, newest: Newest = Newest(),
-            name: String) -> [UInt8] {
-    let style = Style(font: menlo), size = CGSize(width: 1200, height: 700), (w, h) = (2400, 1400)
+            style: Style = Style(font: menlo), name: String) -> [UInt8] {
+    let size = CGSize(width: 1200, height: 700), (w, h) = (2400, 1400)
     let c = Line.context(width: w, height: h, rowBytes: 4 * w, scale: 2, data: nil)
     c.setFillColor(style.background)
     c.fill(CGRect(origin: .zero, size: size))
-    Line.draw(Line.shape(text, marked: marked, font: menlo), before: offset + moved, after: moved, newest: newest,
+    Line.draw(Line.shape(text, marked: marked, font: style.font), before: offset + moved, after: moved, newest: newest,
               in: c, band: Line.band(in: size, style: style), style: style)
     savePNG(c, name, dpi: 144)
     let px = c.data!.assumingMemoryBound(to: UInt8.self)

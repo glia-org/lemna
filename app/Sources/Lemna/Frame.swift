@@ -4,10 +4,12 @@ import AppKit
 import LemnaCore
 
 /// The bottom edge of the surface: one line of small grey text, the Bluetooth notice or a hand-off's note. It stays off
-/// the line's glyphs: in the window (at least 300 pt tall) the line's band starts 122 pt up; in the box (110 pt inside
-/// its border) 27 pt up, where the text's top meets the band's lower quarter, which holds no ink (the band is twice the
-/// font's size, the glyphs centred). This view is above the strip, so the text shows either way. Clicks go through to
-/// the surface.
+/// the line's glyphs whatever the theme's font: the text, 15 pt tall from 12 pt up, ends 27 pt up; in the window (at
+/// least 300 pt tall) the line's band starts at least 120 pt up; in the box (4 em tall, its inside two borders less)
+/// one em less the border up, and the glyphs, the font's ascent and descent centred in the band, reach down to 36.7 pt
+/// up at Literata 30 (Still; its line is 1.49 em, the tallest), 38.7 at Menlo 28
+/// (`theBottomEdgesNoteClearsEveryThemesLine`). This view is above the strip, so the text shows either way. Clicks go
+/// through to the surface.
 final class EdgeView: NSView {
     static let height: CGFloat = 40
     private let notice = NSTextField(labelWithString: BluetoothNotice.text)

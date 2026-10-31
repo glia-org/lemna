@@ -50,11 +50,12 @@ final class Face: NSView {
     required init?(coder: NSCoder) { fatalError() }
 
     /// The theme's edge: B1's 1 pt (the siblings' 1 px line, on the box's whole points, so it is sharp at 1× and 2×) in
-    /// the accent, or the hairline; along the box's corners.
+    /// the accent, or the hairline; along the box's corners, in their curve.
     func restyle(_ style: Style) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         (border.borderWidth, border.cornerRadius) = (style.theme.box.borderWidth, style.theme.box.corner)
+        border.cornerCurve = style.theme.box.continuous ? .continuous : .circular
         border.borderColor = style.border
         CATransaction.commit()
     }
@@ -197,9 +198,9 @@ final class Box {
     }
 
     /// The theme as it shows now (TH1), taken while the box is hidden (the app gives it at a show that brings it on
-    /// screen): the box's and the last look's surface, corners and edge; the panel's appearance, which its sheets'
-    /// buttons are drawn for, and its shadow; the dims' colour; the height at the next show; the ambience's ink and
-    /// font with the next stage.
+    /// screen): the box's and the last look's surface, corners (their radius and curve) and edge; the panel's
+    /// appearance, which its sheets' buttons are drawn for, and its shadow; the dims' colour; the height at the next
+    /// show; the ambience's ink and font with the next stage.
     func restyle(_ s: Style) {
         (style, lineHeight) = (s, BoxFrame.height(fontSize: s.size))
         panel.appearance = NSAppearance(named: s.dark ? .darkAqua : .aqua)
@@ -208,6 +209,7 @@ final class Box {
         CATransaction.setDisableActions(true)
         for l in [content.layer, card.layer].compactMap({ $0 }) {
             (l.backgroundColor, l.cornerRadius) = (s.background, s.theme.box.corner)
+            l.cornerCurve = s.theme.box.continuous ? .continuous : .circular
         }
         for dim in dims { dim.shade.backgroundColor = rgb(s.palette.dim) }
         CATransaction.commit()

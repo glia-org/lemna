@@ -4,6 +4,38 @@
 
 ## State (2026-10-31)
 
+- App, pass 22, the Still look and its typeface (2026-10-31; DESIGN.md TH1 amended; the user's picks `LK1 TY1 MO1` of
+  `docs/design-panel-lemna-themes.html`, OR1's second step; MO1's ring is pass 24's): **Literata is bundled**, the
+  variable font (3.103, 955,132 bytes) with its `OFL.txt` in `app/Fonts/Literata/`, credited in `app/THIRD_PARTY.md`;
+  `make-app.sh` copies `app/Fonts` into `Contents/Resources/Fonts` and the app registers every font file there for its
+  own process at launch (`Theme.Typeface.register`), before the first style; Still's line is Literata 30 (opsz 30 set
+  by Core Text, weight 400), Charter 31 if it is missing. **Still's look finished** against look §5 and the panel's
+  mockups: continuous 16 pt corners (`CALayer.cornerCurve`), the 1 pt hairline, no shadow, the caret a 2 × 36 pt
+  green bar with ends rounded by 1 pt, under Increase Contrast the day caret #465e38; the line unsmoothed (Core
+  Graphics' smoothing drew it 17 % heavier than the panel), no ligature across the caret (Literata's fi, ft, Th were
+  drawn whole on the caret's left), `Line.tail` 300 characters (a 10,000 pt window), the bottom edge's note checked
+  against each theme's line height (Literata's lowest glyph 9.7 pt over the note in the box). Lemna unchanged, its
+  renders byte for byte. Tests: 118, all passing (111 before; seven new in `ThemeTests`); renders
+  `idle-still-day.png`, `idle-still-night.png` (the box, Literata), `editing-still-day.png`, `editing-still-night.png`
+  (the window). `LEMNA_VERSION=0.1.2 make-app.sh` built, the font and its licence in
+  `Contents/Resources/Fonts/Literata`, signed with "Lemna Dev" (`Authority=Lemna Dev`) and verified; the executable is
+  1,166,656 bytes, no `/Users/` path. Not tried: nothing was launched. Try, after quitting the running Lemna and `open
+  app/build/Lemna.app`:
+  - Theme ▸ Still by day (light appearance) over a light app: Literata in the paper box, the green caret's rounded
+    ends, the corners' continuous curve against the pale wash, the hairline, no shadow; type a long sentence and judge
+    the weight against the panel (`docs/design-panel-lemna-themes.html` §3, Literata from the results copy).
+  - The same by night (dark appearance, summon again): the near-black box, the sage caret, Literata light on dark.
+  - Type "fi", "ft", "The", then ← into them: both letters stay, one each side of the caret.
+  - A long text (a few paragraphs, then ← and → through it): the fade before the caret and after it, the ` ¶ `.
+  - The window (⌃⌘F) under Still by day and by night: the paper or near-black background, the line, the traffic
+    lights drawn for it; resize it wide.
+  - The note at the bottom edge (with Bluetooth headphones and the sound on, the notice shows at the summon): in the
+    muted grey, clear under the line's descenders (type "gypsy jump" first).
+  - Increase Contrast (Accessibility › Display) under Still by day: the darker green caret and muted grey; Reduce
+    Transparency: nothing changes.
+  - If "The" shows its T and h apart, the line is Charter, not Literata (which joins them): the system log then has
+    `Lemna: a bundled font is not registered: …`.
+
 - App, pass 21, the theme layer (2026-10-31; DESIGN.md TH1, F1's T2 and T3 amended; the user's picks `TH1 DC1 LK1 TY1
   MO1 AM1 (rest only) BD1 CK1 RM1 OR1` of `docs/design-panel-lemna-themes.html`; this pass is OR1's first step):
   Session › Theme ▸ Lemna / Still, in the main menu and the menu-bar item's, above Sound ▸, ticked from the `theme`

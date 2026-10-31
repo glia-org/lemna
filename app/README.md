@@ -822,17 +822,85 @@ ambients as well.", then the picks `TH1 DC1 LK1 TY1 MO1 AM1 (rest only) BD1 CK1 
 - Build: `LEMNA_VERSION=0.1.2 make-app.sh`; the executable is 1,394,400 bytes; signed with "Lemna Dev"
   (`Authority=Lemna Dev`) and verified.
 
+Pass 22, the Still look and its typeface (DESIGN.md TH1 amended; 2026-10-31; the user's picks `LK1 TY1 MO1` of
+`docs/design-panel-lemna-themes.html`, MO1's ring left to pass 24; OR1's second step):
+
+- **Literata bundled** (TY1): `app/Fonts/Literata/` holds `Literata[opsz,wght].ttf`, the upright variable font
+  (version 3.103, opsz 7–72, wght 200–900; 955,132 bytes), and its `OFL.txt`, from `googlefonts/literata` at
+  `0c2761b` (`app/THIRD_PARTY.md`: source, hashes, licence). The variable font works in Core Text as it is: the family
+  `Literata`, PostScript `Literata-Regular`, and at 30 pt Core Text sets opsz to 30 by itself, the weight the default
+  400; no static instance was needed. `make-app.sh` copies `app/Fonts` into `Contents/Resources/Fonts`;
+  `applicationDidFinishLaunching` calls `Theme.Typeface.register(fontsIn:)` on that folder before the first `Style`:
+  every `.ttf`/`.otf` under it registered for the process alone (`CTFontManagerRegisterFontsForURL`, `.process`), a
+  file already registered counted as done, the ones that fail logged (`Lemna: a bundled font is not registered: …`).
+  `Typeface.font` then finds Literata; missing or unregistered, Still takes Charter 31 as before.
+- **How to add a bundled font for a future theme:** put the family's file(s) and its licence in a folder of their own,
+  `app/Fonts/<Family>/` (OFL fonts must travel with `OFL.txt`; check the licence allows bundling: iA Writer's, for one,
+  ask text editors not to); add a section to `app/THIRD_PARTY.md` (source, commit, hashes, licence); give the theme
+  `Typeface(face: Face(name: "<family or PostScript name>", size: …), bundled: true, fallback: <an installed face>)`.
+  Nothing else: `make-app.sh` copies the whole folder and the app registers every font file in it. The tests see it
+  through `stillFont`'s registration of `app/Fonts` (ThemeTests' file-level `unregistered`); a new theme's tests resolve
+  its font after touching `unregistered` the same way, so the order the tests run in does not change which face draws.
+  Under a proportional face check what `research_notes/Lemna themes/architecture.md` §6 lists and what pass 22 met
+  below: ligatures (split at the caret since this pass), the tail's span, the note's clearance, the weight.
+- **The look against look §5 and the panel's mockups** (LK1): the box's corners are Apple's continuous curve,
+  `CALayer.cornerCurve = .continuous` (QuartzCore's header: macOS 10.15) on the box's content layer, the last look's
+  card and the face's border, from `Theme.Shape.continuous` (Still true; Lemna false, its circular corners as before);
+  the edge stays the 1 pt tonal hairline in the palette's `line`, no shadow; the caret the 2 × 36 pt bar in the green
+  accent with its ends rounded by 1 pt (`Shape.caretEnds`; `Line.draw` fills it as a rounded rectangle, Lemna's square
+  as before); under Increase Contrast the day caret is #465e38 (6.3:1, LK1's value; `Palette.accentContrast`, nil
+  where the accent stays: Still's night, Lemna), the muted grey as in pass 21, the hairline unchanged. Reduce
+  Transparency: nothing to do (Q1's box is opaque, the wash a dim). The menu-bar mark is untouched (a template; LK1
+  keeps it). The window (W2) under Still takes the paper or the near-black as its background and `.aqua` or
+  `.darkAqua` as in pass 21; `editing-still-day.png` and `editing-still-night.png` are its content.
+- **What the renders showed and what changed**: against a headless screenshot of the panel's LK pieces with the font
+  loaded, colours, size, placement (the same baseline: Core Text's ascent and descent centred in the band is what the
+  mockup's `line-height: 1` box does) and the caret matched, but (1) the text was heavier: Core Graphics smooths glyphs
+  in the line's bitmap by default (darker stems), the browser draws `-webkit-font-smoothing: antialiased`; "slowly" on
+  the day paper had 458,356 units of ink smoothed against the panel's 391,222 and 392,473 unsmoothed, so Still's type
+  is unsmoothed (`Typeface.smoothed` false; Lemna keeps today's smoothing, its renders byte for byte); (2) Literata
+  forms ligatures (fi, ff, fl, ft, Th), and with the caret between their letters `Line.shape` gave one glyph on the
+  caret's left, clipped there, the second letter gone: the text after the caret is now a run of its own (an attribute,
+  `LemnaAfter`), which splits a ligature at the caret and keeps kerning across it. The renders draw circular corners
+  (as the mockup's CSS does); the app's are continuous.
+- **The bottom edge's note** (`EdgeView`): it stays at 12 pt up, 15 pt tall, its top 27 pt up. In the box the band
+  starts one em less the border up (27 pt at Menlo 28, 29 at Literata 30, 30 at Charter 31); Literata's line (ascent
+  plus descent 1.49 em, Menlo's 1.16, Charter's 1.22) reaches down to 36.7 pt up, 9.7 pt over the note (Menlo 38.7,
+  Charter 42.1). `theBottomEdgesNoteClearsEveryThemesLine` checks it from each theme's font metrics; the comment in
+  `Frame.swift` says it in em, not for one size.
+- **`Line.tail`** 300 (was 200): measured on prose, 200 characters spanned 2,635–2,800 pt in Literata 30 and
+  2,575–2,740 in Charter 31 (Menlo 28: 3,371), so a window over about 7,500 pt showed the fade after the caret ending
+  early; the visible 35 % of a 10,000 pt window needs about 270. 300 span 4,023 pt in Literata, 3,938 in Charter,
+  5,057 in Menlo. Shaping 600 characters instead of 400 costs about 15 µs more per key in Literata (54 µs against 39
+  in a scratch timing), 2 µs in Menlo.
+- Tests: 118 (111 before; new in `ThemeTests`: `theBundledFontRegistersAndResolves`, `stillsCaretHasRoundedEnds`,
+  `stillsTextHasThePanelsWeight`, `noLigatureSpansTheCaret`, `theBottomEdgesNoteClearsEveryThemesLine`,
+  `theShapedTailCoversA10000PointWindow`, `stillInTheWindow`). Changed: `lemnaIsTodaysLook` (pass 22's fields at
+  today's values), `everyThemeReachesItsContrastInEachAppearance` (the caret under Increase Contrast, 4.5:1),
+  `theAppearancePicksStillsDayOrNight` (the day caret under Increase Contrast, Still's card),
+  `eachThemesFontResolvesAndRainsAtlasStaysMonospaced` (Literata required, Charter as the fallback of a missing face),
+  `render` takes a style; `rainShowsOnStillsDayDim` takes `stillFont` (Rain now shows on 2,187 pixels of the day wash:
+  the box is 120 pt tall, was 124). Renders: `idle-still-day.png`, `idle-still-night.png` (and the two Rain ones on
+  Still) in Literata; new `editing-still-day.png`, `editing-still-night.png`. Lemna's renders byte for byte as before.
+- Build: `LEMNA_VERSION=0.1.2 make-app.sh`; `Contents/Resources/Fonts/Literata/` holds the font and `OFL.txt`; the
+  executable is 1,166,656 bytes (stripped since 50be61a), no `/Users/` path in `nm -pa` or `strings`; signed with
+  "Lemna Dev" (`Authority=Lemna Dev`) and verified.
+
 ## Known gaps
 
 - Pass 21 is not tried: nothing was launched. Untried: Still over light and dark apps in both appearances; the window's
   and the panel's `.aqua` (the traffic lights, the sheets); the fade open and the fade hand-off; Rain's ink on the
   wash by eye; a theme switch in the window. A theme chosen while the box is up shows at its next summon, and so does
   a change of the appearance or of Increase Contrast while it is up (before the pass Increase Contrast's grey was taken
-  then, drawn at the next key). Under Still (Charter): Drift shows nothing (its glyphs are the line's, the atlas is
-  Menlo; RM1 removes Drift); `Line.tail`'s 200 characters span about 2,700 pt, so the fade after the caret ends early
-  in a window wider than about 7,700 pt (9,000 under Menlo); the bottom edge's note at 12 pt still clears the band
-  (31 pt type: the band starts 30 pt up in the 122 pt inside of the box). Literata is not bundled: `bundled` is true
-  and nothing registers a font yet. Not built: MO1's ring, the corners' continuous curve, the caret's rounded ends.
+  then, drawn at the next key). Under Still: Drift shows nothing (its glyphs are the line's, the atlas is Menlo; RM1
+  removes Drift). Not built: MO1's ring.
+- Pass 22 is not tried: nothing was launched. Untried: Literata registering from the bundle at launch (the tests
+  register it from `app/Fonts`; a failure is in the system log and Still shows Charter); the continuous corners and the
+  rounded caret ends on screen; the unsmoothed type by eye at 1× and 2× (measured only against the panel's browser);
+  Increase Contrast's darker caret. Under Increase Contrast the hairline stays 1.30:1 (LK1 gives no variant; the box
+  is still told apart by its warm paper on the cool wash). With a proportional face a caret move or a deletion across a
+  kerned pair or a ligature moves the text by a point or two at the move's start: `Line.width` measures what passed on
+  its own, and the two shaped lines differ by the pair's kerning or the ligature's width.
 - The release executable is not stripped: the debug map in its symbol table names the build folder's absolute paths
   (source and object files). `strings`, which earlier passes used for the "no `/Users/` path" check, does not read that
   table; `nm -pa` does. `strip -S` on the executable before signing, or the linker's `-S`, would drop it.
@@ -913,8 +981,8 @@ ambients as well.", then the picks `TH1 DC1 LK1 TY1 MO1 AM1 (rest only) BD1 CK1 
   ⌘← and ⌘→ in the box (they reach the view because the main menu has no item for them).
 - A caret move during an insertion's glide moves the Character it passes from one part to the other, and with it from
   the insertion's offset to the move's: it may shift by what remains of that glide, under one advance.
-- The text after the caret is shaped up to 200 Characters: in a window wider than about 9,000 pt its fade would end
-  early.
+- The text after the caret is shaped up to 300 Characters (200 until pass 22): in a window wider than about 11,000 pt
+  (Literata 30, Charter 31; 14,000 under Menlo) its fade would end early.
 - Pass 7b's click outside is not tried (the builder shows no windows). Untried: whether the press-and-hold accent
   menu, an input method's candidate window or the menu-bar item's menu takes key from the box (they should not; if one
   does, a click outside would hide the box while typing or opening the menu).

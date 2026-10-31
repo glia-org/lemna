@@ -5,6 +5,7 @@
 // theme.
 import CoreGraphics
 import CoreText
+import Foundation
 
 /// Session › Theme ▸: the look of the box, the line, the dim and the ambience's ink, and a preset for Sound ▸ and
 /// Ambience ▸, whose menus go on overriding it until the next theme is chosen. The first of `all` is the default.
@@ -13,15 +14,23 @@ public struct Theme: Equatable {
     public enum Appearance: Equatable { case followsSystem, dark, light }
 
     /// One appearance's colours, as 0xRRGGBB: the box's surface; the text; the muted grey (the ` ¶ `, the bottom edge)
-    /// and its variant under Increase Contrast; the accent (the caret, and the border where that is the accent); the
-    /// line (the tonal hairline); the dim over every screen, its colour and opacity (D1); and the ambience's ink.
+    /// and its variant under Increase Contrast; the accent (the caret, and the border where that is the accent) and its
+    /// variant under Increase Contrast (nil: the accent stays); the line (the tonal hairline); the dim over every
+    /// screen, its colour and opacity (D1); and the ambience's ink.
     public struct Palette: Equatable {
-        public var surface, text, muted, mutedContrast, accent, line, dim: UInt32
+        public var surface, text, muted, mutedContrast, accent: UInt32
+        public var accentContrast: UInt32? = nil
+        public var line, dim: UInt32
         public var dimAlpha: Float
         public var ink: Ink
 
         /// The muted grey, or its variant under Increase Contrast.
         public func muted(increasedContrast: Bool) -> CGColor { rgb(increasedContrast ? mutedContrast : muted) }
+
+        /// The accent, or its variant under Increase Contrast.
+        public func accent(increasedContrast: Bool) -> CGColor {
+            rgb(increasedContrast ? accentContrast ?? accent : accent)
+        }
     }
 
     /// The ambience's colours on the dim (A1's C1): `text` for the glyphs, the rings and the grid's lines (Rain's
@@ -39,16 +48,22 @@ public struct Theme: Equatable {
     }
 
     /// The line's type: its face; whether the face ships in the app (Contents/Resources/Fonts) rather than with macOS;
-    /// the face taken while it is missing.
+    /// the face taken while it is missing; whether Core Graphics smooths the glyphs (darkens their stems, its default
+    /// in the line's bitmap), else plain antialiasing, the weight a browser draws with `-webkit-font-smoothing:
+    /// antialiased` (the panels' mockups).
     public struct Typeface: Equatable {
         public var face: Face, bundled: Bool, fallback: Face?
+        public var smoothed = true
     }
 
     /// The box: its edge in the accent (B1) or in the palette's tonal hairline, the edge's width, the corners' radius,
-    /// and whether the panel has the system's shadow.
+    /// and whether the panel has the system's shadow; whether the corners are Apple's continuous curve
+    /// (`CALayer.cornerCurve`: no jump in curvature where the edge meets the arc) or circular arcs; the radius of the
+    /// caret's ends (0: square).
     public struct Shape: Equatable {
         public enum Border: Equatable { case accent, hairline }
         public var border: Border, borderWidth: CGFloat, corner: CGFloat, shadow: Bool
+        public var continuous = false, caretEnds: CGFloat = 0
     }
 
     /// How the box opens (P1: grown from `Effects.Tuning.openScale` with the fade, or the fade alone; the close is a
@@ -110,29 +125,50 @@ extension Theme {
 
     /// Still (LK1 TY1 MO1; the name is the panel's placeholder), the mindful look, following the system's appearance:
     /// by day a warm paper box on a pale sage wash, by night a warm near-black on a deep green-black; no border but a
-    /// tonal hairline, 16 pt corners, no shadow (LK1: none until a soft one is decided); Literata 30, Charter 31 while
-    /// its file is not in the bundle (TY1); opened and closed by fades, the hand-off the box's fade (MO1); the ink one
+    /// tonal hairline, 16 pt continuous corners, no shadow (LK1: none until a soft one is decided), the caret's ends
+    /// rounded by 1 pt and by day a darker green under Increase Contrast; Literata 30 (app/Fonts), Charter 31 while its
+    /// file is not in the bundle (TY1), unsmoothed, as the panel showed it; opened and closed by fades, the hand-off the
+    /// box's fade (MO1); the ink one
     /// colour (LK1's), laid over at 0.6 of the alphas by day, added at 0.5 by night. A stub in pass 21, there to
     /// exercise the light-only paths: its preset names what exists today (the Soft pack, no bed, Rain); passes 23 and
     /// 24 fill in the Stone pack, the light rain bed and Still water, and pass 22 the look's last values.
     public static let still = Theme(
         id: "still", title: "Still", appearance: .followsSystem,
         day: Palette(surface: 0xf3f0e8, text: 0x46433d, muted: 0x86817a, mutedContrast: 0x6b675f, accent: 0x577446,
-                     line: 0xd9d4c8, dim: 0xd3d8ce, dimAlpha: 0.74,
+                     accentContrast: 0x465e38, line: 0xd9d4c8, dim: 0xd3d8ce, dimAlpha: 0.74,
                      ink: Ink(text: 0x3f4a3c, accent: 0x3f4a3c, blend: .over, alpha: 0.6)),
         night: Palette(surface: 0x1c1b18, text: 0xe2daca, muted: 0x8c8476, mutedContrast: 0xa69d8e, accent: 0xa2b88e,
                        line: 0x34312c, dim: 0x0f1412, dimAlpha: 0.62,
                        ink: Ink(text: 0xc9d3c4, accent: 0xc9d3c4, blend: .add, alpha: 0.5)),
-        type: Typeface(face: Face(name: "Literata", size: 30), bundled: true, fallback: Face(name: "Charter", size: 31)),
-        box: Shape(border: .hairline, borderWidth: 1, corner: 16, shadow: false),
+        type: Typeface(face: Face(name: "Literata", size: 30), bundled: true, fallback: Face(name: "Charter", size: 31),
+                       smoothed: false),
+        box: Shape(border: .hairline, borderWidth: 1, corner: 16, shadow: false, continuous: true, caretEnds: 1),
         motion: Motion(open: .fade, handOff: .fade),
         defaults: Defaults(pack: "SoftPack", bed: nil, ambience: .rain))
 }
 
 extension Theme.Typeface {
-    /// The line's font: the face, else the fallback (Still's Charter until Literata is bundled); nil when this Mac has
-    /// neither (the app then takes the monospaced system font at the face's size). Core Text gives another face for a
-    /// name it lacks, so the one it gave is checked.
+    /// Registers every font file in `folder` and its subfolders for this process, so that `font` finds the faces the
+    /// app bundles: the app's Contents/Resources/Fonts, which make-app.sh copies from app/Fonts (one folder per family,
+    /// with its licence). Called before the first `Style` is made. Returns the files that did not register, with Core
+    /// Text's reason; a missing folder registers nothing, and a file already registered counts as registered.
+    public static func register(fontsIn folder: String) -> [String] {
+        let files = (FileManager.default.enumerator(atPath: folder)?.allObjects as? [String] ?? [])
+            .filter { ["ttf", "otf"].contains(($0 as NSString).pathExtension.lowercased()) }
+        return files.sorted().compactMap { file in
+            var error: Unmanaged<CFError>?
+            if CTFontManagerRegisterFontsForURL(URL(fileURLWithPath: folder + "/" + file) as CFURL, .process, &error) {
+                return nil
+            }
+            let e = error?.takeRetainedValue()
+            if let e, CFErrorGetCode(e) == CTFontManagerError.alreadyRegistered.rawValue { return nil }
+            return file + ": " + (e.map { CFErrorCopyDescription($0) as String } ?? "not registered")
+        }
+    }
+
+    /// The line's font: the face, else the fallback (Still's Charter when Literata is not registered); nil when this
+    /// Mac has neither (the app then takes the monospaced system font at the face's size). Core Text gives another face
+    /// for a name it lacks, so the one it gave is checked.
     public var font: CTFont? {
         for f in [face] + (fallback.map { [$0] } ?? []) {
             let font = CTFontCreateWithName(f.name as CFString, f.size, nil)
