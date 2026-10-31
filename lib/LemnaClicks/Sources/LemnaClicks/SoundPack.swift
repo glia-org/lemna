@@ -15,16 +15,19 @@ public enum KeyKind: Int, CaseIterable, Sendable {
 
 /// A folder of WAV or CAF clicks with a `pack.json`:
 ///
-///     {"name": "…", "licence": "CC0-1.0", "source": "https://…", "attribution": "…",
+///     {"name": "…", "licence": "CC0-1.0", "source": "https://…", "attribution": "…", "pitched": ["paragraph", "send"],
 ///      "files": {"letter": ["a.wav", …], "space": […], "paragraph": […], "backspace": […], "send": […]}}
 ///
 /// Every kind needs at least one file; two or more let the player avoid repeating itself. `attribution` is optional:
-/// the credit line a licence such as CC BY requires.
+/// the credit line a licence such as CC BY requires. `pitched` is optional too: the kinds whose sound has a note.
 public struct SoundPack: Sendable {
     public let name: String
     public let licence: String
     public let source: String
     public let attribution: String?
+    /// The kinds with a note one hears (a drum, a chime): they play at their recorded rate, as the ±3 % that varies a
+    /// click would make a tune of their repeats (sound.md §4.2). None unless `pack.json` names them.
+    public let pitched: Set<KeyKind>
     public let folder: URL
     /// The files of each kind, in `pack.json` order.
     public let files: [KeyKind: [URL]]
@@ -34,6 +37,7 @@ public struct SoundPack: Sendable {
         let licence: String
         let source: String
         let attribution: String?
+        let pitched: [String]?
         let files: [String: [String]]
     }
 
@@ -44,6 +48,10 @@ public struct SoundPack: Sendable {
         // An unknown key is a typo that would otherwise leave a kind silently empty.
         if let unknown = manifest.files.keys.first(where: { kinds[$0] == nil }) {
             throw ClickError("pack.json: unknown kind \"\(unknown)\"")
+        }
+        let pitched = try (manifest.pitched ?? []).map { key in
+            guard let kind = kinds[key] else { throw ClickError("pack.json: unknown kind \"\(key)\" in pitched") }
+            return kind
         }
         var files: [KeyKind: [URL]] = [:]
         for (key, kind) in kinds {
@@ -61,12 +69,13 @@ public struct SoundPack: Sendable {
         self.licence = manifest.licence
         self.source = manifest.source
         self.attribution = manifest.attribution
+        self.pitched = Set(pitched)
         self.folder = folder
         self.files = files
     }
 
     /// A pack an app carries in `Contents/Resources/<folder>`: the default pack (`DefaultPack`), or `TypewriterPack`,
-    /// `SoftPack`, `ElectricPack` (see THIRD_PARTY.md for their sources and licences).
+    /// `SoftPack`, `ElectricPack`, `StonePack` (see THIRD_PARTY.md for their sources and licences).
     public static func bundled(_ folder: String = "DefaultPack") throws -> SoundPack {
         guard let url = Bundle.main.resourceURL?.appendingPathComponent(folder),
               FileManager.default.fileExists(atPath: url.path) else {

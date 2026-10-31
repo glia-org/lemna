@@ -5,7 +5,7 @@ import ClickRing
 /// calls nothing that could block, as a render thread requires.
 final class Mixer {
     /// Clicks of up to 150 ms at 12–20 keys/s overlap two or three deep; 16 covers key mashing. A
-    /// carriage return (Return only, up to 1 s) holds one voice for its length.
+    /// carriage return or a ringing send (up to 1 s) holds one voice for its length.
     static let voiceCount = 16
 
     private struct Voice {

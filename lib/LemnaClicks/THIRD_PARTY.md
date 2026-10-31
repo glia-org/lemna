@@ -317,6 +317,158 @@ its credit is in the Typewriter pack's line above.
   | Soft | the press at 8 ms (-8.2 dBFS, 2.2 dB under its Return's), its release at 121 ms, the file's peak | 205 ms | -27.2 LUFS | -27.7 | -33.2 |
   | Electric | the clutch's impact at 8 ms, the file's peak, its burst to about 120 ms, the run, the margin stop at about 250 ms, 17 dB under the impact | 335 ms | -26.8 LUFS | -25.5 | -26.6 |
 
+## The Stone pack (`Sources/LemnaClicks/StonePack/`, pass 23a)
+
+The click pack of the mindful theme, CK1 of `docs/design-panel-lemna-themes.html` (picked 2026-10-31; the evidence and
+the plan in `research_notes/Lemna themes/sound.md` §4 and its Recommendations), with its space replaced: the user,
+2026-10-31, "the space sound of the stone sound theme is really not good". The panel's space was kyles 452621, a
+fingertip on a wooden counter: another material, and very dark (0.1–0.4 kHz). Now the keys all come from one rock on
+one board, Return from a low slit drum, the send from a hand chime.
+
+| Recording | Page | Cut into |
+|---|---|---|
+| Single Rock Hitting wood 3.wav (#319223), worthahep88 | https://freesound.org/people/worthahep88/sounds/319223/ | `letter-1`, `letter-5` |
+| Single rock hitting wood.wav (#319226), worthahep88 | https://freesound.org/people/worthahep88/sounds/319226/ | `letter-2`, `letter-6`, `backspace-1` |
+| Single Rock hitting wood 4.wav (#319227), worthahep88 | https://freesound.org/people/worthahep88/sounds/319227/ | `letter-3`, `letter-7`, `space-1`, `space-2` |
+| Single Rock hitting wood 2.wav (#319228), worthahep88 | https://freesound.org/people/worthahep88/sounds/319228/ | `letter-4`, `letter-8`, `backspace-2` |
+| VCSL, Slit Drum, `LogDrumLo_MedM_v1_rr1_Sum.wav` and `LogDrumLo_MedM_v2_rr1_Sum.wav` | https://github.com/sgossner/VCSL/tree/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Slit%20Drum | `paragraph-1`, `paragraph-2` |
+| VCSL, Hand Chimes, `sus_E4_r01_main.wav` | https://github.com/sgossner/VCSL/tree/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Hand%20Chimes | `send-1` |
+
+### Licences: CC0 1.0 (public domain dedication)
+
+- **worthahep88:** checked on 2026-10-31 on each of the four pages: "Creative Commons 0", linked to
+  http://creativecommons.org/publicdomain/zero/1.0/, with the statement quoted for the default pack ("You can copy,
+  modify, distribute and perform the sound, even for commercial purposes, all without the need of asking permission
+  to the author."). Uploaded on 2015-08-09 ("Rocks hitting wood to simulate bullets hitting wood"), 48 kHz 16-bit
+  stereo, 0.13–0.74 s each; no credit is asked. Credit, none owed: Single rock hitting wood,
+  2, 3 and 4 by worthahep88 on Freesound.org, CC0.
+- **VCSL**, the Versilian Community Sample Library by Versilian Studios, at commit
+  `c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e` (2026-01-14, the head of `master` on 2026-10-31): checked on 2026-10-31,
+  the repository's `LICENSE` is the CC0 1.0 Universal legal code (GitHub reads it as CC0-1.0), and its README says:
+
+  > This collection is under a Creative Commons 0 license. Essentially it's Public Domain- you can do whatever you want
+  > with these sounds (even make commercial software), no royalties, no credit, no special terms.
+
+### What was taken and what was done to it
+
+- **Source files:**
+  - worthahep88: the HQ previews (Ogg Vorbis, 48 kHz stereo; the originals, 48 kHz 16-bit WAV, download only with a
+    login), from `https://cdn.freesound.org/previews/319/<id>_3443504-hq.ogg`. SHA-256:
+    `5add35eaf13ed4b81f47091a5a4c1a962c4609526a4113f0c216e78b753bcf61` 319223-hq.ogg,
+    `f8352b27ec25d65a7056bcbaa5c61bd27bf490122d80c92a2c660ed910cc2a67` 319226-hq.ogg,
+    `69b6e8641249c0b1342df23e68f925e44899015bec1edd9255c5603ea93e9b6b` 319227-hq.ogg,
+    `309ad3640f0c662989fcfac2773e38f5718b869ba4ee8e374f7dd0dc9409f4fc` 319228-hq.ogg.
+  - VCSL: the WAVs themselves (lossless, 44.1 kHz stereo; the drum 16-bit, the chime 24-bit), from
+    `https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/<path>`; their git blob ids
+    match the commit's tree. SHA-256:
+    `cb77b9a6e7fc560d03b45102632ee0be5d08158cb03f59d63dd6fd2c4443ba4f` LogDrumLo_MedM_v1_rr1_Sum.wav,
+    `609a9ae5441a007371e0dc3120d7e6d4ad5d23073f5f4fb3f16d0dc08823dfc4` LogDrumLo_MedM_v2_rr1_Sum.wav,
+    `7196b23009e1acc8e03591c35e54144487991c75cfe22413e84e0bbfeb478caf` sus_E4_r01_main.wav.
+- **Decoded** to 48 kHz mono 16-bit with no filter (`-ar 48000 -ac 1 -c:a pcm_s16le`), the chime from its strike, 6 ms
+  into the file, with the last 400 ms of its 900 faded out on a raised cosine in the decode
+  (`-af atrim=start=0.006,asetpts=PTS-STARTPTS,afade=t=out:st=0.5:d=0.4:curve=hsin`), as `cut` fades a third of a cut at
+  most.
+- **Cut** with `tools/cut_click.py cut` as above (from 2 ms before the peak unless `--lead`, the fade-out 25 ms or a
+  third of the cut, 20 ms on the 60 ms letters), every command in `tools/build_packs.sh`; 200,972 bytes together:
+
+  | File | From | Time (s) | Span (ms) | Options |
+  |---|---|---|---|---|
+  | letter-1 … letter-4 | 319223, 319226, 319227, 319228 | 0.038, 0.172, 0.069, 0.093 | 60 | `--gain -1.9` |
+  | letter-5 … letter-8 | the same | the same | 60 | `--rate 0.94 --gain -1.9` |
+  | space-1, space-2 | 319227 | 0.069 | 60 | `--rate 0.8`, `--rate 0.75`; `--gain 2.6` |
+  | backspace-1, backspace-2 | 319226, 319228 | 0.172, 0.093 | 60 | `--rate 0.88 --gain -1.9` |
+  | paragraph-1, paragraph-2 | LogDrumLo v1, v2 | 0.0 | 200 | `--lead 10 --fade 50 --max 250 --gain -4.1` |
+  | send-1 | sus_E4 (decoded as above) | 0.0 | 900 | `--lead 30 --max 1000 --gain -14` |
+
+- **Letters:** each file holds one hit; four takes, each also 6 % slower (sound.md's eight). **Backspace:** two of the
+  brighter takes 12 % slower, as the default pack's. **Return:** two strengths of the low log drum (velocity layers 1
+  and 2), cut from their onset, 200 ms. **Send:** one hand chime, E4 (661 Hz), 900 ms.
+- **The space**, new: the dullest of the four takes, 319227 (centroid 1.20 kHz, the others 1.56–1.89), 20 and 25 %
+  slower: 0.96 and 0.89 kHz, lower and darker than any letter (1.13–1.89 kHz), as the Keychron space (1.04–1.17 kHz)
+  is to its letters (1.94–2.78), and like it about 4 LU over the letters by M max. The same rock on the same board, so
+  it stays in the family; with no ring in the 60 ms taken, it has no note and keeps the ±3 %. Looked at and not taken,
+  as no better: worthahep88's Single Rock hit Dirt (#319222, #319229, CC0, the same rock on the same day), 0.25–0.39
+  kHz, as dark as the fingertip that was rejected; Pebbles on wooden bench (#682166, HenKonen, CC0), 4.2–6.9 kHz with
+  bounces. No better CC0 source was found.
+- **Levelled by loudness** (sound.md §4.3–4.4; pass 19a's "peaks at -6 dBFS, no gain" does not hold for this pack):
+  each kind's cuts take one `--gain` that brings their mean M max (measured as for the sends above) to the mean of the
+  default pack's same kind, so that their spread is kept and a switch of packs changes no loudness:
+
+  | Kind | Keychron, mean M max | Stone cut at -6 dBFS, mean | `--gain` | Stone as shipped, mean | Peaks |
+  |---|---|---|---|---|---|
+  | letter | -33.89 LUFS | -31.99 | -1.9 dB | -33.89 (-32.8 to -35.0) | -7.9 dBFS |
+  | space | -30.06 | -32.65 | +2.6 | -30.05 | -3.4 |
+  | backspace | -33.68 | -31.82 | -1.9 | -33.72 | -7.9 |
+  | paragraph | -28.13 | -24.03 | -4.1 | -28.13 | -10.1 |
+  | send | -27.98 | -13.99 | -14 | -27.99 | -20.0 |
+
+  A typing stream as sound.md §6 makes it (letters with every sixth key a space, volume 0.6) measures -35.6, -34.2 and
+  -32.4 LUFS at 3, 5 and 8 keys a second, the default pack's -35.6, -34.2 and -32.3.
+- **Pitched** (`pack.json`: `"pitched": ["paragraph", "send"]`): the drum has its modes at 183 and 108 Hz, the chime
+  one note; they play at their recorded rate, every time the same (sound.md §4.2). The keys are unpitched and keep the
+  ±3 %.
+- **Measured** (as the other packs above; times from the file's start):
+
+  | File | Length | Centroid | Energy above 5 kHz | Peak to -30 dB |
+  |---|---|---|---|---|
+  | letter-1 … letter-4 | 60 ms | 1.56, 1.87, 1.20, 1.89 kHz | 1.2, 4.0, 0.1, 2.9 % | 26–30 ms |
+  | letter-5 … letter-8 | 63.8 ms | 1.45, 1.71, 1.13, 1.75 kHz | 0.9, 3.0, 0.0, 2.4 % | 28–32 ms |
+  | space-1, space-2 | 75, 80 ms | 0.96, 0.89 kHz | 0 % | 32, 34 ms |
+  | backspace-1, backspace-2 | 68.2 ms | 1.60, 1.64 kHz | 2.7, 2.2 % | 34, 28 ms |
+  | paragraph-1, paragraph-2 | 200 ms | 0.19, 0.24 kHz | 0 % | 60, 166 ms |
+  | send-1 | 900 ms | 0.66 kHz | 0 % | 786 ms (the fade) |
+
+## The rain bed (`Sources/LemnaClicks/Beds/Rain/`, pass 23a)
+
+The bed of the mindful theme, BD1 of `docs/design-panel-lemna-themes.html` (picked 2026-10-31; sound.md §1–§3 and
+its Recommendations): 90 s of light rain, looped.
+
+| Recording | Page | Made into |
+|---|---|---|
+| Light rain in the forest (Brazil) (#585845), felix.blume | https://freesound.org/people/felix.blume/sounds/585845/ | `rain.caf` |
+
+### Licence: CC0 1.0 (public domain dedication)
+
+Checked on 2026-10-31 on the page: "Creative Commons 0", linked to http://creativecommons.org/publicdomain/zero/1.0/,
+with the statement quoted for the default pack. Uploaded on 2021-09-05: rain at night in a forest by a village,
+recorded from a balcony with an ORTF pair (two Schoeps CCM4) on a Sound Devices MixPre-6, a 48 kHz 24-bit stereo WAV of
+14:02; no credit is asked. Credit, none owed: Light rain in the forest (Brazil) by
+felix.blume on Freesound.org, CC0.
+
+### What was taken and what was done to it
+
+- **Source file:** the HQ preview (Ogg Vorbis, 48 kHz stereo, 192 kbit/s, 842.2 s, 25,558,700 bytes), from
+  `https://cdn.freesound.org/previews/585/585845_1661766-hq.ogg`. SHA-256:
+  `a8dfef99c9bbf4729c921cc6ae52499f02a424f612d9313340c08990579cea5d` 585845-hq.ogg.
+- **Decoded** to 48 kHz stereo float through a high-pass, the light first 5½ minutes only (sound.md §3.1):
+  `-af highpass=f=80:p=2,atrim=start=30:end=333,asetpts=PTS-STARTPTS` (two-pole, 12 dB/octave, -3 dB at 80 Hz).
+- **Loop points by spectral match:** `tools/loop_points.py match 585845.wav 0 210` tried 2,101 starts, 0.1 s apart, and
+  ranked them by how the band spectra of the loop's last 2 s and its first 2 s as played (crossfaded) differ, RMS over
+  21 bands from 100 Hz to 16 kHz. The best, taken: 186.1 s into the stretch, 0.21 dB; then 1.9, 62.1, 68.3 and 2.2 s,
+  0.22–0.24 dB; the worst 2.16 dB at 42.5 s. **The loop is 3:36.1 to 5:06.1 of the recording**, its head crossfaded
+  with 5:06.1 to 5:09.1.
+- **Made** with ffmpeg, sample-exact (`atrim` by sample): the 3 s overhang faded out on a quarter cosine and laid over
+  the head's first 3 s, faded in on a quarter sine (`afade curve=qsin`; the squares of the two gains sum to 1), then the
+  rest of the 90 s: 4,320,000 frames. **Encoded** to AAC by Core Audio:
+  `afconvert -f caff -d aac -b 128000 -q 127`, 1,477,949 bytes, SHA-256
+  `cd502580f9851783dddb4500f754b0da0a40731b9c46aa7252b5fb31302a44c1` rain.caf. AVAudioFile reads exactly 4,320,000 frames
+  from it (the CAF's packet table holds the encoder's priming and remainder), so the seam survives. CAF rather than
+  m4a because an m4a carries its creation time; four runs of `build_packs.sh`, one from an empty work folder, made
+  these bytes (the first run's file was 2 bytes shorter, which was not explained).
+- **Measured** on the loop as Core Audio decodes it (`afconvert -f WAVE -d LEF32`), with ffmpeg's ebur128 and a scratch
+  script (not kept; sound.md §6's method):
+  - integrated -26.0 LUFS (`lufs` in `bed.json`), each channel alone -29.5 and -28.6; loudness range 1.1 LU, 3 s
+    loudness SD 0.44 LU, no 400 ms window 6 LU over the median (the loudest 4.1 LU over); 0.19 % of the energy under
+    150 Hz, 10.4 % above 5 kHz, centroid 2.06 kHz; the channels correlate at 0.22;
+  - the wrap: a sample step of 0.0024 across it against 0.057 for the 99.9th percentile of all steps; 0.5 s either
+    side at -33.24 and -33.32 dBFS; band spectra 2 s either side 0.65 dB apart (RMS), 1.71 dB at most (sound.md §2.2:
+    within about 1 dB, as Apple's consecutive rain clips);
+  - played: the player's gain, 10^((-43 - lufs) / 20) / 0.6 (`Bed.gain`), puts it at -43 LUFS over the two channels,
+    -46 on each, at a `bedVolume` of 0.6. The main mixer copies the mono clicks to both channels at full level
+    (measured offline, AVAudioEngine's manual rendering: a mono 0.5 at volume 0.6 comes out 0.3 on each), so the
+    clicks' -34.2 LUFS at 5 keys a second as one channel are -31.2 over the two: the bed stands 12 LU under them in
+    both measures, as sound.md §2.3 set it.
+
 ## Open items
 
 1. Swap in the lossless originals of all four packs (a Freesound login downloads them) and rerun the commands
@@ -332,3 +484,7 @@ its credit is in the Typewriter pack's line above.
    credits file in the bundle, where a user sees it.
 6. Nothing in the three new packs was listened to; every choice above (the filters, the spans, the levels) is by
    measurement. A pack that sounds wrong is fixed by changing a command above and running it again.
+7. Stone and the rain (pass 23a) were not listened to either: the space's rates (0.8, 0.75) and level, the Return's
+   two strengths, the chime's 900 ms and the bed's -43 LUFS (sound.md: "set every level by ear against the clicks
+   on the built-in speakers and on headphones") are for the ear. The originals of worthahep88's takes and of
+   585845 (a login) would replace the previews.

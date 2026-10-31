@@ -9,9 +9,9 @@ let package = Package(
     targets: [
         // C11 atomics for the key-to-audio-thread hand-off: Swift's own Atomic needs macOS 15.
         .target(name: "ClickRing"),
-        // The packs are copied into an app's Contents/Resources, not SwiftPM resources (README, Adding a pack).
+        // The packs and beds are copied into an app's Contents/Resources, not SwiftPM resources (README, Adding a pack).
         .target(name: "LemnaClicks", dependencies: ["ClickRing"],
-                exclude: ["DefaultPack", "TypewriterPack", "SoftPack", "ElectricPack"]),
+                exclude: ["DefaultPack", "TypewriterPack", "SoftPack", "ElectricPack", "StonePack", "Beds"]),
         .testTarget(name: "LemnaClicksTests", dependencies: ["LemnaClicks"]),
     ],
     swiftLanguageModes: [.v5]

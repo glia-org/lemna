@@ -1,0 +1,13 @@
+{
+  "name": "Stone: a rock on wood, a low slit drum, a hand chime",
+  "licence": "CC0-1.0",
+  "source": "https://freesound.org/people/worthahep88/ (letters, space, backspace), https://github.com/sgossner/VCSL (Return, send)",
+  "pitched": ["paragraph", "send"],
+  "files": {
+    "letter": ["letter-1.wav", "letter-2.wav", "letter-3.wav", "letter-4.wav", "letter-5.wav", "letter-6.wav", "letter-7.wav", "letter-8.wav"],
+    "space": ["space-1.wav", "space-2.wav"],
+    "paragraph": ["paragraph-1.wav", "paragraph-2.wav"],
+    "backspace": ["backspace-1.wav", "backspace-2.wav"],
+    "send": ["send-1.wav"]
+  }
+}
