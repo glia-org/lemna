@@ -25,8 +25,9 @@ public struct Newest: Equatable {
 }
 
 /// The colours and the font, in the box and in the window: a theme as it shows now (DESIGN.md TH1), its night palette
-/// when `dark` (LK1: the system's appearance, unless the theme keeps one), with the muted grey of Increase Contrast or
-/// not. `Style(font:)` is Lemna's, today's look (F1 T2). The app takes a new one as a container comes on screen.
+/// when `dark` (LK1: the system's appearance, unless the theme keeps one), with the muted grey and the accent of
+/// Increase Contrast or not. `Style(font:)` is Lemna's, today's look (F1 T2). The app takes a new one as a container
+/// comes on screen.
 public struct Style {
     public var font: CTFont
     /// The box's surface, the text, the muted grey (the ` ¶ `, the bottom edge) and the caret (the accent).
@@ -39,7 +40,7 @@ public struct Style {
         (self.theme, self.dark, self.increasedContrast, self.font) = (theme, dark, increasedContrast, font)
         let p = dark ? theme.night : theme.day
         (background, text, muted, caret) = (rgb(p.surface), rgb(p.text), p.muted(increasedContrast: increasedContrast),
-                                            rgb(p.accent))
+                                            p.accent(increasedContrast: increasedContrast))
         border = theme.box.border == .accent ? caret : rgb(p.line)
     }
 
@@ -62,13 +63,15 @@ public enum Line {
     /// The text after the caret (B4): full strength up to 80 % of the width, nothing from 95 % on.
     public static let afterOpaqueTo: CGFloat = 0.8, afterClearAt: CGFloat = 0.95
     public static let paragraphEnd = " ¶ "
-    /// Characters shaped on each side of the caret per edit: 200 Menlo cells at 28 pt span about 3,400 pt, the
-    /// visible 35 % of a window over 9,000 pt wide (before the caret 25 % to 60 %, after it 60 % to 95 %).
-    public static let tail = 200
+    /// Characters shaped on each side of the caret per edit, enough for the visible 35 % of a window 10,000 pt wide
+    /// (before the caret 25 % to 60 %, after it 60 % to 95 %): 300 Menlo cells at 28 pt span about 5,100 pt; under a
+    /// proportional face prose takes about 13 pt a character at 30 pt (Literata, Charter 31), so 300 span at least
+    /// 3,900 pt where 200 spanned 2,600 (a window up to 7,500 pt).
+    public static let tail = 300
     /// About one word, in cells: an English word averages about five letters, plus its space. Holding ← leaves the
     /// text at most this far behind the caret.
     public static let wordCells = 6
-    static let mutedKey = NSAttributedString.Key("LemnaMuted")
+    static let mutedKey = NSAttributedString.Key("LemnaMuted"), afterKey = NSAttributedString.Key("LemnaAfter")
 
     /// A glyph's opacity by its x in a band `w` wide: 1 right of 45 %, 0 at 25 % and left of it, linear between.
     public static func fade(x: Double, width w: Double) -> Double {
@@ -91,7 +94,8 @@ public enum Line {
 
     /// Shapes the line around the caret: the text before it with its paragraph ends, then the marked text (a pending
     /// dead key, at the caret, in the text colour), then the text after it; once per edit, as one line, so the two
-    /// parts meet where Core Text puts the caret.
+    /// parts meet where Core Text puts the caret. The text after it is a run of its own, so no ligature (Literata's fi,
+    /// ff, ft, Th) spans the caret, which would draw both letters on one side of it.
     public static func shape(_ text: Text, marked: String, font: CTFont) -> Shaped {
         let (before, after) = text.line(around: tail)
         let s = NSMutableAttributedString()
@@ -100,6 +104,7 @@ public enum Line {
         }
         let split = s.length  // the caret, in the line's UTF-16 units
         for part in after { s.append(attributed(part.text, font, muted: part.muted)) }
+        s.addAttribute(afterKey, value: true, range: NSRange(location: split, length: s.length - split))
         let line = CTLineCreateWithAttributedString(s)
         var out = Shaped()
         out.width = CTLineGetTypographicBounds(line, nil, nil, nil)
@@ -135,7 +140,8 @@ public enum Line {
         return CGRect(x: 0, y: ((size.height - h) / 2).rounded(.down), width: size.width, height: h)
     }
 
-    /// The caret: a 2 pt bar 1.2 em tall at 60 % of the band's width, on its middle.
+    /// The caret: a 2 pt bar 1.2 em tall at 60 % of the band's width, on its middle; its ends rounded by the theme's
+    /// `caretEnds` (`draw`).
     public static func caretRect(in band: CGRect, style: Style) -> CGRect {
         CGRect(x: band.minX + caret * band.width, y: band.midY - 0.6 * style.size, width: 2, height: 1.2 * style.size)
     }
@@ -153,6 +159,7 @@ public enum Line {
         let bar = caretRect(in: band, style: style), w = Double(band.width)
         let baseline = band.midY - (CTFontGetAscent(style.font) - CTFontGetDescent(style.font)) / 2  // centres the glyphs
         c.saveGState()
+        if !style.theme.type.smoothed { c.setShouldSmoothFonts(false) }  // Still: the mockup's weight
         c.setFillColor(style.background)
         c.fill(band)
         func part(_ isAfter: Bool, from x0: CGFloat, clip: CGRect, alpha: (Double) -> Double) {
@@ -181,7 +188,13 @@ public enum Line {
         }
         c.restoreGState()
         c.setFillColor(style.caret)
-        c.fill(bar)
+        let ends = style.theme.box.caretEnds  // Still's rounded ends (look §2.6); Lemna's square
+        if ends > 0 {
+            c.addPath(CGPath(roundedRect: bar, cornerWidth: ends, cornerHeight: ends, transform: nil))
+            c.fillPath()
+        } else {
+            c.fill(bar)
+        }
     }
 
     /// A bitmap context laid out as Metal's `.bgra8Unorm` (BGRA in memory, premultiplied, sRGB), in points scaled by

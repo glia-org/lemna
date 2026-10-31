@@ -637,7 +637,7 @@ private func typing(_ typed: [Character], _ mode: Mode, rate: Double, after: Dou
 /// beside the box at rest by day and by night (idle-still-day.png over a light app, idle-still-night.png over a dark
 /// one) and Rain at rest on Still's night (ambience-rain-still-night.png, its ink added).
 @Test(.enabled(if: Ambience.Renderer.available)) func rainShowsOnStillsDayDim() throws {
-    let font = try #require(Theme.still.type.font)
+    let font = try #require(stillFont)  // Literata from app/Fonts, registered once for every test (ThemeTests)
     let renderer = try #require(Ambience.Renderer(font: Ambience.Glyphs.atlasFont(for: font)))
     let day = Style(.still, dark: false, font: font), night = Style(.still, dark: true, font: font)
     func rain(_ stage: Ambience.Stage, scale: CGFloat) throws -> [UInt8] {

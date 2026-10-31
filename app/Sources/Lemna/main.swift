@@ -42,6 +42,11 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         effects = Effects(kept: UserDefaults.standard.dictionary(forKey: Self.effectsKey) as? [String: Bool])
         ambience = Ambience(kept: UserDefaults.standard.string(forKey: Self.ambienceKey))
         theme = Theme(kept: UserDefaults.standard.string(forKey: Self.themeKey))
+        // The faces the app bundles (Still's Literata, TY1), registered before the first style resolves its font; one
+        // that does not register leaves its theme on the fallback.
+        for failed in Theme.Typeface.register(fontsIn: (Bundle.main.resourcePath ?? "") + "/Fonts") {
+            NSLog("Lemna: a bundled font is not registered: %@", failed)
+        }
         let style = self.style(look())
         view = LineView(style: style)
         view.load(keeper.open())  // the silent restore: the last session's text, or an empty one
