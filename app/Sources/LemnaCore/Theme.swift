@@ -126,7 +126,7 @@ extension Theme {
         type: Typeface(face: Face(name: "Literata", size: 30), bundled: true, fallback: Face(name: "Charter", size: 31)),
         box: Shape(border: .hairline, borderWidth: 1, corner: 16, shadow: false),
         motion: Motion(open: .fade, handOff: .fade),
-        defaults: Defaults(pack: "SoftPack", bed: nil, ambience: .rain))
+        defaults: Defaults(pack: "StonePack", bed: "Rain", ambience: .rain))
 }
 
 extension Theme.Typeface {

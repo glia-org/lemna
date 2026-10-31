@@ -45,8 +45,9 @@ overlay without a module, so no test file imports Foundation and Testing togethe
 own type (`.init(fileURLWithPath:)`), the temporary folder comes from Darwin's `mkdtemp`.
 
 `make-app.sh` copies the click packs (`lib/LemnaClicks/Sources/LemnaClicks/DefaultPack`, `TypewriterPack`, `SoftPack`,
-`ElectricPack`, each a `pack.json` and its WAVs) into `Contents/Resources`, where `SoundPack.bundled(<folder>)` loads
-them, writes `LSUIElement` (an accessory app from
+`ElectricPack`, `StonePack`, each a `pack.json` and its WAVs) into `Contents/Resources`, where
+`SoundPack.bundled(<folder>)` loads them, and the beds (`Beds`, each a `bed.json` and its loop) as
+`Contents/Resources/Beds`, where `Bed.bundled(<name>)` loads the one chosen, writes `LSUIElement` (an accessory app from
 launch on: no Dock icon, no menu bar) into the Info.plist, and checks the signature with
 `codesign --verify --deep --strict`. It runs `make-icon.swift` on the icon SVG named in its `icon=` line (K1 of
 `docs/design-panel-icon-round-3.html`), copies `build/AppIcon.icns` into `Contents/Resources` and sets
@@ -88,7 +89,7 @@ git-ignored.
   each physical key is on a MacBook's main block, ANSI and ISO (pass 16),
   `Mechanical.swift`
   the deterministic pass R1, `Session.swift` the end of a session as a state machine, `Summoning.swift` the menu-bar
-  mark, when the Bluetooth notice shows and since pass 20 Start at Login's title and tick (`LoginItem`), `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`), `Theme.swift` (pass 21) the themes, one literal each (`Theme`: palettes for day and night, type, box, motion, the preset's defaults; `Theme.all`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
+  mark, when the Bluetooth notice shows and since pass 20 Start at Login's title and tick (`LoginItem`), `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`), since pass 23 its beds and when the bed plays (`BedChoice`), `Theme.swift` (pass 21) the themes, one literal each (`Theme`: palettes for day and night, type, box, motion, the preset's defaults; `Theme.all`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
   holds the line (`Surface`) and when a click outside hides the box (`ClickOutside`), `Paste.swift` the paste's
   decision table, and since pass 17a its steps in order (`Paste.acts`) and the wait for Return to come up
   (`ReturnUp`), `Handoff.swift` (pass 17b) the hand-off's motion: the line cut into its glyphs, when each sets off
@@ -115,7 +116,7 @@ git-ignored.
   journal round trip through the app's replay, edits in the middle included (`JournalReplayTests`); the menu-bar mark,
   the Bluetooth notice, the muted colour's contrast, Start at Login per status (`FrameTests`); the box's frame and its clamps, one container at a
   time, the paste's decision table, the click-outside guard's table (`BoxTests`); the Sound submenu's default, a
-  pack's choice and ⌘K (`SoundTests`); the Effects submenu's defaults, Off, Reduce Motion and its round trip through a
+  pack's choice and ⌘K, since pass 23 the bed's default, choice and when it plays (`SoundTests`); the Effects submenu's defaults, Off, Reduce Motion and its round trip through a
   dictionary, the entrance on the curve, the newest glyph's fade, the old keys read, every duration on the scale
   (`EffectsTests`); the Ambience submenu's
   default, round trip and Reduce Motion, the tuning, the sprite's layout, the stage, the typing rate, a run's 4 s and its
@@ -822,7 +823,49 @@ ambients as well.", then the picks `TH1 DC1 LK1 TY1 MO1 AM1 (rest only) BD1 CK1 
 - Build: `LEMNA_VERSION=0.1.2 make-app.sh`; the executable is 1,394,400 bytes; signed with "Lemna Dev"
   (`Authority=Lemna Dev`) and verified.
 
+Pass 23, the Stone pack and the rain bed (DESIGN.md K1 amended, its D1 for steady sound only, and TH1's Still preset;
+2026-10-31; the picks `CK1 BD1 TH1` of `docs/design-panel-lemna-themes.html`; OR1's third step):
+
+- 23a, `lib/LemnaClicks` only (its README and `THIRD_PARTY.md`): the Stone pack (rock on wood, a low slit drum, a hand
+  chime; levelled by loudness, the send within 3 LU of its Returns, `pitched` kinds without the ±3 %) and the bed
+  engine (`Bed`, `Beds/Rain`, `ClickPlayer.bed`, `startBed(fadeIn:)`, `stopBed(fadeOut:)`, `bedVolume`).
+- The packs (`Sound.swift`): `SoundChoice.packs` ends with ("Stone", "StonePack"); the player loads it at launch with
+  the others.
+- The bed (`Sound.swift`): `BedChoice` (`beds`: ("Rain bed", "Rain"); `folder`, nil for none; `init(kept:)`, `index`,
+  `choose(_:)`, an unknown folder changing nothing) and `plays(onScreen:writing:sound:)`, true while a bed is chosen,
+  the sound is on, a container is on screen and the session's phase is `.writing`. `Theme.menuTitle`: the title, and
+  the bed's item in lower case when the preset turns one on ("Still (rain bed)").
+- The app (`main.swift`): `bedChoice`, read from `bed` at launch; `chooseBed` (tag −1 for No bed; a bed chosen while
+  the sound is off toggles it on), `keepBed` (the key, nil removing it; `loadBed`; `updateBed`), `loadBed`
+  (`ClickPlayer.bed = Bed.bundled(folder)`, nil for none; a missing bed goes to the system log as `Lemna: no bed: …`),
+  `updateBed` (`startBed(fadeIn: 1.5)` when `plays`, else `stopBed(fadeOut: 0.6)`), called in `apply` before the
+  container shows (after the box began to hide), in `handOff` after the keys stop (Done, Copy, Save…: before ⌘⏎'s
+  send), in `notHandedOff`, at the end of `end` (a `defer`), in `keepSound` (⌘K, a pack, a theme) and in `keepBed` (a
+  bed, a theme). An out and an in in one turn of the main thread (a ⌘⏎ that copies and keeps the box) make no
+  audible dip: the fade's target is one atomic the render thread reads per buffer. `chooseTheme` writes the bed through
+  `BedChoice.choose` and `keepBed`; `themeMenu` titles the items with `menuTitle`; `soundMenu` adds a separator, the
+  beds and No bed (tag −1) before Off; `validateMenuItem` ticks a bed while the sound is on, as the packs.
+- `Theme.still.defaults`: `pack: "StonePack", bed: "Rain"` (the ambience stays Rain until Still water).
+- `make-app.sh` copies `StonePack` with the packs and `Beds` whole.
+- Tests: 114 (111 before; new: `theBedIsNoneUnlessOneWasKept`,
+  `theBedPlaysOnlyWhileWritingInAContainerOnScreenWithTheSoundOn` in `SoundTests`,
+  `thePresetSetsTheBedAndTheThemeSaysSo` in `ThemeTests`; changed: the packs' list,
+  `everyThemeNamesAPackAndAModeThatExist` (a theme's bed is in `BedChoice.beds` and has a `bed.json` under
+  `lib/LemnaClicks/Sources/LemnaClicks/Beds`), the preset's Still pack). LemnaClicks: 23 of 25 run here, the two
+  audible engine tests skipped, the library unchanged since 23a.
+- Build: `LEMNA_VERSION=0.1.2 make-app.sh`; the executable is 1,217,472 bytes, no `/Users/` path in its symbols;
+  `Contents/Resources/StonePack` and `Beds/Rain` (`bed.json`, `rain.caf`, 1,477,949 bytes); signed with "Lemna Dev"
+  (`Authority=Lemna Dev`) and verified.
+
 ## Known gaps
+
+- Pass 23 is not tried: nothing was launched and nothing listened to. Untried: the rain's level against the clicks on
+  the built-in speakers and on headphones (−43 LUFS over two channels, set offline); the fades by ear (1.5 s in, 0.6 s
+  out, the out against the chime's 0.9 s); the space and the send of Stone; AirPods switching to the Mac when a summon
+  starts the bed (sound.md §2.6); power with the bed on (`powermetrics`). In the window the bed plays while the window
+  is up, Lemna in front or not (a click into another app leaves the window, unlike the box, on screen); minimised it
+  plays too. The bed fades out while Save…'s panel is up (the keys stopped: a hand-off under way). The kept bed is
+  decoded at launch and held (35 MB) while the sound is on or off.
 
 - Pass 21 is not tried: nothing was launched. Untried: Still over light and dark apps in both appearances; the window's
   and the panel's `.aqua` (the traffic lights, the sheets); the fade open and the fade hand-off; Rain's ink on the

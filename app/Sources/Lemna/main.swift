@@ -39,6 +39,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         UserDefaults.standard.register(defaults: [Self.soundKey: true])
         choice = SoundChoice(pack: UserDefaults.standard.string(forKey: Self.packKey),
                              on: UserDefaults.standard.bool(forKey: Self.soundKey))
+        bedChoice = BedChoice(kept: UserDefaults.standard.string(forKey: Self.bedKey))
         effects = Effects(kept: UserDefaults.standard.dictionary(forKey: Self.effectsKey) as? [String: Bool])
         ambience = Ambience(kept: UserDefaults.standard.string(forKey: Self.ambienceKey))
         theme = Theme(kept: UserDefaults.standard.string(forKey: Self.themeKey))
@@ -100,6 +101,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             }
             clicks = c
             view.clicks = c
+            loadBed()
             warnIfBluetooth()
         } catch {
             NSLog("Lemna: no key clicks: %@", String(describing: error))
@@ -128,13 +130,65 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         keepSound()
     }
 
-    /// The choice kept across launches and given to the player: a pack is an index there, on or off.
+    /// The choice kept across launches and given to the player: a pack is an index there, on or off; the bed in again
+    /// when the sound comes back with a container up (off, the player has silenced it).
     private func keepSound() {
         UserDefaults.standard.set(choice.on, forKey: Self.soundKey)
         UserDefaults.standard.set(choice.pack, forKey: Self.packKey)
         clicks?.pack = choice.index
         clicks?.enabled = sound
+        updateBed()
         warnIfBluetooth()  // turned on over Bluetooth: said once for this output
+    }
+
+    // MARK: The bed (BD1)
+
+    /// Session › Sound's bed, kept under `bed` (read at launch); a theme's preset writes it too.
+    private var bedChoice = BedChoice(kept: nil)
+
+    /// A bed from Session › Sound (the item's tag is its place in `BedChoice.beds`), or No bed (tag −1). A bed is there
+    /// to be heard, so choosing one while the sound is off turns it on with the last pack, as a pack's item does; No
+    /// bed leaves the sound as it was.
+    @objc func chooseBed(_ sender: NSMenuItem) {
+        let folder = BedChoice.beds.indices.contains(sender.tag) ? BedChoice.beds[sender.tag].folder : nil
+        bedChoice.choose(folder)
+        if folder != nil, !sound { choice.toggle() }
+        keepSound()
+        keepBed()
+    }
+
+    /// The bed kept across launches (none removes the key), given to the player and started or stopped as things stand.
+    private func keepBed() {
+        UserDefaults.standard.set(bedChoice.folder, forKey: Self.bedKey)  // nil removes it
+        loadBed()
+        updateBed()
+    }
+
+    /// The chosen bed on the player, which holds only that one, decoded off the main thread (`ClickPlayer.bed`; the
+    /// same bed again loads nothing). One missing from the bundle leaves the player without a bed and says so in the
+    /// system log.
+    private func loadBed() {
+        guard let clicks else { return }
+        do {
+            clicks.bed = try bedChoice.folder.map { try Bed.bundled($0) }
+        } catch {
+            clicks.bed = nil
+            NSLog("Lemna: no bed: %@", String(describing: error))
+        }
+    }
+
+    /// The bed in or out as things stand (`BedChoice.plays`): in over 1.5 s, out over 0.6 s (sound.md §2.4), each from
+    /// the level it has, so a summon during the fade-out turns it back up without a gap, and an out and an in in one
+    /// turn of the main thread leave no audible dip. Called wherever what it reads changes: `apply` (the container),
+    /// `handOff`, `notHandedOff` and `end` (whether writing goes on), `keepSound` (⌘K) and `keepBed`. With the sound
+    /// off the player starts nothing; with no bed it has nothing to play.
+    private func updateBed() {
+        guard let clicks else { return }
+        if bedChoice.plays(onScreen: surface.onScreen != nil, writing: session.phase == .writing, sound: sound) {
+            clicks.startBed(fadeIn: 1.5)
+        } else {
+            clicks.stopBed(fadeOut: 0.6)
+        }
     }
 
     // MARK: Effects (F1)
@@ -183,8 +237,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
 
     // MARK: Theme (TH1)
 
-    /// `theme`: the theme's id; `bed`: the sound bed's folder, written by a theme's preset (absent: none), read once the
-    /// beds come (pass 23).
+    /// `theme`: the theme's id; `bed`: the sound bed's folder (absent: none), written by a theme's preset and by the
+    /// beds in Sound ▸ (pass 23).
     private static let themeKey = "theme", bedKey = "bed"
     /// Session › Theme: the look, kept across launches (read at launch).
     private var theme = Theme.lemna
@@ -197,7 +251,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         UserDefaults.standard.set(theme.id, forKey: Self.themeKey)
         choice.preset(theme.defaults.pack)
         keepSound()
-        UserDefaults.standard.set(theme.defaults.bed, forKey: Self.bedKey)  // nil removes it
+        bedChoice.choose(theme.defaults.bed)
+        keepBed()
         ambience.choose(theme.defaults.ambience)
         keepAmbience()
         if surface.onScreen == .window, restyle() { view.redraw() }
@@ -358,6 +413,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         // The line moved to the box: the window goes. In window mode hiding is the app's (`handBack`), which also keeps
         // a full-screen window in its Space.
         if surface.mode == .box, window.isVisible { window.orderOut(nil) }
+        updateBed()  // in at the summon, out as the container goes
         switch on {
         case .box?:
             if let front = NSWorkspace.shared.frontmostApplication, front != NSRunningApplication.current {
@@ -478,6 +534,9 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         case #selector(chooseSound(_:)):
             item.state = sound && item.tag == choice.index ? .on : .off
             return true
+        case #selector(chooseBed(_:)):  // as the packs: ticked while the sound is on
+            item.state = sound && item.tag == (bedChoice.index ?? -1) ? .on : .off
+            return true
         case #selector(chooseEffect(_:)):  // Reduce Motion greys the ones that move, read as the menu opens
             let effect = Effects.Item.allCases[item.tag], still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
             item.state = effects.plays(effect, reduceMotion: still) ? .on : .off
@@ -508,6 +567,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     private func handOff() -> String? {
         guard !asking, !blank, session.handOff() else { return nil }
         view.stop()
+        updateBed()  // out from the key-down, ⌘⏎'s before its send, so the send needs no duck (sound.md §2.4)
         keeper.flushSoon()
         return Mechanical.apply(view.text.plainText).text
     }
@@ -733,6 +793,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// could not be written, said at the bottom edge; nil: the save panel was cancelled.
     private func notHandedOff(_ why: String?) {
         session.back()
+        updateBed()
         box.unsend()  // a motion that began: the box as it was
         view.resume()
         guard let why else { return }
@@ -759,6 +820,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// The session is over: key destroyed, file deleted, the surface cleared, a new session begun. If the key store
     /// refuses, the session stays, writing goes on and an alert says why; false then.
     @discardableResult private func end(discard: Bool) -> Bool {
+        defer { updateBed() }  // writing goes on: the bed back in when the container stayed (a ⌘⏎ that copied)
         do {
             try keeper.end(discard: discard)
         } catch {
@@ -776,9 +838,10 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     }
 }
 
-/// Session › Sound and the menu-bar item's Sound (K1): the packs as radio items, then Off ⌘K, which turns the sound off
-/// and, while it is off, back on with the last pack. `target` nil in the main menu (the App gets the actions as the
-/// delegate); the menu-bar item's menu names it, as Lemna may not be active.
+/// Session › Sound and the menu-bar item's Sound (K1): the packs as radio items, then the beds as a second group with
+/// No bed last (BD1), then Off ⌘K, which turns the sound off, bed and all, and, while it is off, back on with the last
+/// pack. `target` nil in the main menu (the App gets the actions as the delegate); the menu-bar item's menu names it,
+/// as Lemna may not be active.
 func soundMenu(target: AnyObject?) -> NSMenu {
     let menu = NSMenu(title: "Sound")
     for (i, pack) in SoundChoice.packs.enumerated() {
@@ -786,6 +849,15 @@ func soundMenu(target: AnyObject?) -> NSMenu {
         item.tag = i
         item.target = target
     }
+    menu.addItem(.separator())
+    for (i, bed) in BedChoice.beds.enumerated() {
+        let item = menu.addItem(withTitle: bed.title, action: #selector(App.chooseBed(_:)), keyEquivalent: "")
+        item.tag = i
+        item.target = target
+    }
+    let none = menu.addItem(withTitle: "No bed", action: #selector(App.chooseBed(_:)), keyEquivalent: "")
+    none.tag = -1
+    none.target = target
     menu.addItem(.separator())
     menu.addItem(withTitle: "Off", action: #selector(App.toggleSound(_:)), keyEquivalent: "k").target = target  // ⌘K
     return menu
@@ -821,12 +893,13 @@ func ambienceMenu(target: AnyObject?) -> NSMenu {
     return menu
 }
 
-/// Session › Theme and the menu-bar item's Theme (TH1): the themes as radio items; choosing one sets the look and writes
-/// its preset into Sound and Ambience. No key (chosen once). `target` as for Sound.
+/// Session › Theme and the menu-bar item's Theme (TH1): the themes as radio items, one whose preset turns a bed on
+/// saying so ("Still (rain bed)"); choosing one sets the look and writes its preset into Sound and Ambience. No key
+/// (chosen once). `target` as for Sound.
 func themeMenu(target: AnyObject?) -> NSMenu {
     let menu = NSMenu(title: "Theme")
     for (i, theme) in Theme.all.enumerated() {
-        let item = menu.addItem(withTitle: theme.title, action: #selector(App.chooseTheme(_:)), keyEquivalent: "")
+        let item = menu.addItem(withTitle: theme.menuTitle, action: #selector(App.chooseTheme(_:)), keyEquivalent: "")
         item.tag = i
         item.target = target
     }

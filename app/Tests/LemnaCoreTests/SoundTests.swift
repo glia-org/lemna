@@ -1,10 +1,11 @@
-// The Sound submenu (K1): the packs, the default, a choice, and ⌘K.
+// The Sound submenu (K1): the packs, the default, a choice, and ⌘K; since pass 23 the bed (BD1): kept, chosen, and when
+// it plays.
 import Testing
 @testable import LemnaCore
 
 @Test func soundStartsOnTheKeychronUnlessAPackWasKept() {
-    #expect(SoundChoice.packs.map(\.title) == ["Keychron", "Typewriter", "Soft", "Electric"])
-    #expect(SoundChoice.packs.map(\.folder) == ["DefaultPack", "TypewriterPack", "SoftPack", "ElectricPack"])
+    #expect(SoundChoice.packs.map(\.title) == ["Keychron", "Typewriter", "Soft", "Electric", "Stone"])
+    #expect(SoundChoice.packs.map(\.folder) == ["DefaultPack", "TypewriterPack", "SoftPack", "ElectricPack", "StonePack"])
     let first = SoundChoice(pack: nil, on: true)  // a first launch, or a build before the submenu
     #expect(first.pack == "DefaultPack" && first.index == 0 && first.on)
     let kept = SoundChoice(pack: "SoftPack", on: false)
@@ -25,4 +26,30 @@ import Testing
     #expect(s == SoundChoice(pack: "ElectricPack", on: true) && s.index == 3)
     s.choose("NoSuchPack")
     #expect(s == SoundChoice(pack: "ElectricPack", on: true))
+}
+
+@Test func theBedIsNoneUnlessOneWasKept() {
+    #expect(BedChoice.beds.map(\.title) == ["Rain bed"] && BedChoice.beds.map(\.folder) == ["Rain"])
+    let first = BedChoice(kept: nil)  // a first launch, or a build before the beds
+    #expect(first.folder == nil && first.index == nil)
+    let kept = BedChoice(kept: "Rain")
+    #expect(kept.folder == "Rain" && kept.index == 0)
+    #expect(BedChoice(kept: "Pond").folder == nil)  // a bed since removed, or never shipped
+    var b = kept
+    b.choose(nil)  // No bed
+    #expect(b == BedChoice(kept: nil))
+    b.choose("Rain")
+    #expect(b == kept)
+    b.choose("NoSuchBed")
+    #expect(b == kept)
+}
+
+@Test func theBedPlaysOnlyWhileWritingInAContainerOnScreenWithTheSoundOn() {
+    let rain = BedChoice(kept: "Rain"), none = BedChoice(kept: nil)
+    #expect(rain.plays(onScreen: true, writing: true, sound: true))  // the summon, the box or the window
+    #expect(!none.plays(onScreen: true, writing: true, sound: true))  // No bed
+    #expect(!rain.plays(onScreen: false, writing: true, sound: true))  // Esc, a click outside, the hotkey, a paste
+    #expect(!rain.plays(onScreen: true, writing: false, sound: true))  // a hand-off's key-down: ⌘⏎, Copy, Save…
+    #expect(!rain.plays(onScreen: true, writing: true, sound: false))  // ⌘K
+    #expect(!rain.plays(onScreen: false, writing: false, sound: false))
 }
