@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lemna themes design options</title>
+<style>
+/* One page, ten decisions on a theme layer for Lemna and its first mindful theme. Same language as
+   design-panel-lemna-rain.html and design-panel-lemna-ambience.html: one mono font, 1 px lines, glyph + colour.
+   Readable without scripts; the pick line and the previews run where scripts run. */
+:root{
+  color-scheme:dark;
+  --bg:#0e1013; --surface:#14171b; --raise:#1b1f25; --line:#262b32; --line-2:#3a414c;
+  --fg:#d9dde3; --muted:#8d95a0; --faint:#5c646f;
+  --accent:#7aa7f0; --accent-soft:rgba(122,167,240,.13); --on-accent:#0e1013;
+  --work:#e2a03a; --need:#f06a43; --done:#52b87c;
+  --ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"CaskaydiaCove Nerd Font Mono","Cascadia Code","Cascadia Mono","Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--ui);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin-inline:auto;padding:32px clamp(16px,4vw,32px) 120px;display:flex;flex-direction:column;gap:52px}
+h1,h2,h3,p,ul,figure{margin:0}
+ul{padding:0;list-style:none}
+code{font:12.5px/1 var(--mono);white-space:nowrap}
+.eyebrow{font:500 12px/1 var(--mono);color:var(--muted)}
+h1{font:600 clamp(24px,4vw,34px)/1.15 var(--mono);letter-spacing:-.02em}
+.lede{max-width:78ch;color:var(--muted);font-size:15px}
+.lede b{color:var(--fg);font-weight:600}
+.top{display:flex;flex-direction:column;gap:14px}
+.bundle{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.bundle-l{font:500 12px/1 var(--mono);color:var(--muted);margin-right:4px}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:5px 9px;border-radius:6px;background:var(--accent-soft);text-decoration:none;font-size:13px;white-space:nowrap;color:inherit}
+.chip b{font:600 12px/1 var(--mono);color:var(--accent)}
+.sec{display:flex;flex-direction:column;gap:18px}
+.sec-h{display:flex;gap:14px;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:12px}
+.num{font:600 28px/1 var(--mono);color:var(--accent)}
+.sec-h h2{font:600 19px/1.2 var(--mono)}
+.sec-h p{color:var(--muted);margin-top:3px;max-width:80ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:16px;align-items:start}
+.card{min-width:0;display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.card:has(.pick input:checked){border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.card-h{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.oid{font:600 13px/1 var(--mono);padding:5px 7px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.card-h h3{font:600 16px/1.2 var(--ui)}
+.tag{font:500 11px/1 var(--mono);padding:4px 6px;border-radius:4px;border:1px solid var(--line-2);color:var(--muted);white-space:nowrap}
+.tag.rec{border-color:var(--done);color:var(--done)}
+.tag.ask{border-color:var(--work);color:var(--work)}
+.tag.no{border-color:var(--need);color:var(--need)}
+.pick{margin-left:auto;display:inline-flex;gap:6px;align-items:center;font:500 12px/1 var(--mono);color:var(--muted);cursor:pointer;padding:5px 8px;border:1px solid var(--line);border-radius:6px}
+.pick input{accent-color:var(--accent);margin:0}
+.pick:has(input:checked){color:var(--fg);border-color:var(--accent)}
+.pitch{font-size:15px;max-width:76ch}
+.how{display:flex;flex-direction:column;gap:5px;color:var(--muted)}
+.how li{padding-left:14px;position:relative;max-width:78ch}
+.how li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--faint)}
+.how b{color:var(--fg);font-weight:600}
+figcaption{font-size:12px;color:var(--muted);margin-top:6px;max-width:72ch}
+.risk{font-size:13px;color:var(--muted);border-left:2px solid var(--line-2);padding-left:10px;max-width:76ch}
+.risk b{color:var(--fg)}
+.risk.ask{border-left-color:var(--work)} .risk.ask b{color:var(--work)}
+.risk.no{border-left-color:var(--need)} .risk.no b{color:var(--need)}
+.ledger{display:grid;grid-template-columns:1fr;gap:6px}
+.ledger div{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13px;color:var(--muted)}
+.ledger b{color:var(--fg);font-weight:600}
+.ledger b:first-child{display:inline;margin-right:8px;font:600 12px/1.6 var(--mono)}
+.ledger .ok b:first-child{color:var(--done)}
+table.keys{border-collapse:collapse;font-size:13px;color:var(--muted)}
+table.keys td,table.keys th{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+table.keys th{font:500 12px/1.3 var(--mono);color:var(--fg)}
+table.keys code{color:var(--fg)}
+table.keys td:first-child{color:var(--fg)}
+.mock{overflow-x:auto}
+.mock table.keys{width:100%;min-width:760px}
+.picks{position:sticky;bottom:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-inline:calc(-1 * clamp(8px,2vw,16px));padding:10px clamp(8px,2vw,16px);background:var(--surface);border:1px solid var(--line-2);border-radius:10px}
+.picks-l{font:500 12px/1 var(--mono);color:var(--muted)}
+.picks code{font:600 14px/1.3 var(--mono);color:var(--fg);user-select:all;white-space:normal}
+.picks button{margin-left:auto;font:600 13px/1 var(--ui);padding:8px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);cursor:pointer}
+.wrap a:not(.chip){color:var(--accent);text-decoration:none}
+.wrap a:not(.chip):hover{text-decoration:underline}
+.finding{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
+.finding div{padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13.5px;color:var(--muted)}
+.finding b{color:var(--fg);display:block;margin-bottom:4px;font-weight:600}
+.refs{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:13px;max-width:96ch}
+.refs li{padding-left:14px;position:relative}
+.refs li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--faint)}
+.refs b{color:var(--fg);font-weight:600}
+.note{font-size:13px;color:var(--muted);max-width:84ch}
+.note b{color:var(--fg);font-weight:600}
+pre.code{margin:0;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font:12.5px/1.5 var(--mono);color:var(--fg);overflow-x:auto}
+.fig{display:block;width:100%;height:auto;font:11px var(--mono)}
+.fig text{fill:var(--fg)} .fig .m{fill:var(--muted)} .fig .f{fill:var(--faint)}
+.fig .ln{fill:none;stroke:var(--line-2)} .fig .sfg{fill:none;stroke:var(--fg)} .fig .ar{fill:none;stroke:var(--muted)}
+.figw{overflow-x:auto}
+</style>
+<style>
+/* this panel: wider for two 700 pt pieces of screen side by side; the controls; the pieces of screen at real size
+   (1 CSS px = 1 pt); the box as Lemna draws it (DESIGN S1, V2; app/Sources/LemnaCore/Line.swift, Box.swift) */
+@font-face{font-family:"Literata Lemna";src:url("previews/Literata-opsz-wght.ttf") format("truetype");font-weight:200 900;font-style:normal;font-display:swap}
+.wrap{max-width:1480px}
+.seg{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.seg button,.btn{font:500 12px/1 var(--mono);color:var(--muted);padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:var(--surface);cursor:pointer}
+.seg button[aria-pressed="true"]{color:var(--fg);border-color:var(--accent);background:var(--accent-soft)}
+.seg .lbl{font:500 12px/1 var(--mono);color:var(--muted);margin-right:2px}
+.seg .sp{width:14px}
+.readout{font:500 12px/1.4 var(--mono);color:var(--muted)}
+.readout b{color:var(--fg);font-weight:500}
+.ro-r{margin-left:auto}
+.inl{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font:500 12px/1 var(--mono);color:var(--muted)}
+.inl label{display:inline-flex;gap:5px;align-items:center;cursor:pointer}
+.inl input{accent-color:var(--accent);margin:0}
+.inl label:has(input:checked){color:var(--fg)}
+.real{display:flex;flex-direction:column;gap:12px}
+.pieces{display:grid;grid-template-columns:repeat(auto-fill,700px);gap:22px 12px;overflow-x:auto;padding:4px 0}
+.lk{display:flex;flex-direction:column;gap:8px;margin:0;min-width:0}
+.lk figcaption{margin:0;max-width:700px}
+.lk figcaption b{color:var(--fg);font-weight:600}
+.lk .ro{font:12px/1.5 var(--mono);color:var(--muted);max-width:700px}
+.lk .ro b{color:var(--fg);font-weight:500}
+.lk.picked .scr{outline:1px solid var(--fg);outline-offset:3px}
+.scr{position:relative;width:700px;height:360px;overflow:hidden;border:1px solid var(--line-2);flex:none;
+  --app-bg:#ffffff;--app-bar:#ececec;--app-ink:#d4d4d4;--app-dot:#d0d0d0}
+.scr.dark{--app-bg:#1e1e1e;--app-bar:#2a2a2a;--app-ink:#3d3d3d;--app-dot:#3a3a3a}
+.scr.focus{border-color:var(--fg)}
+.app{position:absolute;inset:0;background:var(--app-bg)}
+.app .tb{height:28px;background:var(--app-bar);display:flex;align-items:center;gap:8px;padding:0 12px}
+.app .tb i{width:12px;height:12px;border-radius:50%;background:var(--app-dot)}
+.app .doc{padding:30px 70px;display:flex;flex-direction:column;gap:15px}
+.app .doc b{display:block;height:9px;border-radius:2px;background:var(--app-ink)}
+.app .doc .gap{height:10px}
+.wash{position:absolute;inset:0}
+.ringc{position:absolute;left:0;top:0;pointer-events:none}
+.bx{position:absolute;background:var(--box);color:var(--text);border:1px solid var(--edge);border-radius:var(--r);overflow:hidden;line-height:1;cursor:text}
+.bx .ll-b,.bx .ll-a{position:absolute;top:0;bottom:0;display:flex;align-items:center;overflow:hidden;white-space:pre}
+.bx .ll-b{left:0;right:40%;justify-content:flex-end;-webkit-mask-image:linear-gradient(to right,transparent 41.667%,#000 75%);mask-image:linear-gradient(to right,transparent 41.667%,#000 75%)}
+.bx .ll-a{left:calc(60% + 2px);right:5%;-webkit-mask-image:linear-gradient(to right,#000 57.143%,transparent 100%);mask-image:linear-gradient(to right,#000 57.143%,transparent 100%)}
+.bx .ll-b>span,.bx .ll-a>span{flex:none;display:block}
+.bx .ll-c{position:absolute;left:60%;top:50%;width:2px;height:1.2em;margin-top:-.6em;background:var(--caret);border-radius:var(--cr,0)}
+.bx .new{animation:lkfade 80ms cubic-bezier(.23,1,.32,1)}
+@keyframes lkfade{from{opacity:0}}
+.bx .ghost{position:absolute;inset:0;pointer-events:none}
+.bx .ghost span{position:absolute;top:0;bottom:0;display:flex;align-items:center;white-space:pre}
+.bx .edge-note{position:absolute;left:0;right:0;bottom:12px;margin:0;text-align:center;font:12px/1.2 system-ui,-apple-system,sans-serif;color:var(--muted-c);pointer-events:none}
+.bx .ll-in{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;margin:0;padding:0;font-size:16px;background:transparent;color:transparent;caret-color:transparent;cursor:text}
+.bx.off .ll-b,.bx.off .ll-a,.bx.off .ll-c{visibility:hidden}
+.hide{visibility:hidden;opacity:0}
+.wpiece{position:relative;width:1416px;height:520px;border:1px solid var(--line-2);flex:none}
+.wpiece canvas{position:absolute;left:0;top:0}
+.cpiece{position:relative;width:700px;height:300px;border:1px solid var(--line-2);flex:none}
+.cpiece canvas{position:absolute;left:0;top:0}
+.pw{overflow-x:auto;padding:4px 0}
+.menus{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.menu{min-width:190px;border:1px solid var(--line-2);border-radius:8px;background:var(--raise);padding:6px 0;font:12.5px/1.75 var(--mono);color:var(--fg)}
+.menu .t{display:block;padding:0 12px 4px;color:var(--muted);border-bottom:1px solid var(--line);margin-bottom:4px}
+.menu span{display:flex;justify-content:space-between;gap:18px;padding:0 12px 0 26px;position:relative}
+.menu span.on::before{content:"✓";position:absolute;left:10px}
+.menu span.w{color:var(--accent)}
+.menu span kbd{font:inherit;color:var(--muted)}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+.audios{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:12px}
+.au{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.au b{font:600 13px/1.3 var(--mono);color:var(--fg)}
+.au p{font-size:12.5px;color:var(--muted)}
+.au audio{width:100%;height:32px}
+.au.no{border-color:var(--need)}
+.cases{display:flex;flex-wrap:wrap;gap:6px}
+.spec{display:flex;flex-direction:column;gap:14px}
+.spec .row{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.spec .lab{font:12px/1.4 var(--mono);color:var(--muted);width:150px}
+.spec .lab b{color:var(--fg);font-weight:500;display:block}
+.sbox{position:relative;width:700px;height:var(--h,128px);border:1px solid var(--line-2);flex:none;overflow:hidden}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+<p class="eyebrow">Design panel · Lemna</p>
+<h1>Lemna themes design options</h1>
+<p class="lede">The user, 2026-10-31: "I want to redesign Lemna a bit. I like the "nerd" mode it has at the moment, but I feel like it can lean a bit more into the mindfulness side of things. I like the rain animation but the other ones are not really great. I want to add different themes that really change the way the app looks. I want to add a new look and sound now that leans a lot more into the mindfulness side of things, so having ambient sounds like winchimes and light rain drops as ambient animations as well as a user interface theme that is much more minimalism and also typing sounds that lean more into that theme. Make a thorough analysis what the best way is to facilitate these changes and how it would look in the end. Make a panel for me to decide the design aspects and add the animation and look previews so I can judge them properly. Keep in mind that we in the future might want to add other themes and ambients as well."</p>
+<p class="lede">Ten decisions: how a theme works and is declared (1–2), the mindful look <b>Still</b> (a placeholder name, look §5.1), its type and motion (3–5), its ambience, sound bed and click pack (6–8), what goes (9) and the order of work (10). Everything comes from three notes in <a href="../research_notes/Lemna%20themes/">research_notes/Lemna themes/</a>: <a href="../research_notes/Lemna%20themes/architecture.md">architecture.md</a> (the code at pass 20), <a href="../research_notes/Lemna%20themes/look.md">look.md</a> and <a href="../research_notes/Lemna%20themes/sound.md">sound.md</a>; the cards cite them as architecture, look and sound with their sections. <b>recommended</b> is the proposed pick, <b>ask</b> a pick that amends a DESIGN decision (named on the tag), <b>no</b> advised against by the evidence.</p>
+<p class="lede">The previews are live and drawn at real size, 1 CSS px = 1 pt, as on a 2× screen; typing into any box glides its line. The sounds and the Literata face play from the results copy, which carries them in its <code>previews/</code> folder; in the repository's <code>docs/</code> those links do not resolve, the players stay silent and the Still boxes fall back to Charter 31 (the links to the notes resolve only there).</p>
+<div class="bundle"><span class="bundle-l">Picks</span><a class="chip" href="#opt-TH1"><b>TH1</b> theme = preset</a><a class="chip" href="#opt-DC1"><b>DC1</b> Swift literal</a><a class="chip" href="#opt-LK1"><b>LK1</b> Still, follows the appearance</a><a class="chip" href="#opt-TY1"><b>TY1</b> Literata 30</a><a class="chip" href="#opt-MO1"><b>MO1</b> fades only</a><a class="chip" href="#opt-AM1"><b>AM1</b> still water</a><a class="chip" href="#opt-BD1"><b>BD1</b> light rain, opt-in</a><a class="chip" href="#opt-CK1"><b>CK1</b> Stone</a><a class="chip" href="#opt-RM1"><b>RM1</b> remove three</a><a class="chip" href="#opt-OR1"><b>OR1</b> architecture's passes</a></div>
+<p class="eyebrow">Pick line: <span id="pickline">TH1 DC1 LK1 TY1 MO1 AM1 BD1 CK1 RM1 OR1</span></p>
+</header>
+
+<section class="sec" aria-labelledby="s0h">
+<header class="sec-h"><span class="num">0</span><div><h2 id="s0h">What holds today, and what the notes found</h2><p>Today's one look is the user's "nerd mode": box #0e1013, text #d8dce3, accent #7aa7f0, Menlo 28, a 1 pt accent border, 10 pt corners, the dim the box's colour at 0.5 (DESIGN F1's T2, B1, D1).</p></div></header>
+<div class="finding">
+<div><b>The look lives in four places.</b><code>Style</code> (five colours and the font), about 20 literals in the app, <code>Effects.Tuning</code> (29 reads) and <code>Ambience.Tuning</code> (97 reads, with its own copy of two <code>Style</code> colours); five objects capture the look once at init and would not follow a change (architecture takeaway 1, §1).</div>
+<div><b>Two things assume a dark look.</b>The ambience is added light, which shows nothing on a light dim; the box's shadow is dropped on the hand-off's first frame, a pop on a light dim (architecture takeaway 2, §7).</div>
+<div><b>Calm apps are quiet, not decorated.</b>Warm paper or near-black, never pure white on black; text at 7–10:1, not 15–20:1; no border round the writing area; one accent; still backgrounds; fades of 250–600 ms and no motion of the text (look takeaway 1, §1).</div>
+<div><b>Light reads a little better; a pale wash glares at night.</b>Dark-on-light won for normal vision, by little at Lemna's size; a pale wash over a dark app brightens the screen about 7× at every summon, hence a night variant chosen by the system's appearance (look takeaway 2, §2.1).</div>
+<div><b>Rain is neutral; chimes are not.</b>Looped rain did not differ from silence during a serial task (t(17) = 1.14); tone sequences add 4–7 points of serial-recall errors whatever their level (sound takeaway 1–2, §1.2, §1.4).</div>
+<div><b>Few apps bundle sound with a look.</b>Writing apps theme colours and keep the font apart; terminals bundle more; only Calm's scenes join picture and sound; following light and dark is the norm (look §4).</div>
+</div>
+<div class="ledger">
+<div class="ok"><b>Kept, under every pick.</b>Today's look stays as the theme <b>Lemna</b>, equal to today exactly, its renders byte-equal (architecture §3, §8). The glide's 140 ms on easeOutQuint, the box's proportions, the menu-bar mark (L1) and the app icon stay global; the Effects ticks and ⌘K's on/off stay the user's; Reduce Motion as A1 and F1 have it (architecture §1.4, §2).</div>
+<div><b>Amended by these picks.</b>Any TH takes F1's "Not taken: T3 (a Theme submenu, later)", whose risk, "Each scheme needs its muted checked and every effect tried on it", is DC1's tests (architecture §0). MO1 amends F1 (P1, H1 and its scale of durations) for Still; AM1 and RM1 amend A1; BD1 amends K1's D1; CK1 amends K1 (pass 19a's "peaks at −6 dBFS, no gain", the ±3 % rate on every kind, the ruled-out notes for one send).</div>
+<div><b>Read two ways.</b>"ambient sounds like winchimes and light rain drops as ambient animations": (a) a sound bed and animations, or (b) chimes and drops as animations only; (a) needs the bed, the costliest and riskiest part (architecture §0 Q1, takeaway 5). BD0 is reading (b).</div>
+<div><b>Not on this panel, for later.</b>Mist, a behind-window blur as a dim option, which hides the app being written into (look §2.5, §5.2); SF Pro Rounded 30 as the rounded face (look §5.1); a soft shadow once the hand-off's shadow drop is fixed (look §5.1); chimes over the rain as a bed (sound, Recommendations); a bed level control of −52, −46 and −40 LUFS (sound §2.3); a quieter bed while another app plays audio (sound §2.7).</div>
+<div><b>IDs.</b>Two letters and a digit, this panel's own; DESIGN's D1, C1, K1, H1 and the rest are named with their row (K1's D1, A1's C1).</div>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s1h">
+<header class="sec-h"><span class="num">1</span><div><h2 id="s1h">TH: how a theme works</h2><p>What choosing a theme does to the look and to the three axes there are today: Sound, Effects and Ambience.</p></div></header>
+<figure class="real">
+<div class="menus" aria-label="The menus with the recommended picks">
+<div class="menu"><span class="t">Session › Theme ▸</span><span>Lemna</span><span class="on">Still (rain)</span></div>
+<div class="menu"><span class="t">Session › Sound ▸</span><span>Keychron</span><span>Typewriter</span><span>Soft</span><span>Electric</span><span class="on w">Stone</span><hr><span>No Bed</span><span class="on w">Light rain</span><span>Night pond</span><hr><span>Off<kbd>⌘K</kbd></span></div>
+<div class="menu"><span class="t">Session › Ambience ▸</span><span>Rain</span><span class="on w">Still water</span><span>Off</span></div>
+<div class="menu"><span class="t">Session › Effects ▸</span><span>Pop</span><span>Glyph fade</span><span>Hand-off</span><span>Paragraph fade</span><hr><span>Off</span></div>
+</div>
+<figcaption>The menus after choosing Still under TH1 with the recommended picks. In blue what the preset wrote; the user can change any of it after. Effects keeps its ticks as the user set them, and ⌘K's on/off is not touched (architecture §2). The bed is a second radio group in Sound ▸, "No Bed" its first item (architecture §4); a theme that turns a bed on says so in its item (sound §5). Drift, Rings and Grid gone under RM1.</figcaption>
+</figure>
+<div class="mock"><table class="keys">
+<thead><tr><th></th><th>TH1 preset (A)</th><th>TH2 bundle with overrides (B)</th><th>TH3 look only (C)</th></tr></thead>
+<tbody>
+<tr><td>A theme switch</td><td>sets the look; writes <code>soundPack</code>, <code>bed</code>, <code>ambience</code></td><td>sets the look; the per-axis menus show this theme's stored choice, else the theme's default</td><td>the look only</td></tr>
+<tr><td>Existing menus</td><td>unchanged; they override until the next switch</td><td>unchanged in form; the storage becomes per theme</td><td>unchanged; new packs, beds and scenes are new items there</td></tr>
+<tr><td>Defaults</td><td>+ <code>theme</code> (+ <code>bed</code>)</td><td>+ <code>theme</code>; <code>soundPack</code>, <code>bed</code>, <code>ambience</code> (and <code>effects</code>?) become per-theme dictionaries; today's values migrate into lemna's slot</td><td>+ <code>theme</code> (+ <code>bed</code>)</td></tr>
+<tr><td>Extra code beyond the shared part</td><td>≈ 40 lines, 1–2 tests</td><td>≈ 180 lines, 5–6 tests, a "Theme Defaults" item to undo tweaks</td><td>0</td></tr>
+<tr><td>Hidden state</td><td>none: the menus show the truth</td><td>tweaks of other themes, invisible until you switch back</td><td>none</td></tr>
+<tr><td>The mindful set</td><td>one choice</td><td>one choice</td><td>three menus</td></tr>
+<tr><td>Failure mode</td><td>a tweak is lost on a theme switch</td><td>which setting holds is hard to tell (is ⌘K per theme? is Reduce Motion?)</td><td>a theme that does not "really change" the app; mismatches (the films' Rain on a paper look)</td></tr>
+</tbody></table></div>
+<p class="note"><b>The shared part,</b> the same for all three: <code>Theme.swift</code> in LemnaCore (≈ 120 lines with two themes), <code>Style</code> built from a theme (≈ 20 changed), <code>Box.restyle</code> (≈ 50), <code>applyTheme</code> with its menu, its validation and a <code>theme</code> key (≈ 50), <code>EdgeView</code> (≈ 6), <code>LineView</code> (≈ 10), the ink through <code>Stage</code> (≈ 15 + 7 sites), the blend per theme (≈ 15), the renderer per font (≈ 20): about 12 files, ≈ 350 lines and ≈ 120 test lines, an estimate (architecture §2).</p>
+<div class="grid">
+<article class="card" id="opt-TH1"><div class="card-h"><span class="oid">TH1</span><h3>Theme = preset</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="TH" value="TH1" checked> pick</label></div>
+<p class="pitch">Session › Theme ▸ sets the look and writes the sound pack, the bed and the ambience into today's keys. Sound, Effects and Ambience stay, show what is set, and can override it until the next theme switch.</p>
+<ul class="how">
+<li><b>One choice, a coherent package:</b> "really change the way the app looks" plus "a new look and sound" asks for one; TH3 does not give it (architecture §2, why A 1).</li>
+<li><b>The axes stay independent in storage,</b> so a future pack, bed or scene is one item in its own menu, usable under any theme: TH3's strength, kept (why A 2).</li>
+<li><b>Two amendments:</b> the preset writes pack, bed and ambience, not the Effects ticks (per-user motion preferences, their Reduce Motion handling theirs); and it leaves Sound's on/off (⌘K) alone, so it needs a variant of <code>SoundChoice.choose</code>, which turns the sound on (architecture §2).</li>
+<li><b>Precedent:</b> a preset with overrides in a higher layer, as Obsidian, Typora's user CSS, VS Code's customisations and Ghostty keep them; no complaint about either model was found (look §4, what follows 1 and 5).</li>
+<li><b>Never a bed unasked:</b> a theme that turns a bed on says so in its item, e.g. "Mindful (rain)", here "Still (rain)" (sound §5).</li>
+<li>TH1 turns into TH3 if the preset is deleted, into TH2 if only the storage keys change (why A 5).</li>
+</ul>
+<p class="risk"><b>Risk.</b> A tweak is lost at the next theme switch; themes are switched rarely and the menus show what holds (why A 3). Every axis can be set by hand, so every scene and pack must work on every theme: a dark theme's added light on a light dim is invisible (architecture §2, §7).</p></article>
+<article class="card" id="opt-TH2"><div class="card-h"><span class="oid">TH2</span><h3>Bundle with per-theme overrides</h3><label class="pick"><input type="radio" name="TH" value="TH2"> pick</label></div>
+<p class="pitch">Each theme remembers its own pack, bed and ambience; switching back brings your tweaks back.</p>
+<ul class="how"><li>VS Code's per-theme customisations are the precedent "if lost tweaks are ever reported" (look §4, what follows 5).</li></ul>
+<p class="risk"><b>Risk.</b> About 4× TH1's extra code for a problem nobody has had yet; hidden state and a test matrix of axes × themes; questions TH1 never has: is ⌘K per theme, is Reduce Motion (architecture takeaway 3, §2 why A 4).</p></article>
+<article class="card" id="opt-TH3"><div class="card-h"><span class="oid">TH3</span><h3>Look only</h3><label class="pick"><input type="radio" name="TH" value="TH3"> pick</label></div>
+<p class="pitch">A theme changes the look alone; pack, bed and ambience stay separate choices, as OmmWriter keeps them (look §1.1).</p>
+<ul class="how"><li>Nothing beyond the shared part (architecture §2).</li></ul>
+<p class="risk"><b>Risk.</b> The mindful set takes three menus, and a theme alone does not "really change" the app; mismatches such as the films' Rain on a paper look (architecture §2).</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s2h">
+<header class="sec-h"><span class="num">2</span><div><h2 id="s2h">DC: how a theme is declared</h2><p>Where the themes are written down, and what checks them.</p></div></header>
+<pre class="code">public struct Theme: Equatable {
+    public let id: String, title: String, dark: Bool
+    public let palette: Palette, type: Typeface, shape: Shape, dim: Float, ink: Ink
+    public let pack: String, bed: String?, ambience: Ambience.Mode?   // the preset (A)
+    public static let all: [Theme] = [.lemna, .mindful]                // the first is the default
+}</pre>
+<p class="note">The sketch from architecture §3. Fields per architecture §1.4: id and title; dark (appearance, blend, shadow policy); the palette with its Increase Contrast muted; the type (font, size, an optional bundled file, monospaced); the shape (corner radius, border width and role, caret, shadow); the dim's alpha; the ambience's ink (blend, two colours, an alpha scale); optional motion; the preset.</p>
+<div class="grid">
+<article class="card" id="opt-DC1"><div class="card-h"><span class="oid">DC1</span><h3>A Swift literal per theme, with tests</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="DC" value="DC1" checked> pick</label></div>
+<p class="pitch">Each theme is a Swift value in LemnaCore, beside <code>Effects.Tuning</code>, <code>Ambience.Tuning</code> and <code>SoundChoice.packs</code>; a <code>ThemeTests.swift</code> checks them.</p>
+<ul class="how">
+<li><b>Checked at compile time:</b> the <code>Ambience.Mode</code> cases and every field's type; <code>Theme.all</code> straight from <code>swift test</code>, no bundle (architecture §3).</li>
+<li><b>The tests:</b> ids and titles unique, the first <code>lemna</code>, an unknown or missing kept value read as <code>lemna</code>; <code>lemna</code> equal to today exactly (T2's colours, Menlo 28, radius 10, border 1, dim 0.5); every pack, bed and mode named exists; contrast per theme: text ≥ 7:1, caret and accent ≥ 3:1, muted under Increase Contrast ≥ 4.5:1; <b>every scene visible on every theme's dim</b>, one offscreen frame per theme and mode, the test that catches added light on a light dim; the font resolves to the face asked for; the preset leaves the Effects ticks and the sound's on alone (architecture §3).</li>
+<li><b>Assets keep their own manifests:</b> a bed is a folder with a <code>bed.json</code> in the shape of <code>pack.json</code> (name, licence, source, attribution, files) (architecture §3).</li>
+</ul>
+<p class="risk"><b>Risk.</b> No third-party themes. Pack and bed folders are listed in three places (<code>SoundChoice.packs</code>, <code>make-app.sh</code>, the LemnaClicks exclude list), and a new one can be forgotten in any; one glob in <code>make-app.sh</code> removes one of them (architecture §3).</p></article>
+<article class="card" id="opt-DC2"><div class="card-h"><span class="oid">DC2</span><h3>A JSON manifest in Resources</h3><label class="pick"><input type="radio" name="DC" value="DC2"> pick</label></div>
+<p class="pitch">Each theme is a file in the bundle, read at launch.</p>
+<ul class="how"><li>Third-party themes become possible; no need for them shown (architecture §3).</li></ul>
+<p class="risk"><b>Risk.</b> Checked only at run time: a typo'd mode or colour is a launch-time error path; the tests need the file from the repo and a decoder to test (architecture §3).</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s3h">
+<header class="sec-h"><span class="num">3</span><div><h2 id="s3h">LK: the mindful look, Still</h2><p>Four pieces of a screen at real size, a note window behind, the wash at its alpha, the box with its colours, edge, corners and caret. Click a box and type. The readouts are computed live with the WCAG formula, the dim as an alpha blend in sRGB-encoded values, as look.md computes it (look, method).</p></div></header>
+<div class="real">
+<div class="seg" role="group" aria-label="The look previews"><span class="lbl">App behind</span><button type="button" data-app="light" aria-pressed="true">light #ffffff</button><button type="button" data-app="dark" aria-pressed="false">dark #1e1e1e</button><span class="sp"></span><span class="lbl">Fourth piece</span><button type="button" data-alt="paper" aria-pressed="true">Paper (LK2)</button><button type="button" data-alt="dusk" aria-pressed="false">Dusk (LK3)</button><span class="readout ro-r" id="fontstat"></span></div>
+<div class="pieces" id="lkpieces">
+<figure class="lk" data-look="lemna" data-opt="LK0"><div class="scr" id="mk-lemna"></div><figcaption><b>Lemna, today (LK0 and the Lemna theme)</b> · Menlo 28 · box #0e1013 · 1 pt accent border · 10 pt corners · dim #0e1013 at 0.5</figcaption><p class="ro" id="ro-lemna"></p></figure>
+<figure class="lk" data-look="day" data-opt="LK1"><div class="scr" id="mk-day"></div><figcaption><b>Still, day (LK1 in light appearance)</b> · <span class="ffl">Literata 30</span> · box #F3F0E8 · hairline #D9D4C8 · 16 pt corners · wash #D3D8CE at 0.74</figcaption><p class="ro" id="ro-day"></p></figure>
+<figure class="lk" data-look="night" data-opt="LK1"><div class="scr" id="mk-night"></div><figcaption><b>Still, night (LK1 in dark appearance)</b> · <span class="ffl">Literata 30</span> · box #1C1B18 · hairline #34312C · 16 pt corners · wash #0F1412 at 0.62</figcaption><p class="ro" id="ro-night"></p></figure>
+<figure class="lk" data-look="alt" data-opt="LK2"><div class="scr" id="mk-alt"></div><figcaption id="cap-alt"><b>Paper (LK2), light always</b> · the day values at every hour: switch the app behind to dark for its night case</figcaption><p class="ro" id="ro-alt"></p></figure>
+</div>
+<p class="note">The box at its narrowest, 600 pt (<code>BoxFrame</code>: 60 % of the screen, at least 600 pt; 907 pt on a 1512 pt screen), 4 em tall, its middle two thirds of the way down. The edge note in muted 12 pt is the app's Bluetooth notice, shown here so the muted colour can be judged. Drawn with CSS's round corner, which meets the edge with a jump in curvature where <code>cornerCurve = .continuous</code> does not (look §2.4); no shadows drawn. Typing plays the look's pack once the sound is on (section 8).</p>
+</div>
+<div class="mock"><table class="keys">
+<thead><tr><th>Role</th><th>Lemna (T2, today)</th><th>Still, day</th><th>Still, night</th><th>Why (look §5.1)</th></tr></thead>
+<tbody>
+<tr><td>Box</td><td>#0e1013</td><td>#F3F0E8 (L 0.87)</td><td>#1C1B18 (L 0.011)</td><td>a warm paper a little greyer than Solarized's or Everforest's; a warm near-black, not #0e1013's blue-black</td></tr>
+<tr><td>Text</td><td>#d8dce3, 13.9:1</td><td>#46433D, 8.7:1</td><td>#E2DACA, 12.4:1</td><td>AAA with margin, softer than 13.9:1 at no reading cost (Legge 1987); warm off-white on dark (Fan 2024)</td></tr>
+<tr><td>Muted (Increase Contrast)</td><td>#5c646f, 3.2:1 (#8d95a0, 6.3:1)</td><td>#86817A, 3.4:1 (#6B675F, 4.9:1)</td><td>#8C8476, 4.7:1 (#A69D8E, 6.4:1)</td><td>large-text AA; the night muted meets 4.5:1 without IC, which T2's does not</td></tr>
+<tr><td>Caret and accent</td><td>#7aa7f0, 7.8:1</td><td>duckweed green #577446, 4.6:1 (IC #465E38, 6.3:1)</td><td>sage #A2B88E, 8.0:1</td><td>one accent, Lemna's own green; ≥ 4.5:1 for the fixation mark</td></tr>
+<tr><td>Edge</td><td>1 pt accent border (B1)</td><td>no border; hairline #D9D4C8, 1.30:1</td><td>hairline #34312C, 1.33:1</td><td>the box must be found on a pale wash over a light app (1.15×)</td></tr>
+<tr><td>Shadow</td><td>the system's</td><td>none until the hand-off's shadow drop is fixed, then soft</td><td>none (unseen on dark)</td><td>architecture §7</td></tr>
+<tr><td>Corners</td><td>10 pt</td><td>16 pt, <code>cornerCurve = .continuous</code></td><td>same</td><td>curvature preference (Bar &amp; Neta 2006); rounder, still a card</td></tr>
+<tr><td>Dim</td><td>the box's colour at α 0.5 (D1)</td><td>pale sage #D3D8CE at α 0.74</td><td>#0F1412 at α 0.62</td><td>day: box ≥ surround over any app; night: less glare than 0.5 over a light app</td></tr>
+<tr><td>Caret</td><td>2 × 1.2 em bar</td><td>2 × 36 pt bar (1.2 em), 1 pt rounded ends, steady</td><td>same</td><td>OmmWriter's underscore was "very small ... difficult to spot" (look §2.6)</td></tr>
+<tr><td>Ambience ink</td><td>text and accent, added (A1's C1)</td><td>#3F4A3C, blended over, alphas about 0.6 of pass 16's</td><td>#C9D3C4, added, about 0.5 of pass 16's</td><td>added light is invisible on a pale wash (architecture §7)</td></tr>
+</tbody></table></div>
+<p class="note"><b>Box against its dimmed surround,</b> as (L + 0.05) ratios (look §2.1): today 1.05 over a black app, 0.93 over #1E1E1E, 0.28 over white; Paper 2.34, 2.05, 1.15; Dusk 1.14, 0.93, 0.30; "Only the pale box meets the standard over every app". The live readouts give three of these cells differently with the same formula (today over white 0.19, Paper over #1E1E1E 2.13, Dusk over #1E1E1E 1.04); the conclusion is the same.</p>
+<div class="grid">
+<article class="card" id="opt-LK1"><div class="card-h"><span class="oid">LK1</span><h3>Still, following the system's appearance</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="LK" value="LK1" checked> pick</label></div>
+<p class="pitch">By day a warm paper box on a pale sage wash, by night a warm near-black on a deep green-black; <code>NSApp.effectiveAppearance</code> picks, and no manual switch until asked (look §5.1).</p>
+<ul class="how">
+<li><b>Light reads a little better:</b> with normal vision dark-on-light won proofreading and acuity at every age (Piepenbrock et al.); light mode did better at night in a glance task, by day no difference (Dobres et al. 2017); the advantage is minimal at 28–30 pt (look §2.1).</li>
+<li><b>Never darker than its surround:</b> a pale box is the only one that meets EN 12464-1's task-brighter-than-surround over every app (look §2.1).</li>
+<li><b>Why the night variant:</b> a pale wash over a dark app raises the screen's luminance from 0.013 to 0.38, a 6.9× contrast ratio, at every summon: no flash hazard, but glare at night; Ulysses, iA Writer, VS Code, Ghostty and kitty follow the appearance (look §2.1, §4).</li>
+<li><b>Softer contrast at no cost:</b> reading is "very tolerant to contrast reduction" for letters of 0.25–2°, and Lemna's em is about 0.64° (Legge et al. 1987; look §2.2).</li>
+<li><b>No border:</b> none of the calm writing apps draws one; a tonal hairline and the warm-on-cool split let the box be found (look §2.4).</li>
+<li><b>Smooth on paper:</b> one 8-bit step is 1 % of luminance at code 230 against 8.8 % at code 14, so a fading ring or mist draws without bands on a pale wash (look §2.1).</li>
+</ul>
+<p class="risk"><b>Risk.</b> All of architecture §7's light-only work: the ambience blended over (a second pipeline keyed by blend) with alphas per theme, <code>.aqua</code> on the window and the panel, no shadow until the hand-off's drop is fixed, the theme's own Increase Contrast pair. It is invisible until a light theme exists, hence the light stub in pass 1 (architecture §7, §8). The dims assume sRGB-encoded compositing, not checked against WindowServer (look §7).</p></article>
+<article class="card" id="opt-LK2"><div class="card-h"><span class="oid">LK2</span><h3>Paper, light always</h3><label class="pick"><input type="radio" name="LK" value="LK2"> pick</label></div>
+<p class="pitch">The day column at every hour; no appearance logic (look §5.2).</p>
+<ul class="how"><li>One look, positive polarity always.</li></ul>
+<p class="risk"><b>Risk.</b> At every summon over a dark app the pale wash brightens the screen about 7×, at night too; macOS users in dark appearance mostly run dark apps [inference] (look §5.2). The same light-only work as LK1.</p></article>
+<article class="card" id="opt-LK3"><div class="card-h"><span class="oid">LK3</span><h3>Dusk, dark always</h3><label class="pick"><input type="radio" name="LK" value="LK3"> pick</label></div>
+<p class="pitch">The night column at every hour (look §5.2).</p>
+<ul class="how"><li>Nearest to today's behaviour and the cheapest: none of the light-only work; added ambience, the shadow drop and <code>.darkAqua</code> all hold (look §5.2).</li></ul>
+<p class="risk"><b>Risk.</b> Over a light app the box stays darker than its surround (0.30), the inversion visuals.md §6.2 raised, and positive polarity's small advantage goes (look §5.2).</p></article>
+<article class="card" id="opt-LK0"><div class="card-h"><span class="oid">LK0</span><h3>The current look only</h3><label class="pick"><input type="radio" name="LK" value="LK0"> pick</label></div>
+<p class="pitch">No mindful look; a theme layer, if built, holds Lemna alone.</p>
+<p class="risk"><b>Risk.</b> Against the ask: "a user interface theme that is much more minimalism".</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s4h">
+<header class="sec-h"><span class="num">4</span><div><h2 id="s4h">TY: type</h2><p>The face of the Still line. The pick sets it in every Still box on this page; the three below show the same words on the day box, each typable.</p></div></header>
+<div class="real spec" id="spec">
+<div class="row"><p class="lab"><b>TY1 Literata 30</b><span id="lit-note">opsz 30, regular</span></p><div class="sbox" id="sp-literata" style="--h:128px"></div></div>
+<div class="row"><p class="lab"><b>TY2 Charter 31</b>installed with macOS</p><div class="sbox" id="sp-charter" style="--h:132px"></div></div>
+<div class="row"><p class="lab"><b>TY3 Menlo 28</b>today's face</p><div class="sbox" id="sp-menlo" style="--h:120px"></div></div>
+</div>
+<div class="mock"><table class="keys">
+<thead><tr><th>Face (look §2.3, Core Text at 28 pt)</th><th>Licence, bytes</th><th>x-height at 28 pt</th><th>pt per character</th><th>Size for Menlo 28's x-height</th></tr></thead>
+<tbody>
+<tr><td>Menlo (today)</td><td>system</td><td>15.3 (0.55 em)</td><td>16.9</td><td>28</td></tr>
+<tr><td>Literata (opsz 7–72)</td><td>OFL, 0.96 MB variable</td><td>14.1 (0.50)</td><td>12.3</td><td>30.4</td></tr>
+<tr><td>Charter / Iowan Old Style</td><td>installed with macOS, 0 B</td><td>13.6 (0.49)</td><td>12.3 / 12.6</td><td>31.5</td></tr>
+<tr><td>SF Pro Rounded (not on this panel)</td><td>system, 0 B</td><td>14.2 (0.51)</td><td>11.9</td><td>30</td></tr>
+</tbody></table></div>
+<div class="grid">
+<article class="card" id="opt-TY1"><div class="card-h"><span class="oid">TY1</span><h3>Literata 30, bundled under the OFL</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="TY" value="TY1" checked> pick</label></div>
+<p class="pitch">Literata, the e-book face commissioned for Google Play Books (2015), at 30 pt, its optical size at the size, regular; Charter 31 when it is missing (look §1.4, §5.1).</p>
+<ul class="how">
+<li><b>30 pt keeps Menlo 28's x-height</b> (15.1 against 15.3 pt); the box at 4 em becomes 120 pt (look §5.1).</li>
+<li><b>Bundled:</b> OFL-1.1, 0.96 MB variable (a static 400 instance is smaller), in <code>Contents/Resources/Fonts</code> with its <code>OFL.txt</code> and a <code>THIRD_PARTY.md</code> line, registered with <code>CTFontManagerRegisterFontsForURL</code> or <code>ATSApplicationFontsPath</code> (architecture §6).</li>
+<li><b>Type is character, not legibility:</b> serifs make no measurable difference (Arditi &amp; Cho 2005), the fastest font differs per reader (Wallace et al. 2022), rounder letters felt more pleasant and read a little faster (Medved et al. 2023) (look §2.3).</li>
+<li><b>About 40 % more text per width</b> than Menlo (12 against 16.9 pt a character), and each glide step varies with the glyph, "which is how type moves on paper" (look §2.3).</li>
+<li><b>iA Writer's fonts are out:</b> OFL, but their makers ask text editors, "minimalist text editors" among them, not to bundle them (look §2.3).</li>
+</ul>
+<p class="risk"><b>Risk.</b> Menlo is assumed in the code: Drift's speed of one cell, <code>Line.tail</code>'s 200 characters (a narrower face spans about a quarter less), <code>CoreTests</code>' one advance, the edge note's 12 pt tuned at 28 pt; the ambience's renderer is made once from the first font and must be keyed by font (≈ 20 lines) (architecture §6). Rain's grid should keep a monospaced face whatever the line uses (look §2.3). Not yet judged in the box by eye against Menlo 28 (look §7).</p></article>
+<article class="card" id="opt-TY2"><div class="card-h"><span class="oid">TY2</span><h3>Charter 31, nothing bundled</h3><label class="pick"><input type="radio" name="TY" value="TY2"> pick</label></div>
+<p class="pitch">Charter, installed with macOS, at 31 pt.</p>
+<ul class="how"><li>0 bytes; in the sealed system volume's Supplemental fonts on macOS 26 (look §2.3); TY1's own fallback.</li></ul>
+<p class="risk"><b>Risk.</b> The same Menlo assumptions as TY1; 31 pt is a little under Menlo 28's x-height (31.5 would match, look §2.3).</p></article>
+<article class="card" id="opt-TY3"><div class="card-h"><span class="oid">TY3</span><h3>Menlo 28, as today</h3><label class="pick"><input type="radio" name="TY" value="TY3"> pick</label></div>
+<p class="pitch">The Still line keeps today's face.</p>
+<ul class="how"><li>None of the proportional-face work (architecture §6).</li></ul>
+<p class="risk"><b>Risk.</b> The calm look keeps the monospaced face of the "nerd" mode it is meant to differ from [inference].</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s5h">
+<header class="sec-h"><span class="num">5</span><div><h2 id="s5h">MO: motion in Still</h2><p>Summon plays both pieces at once: the open, a sentence typed at a human pace, then ⌘⏎. Left Still with MO1, right today's motions (MO2). You can also click a box once it is up and type; ⌘⏎ sends, Esc closes.</p></div></header>
+<div class="real">
+<div class="seg" role="group" aria-label="Motion preview"><button type="button" class="btn" id="mo-summon">Summon</button><button type="button" class="btn" id="mo-send">Send ⌘⏎</button><button type="button" class="btn" id="mo-esc">Esc</button><span class="sp"></span><span class="lbl">Sound from</span><button type="button" data-listen="still" aria-pressed="true">Still</button><button type="button" data-listen="lemna" aria-pressed="false">Lemna</button><button type="button" class="snd" aria-pressed="false">sound: off</button><span class="readout ro-r" id="mo-ro"></span></div>
+<div class="pieces">
+<figure class="lk"><div class="scr" id="mo-still"></div><figcaption><b>MO1 on Still, day.</b> Open: a 300 ms fade, no scale, the wash with it. Send: the glyphs fade in place over 200 ms; one ring of two crests leaves the box's outline at 60 pt/s, peak α 0.18, gone by 1.2 s (look §2.7, §5.3). With the sound on: the Stone pack's keys and send, and the bed section 7's pick names (the rain for BD1 and BD2, the chimes for BD3, none for BD0) fading in over 1.5 s at the summon and out over 0.6 s at ⌘⏎ or Esc (sound §2.4).</figcaption></figure>
+<figure class="lk"><div class="scr" id="mo-lemna"></div><figcaption><b>Today (MO2), Lemna.</b> Open: 300 ms from 87 % with a fade (P1). Send, H1: from the caret outwards each glyph leaves off the box's right edge over 200 ms, 7 ms after its neighbour, those past 120 ms with the last; the dim lifts over 140 ms; from 120 ms the box shrinks to 90 % and fades over 140 ms: 260 ms in all (DESIGN F1). Ported from the site's demo.</figcaption></figure>
+</div>
+<p class="note">Not fixed by the notes, so chosen here: the box fades from 120 ms over 200 ms, as H1's collapse starts, and the wash lifts evenly over the ring's 1.2 s, the second crest 9 pt behind the first (Ripples' spacing); the ring fades to nothing at 1.2 s. With reduced motion both open and close at once, as Lemna does.</p>
+</div>
+<div class="grid">
+<article class="card" id="opt-MO1"><div class="card-h"><span class="oid">MO1</span><h3>Fades only</h3><span class="tag rec">recommended</span><span class="tag ask">ask: amends F1's P1, H1</span><label class="pick"><input type="radio" name="MO" value="MO1" checked> pick</label></div>
+<p class="pitch">Under Still the box opens and closes by fade, no scale; the glide keeps its 140 ms; the hand-off becomes a fade and one ring on the water.</p>
+<ul class="how">
+<li><b>The calm register is the HIG's Reduce Motion register applied by taste:</b> "Replacing transitions in x-, y-, and z-axes with fades"; Bartram ranks blink &lt; linear &lt; zoom &lt; travel in distraction (look §2.7).</li>
+<li><b>The values:</b> open a 300 ms fade, close a 200 ms fade, on F1's curve; glyph fade 80 ms (140 to try); the ` ¶ `'s 200 ms unchanged (look §5.1).</li>
+<li><b>The glide stays 140 ms:</b> slower text reads as lag, and slower is not calmer at the fixation point (look §2.7).</li>
+<li><b>The hand-off:</b> "the text dropped into the water", a discrete, self-caused event at the end of a session, not in a planning pause (look §2.7).</li>
+</ul>
+<p class="risk ask"><b>Ask: against F1.</b> F1 kept P1 and H1 in pass 18 as "the one bold moment, the one place that spends it"; Still trades it for a quiet one, the Lemna theme keeps both. The ring's 1.2 s lies outside F1's one scale of durations (80, 140, 200, 300 ms), to which architecture §3's test holds a theme's motion. Open in the notes: when the wash lifts, since a ring "across the wash" needs it for 1.2 s while the paste lands under it at about 130 ms; and the ring needs the dim's Metal layer at every hand-off, Ambience on or off [inference].</p></article>
+<article class="card" id="opt-MO2"><div class="card-h"><span class="oid">MO2</span><h3>The current motions</h3><label class="pick"><input type="radio" name="MO" value="MO2"> pick</label></div>
+<p class="pitch">P1's pop from 87 % and H1's stream off the right edge stay under Still.</p>
+<ul class="how"><li>F1 as decided, "the one bold moment"; no new code, no new durations.</li></ul>
+<p class="risk"><b>Risk.</b> A zoom and a travel on a look meant to be still, the two most distracting kinds in Bartram's ranking (look §2.7).</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s6h">
+<header class="sec-h"><span class="num">6</span><div><h2 id="s6h">AM: the mindful ambience</h2><p>What plays on the dim under Still. The water piece is 1416 × 520 pt of a screen with the Still box at its foot; a sentence types itself at a human pace, with a pause after every second one.</p></div></header>
+<figure class="real">
+<div class="seg" role="group" aria-label="Water preview"><button type="button" data-wm="day" aria-pressed="true">Day</button><button type="button" data-wm="night" aria-pressed="false">Night</button><span class="sp"></span><span class="lbl">Drops</span><button type="button" data-wc="word" aria-pressed="true">per word</button><button type="button" data-wc="key" aria-pressed="false">per key</button><button type="button" data-wc="rest" aria-pressed="false">rest only</button><span class="sp"></span><button type="button" data-wf="1" aria-pressed="false">fronds</button><span class="readout ro-r" id="w-ro"></span></div>
+<div class="pw"><div class="wpiece" id="wpiece"><canvas id="water" width="1416" height="520" role="img" aria-label="Still water: soft rings spreading on the pale dim around Lemna's box, a drop for each word typed and a rare drop at rest"></canvas><div class="bx" id="w-box"></div></div></div>
+<figcaption><b>AM1, look §5.3's Ripples values.</b> A word's drop falls where its last letter's key lies across the screen (pass 16's keyboard map: column 0 at a tenth of the width), higher the higher the key's row (the row's height is this demo's choice; the note gives the place across only), at least 0.8 s after the last; Space and Return end a word. Rest drops anywhere at least 48 pt from the box at 0.06 a second here, the note's 0.12 per 1512 × 982 pt screen scaled to this piece's area. Day: ink #3F4A3C blended over the wash on a light app; night: #C9D3C4 added on a dark one. The three crests leave together at 36, 31 and 25 pt/s, so the calm centre follows at 0.7 of the lead and they stand about 9 pt apart at 1.7 s: this demo's reading of "3 crests, 9 pt apart" and "the still centre follows at 0.7 of it". 30 Hz; still frame with reduced motion; paused off screen.</figcaption>
+</figure>
+<div class="mock"><table class="keys">
+<thead><tr><th>Ripples (look §5.3)</th><th>Value</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td>Drops at rest</td><td>Poisson, 0.12 a second a screen (mean 8 s apart), anywhere on the dim at least 48 pt from the box</td><td>a bed, sparse enough to be glanced at rather than watched</td></tr>
+<tr><td>Drops while writing</td><td>one per word (Space, Return), where the word's last letter key lies, at least 0.8 s apart; none per key; the rest rate unchanged</td><td>≈ 0.7–0.9 Hz, discrete, informative (look §3.4)</td></tr>
+<tr><td>Crests</td><td>3, 9 pt apart, the outer leading; a trough ring 3 pt inside each at 0.4 of its alpha</td><td>slope without refraction</td></tr>
+<tr><td>Speed</td><td>36 pt/s (0.83°/s at 50 cm); the still centre at 0.7 of it</td><td>real ripples' leading crests and calm centre</td></tr>
+<tr><td>Onset</td><td>α 0 → peak over 180 ms, easeOutQuint</td><td>no abrupt onset</td></tr>
+<tr><td>Peak α</td><td>day 0.16 (over, #3F4A3C); night 0.07 (added, #C9D3C4)</td><td>about −16 to −20 % luminance on the day wash</td></tr>
+<tr><td>Decay</td><td>peak · e<sup>−t/1.4 s</sup> · √(12 pt / r); gone under α 0.01 or at 4.5 s (r ≈ 160 pt, 3.7°)</td><td>2D spreading and damping</td></tr>
+<tr><td>Crossing, jitter, cap</td><td>rings add; spacing ±15 %, width 1.2–2 pt, start ±40 ms per crest; 24 drops alive (≈ 150 sprites)</td><td>"perfect circles" was the games' weakness (Lagarde)</td></tr>
+<tr><td>Fronds (optional)</td><td>3–7 clusters of 1–3 ovals, 7 × 5 pt, #6F8F5A at α 0.35 (day) / #7E9A6B at 0.25 (night); drift ≤ 1.5 pt/s, turn ≤ 2°/s; a passing crest pushes one 1.5 pt outwards, a spring returns it over 1.2 s</td><td>the habitat; near-still</td></tr>
+</tbody></table></div>
+<div class="pieces">
+<figure class="lk"><div class="pw" style="padding:0"><div class="cpiece"><canvas id="chimes" width="700" height="300" role="img" aria-label="Chime sway: five rods hanging from the top edge, swaying a degree or so"></canvas></div></div><figcaption><b>AM2, chime sway (look §5.3).</b> The top 300 pt of a 700 pt wide piece of the screen, Still's day wash over a light app: five rods in the middle 40 % of the width, 60–140 pt long, 3 pt wide, ink α 0.18; damped pendulums of 7–11 s, ±1.5°; an impulse at each Return of a sentence typed at a human pace (one every 8–12 s, none in a pause). The day values only: the note gives none for night. String length and damping chosen here.</figcaption><p class="ro" id="c-ro"></p></figure>
+<figure class="lk"><svg class="fig" viewBox="0 0 660 160" role="img" style="max-width:700px"><title>AM3, a breathing glow: the dim's light rising for 4 s and falling for 6 s, again and again, while the keys go on below it</title>
+<text x="0" y="40">brighter</text><text x="0" y="99" class="m">dim</text>
+<path class="ln" d="M70 40.5H630M70 96.5H630"/>
+<path class="sfg" stroke-width="1.5" d="M70.0 96.0 74.7 95.5 79.3 93.9 84.0 91.3 88.7 87.8 93.3 83.6 98.0 78.7 102.7 73.5 107.3 68.0 112.0 62.5 116.7 57.3 121.3 52.4 126.0 48.2 130.7 44.7 135.3 42.1 140.0 40.5 144.7 40.0 149.3 40.2 154.0 41.0 158.7 42.1 163.3 43.8 168.0 45.8 172.7 48.2 177.3 51.0 182.0 54.0 186.7 57.3 191.3 60.8 196.0 64.3 200.7 68.0 205.3 71.7 210.0 75.2 214.7 78.7 219.3 82.0 224.0 85.0 228.7 87.8 233.3 90.2 238.0 92.2 242.7 93.9 247.3 95.0 252.0 95.8 256.7 96.0 261.3 95.5 266.0 93.9 270.7 91.3 275.3 87.8 280.0 83.6 284.7 78.7 289.3 73.5 294.0 68.0 298.7 62.5 303.3 57.3 308.0 52.4 312.7 48.2 317.3 44.7 322.0 42.1 326.7 40.5 331.3 40.0 336.0 40.2 340.7 41.0 345.3 42.1 350.0 43.8 354.7 45.8 359.3 48.2 364.0 51.0 368.7 54.0 373.3 57.3 378.0 60.8 382.7 64.3 387.3 68.0 392.0 71.7 396.7 75.2 401.3 78.7 406.0 82.0 410.7 85.0 415.3 87.8 420.0 90.2 424.7 92.2 429.3 93.9 434.0 95.0 438.7 95.8 443.3 96.0 448.0 95.5 452.7 93.9 457.3 91.3 462.0 87.8 466.7 83.6 471.3 78.7 476.0 73.5 480.7 68.0 485.3 62.5 490.0 57.3 494.7 52.4 499.3 48.2 504.0 44.7 508.7 42.1 513.3 40.5 518.0 40.0 522.7 40.2 527.3 41.0 532.0 42.1 536.7 43.8 541.3 45.8 546.0 48.2 550.7 51.0 555.3 54.0 560.0 57.3 564.7 60.8 569.3 64.3 574.0 68.0 578.7 71.7 583.3 75.2 588.0 78.7 592.7 82.0 597.3 85.0 602.0 87.8 606.7 90.2 611.3 92.2 616.0 93.9 620.7 95.0 625.3 95.8 630.0 96.0"/>
+<text x="92" y="30" class="m">in 4 s</text><text x="180" y="30" class="m">out 6 s</text>
+<text x="0" y="126">keys</text><path class="ar" d="M81.2 118v8M84.2 118v8M89.5 118v8M93.1 118v8M96.6 118v8M101.3 118v8M105.5 118v8M109.2 118v8M114.0 118v8M118.8 118v8M123.0 118v8M127.6 118v8M132.0 118v8M137.0 118v8M140.5 118v8M144.3 118v8M149.0 118v8M153.6 118v8M156.7 118v8M161.3 118v8M165.4 118v8M170.6 118v8M175.6 118v8M178.9 118v8M183.0 118v8M188.3 118v8M192.9 118v8M197.4 118v8M201.7 118v8M206.9 118v8M212.2 118v8M216.0 118v8M219.7 118v8M224.7 118v8M228.4 118v8M231.8 118v8M235.4 118v8M239.3 118v8M243.0 118v8M248.3 118v8M252.6 118v8M257.3 118v8M262.4 118v8M265.6 118v8M269.2 118v8M273.4 118v8M277.5 118v8M281.5 118v8M284.9 118v8M290.1 118v8M293.3 118v8M297.1 118v8M300.8 118v8M305.3 118v8M310.6 118v8M399.1 118v8M402.6 118v8M407.0 118v8M410.7 118v8M414.4 118v8M418.3 118v8M423.2 118v8M428.3 118v8M431.6 118v8M436.6 118v8M439.8 118v8M443.6 118v8M447.0 118v8M450.2 118v8M455.7 118v8M459.2 118v8M463.6 118v8M466.9 118v8M470.9 118v8M475.3 118v8M478.6 118v8M483.9 118v8M489.0 118v8M494.2 118v8M499.4 118v8M504.6 118v8M509.4 118v8M513.0 118v8M516.1 118v8M519.6 118v8M522.8 118v8M525.9 118v8M530.3 118v8M533.8 118v8M538.5 118v8M542.6 118v8M547.2 118v8M550.7 118v8M555.9 118v8M559.4 118v8M563.2 118v8M568.4 118v8M571.6 118v8M575.7 118v8M578.8 118v8M584.0 118v8M588.5 118v8M593.8 118v8M596.9 118v8M602.1 118v8M605.5 118v8M610.9 118v8M615.2 118v8M619.8 118v8M623.3 118v8M626.8 118v8"/>
+<path class="ln" d="M70 146.5H630M70.5 146v4M256.5 146v4M443.5 146v4M629.5 146v4"/><text class="m" x="70" y="158" text-anchor="middle">0</text><text class="m" x="256" y="158" text-anchor="middle">10 s</text><text class="m" x="443" y="158" text-anchor="middle">20</text><text class="m" x="630" y="158" text-anchor="middle">30</text>
+</svg><figcaption><b>AM3, a breathing glow, as a schematic.</b> The dim's light paced as a breath, 4 s in and 6 s out as reported for Apple's Breathe, which defaults to about 7 a minute (look §1.3), while the keys go on and stop for a pause. Not animated: advised against.</figcaption></figure>
+</div>
+<div class="grid">
+<article class="card" id="opt-AM1"><div class="card-h"><span class="oid">AM1</span><h3>Still water</h3><span class="tag rec">recommended</span><span class="tag ask">ask: amends A1</span><label class="pick"><input type="radio" name="AM" value="AM1" checked> pick</label></div>
+<p class="pitch">Raindrop rings on the dim: a drop per word typed and rare drops at rest; each drop's rings rise softly, spread, fade with radius and time, and add where they cross.</p>
+<div class="inl" role="radiogroup" aria-label="AM1's coupling"><span>Drops:</span><label><input type="radio" name="AMc" value="word" checked> per word (recommended)</label><label><input type="radio" name="AMc" value="key"> per key</label><label><input type="radio" name="AMc" value="rest"> rest only</label></div>
+<ul class="how">
+<li><b>Lemna's own habitat,</b> duckweed on still water, and the cheapest of the mindful set to draw well (look takeaway 7, §3.2).</li>
+<li><b>Per word, not per key:</b> a drop per word comes at about 0.7–0.9 Hz at 40–55 words a minute, discrete, near Bartram's ~1 Hz, and it tells of the writing (calm technology); a drop per key is the 3–8 Hz onset train F0 rejected for the box. Rest only is a bed that ignores the keys: pure mood (look §3.4).</li>
+<li><b>The opposite of Rain's pass 19b, on purpose:</b> no "more intense when writing", so the two themes feel different in kind (look §3.4).</li>
+<li><b>Restoration is for pauses:</b> nature views helped between blocks of a task, not beside it (Lee et al. 2015; modest overall, Ohly et al. 2016) (look §3.1).</li>
+<li><b>On the sprite pipeline:</b> one new <code>ring</code> shape (a Gaussian across the stroke), shader +12 lines, <code>Sprite.Kind</code> +1, the scene ≈ 120 lines, tuning ≈ 10, 2–3 tests: about a day; rings that cross add and read as interference, where true interference needs a full-screen pass every frame (+200–300 lines, power at rest) (architecture §5).</li>
+</ul>
+<p class="risk ask"><b>Ask: against A1.</b> A1's rule for every mode is "typing feeds and silence starves"; drops at rest join Rain's exception (pass 19b, I1). Rings are a looming-like expansion, so onsets stay soft and rings small, ≤ 160 pt (look §3.3). Return counts as a word's end, which puts one drop in the planning pause where F0's (g) objected to a ripple at the box (look §2.7, §5.3). Every alpha is a starting value to judge by eye on a light and a dark app (look §5.3, §7).</p></article>
+<article class="card" id="opt-AM2"><div class="card-h"><span class="oid">AM2</span><h3>Chime sway</h3><span class="tag ask">ask: amends A1</span><label class="pick"><input type="radio" name="AM" value="AM2"> pick</label></div>
+<p class="pitch">Five rods hang from the top edge and sway, nudged at each Return.</p>
+<ul class="how"><li>Rods as <code>rect</code> sprites turned about a pivot, strings as thin rects, a damped pendulum per rod: the scene ≈ 110 lines, tuning ≈ 10, 2 tests (architecture §5).</li></ul>
+<p class="risk"><b>Risk.</b> A continuous oscillation near the 0.2 Hz visionOS warns about, figurative, and its sound is the changing-state kind K1 ruled out: "later, if the chime bed is built" (look §3.3).</p></article>
+<article class="card" id="opt-AM3"><div class="card-h"><span class="oid">AM3</span><h3>Breathing glow</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="AM" value="AM3"> pick</label></div>
+<p class="pitch">The dim brightens and darkens at a breath's pace.</p>
+<ul class="how"><li>Cheapest, on Core Animation: the shade's opacity or a <code>CAGradientLayer</code>, ≈ 30 lines in <code>Box</code>, nothing on the scene thread (architecture §5).</li></ul>
+<p class="risk no"><b>No.</b> A pacer beside a task competes with it: adherence fell to 27.5 % under a hard task; Apple's Breathe is the foreground task and is never shown beside one (look §3.3; visuals.md §2.4, §4.1). F0 rejected a breathing background, "a blink when seen, a pacer when strong" (DESIGN F0).</p></article>
+<article class="card" id="opt-AM0"><div class="card-h"><span class="oid">AM0</span><h3>None in the theme</h3><label class="pick"><input type="radio" name="AM" value="AM0"> pick</label></div>
+<p class="pitch">Still's preset sets Ambience ▸ Off; any mode can still be chosen by hand.</p>
+<p class="risk"><b>Risk.</b> The ask names "light rain drops as ambient animations".</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s7h">
+<header class="sec-h"><span class="num">7</span><div><h2 id="s7h">BD: the ambient sound bed</h2><p>A steady sound under the clicks while the box is up. Each player is set to its bed's level, about 20 dB under section 8's clicks at their volume of 0.6; its slider can raise it. Play one, then type in section 8.</p></div></header>
+<div class="audios">
+<div class="au"><b>BD1 light rain · felix.blume 585845, CC0</b><audio controls loop preload="none" data-vol="0.101" src="previews/rain-585845.m4a"></audio><p>Night rain in a forest by a village, from a balcony; the light first 5½ minutes (sound §3.1). Played at −46 LUFS.</p></div>
+<div class="au"><b>BD2 night pond · felix.blume 673259, CC0</b><audio controls loop preload="none" data-vol="0.081" src="previews/pond-673259.m4a"></audio><p>Frogs, toads and crickets at a village's edge at night (sound §3.3). Played at −48 LUFS.</p></div>
+<div class="au no"><b>BD3 wind chimes · Chris W 432813, CC0</b><audio controls loop preload="none" data-vol="0.1" src="previews/chimes-432813.m4a"></audio><p>"Metal windchimes in a light breeze", the most natural of those measured (sound §3.2). Played at the rain's −46 LUFS, so you can hear why it is advised against.</p></div>
+</div>
+<p class="note">Each file is 60 s of the Freesound HQ preview, high-passed at 80 Hz, its next 3 s crossfaded into its head on sine and cosine ramps (sound §6), the start chosen among a few where the 2 s band spectra either side of the wrap match best (sound §2.2), normalised so the player's volume gives the level, AAC 128 kbit/s. Rain from 0:30 (sound §3.1); the pond from the stretch of the preview with the least energy under 300 Hz, standing in for the ear that "Check the motor by ear" asks; the chimes from 0:31, a cut, not a loop design. The browser's loop restarts the file and may leave a short gap at the seam that the app's sample-exact wrap does not have. The shipping cut is 90 s (sound, Recommendations).</p>
+<div class="mock"><table class="keys">
+<thead><tr><th>Study (sound §1.2, §1.4)</th><th>Design</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>Newbold et al. 2017, CHI EA</td><td>N = 18, within subjects: silence, looped rain, birdsong at 60 dB during running-total addition</td><td>silence vs rain t(17) = 1.144, p = .806; birdsong vs rain t(17) = 3.154, p = .017: <b>rain ≈ silence, birdsong worse</b></td></tr>
+<tr><td>Haapakangas et al. 2011</td><td>N = 54: speech masked by pink noise, ventilation, music or spring water at ≈ 45 dB</td><td>serial-recall errors rose for the others, not for water; water vs speech d = .51 fewer errors; proofreading untouched</td></tr>
+<tr><td>Proverbio et al. 2018</td><td>N = 50: arithmetic under heavy rain with thunder, silence, music</td><td>difficult items: 70.6 % under rain vs 62.2 % in silence</td></tr>
+<tr><td>Hongisto et al. 2017</td><td>an office, four water maskers vs pseudo-random noise, 3 weeks each</td><td>water rated worse over weeks of masking at work</td></tr>
+<tr><td>Ellermeier &amp; Zimmer 2014 (review)</td><td>irrelevant sound and serial recall</td><td>steady noise ≈ quiet; tones add 4.0–7.0 points of errors (11.8–52.7 % relative); level does not change the effect</td></tr>
+<tr><td>Nigg et al. 2024 (D1's source)</td><td>white and pink noise, mostly white</td><td>g −0.21 without ADHD, +0.25 with: <b>not rain</b></td></tr>
+</tbody></table></div>
+<div class="grid">
+<article class="card" id="opt-BD1"><div class="card-h"><span class="oid">BD1</span><h3>Light rain, opt-in</h3><span class="tag rec">recommended</span><span class="tag ask">ask: amends K1's D1</span><label class="pick"><input type="radio" name="BD" value="BD1" checked> pick</label></div>
+<p class="pitch">Light rain under the clicks while the box is up; off unless the theme or Session › Sound ▸ turns it on.</p>
+<ul class="how">
+<li><b>Level:</b> −46 LUFS, every bed normalised to its target offline, so a switch changes no level; the click heads stand 20–26 dB over it (broadband 20.2–25.7 dB) (sound §2.3).</li>
+<li><b>Fades:</b> in over 1.5 s on an equal-power curve at the summon, out over 0.6 s from the close or ⌘⏎'s key-down; a re-summon ramps from the gain it has; no duck under the send; the bed stops whenever the box is hidden; ⌘K silences clicks and bed (sound §2.4).</li>
+<li><b>Source:</b> felix.blume 585845, CC0, light for its first 5½ minutes, bursts only after 8:52; cut from 0:30–5:30 (sound §3.1). The shipping loop: 90 s, loop points by spectral match, a 3 s equal-power crossfade baked in, high-passed at 80 Hz, AAC 128 kbit/s stereo, ≈ 1.5 MB (sound, Recommendations).</li>
+<li><b>Engine:</b> a stereo <code>Bed</code> source node of its own on the same engine, sample-smooth fades, testable offline: ≈ 200 lines with its menu and wiring, 4–5 LemnaClicks tests and 2 LemnaCore tests; only the chosen bed in memory, decoded off the main thread (architecture §4; sound §2.5).</li>
+</ul>
+<p class="risk ask"><b>Ask: against K1's D1.</b> D1 is "no ambient sound bed: noise slightly harms writers without ADHD, g −0.21". That g is white and pink noise (Nigg et al. 2024), and looped rain did not differ from silence during a serial task (Newbold 2017) (sound §1.1–1.2). Amend D1 for steady nature sound only; the copy promises calm or masking, not focus (sound §1.5). Nothing was listened to; AirPods may switch to the Mac when a bed starts (UNVERIFIED); power with the bed on is not measured (sound §2.5, §2.6, §7).</p></article>
+<article class="card" id="opt-BD2"><div class="card-h"><span class="oid">BD2</span><h3>A night pond as a second bed</h3><span class="tag ask">ask: amends K1's D1</span><label class="pick"><input type="radio" name="BD" value="BD2"> pick</label></div>
+<p class="pitch">BD1 and a dense night chorus of frogs, toads and crickets, the second item of Sound ▸'s beds.</p>
+<ul class="how"><li>felix.blume 673259, CC0: S-SD 0.72 LU, loudness range 2.1, as steady as Apple's rain; brighter (centroid 3.18 kHz), so 2 dB lower, −48 LUFS (sound §3.3, takeaway 3).</li></ul>
+<p class="risk"><b>Risk.</b> A "distant motor" on its page, to check by ear; no direct test of a pond chorus under a task, a repeated token being the steady case (sound §1.5, §3.3). The same amendment of D1 as BD1.</p></article>
+<article class="card" id="opt-BD3"><div class="card-h"><span class="oid">BD3</span><h3>Wind chimes as a bed</h3><span class="tag no">no</span><label class="pick"><input type="radio" name="BD" value="BD3"> pick</label></div>
+<p class="pitch">Metal chimes in a breeze under the writing.</p>
+<ul class="how"><li>Chris W 432813, CC0: 47 onsets a minute, ringing 2.4 s to −30 dB, 27 tonal peaks from 0.7 to 4.6 kHz (sound §3.2).</li></ul>
+<p class="risk no"><b>No.</b> A chime is the changing-state sound of the irrelevant-sound literature: tone sequences add 4–7 percentage points of serial-recall errors, level does not reduce it and quiet does not make it safe; nobody has tested one strike every few seconds (sound takeaway 2, §1.4–1.5); K1 ruled out notes. If wanted anyway: rare strikes over the rain, at most 3 a minute, at least 8 s apart, never timed to the writer's pauses (sound, Recommendations).</p></article>
+<article class="card" id="opt-BD0"><div class="card-h"><span class="oid">BD0</span><h3>No bed</h3><label class="pick"><input type="radio" name="BD" value="BD0"> pick</label></div>
+<p class="pitch">D1 stands; macOS's Background Sounds plays rain beside Lemna (DESIGN K1).</p>
+<ul class="how"><li>Apple's rain bed is 17 clips, 34.8 minutes, 66.7 MB, steady (loudness range 0.5–3 LU) (sound §2.1).</li></ul>
+<p class="risk"><b>Risk.</b> The ask names "ambient sounds like winchimes and light rain"; this is reading (b) of section 0.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s8h">
+<header class="sec-h"><span class="num">8</span><div><h2 id="s8h">CK: the theme's click pack, Stone</h2><p>Turn the sound on, then type into the line: each key plays its pack's sample at key-down as Lemna does, at volume 0.6 with the ±3 % rate where the kind has it; Return plays the Return click, ⌘⏎ the send.</p></div></header>
+<div class="real">
+<div class="seg" role="group" aria-label="Click packs"><button type="button" class="snd" aria-pressed="false">sound: off</button><span class="sp"></span><span class="lbl">Pack</span><button type="button" data-pack="stone" aria-pressed="true">Stone (CK1)</button><button type="button" data-pack="soft" aria-pressed="false">Soft (CK2)</button><button type="button" data-pack="keychron" aria-pressed="false">Keychron (today's default)</button><span class="sp"></span><span class="lbl">Once</span><button type="button" data-kind="letter">letter</button><button type="button" data-kind="space">space</button><button type="button" data-kind="backspace">backspace</button><button type="button" data-kind="paragraph">Return</button><button type="button" data-kind="send">send</button><span class="readout ro-r" id="ck-ro"></span></div>
+<div class="pieces"><div class="lk"><div class="scr" id="ck-scr" style="height:200px"></div></div></div>
+</div>
+<div class="mock"><table class="keys">
+<thead><tr><th>Stone (sound, Recommendations; §4.3–4.4)</th><th>Source</th><th>Cut and level</th><th>Jitter</th></tr></thead>
+<tbody>
+<tr><td>Letters</td><td>worthahep88 319223, 319226, 319227, 319228, "Rocks hitting wood", CC0; each also at rate 0.94: eight samples</td><td>60 ms each, 2 ms lead, 25 ms half-cosine fade, peaks −6 dBFS; M max −31 to −33 LUFS, the Keychron letter's −32.2</td><td>±3 % (unpitched, salience 0.13–0.34)</td></tr>
+<tr><td>Space</td><td>kyles 452621, finger taps on a wooden counter, CC0; two taps</td><td>peaks set to match the Keychron space by M max</td><td>±3 %</td></tr>
+<tr><td>Backspace</td><td>two letter takes at rate 0.88</td><td>−6 dB, as the Keychron pack</td><td>±3 %</td></tr>
+<tr><td>Return</td><td>VCSL slit drum, low (<code>LogDrumLo_MedM</code>), CC0</td><td>200 ms, peak −10 dBFS ≈ −28 LUFS, the Keychron Return's −28.3</td><td>none</td></tr>
+<tr><td>Send (⌘⏎)</td><td>VCSL hand chime <code>sus_E4_r01_main</code>, 661 Hz, CC0</td><td>0.9 s with a 400 ms fade, peak ≈ −20 dBFS ≈ −28 LUFS</td><td>none</td></tr>
+</tbody></table></div>
+<p class="note">The preview's cuts follow this table with the pack tool's own cutter (<code>lib/LemnaClicks/tools/cut_click.py</code>) on the HQ previews; the two space taps and their 90 ms span are this preview's choice, as the note gives no span. Only one VCSL slit-drum take was at hand, so Return has one sample here. Soft and Keychron are the packs as they ship.</p>
+<div class="grid">
+<article class="card" id="opt-CK1"><div class="card-h"><span class="oid">CK1</span><h3>Stone</h3><span class="tag rec">recommended</span><span class="tag ask">ask: amends K1</span><label class="pick"><input type="radio" name="CK" value="CK1" checked> pick</label></div>
+<p class="pitch">Unpitched stone-on-wood letters, a fingertip on wood for Space, a low slit drum for Return and one soft hand chime as the send: one material family, no melody.</p>
+<ul class="how">
+<li><b>What survives a fast typist</b> is what K1 already found: short, dark-to-mid, low pitch salience; OmmWriter's xylophone keystroke was "absolutely NOT for fast typing" (sound §4.1).</li>
+<li><b>Letters at the Keychron's loudness:</b> 26–30 ms to −30 dB, 1.2–1.9 kHz, unpitched (sound §4.3).</li>
+<li><b>One tone, at the end:</b> the send is tonal but one fixed note after the words are written, not a sequence heard while holding verbal material; unlike the Return, so a Copy (which plays the Return) is never taken for a send (sound §4.4).</li>
+<li><b>Engine:</b> a per-kind pitch jitter in <code>pack.json</code>, 0 for pitched kinds, since ±3 % is a semitone of random pitch on a tonal tap, a melody by construction; sends levelled by loudness, not peak (sound §4.2, Recommendations).</li>
+</ul>
+<p class="risk ask"><b>Ask: against K1.</b> Pass 19a's "Peaks at −6 dBFS as every click, no gain": the chime at −6 dBFS is about 17 LU louder than the Keychron send, so it peaks near −20 dBFS; the ±3 % rate on every kind becomes per kind; and K1's ruled-out notes admit one note, the send (sound §4.2, §4.4). The fingertip taps are very dark: check on the built-in speakers (sound §4.3). Nothing was listened to (sound §7).</p></article>
+<article class="card" id="opt-CK2"><div class="card-h"><span class="oid">CK2</span><h3>Soft as the theme's pack</h3><label class="pick"><input type="radio" name="CK" value="CK2"> pick</label></div>
+<p class="pitch">The existing Soft pack (MacBook Air keys, a FUJITSU board's Enter and Delete, CC0; K1's A2) under Still.</p>
+<ul class="how"><li>No new files, no engine change.</li></ul>
+<p class="risk"><b>Risk.</b> Keyboard keys still, not "typing sounds that lean more into that theme" [inference].</p></article>
+<article class="card" id="opt-CK0"><div class="card-h"><span class="oid">CK0</span><h3>The theme sets Sound Off</h3><label class="pick"><input type="radio" name="CK" value="CK0"> pick</label></div>
+<p class="pitch">Choosing Still turns the clicks off.</p>
+<p class="risk"><b>Risk.</b> Against TH1's own amendment, that a preset leaves Sound's on/off (⌘K) alone (architecture §2); and the ask is for theme typing sounds.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s9h">
+<header class="sec-h"><span class="num">9</span><div><h2 id="s9h">RM: the other ambiences</h2><p>Drift, Rings and Grid (A1's M1, M3, M5); the user: "I like the rain animation but the other ones are not really great".</p></div></header>
+<div class="mock"><table class="keys">
+<thead><tr><th>Removed</th><th>Orphaned (architecture §5.4)</th></tr></thead>
+<tbody>
+<tr><td>Drift</td><td><code>Event.leaving</code>, <code>Run.leaving</code>; <code>Key.line</code>, <code>Key.pushed</code> and LineView's <code>pushed</code> with the shaped line it hands on; <code>Stage.band</code>, <code>baseline</code>; <code>Glyphs.sprite(baselineLeft:)</code>; <code>pace()</code> and <code>Tuning.fastRate</code>; the drift tunings</td></tr>
+<tr><td>Rings</td><td><code>circle()</code>, <code>Sprite.Kind.bend</code>, <code>Sprite.bend</code> and the shader's case 2; <code>Stage.boxX</code>, <code>Tuning.boxSpan</code></td></tr>
+<tr><td>Grid</td><td><code>Sprite.Kind.rect</code> and case 1 (unless the chimes use it); <code>Stage.caretPoint</code>; <code>Keyboard.Position.rows</code>/<code>columns</code></td></tr>
+<tr><td>Kept by Rain</td><td><code>Keyboard</code> positions (via <code>screenX</code>), <code>mix</code>, <code>Random</code>, <code>Typing</code>, the glyph atlas</td></tr>
+</tbody></table></div>
+<div class="grid">
+<article class="card" id="opt-RM1"><div class="card-h"><span class="oid">RM1</span><h3>Remove Drift, Rings and Grid</h3><span class="tag rec">recommended</span><span class="tag ask">ask: amends A1</span><label class="pick"><input type="radio" name="RM" value="RM1" checked> pick</label></div>
+<p class="pitch">Session › Ambience ▸ becomes Rain, Still water, Off; a kept <code>ambience</code> naming a removed mode reads as Off, as in pass 18.</p>
+<ul class="how">
+<li><b>Precedent:</b> pass 18 removed Beams, Fireworks and Swarm the same way, recorded with "Reinstate from 5ed9259" (A1; architecture §0 Q6).</li>
+<li>Still water can reuse <code>circle()</code> and <code>bend</code> or replace them with <code>ring</code>; <code>Glyphs.letters</code> has no reader already; <code>AmbienceLinkTests</code> loops over <code>Mode.allCases</code> and adapts, the per-mode couplings and renders go (architecture §5.4).</li>
+<li>Fewer modes to make visible on every theme's dim (architecture §2, §3).</li>
+</ul>
+<p class="risk ask"><b>Ask: against A1.</b> Pass 18 kept these three with Rain as the panel's recommended four; Drift is the one mode made of the writer's own words (A1).</p></article>
+<article class="card" id="opt-RM2"><div class="card-h"><span class="oid">RM2</span><h3>Keep them</h3><label class="pick"><input type="radio" name="RM" value="RM2"> pick</label></div>
+<p class="pitch">Drift, Rain, Rings, Grid and Still water.</p>
+<p class="risk"><b>Risk.</b> Each needs its ink, blend and alphas for a light dim and must pass the visibility test on every theme (architecture §2, §7); against the user's verdict.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s10h">
+<header class="sec-h"><span class="num">10</span><div><h2 id="s10h">OR: order of work</h2><p>Architecture §8's passes, with the tests that hold each one.</p></div></header>
+<div class="mock"><table class="keys">
+<thead><tr><th>Pass</th><th>What</th><th>Verify</th><th>Tests</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>The theme layer: <code>Theme</code> with <code>lemna</code> = today and a light stub (<code>paper</code>: a light palette, Menlo, no shadow, ink blended over) to exercise appearance, blend, shadow and contrast; Session › Theme ▸ and the menu-bar item's; live restyle; the ink through <code>Stage</code>; the renderer per font; the preset, the stub naming existing packs and Off</td><td>renders per theme; <code>lemna</code>'s byte-equal to today's</td><td>103 + ≈ 8</td></tr>
+<tr><td>2</td><td>The Still look, after this panel: palette, face, radius, border role, dim, any motion values</td><td>renders; contrast tests</td><td>+ 2–3</td></tr>
+<tr><td>3</td><td>Sound: the Stone pack (five kinds, <code>pack.json</code>), the bed; K1 amended</td><td>offline render tests; listening by the user</td><td>clicks 17 + 4–5, app + 2</td></tr>
+<tr><td>4</td><td>Scenes: Still water (and chimes if picked); the removals; A1 amended</td><td>renders per theme and mode; the visibility test</td><td>2–3 a scene; removed modes' tests go</td></tr>
+<tr><td>5</td><td>Still's preset filled in with the new pack, bed and scene</td><td>the "names exist" test</td><td>+ 0</td></tr>
+</tbody></table></div>
+<p class="note">The journal's 16 tests are untouched throughout (architecture §8). The other costs, estimates: the bed ≈ 200 lines (architecture §4); Still water about a day (§5); chime sway ≈ 110 + 10 lines; a breathing glow on Core Animation about half a day; a bundled font a registration call, a folder and its licence in <code>make-app.sh</code> (§6); per-kind jitter and loudness-levelled sends in <code>pack.json</code> (sound, Recommendations).</p>
+<div class="grid">
+<article class="card" id="opt-OR1"><div class="card-h"><span class="oid">OR1</span><h3>Architecture §8's passes</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="OR" value="OR1" checked> pick</label></div>
+<p class="pitch">The theme layer first, with today's look as the Lemna theme and a light stub; then the Still look; then the pack and the bed; then the scenes and the removals; the preset filled in last; 103 app, 16 journal and 17 clicks tests green throughout.</p>
+<ul class="how">
+<li><b>Pass 1 changes nothing on screen,</b> and the "lemna equals today" test proves it (architecture §3, §8).</li>
+<li><b>The stub exposes what hides:</b> five places capture the look at init, and a missed one shows as a box half in the old theme; the light-only work is invisible until a light theme exists (architecture §8, risks).</li>
+<li>Each change gets a DESIGN amendment with the user's words and the evidence restated, as passes 18 and 19 did (architecture §8).</li>
+</ul>
+<p class="risk"><b>Risk.</b> Nothing of Still shows until pass 2. The note's takeaway counts four passes and its table five; the fifth only fills in the preset (architecture takeaway 7, §8).</p></article>
+<article class="card" id="opt-OR2"><div class="card-h"><span class="oid">OR2</span><h3>Look first, layer after</h3><label class="pick"><input type="radio" name="OR" value="OR2"> pick</label></div>
+<p class="pitch">Build Still's look into today's code, then lift both looks into a theme layer.</p>
+<ul class="how"><li>Still shows a pass earlier.</li></ul>
+<p class="risk"><b>Risk.</b> The init-time captures and the light-only work surface only when the layer comes, and the look's code is touched twice (architecture §8, risks).</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s11h">
+<header class="sec-h"><span class="num">11</span><div><h2 id="s11h">Sources</h2><p>The notes as of 2026-10-31; nothing in them was built, launched or listened to.</p></div></header>
+<ul class="refs">
+<li><b>Research notes</b>: <a href="../research_notes/Lemna%20themes/architecture.md">architecture.md</a> (the code at 8d10301: where the look lives, three theme models, declaring a theme, the bed's engine, the scenes, fonts, the light-only traps, the passes), <a href="../research_notes/Lemna%20themes/look.md">look.md</a> (prior art, light or dark, contrast, type, the edge, the dim, motion, the ambience, theme models, Still), <a href="../research_notes/Lemna%20themes/sound.md">sound.md</a> (D1 re-examined, a bed's craft, sources for beds and keys, the Stone pack); earlier: <a href="../research_notes/Flow%20sounds%20and%20ambience/">Flow sounds and ambience</a> (sounds.md, visuals.md).</li>
+<li><b>Look</b>: Legge, Rubin &amp; Luebker 1987, <a href="https://doi.org/10.1016/0042-6989(87)90028-9">doi</a>; Arditi &amp; Cho 2005, <a href="https://doi.org/10.1016/j.visres.2005.06.013">doi</a>; Wallace et al. 2022, TOCHI 29(4); Medved et al. 2023, <a href="https://doi.org/10.3389/fpsyg.2023.1107839">doi</a>; Bar &amp; Neta 2006, <a href="https://doi.org/10.1111/j.1467-9280.2006.01759.x">doi</a>; Dobres, Chahine &amp; Reimer 2017; <a href="https://www.nngroup.com/articles/dark-mode/">NN/g 2020</a>; <a href="https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html">WCAG 1.4.3</a>, <a href="https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html">1.4.11</a>; Lagarde, <a href="https://seblagarde.wordpress.com/2013/01/03/water-drop-2b-dynamic-rain-and-its-effects/">Water drop 2b</a>; Lee et al. 2015; Ohly et al. 2016, <a href="https://doi.org/10.1080/10937404.2016.1196155">doi</a>; <a href="https://github.com/googlefonts/literata">googlefonts/literata</a> (OFL-1.1); <a href="https://github.com/iaolo/iA-Fonts">iA-Fonts</a>.</li>
+<li><b>Sound</b>: Newbold, Luton, Cox &amp; Gould 2017, <a href="https://discovery.ucl.ac.uk/id/eprint/1561792/">CHI EA</a>; Haapakangas et al. 2011, <a href="https://doi.org/10.3813/AAA.918444">doi</a>; Proverbio et al. 2018, <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5821317/">PMC</a>; Hongisto et al. 2017, <a href="https://doi.org/10.3389/fpsyg.2017.01177">doi</a>; Ellermeier &amp; Zimmer 2014, <a href="https://doi.org/10.1250/ast.35.10">doi</a>; Nigg et al. 2024, <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11283987/">PMC</a>. Freesound: <a href="https://freesound.org/people/felix.blume/sounds/585845/">585845</a>, <a href="https://freesound.org/people/felix.blume/sounds/673259/">673259</a>, <a href="https://freesound.org/people/Chris%20W/sounds/432813/">432813</a>, <a href="https://freesound.org/people/worthahep88/sounds/319223/">319223</a> (and 319226–319228), <a href="https://freesound.org/people/kyles/sounds/452621/">452621</a>; <a href="https://github.com/sgossner/VCSL">VCSL</a> (CC0-1.0).</li>
+<li><b>Decisions</b>: <a href="../DESIGN.md">DESIGN.md</a> rows F1 (T2, B1, D1, P1, H1, T3 not taken), F0, A1 (M1–M3, M5, C1, I1), K1 (D1, C1, U1, pass 19a), S1, G1; the <a href="design-panel-lemna-rain.html">rain panel</a> and the <a href="design-panel-lemna-ambience.html">ambience panel</a>.</li>
+<li><b>Code</b>: <code>Line.swift</code> (<code>Style</code>, the caret), <code>Box.swift</code> (<code>BoxFrame</code>, <code>Face</code>), <code>Effects.swift</code>, <code>Ambience.swift</code>, <code>Scenes.swift</code>, <code>Particles.swift</code>, <code>Sound.swift</code>, <code>ClickPlayer.swift</code>, <code>Frame.swift</code>; the site's demo (<code>site/assets/site.js</code>) for the glide and H1.</li>
+</ul>
+</section>
+
+<div class="picks"><span class="picks-l">Picks</span><code id="picks">TH1 DC1 LK1 TY1 MO1 AM1 BD1 CK1 RM1 OR1</code><button type="button" id="copy" hidden>Copy picks</button></div>
+</div>
+
+<script>
+/* the pick line: one ID per decision; AM1's coupling shown only when it is not the recommended one */
+(()=>{
+const N=['TH','DC','LK','TY','MO','AM','BD','CK','RM','OR'];
+function picks(){
+  const v=n=>[...document.querySelectorAll(`input[name="${n}"]:checked`)].map(i=>i.value).join('+')||'–';
+  const s=N.map(v),sub=document.querySelector('input[name="AMc"]:checked');
+  if(s[5]==='AM1'&&sub&&sub.value!=='word')s[5]='AM1 ('+(sub.value==='key'?'per key':'rest only')+')';
+  const t=s.join(' ');document.getElementById('pickline').textContent=t;document.getElementById('picks').textContent=t;
+  document.dispatchEvent(new CustomEvent('picks'));
+}
+document.querySelectorAll('.pick input, input[name="AMc"]').forEach(i=>i.addEventListener('change',picks));
+const cb=document.getElementById('copy');
+if(navigator.clipboard){cb.hidden=false;cb.addEventListener('click',()=>navigator.clipboard.writeText(document.getElementById('picks').textContent).then(()=>{cb.textContent='Copied';setTimeout(()=>{cb.textContent='Copy picks'},1200)},()=>{}))}
+window.addEventListener('load',picks);
+})();
+</script>
+<script>
+/* The previews. Every duration, curve, colour and size is the notes' or the app's (DESIGN F1, A1; look §5; sound,
+   Recommendations); what the notes leave open is said in the captions. Each moving piece pauses off screen; with
+   reduced motion the line jumps, the box opens and closes at once and the canvases show one still frame. */
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id),rnd=Math.random;
+const rm=matchMedia('(prefers-reduced-motion: reduce)');
+const Q='cubic-bezier(0.23, 1, 0.32, 1)';
+/* easeOutQuint, cubic-bezier(0.23, 1, 0.32, 1): Glide.swift's curve (as site.js) */
+function ease(u){
+  if(u<=0)return 0;if(u>=1)return 1;
+  const x1=.23,y1=1,x2=.32,y2=1,cx=3*x1,bx=3*(x2-x1)-cx,ax=1-cx-bx,cy=3*y1,by=3*(y2-y1)-cy,ay=1-cy-by;
+  const X=t=>((ax*t+bx)*t+cx)*t,Y=t=>((ay*t+by)*t+cy)*t;let t=u,i;
+  for(i=0;i<8;i++){const e=X(t)-u,s=(3*ax*t+2*bx)*t+cx;if(Math.abs(e)<1e-9)return Y(t);if(Math.abs(s)<1e-6)break;t-=e/s}
+  let lo=0,hi=1;t=u;for(i=0;i<60;i++){const v=X(t);if(Math.abs(v-u)<1e-9)break;if(v<u)lo=t;else hi=t;t=(lo+hi)/2}
+  return Y(t);
+}
+const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+/* colour: WCAG 2 relative luminance; a dim as an alpha blend of sRGB-encoded values (look, method) */
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const lin=c=>(c/=255)<=0.04045?c/12.92:Math.pow((c+0.055)/1.055,2.4);
+const lum=c=>0.2126*lin(c[0])+0.7152*lin(c[1])+0.0722*lin(c[2]);
+const over=(a,b,t)=>a.map((v,i)=>v*t+b[i]*(1-t));
+const rel=(a,b)=>(lum(a)+0.05)/(lum(b)+0.05);
+const cr=(a,b)=>{const r=rel(hex(a),hex(b));return r<1?1/r:r};
+const fmt=r=>r>=3?r.toFixed(1):r.toFixed(2);
+const rgba=(h,a)=>{const c=hex(h);return `rgba(${c[0]},${c[1]},${c[2]},${a})`};
+/* the looks: T2 (DESIGN F1) and Still (look §5.1) */
+const LOOK={
+  lemna:{box:'#0e1013',text:'#d8dce3',muted:'#5c646f',ic:'#8d95a0',caret:'#7aa7f0',edge:'#7aa7f0',role:'accent border',wash:'#0e1013',a:0.5,r:10,cr:0,pack:'keychron'},
+  day:{box:'#F3F0E8',text:'#46433D',muted:'#86817A',ic:'#6B675F',caret:'#577446',edge:'#D9D4C8',role:'hairline',wash:'#D3D8CE',a:0.74,r:16,cr:1,pack:'stone',ink:'#3F4A3C',dark:false},
+  night:{box:'#1C1B18',text:'#E2DACA',muted:'#8C8476',ic:'#A69D8E',caret:'#A2B88E',edge:'#34312C',role:'hairline',wash:'#0F1412',a:0.62,r:16,cr:1,pack:'stone',ink:'#C9D3C4',dark:true}
+};
+const APPBG={light:'#ffffff',dark:'#1e1e1e'};
+const FONT={menlo:{fam:'Menlo,"SF Mono",ui-monospace,monospace',size:28,label:'Menlo 28'},
+  literata:{fam:'"Literata Lemna",Charter,serif',size:30,label:'Literata 30'},
+  charter:{fam:'Charter,"Iowan Old Style",Georgia,serif',size:31,label:'Charter 31'}};
+const S={app:'light',alt:'paper',ty:'TY1',lit:false};
+const stillFont=()=>S.ty==='TY3'?'menlo':(S.ty==='TY2'||!S.lit)?'charter':'literata';
+
+/* ---------- sound: the packs at key-down, volume 0.6, the per-kind rate; the bed with its fades (sound §2.4) ---------- */
+const Sound=(()=>{
+  const J3={letter:.03,space:.03,backspace:.03,paragraph:.03,send:.03};
+  const std=d=>({dir:d,k:{letter:[1,2,3,4,5,6].map(i=>'letter-'+i),space:['space-1','space-2'],backspace:['backspace-1','backspace-2'],paragraph:['paragraph-1','paragraph-2'],send:['send-1']},jit:J3});
+  const PK={stone:{dir:'previews/stone/',k:{letter:[1,2,3,4,5,6,7,8].map(i=>'letter-'+i),space:['space-1','space-2'],backspace:['backspace-1','backspace-2'],paragraph:['return'],send:['send']},jit:{letter:.03,space:.03,backspace:.03,paragraph:0,send:0}},
+    soft:std('previews/soft/'),keychron:std('previews/keychron/')};
+  const BED={rain:{src:'previews/rain-585845.m4a',g:0.101},pond:{src:'previews/pond-673259.m4a',g:0.081},chimes:{src:'previews/chimes-432813.m4a',g:0.1}};
+  let ac=null,on=false,failed=false;const buf={},bedBuf={};let bed=null;
+  const btns=[...document.querySelectorAll('.snd')];
+  function label(){btns.forEach(b=>{b.textContent=failed?'sound: files missing here':on?'sound: on':'sound: off';b.setAttribute('aria-pressed',String(on))})}
+  async function get(url){const r=await fetch(url);if(!r.ok)throw new Error(url);return ac.decodeAudioData(await r.arrayBuffer())}
+  async function load(p){if(buf[p])return;const P=PK[p],o={};for(const k in P.k)o[k]=await Promise.all(P.k[k].map(f=>get(P.dir+f+'.wav')));buf[p]=o}
+  async function toggle(){
+    if(!ac){const C=window.AudioContext||window.webkitAudioContext;if(!C){failed=true;label();return}ac=new C()}
+    if(ac.state==='suspended')await ac.resume();
+    on=!on;label();
+    if(on)try{await Promise.all(['stone','soft','keychron'].map(load))}catch(e){failed=true;on=false;label()}
+    if(!on)bedOut();
+  }
+  btns.forEach(b=>b.addEventListener('click',toggle));label();
+  function play(p,kind){
+    if(!on||!buf[p])return;const list=buf[p][kind];if(!list||!list.length)return;
+    const s=ac.createBufferSource();s.buffer=list[rnd()*list.length|0];
+    s.playbackRate.value=1+(rnd()*2-1)*PK[p].jit[kind];
+    const g=ac.createGain();g.gain.value=0.6;s.connect(g).connect(ac.destination);s.start();
+  }
+  function ramp(param,from,to,T,up){  // equal-power: a quarter sine up, a quarter cosine down
+    const n=32,c=new Float32Array(n);for(let i=0;i<n;i++){const u=i/(n-1);c[i]=up?from+(to-from)*Math.sin(Math.PI/2*u):to+(from-to)*Math.cos(Math.PI/2*u)}
+    const t=ac.currentTime;param.cancelScheduledValues(t);param.setValueAtTime(from,t);param.setValueCurveAtTime(c,t,T);
+  }
+  async function bedIn(name){
+    if(!on||!name)return;
+    try{if(!bedBuf[name])bedBuf[name]=await get(BED[name].src)}catch(e){return}
+    if(bed&&bed.name!==name){try{bed.src.stop()}catch(e){}bed=null}
+    if(!bed){const src=ac.createBufferSource();src.buffer=bedBuf[name];src.loop=true;const g=ac.createGain();g.gain.value=0;src.connect(g).connect(ac.destination);src.start();bed={name,src,g}}
+    clearTimeout(bed.stop);ramp(bed.g.gain,bed.g.gain.value,BED[name].g,1.5,true);  // a re-summon ramps from the gain it has
+  }
+  function bedOut(){
+    if(!bed)return;const b=bed;ramp(b.g.gain,b.g.gain.value,0,0.6,false);
+    b.stop=setTimeout(()=>{try{b.src.stop()}catch(e){}if(bed===b)bed=null},700);
+  }
+  return {play,bedIn,bedOut,get on(){return on}};
+})();
+
+/* ---------- the line: S1's glide, V2's fades, B4's caret moves (site.js's port, the step measured per glyph) ---------- */
+function Line(box){
+  const bEl=box.querySelector('.ll-b>span'),aEl=box.querySelector('.ll-a>span'),mc=document.createElement('canvas').getContext('2d');
+  let text=[],caret=0,raf=0;const edit={from:0,start:0},move={from:0,start:0};
+  const off=(g,t)=>g.from*(1-ease((t-g.start)/140));
+  function add(g,dw,t){if(rm.matches){g.from=0;return}let r=off(g,t);const c=Math.abs(dw);if(r*dw>0)r=dw>0?Math.min(r,c):Math.max(r,-c);g.from=r+dw;g.start=t}
+  const esc=ch=>ch==='<'?'&lt;':ch==='>'?'&gt;':ch==='&'?'&amp;':ch;
+  const W=s=>mc.measureText(s).width;
+  const gw=i=>{const b=text.slice(Math.max(0,i-24),i).join('');return W(b+text[i])-W(b)};  // with kerning
+  function render(fresh){
+    let h='';for(let i=Math.max(0,caret-160);i<caret;i++)h+=fresh&&i===caret-1?'<span class="new">'+esc(text[i])+'</span>':esc(text[i]);
+    bEl.innerHTML=h;let a='';for(let i=caret;i<Math.min(text.length,caret+80);i++)a+=esc(text[i]);aEl.innerHTML=a;
+  }
+  function paint(t){const m=off(move,t),e=off(edit,t);bEl.style.transform=`translateX(${(e+m).toFixed(2)}px)`;aEl.style.transform=`translateX(${m.toFixed(2)}px)`;return t<edit.start+140||t<move.start+140}
+  function loop(t){raf=paint(t)?requestAnimationFrame(loop):0}
+  function moved(){if(paint(performance.now())&&!raf)raf=requestAnimationFrame(loop)}
+  return {
+    font(f){mc.font=f},text:()=>text.join(''),
+    set(s){text=Array.from(s);caret=text.length;edit.from=move.from=0;render(false);moved()},
+    insert(ch){text.splice(caret,0,ch);caret++;add(edit,gw(caret-1),performance.now());if(text.length>600){text.splice(0,300);caret-=300}render(true);moved()},
+    back(){if(!caret)return;const d=gw(caret-1);text.splice(caret-1,1);caret--;add(edit,-d,performance.now());render(false);moved()},
+    left(){if(!caret)return;const d=gw(caret-1);caret--;add(move,-d,performance.now());render(false);moved()},
+    right(){if(caret>=text.length)return;const d=gw(caret);caret++;add(move,d,performance.now());render(false);moved()},
+    /* H1's pieces (Handoff.pieces, monospaced): x in the box, V2's alpha, the rank from the caret outwards */
+    pieces(Wb){const t=performance.now(),e=off(edit,t),m=off(move,t),adv=W('M'),out=[];let k=0;const cx=.6*Wb;let right=cx+e+m;
+      for(let i=caret-1;i>=0;i--){const x=right-adv,mid=x+adv/2,a=clamp((mid-.25*Wb)/(.2*Wb),0,1);if(x+adv<=0||a<=0)break;if(x<cx)out.push({x,ch:text[i],a,rank:k});k++;right=x}
+      let x=cx+2+m;for(let i=caret;i<text.length;i++){const mid=x+adv/2,a=clamp((.95*Wb-mid)/(.15*Wb),0,1);if(x>=.95*Wb||a<=0)break;out.push({x,ch:text[i],a,rank:0});x+=adv}
+      return out}
+  };
+}
+
+/* ---------- a box: the look, the face, the line, the keys ---------- */
+const NOTE='Bluetooth output: clicks arrive late · ⌘K mutes';
+function Box(el,o){
+  el.innerHTML='<div class="ll-b"><span></span></div><i class="ll-c"></i><div class="ll-a"><span></span></div><div class="ghost"></div><p class="edge-note"'+(o.note?'':' hidden')+'>'+NOTE+'</p><input class="ll-in" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Write in the box">';
+  const line=Line(el),inp=el.querySelector('.ll-in');let look=null,fk='menlo';
+  function apply(lk,f){look=lk;fk=f;const F=FONT[f],L=LOOK[lk];
+    el.style.cssText+=`;--box:${L.box};--text:${L.text};--caret:${L.caret};--edge:${L.edge};--r:${L.r}px;--cr:${L.cr}px;--muted-c:${L.muted}`;
+    el.style.font=`${F.size}px/1 ${F.fam}`;el.style.width=o.w+'px';el.style.height=4*F.size+'px';
+    el.style.left=Math.round(o.x)+'px';el.style.top=Math.round(o.cy-2*F.size)+'px';
+    line.font(`${F.size}px ${F.fam}`);const t=line.text();line.set(t)}
+  inp.addEventListener('keydown',e=>{
+    if(o.keys&&o.keys(e)===true){e.preventDefault();return}
+    if(e.key==='Escape'){inp.blur();return}
+    if(e.metaKey||e.ctrlKey||e.altKey&&e.key.length!==1)return;
+    const p=o.pack?o.pack():LOOK[look].pack;
+    if(e.key==='Backspace'){line.back();Sound.play(p,'backspace')}
+    else if(e.key==='ArrowLeft')line.left();
+    else if(e.key==='ArrowRight')line.right();
+    else if(e.key==='Enter'){[' ','¶',' '].forEach(c=>line.insert(c));Sound.play(p,'paragraph')}
+    else if(e.key.length===1){line.insert(e.key);Sound.play(p,e.key===' '?'space':'letter')}
+    else return;
+    e.preventDefault();
+  });
+  const scr=el.closest('.scr');
+  inp.addEventListener('focus',()=>scr&&scr.classList.add('focus'));inp.addEventListener('blur',()=>scr&&scr.classList.remove('focus'));
+  return {el,line,inp,apply,get look(){return look},get font(){return fk}};
+}
+const APP_HTML='<div class="app"><div class="tb"><i></i><i></i><i></i></div><div class="doc"><b style="width:34%"></b><b style="width:94%"></b><b style="width:88%"></b><b style="width:97%"></b><b style="width:52%"></b><span class="gap"></span><b style="width:90%"></b><b style="width:71%"></b><b style="width:83%"></b><b style="width:46%"></b><span class="gap"></span><b style="width:92%"></b><b style="width:64%"></b></div></div>';
+function piece(scr,o){  // a piece of screen: the app, the wash, (a ring canvas), the box
+  scr.innerHTML=APP_HTML+'<div class="wash"></div>'+(o.ring?'<canvas class="ringc"></canvas>':'')+'<div class="bx"></div>';
+  const W=scr.clientWidth||700,H=scr.clientHeight||360;
+  const b=Box(scr.querySelector('.bx'),{w:o.w||600,x:(W-(o.w||600))/2,cy:o.cy||H*2/3,note:o.note,keys:o.keys,pack:o.pack});
+  const wash=scr.querySelector('.wash');
+  return {scr,wash,box:b,W,H,ring:scr.querySelector('.ringc'),
+    look(lk,f){const L=LOOK[lk];wash.style.background=rgba(L.wash,L.a);b.apply(lk,f)}};
+}
+function setApp(scr,app){scr.classList.toggle('dark',app==='dark')}
+
+/* ---------- LK: four pieces ---------- */
+const SENT='The pond was still, and the first words came slowly';
+const MK={lemna:piece($('mk-lemna'),{note:true}),day:piece($('mk-day'),{note:true}),night:piece($('mk-night'),{note:true}),alt:piece($('mk-alt'),{note:true})};
+const lookOf=k=>k==='alt'?(S.alt==='paper'?'day':'night'):k;
+function readout(k){
+  const L=LOOK[lookOf(k)],app=hex(APPBG[S.app]),sur=over(hex(L.wash),app,L.a),bs=rel(hex(L.box),sur),sm=rel(sur,app);
+  return `text <b>${fmt(cr(L.text,L.box))}:1</b> · muted <b>${fmt(cr(L.muted,L.box))}:1</b> (Increase Contrast ${fmt(cr(L.ic,L.box))}:1) · caret <b>${fmt(cr(L.caret,L.box))}:1</b> · ${L.role} <b>${fmt(cr(L.edge,L.box))}:1</b> · box ÷ surround <b>${bs.toFixed(2)}</b> · a summon ${sm>=1?'brightens the screen <b>'+sm.toFixed(1)+'×</b>':'dims the screen to <b>'+sm.toFixed(2)+'×</b>'}`;
+}
+function drawLK(){
+  for(const k in MK){const m=MK[k],lk=lookOf(k);setApp(m.scr,S.app);m.look(lk,k==='lemna'?'menlo':stillFont());$('ro-'+k).innerHTML=readout(k)}
+  $('cap-alt').innerHTML=S.alt==='paper'?'<b>Paper (LK2), light always</b> · the day values at every hour: switch the app behind to dark for its night case':'<b>Dusk (LK3), dark always</b> · the night values at every hour: on a light app the box is darker than its surround';
+  document.querySelectorAll('.ffl').forEach(s=>s.textContent=FONT[stillFont()].label);
+}
+for(const k in MK)MK[k].box.line.set(SENT);
+document.querySelectorAll('[data-app]').forEach(b=>b.addEventListener('click',()=>{S.app=b.dataset.app;document.querySelectorAll('[data-app]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));drawLK()}));
+function setAlt(a){S.alt=a;document.querySelectorAll('[data-alt]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.alt===a)));drawLK()}
+document.querySelectorAll('[data-alt]').forEach(b=>b.addEventListener('click',()=>setAlt(b.dataset.alt)));
+
+/* ---------- TY: the specimen ---------- */
+const SP={};
+[['literata','sp-literata'],['charter','sp-charter'],['menlo','sp-menlo']].forEach(([f,id])=>{
+  const host=$(id);host.classList.add('scr');host.style.width='700px';const F=FONT[f],h=4*F.size+8;host.style.height=h+'px';
+  host.innerHTML='<div class="wash"></div><div class="bx"></div>';host.querySelector('.wash').style.background=over(hex(LOOK.day.wash),hex('#ffffff'),LOOK.day.a).reduce((s,v,i)=>s+(i?',':'')+Math.round(v),'rgb(')+')';
+  const b=Box(host.querySelector('.bx'),{w:600,x:50,cy:h/2,pack:()=>'stone'});SP[f]=b;b.line.set(SENT);
+});
+function drawSpec(){SP.literata.apply('day',S.lit?'literata':'charter');SP.charter.apply('day','charter');SP.menlo.apply('day','menlo');
+  $('lit-note').textContent=S.lit?'opsz 30, regular, from previews/':'not found here: Charter 31 stands in';
+  $('fontstat').textContent=S.lit?'Literata loaded from previews/':'Literata not found here: Still shows Charter 31';}
+
+/* ---------- MO: the summon, the typing, the send ---------- */
+const MS='Set it down once, and let it go';
+let moUp=false,moGen=0,moTimer=0,listen='still';
+const MP={still:piece($('mo-still'),{ring:true,keys:moKeys}),lemna:piece($('mo-lemna'),{keys:moKeys})};
+MP.still.kind='still';MP.lemna.kind='lemna';
+for(const k in MP){const p=MP[k];p.box.el.classList.add('hide');p.wash.classList.add('hide');const c=p.ring;
+  if(c){const D=Math.min(devicePixelRatio||1,2);c.width=p.W*D;c.height=p.H*D;c.style.width=p.W+'px';c.style.height=p.H+'px';c.getContext('2d').setTransform(D,0,0,D,0,0)}}
+function drawMO(){MP.still.look('day',stillFont());MP.lemna.look('lemna','menlo')}
+const bedName=()=>{const v=(document.querySelector('input[name="BD"]:checked')||{}).value;return v==='BD3'?'chimes':v==='BD0'?null:'rain'};
+const moPack=()=>listen==='still'?'stone':'keychron';
+function moRo(s){$('mo-ro').textContent=s}
+function cancel(p){[p.box.el,p.wash,...p.box.el.querySelectorAll('.ll-b,.ll-a,.ll-c')].forEach(el=>el.getAnimations&&el.getAnimations().forEach(a=>a.cancel()))}
+function moShow(){
+  clearTimeout(moTimer);const g=++moGen;moUp=true;
+  for(const k in MP){const p=MP[k];cancel(p);p.box.el.classList.remove('hide','off');p.wash.classList.remove('hide');p.box.el.querySelector('.ghost').innerHTML='';p.box.line.set('');
+    if(!rm.matches){
+      if(k==='still')p.box.el.animate([{opacity:0},{opacity:1}],{duration:300,easing:Q});  // MO1: a fade, no scale
+      else p.box.el.animate([{opacity:0,transform:'scale(.87)'},{opacity:1,transform:'none'}],{duration:300,easing:Q});  // P1
+      p.wash.animate([{opacity:0},{opacity:1}],{duration:300,easing:Q});
+    }}
+  if(listen==='still')Sound.bedIn(bedName());
+  moRo('open · typing');
+  let i=0;const next=()=>{if(g!==moGen||!moUp)return;if(i>=MS.length){moTimer=setTimeout(()=>{if(g===moGen)moSend()},700);return}
+    const ch=MS[i++];for(const k in MP)MP[k].box.line.insert(ch);Sound.play(moPack(),ch===' '?'space':'letter');
+    let d=1000/4.5*Math.exp(0.3*(rnd()*2-1));if(ch===' ')d+=90;if(ch===',')d+=260;moTimer=setTimeout(next,d)};
+  moTimer=setTimeout(next,450);
+}
+function moHide(){for(const k in MP){const p=MP[k];cancel(p);p.box.el.classList.add('hide');p.box.el.classList.remove('off');p.wash.classList.add('hide');p.box.el.querySelector('.ghost').innerHTML='';p.box.line.set('')}}
+function ringRun(p){  // MO1's ring: two crests leave the box's outline at 60 pt/s, peak α 0.18 (day), gone by 1.2 s
+  const c=p.ring.getContext('2d'),b=p.box.el,x=b.offsetLeft,y=b.offsetTop,w=b.offsetWidth,h=b.offsetHeight,R=LOOK.day.r,ink=LOOK.day.ink;
+  const t0=performance.now();
+  function rr(d){const r=R+d;c.beginPath();c.roundRect?c.roundRect(x-d,y-d,w+2*d,h+2*d,r):c.rect(x-d,y-d,w+2*d,h+2*d)}
+  function crest(d,A){if(d<=0||A<=0)return;[[3.2,.2],[1.8,.35],[0.9,.45]].forEach(([lw,f])=>{c.lineWidth=lw;c.strokeStyle=rgba(ink,A*f);rr(d);c.stroke()})}
+  (function f(now){const t=(now-t0)/1000;c.clearRect(0,0,p.W,p.H);if(t>=1.2)return;
+    const A=0.18*ease(Math.min(t/0.18,1))*Math.pow(1-t/1.2,1.5);
+    for(const d of [60*t,60*t-9]){crest(d,A);crest(d-3,A*0.4)}
+    requestAnimationFrame(f)})(t0);
+}
+function moSend(){
+  if(!moUp)return;moUp=false;clearTimeout(moTimer);const g=++moGen;
+  Sound.play(moPack(),'send');Sound.bedOut();moRo('sent');
+  if(rm.matches){moHide();return}
+  const s=MP.still;cancel(s);  // MO1: the glyphs fade in place; the box fades from 120 ms; the wash lifts with the ring
+  s.box.el.querySelectorAll('.ll-b,.ll-a,.ll-c').forEach(el=>el.animate([{opacity:1},{opacity:0}],{duration:200,easing:Q,fill:'forwards'}));
+  s.box.el.animate([{opacity:1},{opacity:0}],{duration:200,delay:120,easing:Q,fill:'forwards'});
+  s.wash.animate([{opacity:1},{opacity:0}],{duration:1200,easing:'linear',fill:'forwards'});
+  ringRun(s);
+  const p=MP.lemna,Wb=p.box.el.clientWidth,ps=p.box.line.pieces(Wb),gh=p.box.el.querySelector('.ghost');  // H1
+  cancel(p);p.box.el.classList.add('off');gh.innerHTML='';
+  ps.forEach(q=>{const el=document.createElement('span');el.textContent=q.ch;el.style.left=q.x.toFixed(2)+'px';el.style.opacity=q.a;gh.appendChild(el);
+    el.animate([{transform:'translateX(0)'},{transform:`translateX(${Wb}px)`}],{duration:200,delay:Math.min(q.rank*7,120),easing:Q,fill:'forwards'})});
+  p.wash.animate([{opacity:1},{opacity:0}],{duration:140,easing:Q,fill:'forwards'});
+  p.box.el.animate([{opacity:1,transform:'none'},{opacity:0,transform:'scale(.9)'}],{duration:140,delay:120,easing:Q,fill:'forwards'});
+  setTimeout(()=>{if(g!==moGen)return;const q=MP.lemna;cancel(q);q.box.el.classList.add('hide');q.box.el.classList.remove('off');q.wash.classList.add('hide');gh.innerHTML='';q.box.line.set('')},260);
+  setTimeout(()=>{if(g!==moGen)return;const q=MP.still;cancel(q);q.box.el.classList.add('hide');q.wash.classList.add('hide');q.box.line.set('');moRo('')},1200);
+}
+function moEsc(){  // P1's close: a 200 ms fade, the dim with it
+  if(!moUp)return;moUp=false;clearTimeout(moTimer);const g=++moGen;Sound.bedOut();moRo('closed');
+  if(rm.matches){moHide();return}
+  for(const k in MP){const p=MP[k];cancel(p);[p.box.el,p.wash].forEach(el=>el.animate([{opacity:1},{opacity:0}],{duration:200,easing:Q,fill:'forwards'}))}
+  setTimeout(()=>{if(g===moGen){moHide();moRo('')}},200);
+}
+function moKeys(e){  // keys typed into either box go to both; ⌘⏎ sends, Esc closes
+  if(!moUp)return false;
+  if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){moSend();return true}
+  if(e.key==='Escape'){moEsc();return true}
+  if(e.key==='Backspace'||e.key.length===1&&!e.metaKey&&!e.ctrlKey){clearTimeout(moTimer);moGen++;moUp=true;moRo('open · your keys')}
+  if(e.key==='Backspace'){for(const k in MP)MP[k].box.line.back();Sound.play(moPack(),'backspace');return true}
+  if(e.key.length===1&&!e.metaKey&&!e.ctrlKey){for(const k in MP)MP[k].box.line.insert(e.key);Sound.play(moPack(),e.key===' '?'space':'letter');return true}
+  return false;
+}
+$('mo-summon').addEventListener('click',moShow);$('mo-send').addEventListener('click',moSend);$('mo-esc').addEventListener('click',moEsc);
+document.querySelectorAll('[data-listen]').forEach(b=>b.addEventListener('click',()=>{listen=b.dataset.listen;document.querySelectorAll('[data-listen]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))}));
+
+/* ---------- CK: the type line ---------- */
+let ckPack='stone';
+const CKP=piece($('ck-scr'),{cy:100,pack:()=>ckPack,keys:e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){Sound.play(ckPack,'send');CKP.box.line.set('');return true}return false}});
+function drawCK(){CKP.look('day',stillFont());$('ck-ro').textContent=Sound.on?'':'turn the sound on, then type'}
+function setPack(p){ckPack=p;document.querySelectorAll('[data-pack]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.pack===p)))}
+document.querySelectorAll('[data-pack]').forEach(b=>b.addEventListener('click',()=>setPack(b.dataset.pack)));
+document.querySelectorAll('[data-kind]').forEach(b=>b.addEventListener('click',()=>Sound.play(ckPack,b.dataset.kind)));
+CKP.box.line.set('Type here');
+document.querySelectorAll('.snd').forEach(b=>b.addEventListener('click',()=>setTimeout(drawCK,50)));
+
+/* ---------- AM1: still water, look §5.3's Ripples ---------- */
+const water=(()=>{
+  const cv=$('water'),ctx=cv.getContext('2d'),W=1416,H=520,D=Math.min(devicePixelRatio||1,2);
+  cv.width=W*D;cv.height=H*D;cv.style.width=W+'px';cv.style.height=H+'px';ctx.setTransform(D,0,0,D,0,0);
+  const BW=907;let BH=120,BY=336;const BX=Math.round((W-BW)/2);
+  const box=Box($('w-box'),{w:BW,x:BX,cy:BY+60,pack:()=>'stone',keys:e=>{  // your own keys feed it too; the typist waits 3 s
+    if(e.metaKey||e.ctrlKey)return false;const ch=e.key==='Enter'?'\n':e.key.length===1?e.key:null;if(!ch)return false;
+    key(ch);Sound.play('stone',ch==='\n'?'paragraph':ch===' '?'space':'letter');next=Math.max(next,t+3);return true}});
+  let mode='day',coup='word',fronds=false,t=0,lastWord=-1e9,phase='typing';
+  const REST=0.12*(W*H)/(1512*982);  // a screen's rate, scaled to this piece's area
+  const KB=[['1234567890',1.5],['qwertyuiop',2],['asdfghjkl',2.25],['zxcvbnm,.',2.75]];
+  function keyAt(ch){if(ch===' ')return{a:0.5,d:1};if(ch==='\n')return{a:0.88,d:0.5};const c=ch.toLowerCase();
+    for(let r=0;r<KB.length;r++){const i=KB[r][0].indexOf(c);if(i>=0)return{a:(KB[r][1]+i)/15,d:r/4}}return null}
+  const drops=[];
+  function drop(x,y){if(drops.length>=24)return;drops.push({x,y,t0:t,c:[0,1,2].map(k=>({v:36*(1-0.15*k*(1+(rnd()*2-1)*0.15)),w:1.2+rnd()*0.8,s:(rnd()*2-1)*0.04}))})}
+  function at(k){if(!k)return;drop(W*(0.1+0.8*k.a),40+k.d*(BY-48-40))}
+  function restDrop(){for(let i=0;i<20;i++){const x=rnd()*W,y=rnd()*H;if(x>BX-48&&x<BX+BW+48&&y>BY-48&&y<BY+BH+48)continue;drop(x,y);return}}
+  /* the typist: 4.5 keys a second, jittered; a Return after each sentence; a 9 s pause after every second one */
+  const SENTS=['The first drops come slowly, and the water keeps them.','A line at a time, then the next one.','Nothing to scroll back to, only the words ahead.','Write it once and let it go.'];
+  let si=0,ci=0,next=1,count=0,word='';
+  function key(ch){
+    if(ch==='\n'){[' ','¶',' '].forEach(c=>box.line.insert(c))}else box.line.insert(ch);
+    if(coup==='key')at(keyAt(ch));
+    else if(coup==='word'&&(ch===' '||ch==='\n')){const m=word.match(/[A-Za-z](?=[^A-Za-z]*$)/);if(m&&t-lastWord>=0.8){at(keyAt(m[0]));lastWord=t}}
+    word=ch==='\n'?'':word+ch;if(ch===' ')word=word.slice(-24);
+  }
+  function typist(){while(t>=next){
+    const s=SENTS[si];phase='typing';
+    if(ci<s.length){const ch=s[ci++];key(ch);let d=1/4.5*Math.exp(0.3*(rnd()*2-1));if(ch===' ')d+=0.09;if(ch===','||ch==='.')d+=0.3;next+=d}
+    else{key('\n');ci=0;si=(si+1)%SENTS.length;count++;if(count%2===0){next+=9;phase='pause'}else next+=1.6}
+  }if(next-t>2)phase='pause'}
+  /* fronds (optional): clusters of ovals drifting ≤ 1.5 pt/s, turned ≤ 2°/s, pushed 1.5 pt by a passing crest */
+  const FR=Array.from({length:3+(rnd()*5|0)},()=>{let x,y;do{x=rnd()*W;y=rnd()*H}while(x>BX-60&&x<BX+BW+60&&y>BY-60);
+    const a=rnd()*Math.PI*2,sp=0.5+rnd();return{x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,ang:rnd()*Math.PI,va:(rnd()*2-1)*2*Math.PI/180,
+      o:Array.from({length:1+(rnd()*3|0)},(_,i)=>({dx:i*6-3+(rnd()*2-1),dy:(rnd()*2-1)*3,r:rnd()*Math.PI})),px:0,py:0,hit:new Set()}});
+  let bg=null;
+  function makeBg(){bg=document.createElement('canvas');bg.width=W*D;bg.height=H*D;const b=bg.getContext('2d');b.setTransform(D,0,0,D,0,0);
+    const L=LOOK[mode],dark=mode==='night';b.fillStyle=dark?'#1e1e1e':'#ffffff';b.fillRect(0,0,W,H);
+    b.fillStyle=dark?'#2a2a2a':'#ececec';b.fillRect(0,0,W,28);b.fillStyle=dark?'#3d3d3d':'#d4d4d4';
+    let y=60;[34,94,88,97,52,0,90,71,83,46,0,92,64,79,58,0,88,73,95,40].forEach(w=>{if(w)b.fillRect(110,y,(W-220)*w/100,9);y+=w?24:14});
+    b.fillStyle=rgba(L.wash,L.a);b.fillRect(0,0,W,H)}
+  function ring(x,y,r,w,A,ink){
+    const r0=Math.max(0,r-2*w),r1=r+2*w,g=ctx.createRadialGradient(x,y,r0,x,y,r1),span=r1-r0;
+    [[-2,0],[-1,.135],[-.5,.61],[0,1],[.5,.61],[1,.135],[2,0]].forEach(([k,v])=>{const p=(r+k*w-r0)/span;if(p>=0&&p<=1)g.addColorStop(p,rgba(ink,A*v))});
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r1,0,Math.PI*2);if(r0>0)ctx.arc(x,y,r0,0,Math.PI*2,true);ctx.fill('evenodd');
+  }
+  function step(dt){
+    t+=dt;typist();
+    if(rnd()<REST*dt)restDrop();
+    for(let i=drops.length-1;i>=0;i--)if(t-drops[i].t0>4.5)drops.splice(i,1);
+    if(fronds)for(const f of FR){f.x+=f.vx*dt;f.y+=f.vy*dt;f.ang+=f.va*dt;
+      if(f.x<0||f.x>W)f.vx*=-1;if(f.y<30||f.y>H)f.vy*=-1;if(f.x>BX-40&&f.x<BX+BW+40&&f.y>BY-40){f.vy=-Math.abs(f.vy)}
+      for(const d of drops){if(f.hit.has(d))continue;const r=d.c[0].v*(t-d.t0-d.c[0].s),dx=f.x-d.x,dy=f.y-d.y,dist=Math.hypot(dx,dy);
+        if(r>0&&Math.abs(dist-r)<2&&dist>0){f.px=1.5*dx/dist;f.py=1.5*dy/dist;f.hit.add(d)}}
+      const k=Math.exp(-dt/0.35);f.px*=k;f.py*=k;}
+  }
+  function draw(){
+    if(!bg)makeBg();ctx.globalCompositeOperation='source-over';ctx.drawImage(bg,0,0,W,H);
+    const L=LOOK[mode],peak=mode==='day'?0.16:0.07;ctx.globalCompositeOperation=mode==='day'?'source-over':'lighter';
+    let n=0;for(const d of drops){const age=t-d.t0;for(const c of d.c){const a=age-c.s;if(a<=0)continue;const r=c.v*a;
+      const A=peak*ease(Math.min(a/0.18,1))*Math.exp(-age/1.4)*Math.sqrt(12/Math.max(r,12));if(A<0.01)continue;
+      ring(d.x,d.y,r,c.w,A,L.ink);n++;if(r>3){ring(d.x,d.y,r-3,c.w,A*0.4,L.ink);n++}}}
+    ctx.globalCompositeOperation='source-over';
+    if(fronds){ctx.fillStyle=mode==='day'?rgba('#6F8F5A',0.35):rgba('#7E9A6B',0.25);
+      for(const f of FR)for(const o of f.o){const c=Math.cos(f.ang),s=Math.sin(f.ang);ctx.beginPath();
+        ctx.ellipse(f.x+f.px+o.dx*c-o.dy*s,f.y+f.py+o.dx*s+o.dy*c,3.5,2.5,f.ang+o.r,0,Math.PI*2);ctx.fill();n++}}
+    return n;
+  }
+  const ro=$('w-ro');
+  const say=(n,still)=>{ro.textContent=`${drops.length} drops · ${n} rings drawn · ${phase} · ${still?'still frame':'30 Hz'}`};
+  let raf=0,prev=0,vis=true,shown=0;
+  function frame(ts){raf=vis&&!rm.matches?requestAnimationFrame(frame):0;if(prev&&ts-prev<1000/30-4)return;
+    const dt=prev?Math.min((ts-prev)/1000,0.1):1/30;prev=ts;step(dt);const n=draw();if(ts-shown>250){shown=ts;say(n,false)}}
+  function still(){for(let i=0;i<30*14;i++)step(1/30);for(let i=0;i<3;i++)drop(W*(0.2+0.3*i),90+50*i);drops.forEach((d,i)=>d.t0=t-0.6-0.7*i);say(draw(),true)}
+  function run(){if(rm.matches){cancelAnimationFrame(raf);raf=0;still()}else if(vis&&!raf){prev=0;raf=requestAnimationFrame(frame)}}
+  for(let i=0;i<30*6;i++)step(1/30);  // 6 s ahead, undrawn: it opens mid-sentence
+  if('IntersectionObserver' in window)new IntersectionObserver(e=>{vis=e[0].isIntersecting;if(vis)run()}).observe(cv);
+  if(rm.addEventListener)rm.addEventListener('change',run);
+  document.querySelectorAll('[data-wm]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.wm;bg=null;
+    document.querySelectorAll('[data-wm]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));restyle();if(rm.matches)still();else draw()}));
+  document.querySelectorAll('[data-wf]').forEach(b=>b.addEventListener('click',()=>{fronds=!fronds;b.setAttribute('aria-pressed',String(fronds));if(rm.matches)still()}));
+  function setCoup(c){coup=c;document.querySelectorAll('[data-wc]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.wc===c)));
+    const r=document.querySelector(`input[name="AMc"][value="${c}"]`);if(r&&!r.checked){r.checked=true;r.dispatchEvent(new Event('change'))}}
+  document.querySelectorAll('[data-wc]').forEach(b=>b.addEventListener('click',()=>setCoup(b.dataset.wc)));
+  document.querySelectorAll('input[name="AMc"]').forEach(i=>i.addEventListener('change',()=>{if(i.checked&&coup!==i.value)setCoup(i.value)}));
+  function restyle(){const F=FONT[stillFont()];BH=4*F.size;BY=H-BH-64;box.apply(mode,stillFont());box.el.style.top=BY+'px'}
+  return {restyle,start(){restyle();say(draw(),rm.matches);run()}};
+})();
+
+/* ---------- AM2: chime sway, look §5.3 ---------- */
+const chimes=(()=>{
+  const cv=$('chimes'),ctx=cv.getContext('2d'),W=700,H=300,D=Math.min(devicePixelRatio||1,2);
+  cv.width=W*D;cv.height=H*D;cv.style.width=W+'px';cv.style.height=H+'px';ctx.setTransform(D,0,0,D,0,0);
+  const L=LOOK.day,STR=34;  // the string's length: chosen here
+  const rods=[0,1,2,3,4].map(i=>{const T=7+rnd()*4,w=2*Math.PI/T,A=(0.6+rnd()*0.9)*Math.PI/180,ph=rnd()*Math.PI*2;
+    return{x:W*(0.3+0.1*i),len:60+rnd()*80,w,th:A*Math.cos(ph),om:-A*w*Math.sin(ph)}});
+  let t=0,next=6+rnd()*4,pause=0,count=0,last=-1e9;
+  function step(dt){t+=dt;
+    if(t>=next){for(const r of rods){r.om+=(0.5+rnd()*0.5)*Math.PI/180*r.w*(rnd()<0.5?-1:1)}last=t;count++;next=t+(count%2?8+rnd()*4:18)}  // a Return; a pause after every second
+    for(const r of rods){r.om+=(-r.w*r.w*r.th-2*(1/20)*r.om)*dt;r.th+=r.om*dt;const M=1.5*Math.PI/180;if(Math.abs(r.th)>M){r.th=Math.sign(r.th)*M;r.om*=-0.3}}}  // damping τ 20 s: chosen here
+  function draw(){ctx.fillStyle=over(hex(L.wash),hex('#ffffff'),L.a).reduce((s,v,i)=>s+(i?',':'')+Math.round(v),'rgb(')+')';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=rgba(L.ink,0.18);
+    for(const r of rods){ctx.save();ctx.translate(r.x,0);ctx.rotate(r.th);ctx.fillRect(-0.375,0,0.75,STR);ctx.fillRect(-1.5,STR,3,r.len);ctx.restore()}
+    $('c-ro').textContent=`${t-last<1.5?'Return: an impulse':'swaying'} · max ${Math.max(...rods.map(r=>Math.abs(r.th)))*180/Math.PI<0.05?'0.0':(Math.max(...rods.map(r=>Math.abs(r.th)))*180/Math.PI).toFixed(1)}° · 30 Hz`}
+  let raf=0,prev=0,vis=true;
+  function frame(ts){raf=vis&&!rm.matches?requestAnimationFrame(frame):0;if(prev&&ts-prev<1000/30-4)return;const dt=prev?Math.min((ts-prev)/1000,0.1):1/30;prev=ts;step(dt);draw()}
+  function run(){if(rm.matches){cancelAnimationFrame(raf);raf=0;draw()}else if(vis&&!raf){prev=0;raf=requestAnimationFrame(frame)}}
+  if('IntersectionObserver' in window)new IntersectionObserver(e=>{vis=e[0].isIntersecting;if(vis)run()}).observe(cv);
+  if(rm.addEventListener)rm.addEventListener('change',run);
+  return {start(){draw();run()}};
+})();
+
+/* ---------- the bed players at their level; the picks steer the previews ---------- */
+document.querySelectorAll('audio[data-vol]').forEach(a=>{a.volume=+a.dataset.vol;a.addEventListener('play',()=>document.querySelectorAll('audio').forEach(b=>{if(b!==a)b.pause()}))});
+function fromPicks(){
+  const v=n=>(document.querySelector(`input[name="${n}"]:checked`)||{}).value;
+  const ty=v('TY');if(ty&&ty!==S.ty){S.ty=ty;drawAll()}
+  const lk=v('LK');document.querySelectorAll('#lkpieces .lk').forEach(f=>f.classList.toggle('picked',f.dataset.opt===lk||(lk==='LK3'&&f.dataset.look==='alt')));
+  if(lk==='LK2'&&S.alt!=='paper')setAlt('paper');if(lk==='LK3'&&S.alt!=='dusk')setAlt('dusk');
+  const ck=v('CK');if(ck==='CK1')setPack('stone');if(ck==='CK2')setPack('soft');
+}
+document.addEventListener('picks',fromPicks);
+function drawAll(){drawLK();drawSpec();drawMO();drawCK();water.restyle()}
+function fontsReady(){
+  const done=()=>{S.lit=[...document.fonts].some(f=>f.family.replace(/["']/g,'')==='Literata Lemna'&&f.status==='loaded');drawAll()};
+  if(document.fonts&&document.fonts.load)document.fonts.load('30px "Literata Lemna"').then(done,done);else drawAll();
+}
+drawAll();water.start();chimes.start();fontsReady();fromPicks();
+})();
+</script>
+</body>
+</html>
