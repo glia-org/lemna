@@ -36,6 +36,44 @@
   - Ambience ▸ Rain under Still and under Lemna: as before. Ambience ▸ lists Rain, Still water, Off.
   - Reduce Motion on: no water (Ambience greyed), and ⌘⏎ under Still closes the box at once, no ring.
 
+- App, pass 23, the Stone pack and the rain bed (2026-10-31; DESIGN.md K1 amended, its D1 for steady sound only, and
+  TH1's Still preset; the user's picks CK1 BD1 TH1 of `docs/design-panel-lemna-themes.html`, OR1's third step). 23a,
+  `lib/LemnaClicks` only: `StonePack` (one rock on one board for the letters, backspaces and, after the user's "the
+  space sound of the stone sound theme is really not good", the space too, at rates 0.8 and 0.75; a low slit drum for
+  Return, one hand chime for the send; levelled to the Keychron by loudness, the send within 3 LU of its Returns;
+  `pitched` kinds without the ±3 %) and the bed engine (`Beds/Rain`, 90 s of felix.blume 585845, CC0, at −43 LUFS over
+  two channels; `Bed`, `ClickPlayer.bed`, `startBed(fadeIn:)`, `stopBed(fadeOut:)`, `bedVolume`; tests 25). 23b, the
+  app: Session › Sound ▸ Keychron / Typewriter / Soft / Electric / Stone, then Rain bed / No bed, then Off ⌘K, in the
+  main menu and the menu-bar item's; the bed kept under `bed` (`BedChoice` in LemnaCore's `Sound.swift`), ticked
+  while the sound is on as the packs are; a bed chosen while the sound is off turns it on with the last pack. Theme ▸
+  Still, now listed as "Still (rain bed)" (TH1's "never a bed unasked"), writes Stone and the rain bed; Lemna writes
+  Keychron and no bed; ⌘K's on or off stays. The bed plays while a container is on screen (the box or the window),
+  writing goes on and the sound is on (`BedChoice.plays`, asked by `App.updateBed` in `apply`, at a hand-off's start,
+  in `notHandedOff` and `end`, in `keepSound` and `keepBed`): in over 1.5 s at the summon, out over 0.6 s when the
+  container goes and from ⌘⏎'s key-down (before the send), Copy's and Save…'s too (back in if Save… is cancelled);
+  ⌘K silences both, on again with the box up the bed comes back in. Only the chosen bed is decoded (35 MB, off the
+  main thread), at launch if it was kept. `make-app.sh` copies `StonePack` and `Beds`. Tests: the app's 114, all
+  passing (111 before; new: the bed's default, choice and keeping, when it plays, the preset's bed and Still's item;
+  changed: Stone in the packs, every theme's bed in `Beds/`, Still's preset pack); LemnaClicks 23 of its 25 run and
+  passing, the two audible engine tests skipped (the library is pass 23a's, unchanged). `LEMNA_VERSION=0.1.2
+  make-app.sh` built, signed with "Lemna Dev" (`Authority=Lemna Dev`) and verified; the executable is 1,217,472 bytes,
+  no `/Users/` path in its symbols; `Contents/Resources/Beds/Rain/rain.caf` and `StonePack` are in. Not tried: nothing
+  was launched, nothing listened to. Try, after quitting the running Lemna and `open app/build/Lemna.app`, over
+  TextEdit:
+  - Theme ▸ Still (rain bed): Sound ▸ ticks Stone and Rain bed. Summon: the rain fades in over a second and a half,
+    under the clicks; type: the stone taps, the space lower and duller than the letters, Return the slit drum.
+  - Write a line, ⌘⏎: the chime with the box's fade, the rain fading out with it, gone in about half a second. Summon
+    again: it fades back in. Esc and a click outside: it fades out.
+  - Esc and summon at once: the rain turns back up from where it was, no gap.
+  - ⌘K while the box is up: clicks and rain stop at once; ⌘K again: the rain fades back in.
+  - Sound ▸ Keychron with the bed on: the rain stays, the clicks change; No bed: it fades out; Rain bed while ⌘K'd
+    off: the sound comes on, the rain fades in.
+  - ⌃⌘F into the window and back: the rain goes on through it; ⌘⏎ in the window copies with the note, the rain stays.
+  - The bed on headphones and on the built-in speakers: −43 LUFS meant to sit 12 LU under the clicks; too loud, too
+    quiet, any seam every 90 s? Whether the space and the chime send sound right.
+  - With AirPods (sound.md §2.6, untested): does a summon pull them over to the Mac? Power with the bed on and off
+    (`sudo powermetrics --samplers cpu_power -i 1000`, the box up a minute each).
+
 - App, pass 22, the Still look and its typeface (2026-10-31; DESIGN.md TH1 amended; the user's picks `LK1 TY1 MO1` of
   `docs/design-panel-lemna-themes.html`, OR1's second step; MO1's ring is pass 24's): **Literata is bundled**, the
   variable font (3.103, 955,132 bytes) with its `OFL.txt` in `app/Fonts/Literata/`, credited in `app/THIRD_PARTY.md`;

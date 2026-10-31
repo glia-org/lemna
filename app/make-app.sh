@@ -21,8 +21,10 @@ if nm -pa "$app/Contents/MacOS/Lemna" | grep -q '/Users/'; then echo "the execut
 swift make-icon.swift "$icon" build
 cp build/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 # The click packs (lib/LemnaClicks, each a pack.json and its WAVs): SoundPack.bundled(<folder>) loads them from
-# Contents/Resources; Session › Sound chooses among them.
-for pack in DefaultPack TypewriterPack SoftPack ElectricPack; do
+# Contents/Resources; Session › Sound chooses among them. The beds (Beds/<name>, a bed.json and its loop) go in as one
+# folder, where Bed.bundled(<name>) loads the one chosen.
+cp -R ../lib/LemnaClicks/Sources/LemnaClicks/Beds "$app/Contents/Resources/Beds"
+for pack in DefaultPack TypewriterPack SoftPack ElectricPack StonePack; do
   cp -R "../lib/LemnaClicks/Sources/LemnaClicks/$pack" "$app/Contents/Resources/$pack"
 done
 # The bundled fonts (Fonts, one folder per family with its licence, THIRD_PARTY.md): the app registers every font file

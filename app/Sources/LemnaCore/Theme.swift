@@ -76,7 +76,7 @@ public struct Theme: Equatable {
     }
 
     /// What choosing the theme writes (TH1, the preset): the sound pack's folder (`SoundChoice.packs`), the sound bed's
-    /// (nil: none; the key is unread until the beds come, pass 23) and the ambience's mode (nil: Off). The Effects
+    /// (nil: none; the bed folder under Beds, pass 23) and the ambience's mode (nil: Off). The Effects
     /// ticks and ⌘K's on or off are the user's and stay.
     public struct Defaults: Equatable {
         public var pack: String, bed: String?, ambience: Ambience.Mode?
@@ -130,9 +130,9 @@ extension Theme {
     /// rounded by 1 pt and by day a darker green under Increase Contrast; Literata 30 (app/Fonts), Charter 31 while its
     /// file is not in the bundle (TY1), unsmoothed, as the panel showed it; opened and closed by fades, the hand-off the
     /// box's fade (MO1); the ink one
-    /// colour (LK1's), laid over at 0.6 of the alphas by day, added at 0.5 by night. A stub in pass 21, there to
-    /// exercise the light-only paths: its preset names what exists today (the Soft pack, no bed, Rain); passes 23 and
-    /// 24 fill in the Stone pack, the light rain bed and Still water, and pass 22 the look's last values.
+    /// colour (LK1's), laid over at 0.6 of the alphas by day, added at 0.5 by night. A stub in pass 21 (the Soft pack,
+    /// no bed, Rain), filled in since: the look's last values (pass 22), the Stone pack and the light rain bed (pass
+    /// 23), Still water (pass 24).
     public static let still = Theme(
         id: "still", title: "Still", appearance: .followsSystem,
         day: Palette(surface: 0xf3f0e8, text: 0x46433d, muted: 0x86817a, mutedContrast: 0x6b675f, accent: 0x577446,
@@ -145,7 +145,7 @@ extension Theme {
                        smoothed: false),
         box: Shape(border: .hairline, borderWidth: 1, corner: 16, shadow: false, continuous: true, caretEnds: 1),
         motion: Motion(open: .fade, handOff: .fade),
-        defaults: Defaults(pack: "SoftPack", bed: nil, ambience: .water))
+        defaults: Defaults(pack: "StonePack", bed: "Rain", ambience: .water))
 }
 
 extension Theme.Typeface {

@@ -59,7 +59,10 @@ var stillFont: CTFont? {
         let pack = t.defaults.pack
         #expect(SoundChoice.packs.contains { $0.folder == pack }, "\(t.id)")  // in Sound ▸
         #expect(access(packs + pack + "/pack.json", F_OK) == 0, "\(t.id)")  // and in the repository
-        #expect(t.defaults.bed == nil, "\(t.id)")  // no beds before pass 23
+        if let bed = t.defaults.bed {  // none, or a bed Sound ▸ has and the repository holds
+            #expect(BedChoice(kept: bed).folder == bed, "\(t.id)")
+            #expect(access(packs + "Beds/" + bed + "/bed.json", F_OK) == 0, "\(t.id)")
+        }
         let mode = t.defaults.ambience
         #expect(Ambience(kept: Ambience(mode).kept).mode == mode, "\(t.id)")  // a mode Ambience ▸ has, or Off
         #expect(Theme(kept: t.id) == t)
@@ -125,12 +128,22 @@ var stillFont: CTFont? {
 @Test func thePresetSetsThePackAndLeavesTheSoundOnOrOff() {
     var off = SoundChoice(pack: nil, on: false)  // ⌘K'd off
     off.preset(Theme.still.defaults.pack)
-    #expect(off == SoundChoice(pack: "SoftPack", on: false))  // off still (choosing the pack would turn it on)
+    #expect(off == SoundChoice(pack: "StonePack", on: false))  // off still (choosing the pack would turn it on)
     var on = SoundChoice(pack: "SoftPack", on: true)
     on.preset(Theme.lemna.defaults.pack)
     #expect(on == SoundChoice(pack: "DefaultPack", on: true))
     on.preset("NoSuchPack")
     #expect(on == SoundChoice(pack: "DefaultPack", on: true))
+}
+
+@Test func thePresetSetsTheBedAndTheThemeSaysSo() {
+    var bed = BedChoice(kept: nil)
+    bed.choose(Theme.still.defaults.bed)
+    #expect(bed.folder == "Rain")  // the rain bed; the sound's on or off is SoundChoice's, untouched
+    bed.choose(Theme.lemna.defaults.bed)
+    #expect(bed.folder == nil)
+    // Never a bed unasked (TH1, sound.md §5): a theme whose preset turns one on names it in its item.
+    #expect(Theme.lemna.menuTitle == "Lemna" && Theme.still.menuTitle == "Still (rain bed)")
 }
 
 @Test func stillOpensAndHandsOffByFades() {
