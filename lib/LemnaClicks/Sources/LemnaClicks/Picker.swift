@@ -6,12 +6,13 @@ struct Picker {
 
     private let first: [Int]  // index of each kind's first sample in the player's table
     private let count: [Int]
+    private let spread: [Float]  // per kind: rateSpread, or 0 for a pitched kind
     private var last: [Int]   // the last sample played per kind, -1 before the first
     private var rng: SplitMix64
 
     /// `counts[kind.rawValue]` samples per kind, laid out kind after kind from `base` on (a pack's place in a table
-    /// that holds several packs).
-    init(counts: [Int], seed: UInt64, base: Int = 0) {
+    /// that holds several packs). The `pitched` kinds keep their recorded rate (`SoundPack.pitched`).
+    init(counts: [Int], seed: UInt64, base: Int = 0, pitched: Set<KeyKind> = []) {
         var first: [Int] = []
         var next = base
         for n in counts {
@@ -20,6 +21,7 @@ struct Picker {
         }
         self.first = first
         self.count = counts
+        self.spread = counts.indices.map { KeyKind(rawValue: $0).map(pitched.contains) == true ? 0 : Self.rateSpread }
         self.last = Array(repeating: -1, count: counts.count)
         self.rng = SplitMix64(state: seed)
     }
@@ -40,7 +42,7 @@ struct Picker {
         }
         last[k] = pick
         let unit = Float(rng.next() >> 40) / Float(1 << 24)  // [0, 1)
-        return (first[k] + pick, 1 + (2 * unit - 1) * Self.rateSpread)
+        return (first[k] + pick, 1 + (2 * unit - 1) * spread[k])
     }
 }
 

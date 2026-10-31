@@ -23,4 +23,13 @@ bool click_ring_pop(click_ring *ring, click_trigger *out);
 // How many clicks the consumer has taken so far (any thread; for tests and diagnostics).
 uint32_t click_ring_popped(click_ring *ring);
 
+// The bed's fade: the level it moves to and the step per frame it moves by, set together by the main thread and read
+// by the render thread as one 64-bit atomic, so a new target never meets an old step. Zero (silent) after create.
+typedef struct click_fade click_fade;
+
+click_fade *click_fade_create(void);
+void click_fade_destroy(click_fade *fade);
+void click_fade_set(click_fade *fade, float target, float step);
+void click_fade_get(click_fade *fade, float *target, float *step);
+
 #endif

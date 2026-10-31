@@ -16,13 +16,21 @@ import CoreAudio
 /// being lock- or allocation-free, overlapping clicks would need a pool of player nodes, and the
 /// ±3 % rate would need a varispeed unit per node or pre-pitched copies. The source node's mixer
 /// does voices and rate itself, in one node.
+///
+/// An ambient bed (`bed`) plays from a second source node, stereo, on the same engine.
 public final class ClickPlayer {
-    /// Off: `play` does nothing and the engine pauses, as AVAudioEngine.h advises for an engine
-    /// not in use, so the audio hardware can idle. On again restarts it.
+    /// Off: `play` and `startBed` do nothing, the bed stops at once and the engine pauses, as
+    /// AVAudioEngine.h advises for an engine not in use, so the audio hardware can idle. On again
+    /// restarts it; the bed waits for `startBed`.
     public var enabled = true {
         didSet {
             guard enabled != oldValue else { return }
-            if enabled { try? start() } else { engine.pause() }
+            if enabled {
+                try? start()
+            } else {
+                stopBed(fadeOut: 0)
+                engine.pause()
+            }
         }
     }
 
@@ -49,6 +57,30 @@ public final class ClickPlayer {
     /// `isBluetoothOutput` was re-read, so the app can warn once about Bluetooth delay.
     public var onOutputChanged: (() -> Void)?
 
+    /// The ambient bed, nil for none. Only the chosen one is in memory: setting a bed decodes its loop
+    /// off the main thread and puts it on the engine when done (`startBed` before then starts it
+    /// then); nil or another bed takes the old one off and frees it. Silent until `startBed`.
+    public var bed: Bed? {
+        didSet {
+            guard bed != oldValue else { return }
+            removeBed()
+            guard let bed else { return }
+            let generation = bedGeneration
+            DispatchQueue.global(qos: .utility).async { [weak self] in
+                let loop = try? BedLoop.load(bed)  // a bed that will not decode stays silent
+                DispatchQueue.main.async {
+                    guard let self, let loop, self.bedGeneration == generation else { return }
+                    self.attachBed(loop)
+                }
+            }
+        }
+    }
+
+    /// 0–1, as `volume`: at 0.6, the default, every bed plays at `Bed.level`.
+    public var bedVolume: Float = 0.6 {
+        didSet { bedNode?.volume = Self.clamp(bedVolume) }
+    }
+
     static let wantedIOBufferFrames: UInt32 = 128
 
     let engine: AVAudioEngine
@@ -58,6 +90,11 @@ public final class ClickPlayer {
     private var pickers: [Picker]
     private var listener: AudioObjectPropertyListenerBlock?
     private var observer: NSObjectProtocol?
+    private var bedNode: AVAudioSourceNode?
+    private(set) var bedLoop: BedLoop?
+    private var bedGeneration = 0
+    private var bedOn = false
+    private var bedFadeIn = 1.5
 
     /// One pack: `init(packs: [pack])`.
     public convenience init(pack: SoundPack) throws { try self.init(packs: [pack]) }
@@ -86,7 +123,7 @@ public final class ClickPlayer {
                 counts.append(urls.count)
                 for url in urls { samples.append(try Self.load(url, as: format)) }
             }
-            pickers.append(Picker(counts: counts, seed: seed &+ UInt64(p), base: base))
+            pickers.append(Picker(counts: counts, seed: seed &+ UInt64(p), base: base, pitched: pack.pitched))
         }
         let mixer = Mixer(samples: samples)
 
@@ -131,6 +168,48 @@ public final class ClickPlayer {
         guard enabled, pickers.indices.contains(pack) else { return }
         let (sample, rate) = pickers[pack].next(kind)
         mixer.trigger(sample: sample, rate: rate)
+    }
+
+    /// Fades the bed in over `fadeIn` seconds (sound.md §2.4: 1.5 at the summon), from the level it
+    /// has, so a summon during the fade-out turns it back up without a gap.
+    public func startBed(fadeIn: Double = 1.5) {
+        guard enabled else { return }
+        bedOn = true
+        bedFadeIn = fadeIn
+        bedLoop?.fade(to: 1, over: fadeIn)
+    }
+
+    /// Fades the bed out over `fadeOut` seconds (0.6 at the close or the hand-off); then it is silent.
+    public func stopBed(fadeOut: Double = 0.6) {
+        bedOn = false
+        bedLoop?.fade(to: 0, over: fadeOut)
+    }
+
+    private func attachBed(_ loop: BedLoop) {
+        let format = AVAudioFormat(standardFormatWithSampleRate: loop.sampleRate, channels: 2)!
+        // The block holds the loop, where the clicks' block holds its mixer unowned(unsafe): this node
+        // can be detached while the engine runs, and the loop must outlast any render call in flight.
+        // The loop's own rate: the main mixer converts it to the device's.
+        let node = AVAudioSourceNode(format: format) { isSilence, _, frames, data in
+            let buffers = UnsafeMutableAudioBufferListPointer(data)
+            guard let l = buffers.first?.mData?.assumingMemoryBound(to: Float.self) else { return noErr }
+            let r = buffers.count > 1 ? buffers[1].mData?.assumingMemoryBound(to: Float.self) ?? l : l
+            isSilence.pointee = ObjCBool(!loop.render(frames: Int(frames), left: l, right: r))
+            return noErr
+        }
+        engine.attach(node)
+        engine.connect(node, to: engine.mainMixerNode, format: format)
+        node.volume = Self.clamp(bedVolume)
+        bedNode = node
+        bedLoop = loop
+        if bedOn { loop.fade(to: 1, over: bedFadeIn) }
+    }
+
+    private func removeBed() {
+        bedGeneration += 1
+        if let bedNode { engine.detach(bedNode) }
+        bedNode = nil
+        bedLoop = nil
     }
 
     private func start() throws {

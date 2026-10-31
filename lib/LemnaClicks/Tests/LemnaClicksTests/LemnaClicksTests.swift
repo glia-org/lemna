@@ -14,6 +14,59 @@ private func pack(_ folder: String) throws -> SoundPack {
 
 private func defaultPack() throws -> SoundPack { try pack("DefaultPack") }
 
+private func rain() throws -> Bed {
+    let package = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent()
+    return try Bed(folder: package.appendingPathComponent("Sources/LemnaClicks/Beds/Rain"))
+}
+
+/// A file's channels as floats, as AVAudioFile decodes them.
+private func channels(_ url: URL) throws -> [[Float]] {
+    let file = try AVAudioFile(forReading: url)
+    let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length))!
+    try file.read(into: buffer)
+    return (0..<Int(buffer.format.channelCount)).map {
+        Array(UnsafeBufferPointer(start: buffer.floatChannelData![$0], count: Int(buffer.frameLength)))
+    }
+}
+
+/// The squares of one 48 kHz channel through ITU-R BS.1770's K-weighting (the head's high shelf, then the RLB
+/// high-pass), whose means give loudness as ffmpeg's ebur128 measures it.
+private func kWeightedSquares(_ x: [Float]) -> [Double] {
+    var out = [Double](repeating: 0, count: x.count)
+    var x1 = 0.0, x2 = 0.0, y1 = 0.0, y2 = 0.0, z1 = 0.0, z2 = 0.0
+    for i in x.indices {
+        let v = Double(x[i])
+        let y = 1.53512485958697 * v - 2.69169618940638 * x1 + 1.19839281085285 * x2 + 1.69065929318241 * y1
+            - 0.73248077421585 * y2
+        let z = y - 2 * y1 + y2 + 1.99004745483398 * z1 - 0.99007225036621 * z2
+        (x2, x1, y2, y1, z2, z1) = (x1, v, y1, y, z1, z)
+        out[i] = z * z
+    }
+    return out
+}
+
+/// The loudest 400 ms of a mono 48 kHz file in LUFS (BS.1770 momentary loudness every 10 ms over the file followed by
+/// 0.5 s of silence): THIRD_PARTY.md's M max.
+private func momentaryMax(_ url: URL) throws -> Double {
+    let x = try channels(url)[0] + [Float](repeating: 0, count: 24_000)
+    var sums = [0.0]
+    for z in kWeightedSquares(x) { sums.append(sums[sums.count - 1] + z) }
+    let window = 19_200
+    let loudest = stride(from: 480, through: x.count, by: 480).map { (sums[$0] - sums[max($0 - window, 0)]) / Double(window) }.max()!
+    return -0.691 + 10 * log10(loudest)
+}
+
+/// The loudness of the whole of a 48 kHz file over all its channels, ungated: a steady bed's integrated loudness.
+private func loudness(_ url: URL) throws -> Double {
+    let power = try channels(url).reduce(0.0) { sum, x in sum + kWeightedSquares(x).reduce(0, +) / Double(x.count) }
+    return -0.691 + 10 * log10(power)
+}
+
+private func peakDB(_ url: URL) throws -> Double {
+    20 * log10(Double(try channels(url).joined().map(abs).max() ?? 0))
+}
+
 @Test func bundledThrowsWithoutThePackInTheApp() {
     // The test runner is not an app: no pack in its resources.
     #expect(throws: ClickError.self) { try SoundPack.bundled() }
@@ -42,11 +95,12 @@ private func defaultPack() throws -> SoundPack { try pack("DefaultPack") }
 
 // MARK: The packs beside it (DESIGN.md K1: Typewriter, Soft, Electric)
 
-@Test(arguments: ["TypewriterPack", "SoftPack", "ElectricPack"])
+@Test(arguments: ["TypewriterPack", "SoftPack", "ElectricPack", "StonePack"])
 func packLoadsAndMapsEachKeyToItsOwnCuts(_ folder: String) throws {
     let p = try pack(folder)
+    let letters = folder == "StonePack" ? 8 : 6  // Stone: four takes, each also 6 % slower
     #expect(p.licence == (folder == "ElectricPack" ? "CC-BY-4.0" : "CC0-1.0"))
-    #expect(p.files[.letter]?.count == 6)
+    #expect(p.files[.letter]?.count == letters)
     for kind in [KeyKind.space, .paragraph, .backspace] {
         #expect(p.files[kind]?.count == 2, "\(kind)")
     }
@@ -60,33 +114,49 @@ func packLoadsAndMapsEachKeyToItsOwnCuts(_ folder: String) throws {
             #expect(file.fileFormat.channelCount == 1, "\(name)")
             #expect(file.fileFormat.commonFormat == .pcmFormatInt16, "\(name)")
             // A carriage return may run long, as paragraphs are rare, and so may the send; every other key stays a click.
-            #expect(Double(file.length) / 48_000 <= (kind == .paragraph ? 1.0 : kind == .send ? 0.45 : 0.150), "\(name)")
+            let send = folder == "StonePack" ? 1.0 : 0.45
+            #expect(Double(file.length) / 48_000 <= (kind == .paragraph ? 1.0 : kind == .send ? send : 0.150), "\(name)")
             bytes += try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
             count += 1
         }
     }
-    #expect(count == 13)
+    #expect(count == letters + 7)
     #expect(bytes <= 1_000_000)
 }
 
-// MARK: The send (DESIGN.md K1, pass 19a)
+/// Stone's kinds sit where the Keychron's do by loudness (each kind's mean M max within 0.3 LU; THIRD_PARTY.md). Its
+/// send, a hand chime, gets there at a peak near -20 dBFS: a ringing tone holds far more energy per peak than a click.
+@Test func stoneIsLevelledToTheKeychronByLoudness() throws {
+    let stone = try pack("StonePack"), keychron = try defaultPack()
+    func mean(_ urls: [URL]) throws -> Double { try urls.map(momentaryMax).reduce(0, +) / Double(urls.count) }
+    for kind in KeyKind.allCases {
+        let s = try mean(stone.files[kind] ?? []), k = try mean(keychron.files[kind] ?? [])
+        #expect(abs(s - k) < 0.3, "\(kind): Stone \(s), Keychron \(k) LUFS")
+    }
+    let peak = try peakDB(try #require(stone.files[.send]?.first))
+    #expect(abs(peak + 20) < 0.5, "send peak \(peak) dBFS")
+}
+
+// MARK: The send (DESIGN.md K1, pass 19a; pass 23a)
 
 /// ⌘⏎'s sound in every pack: one sample cut from the pack's own recordings, longer than a click (a key's release or a
-/// carriage's stop in it), and peaking at -6 dBFS as the clicks do.
-@Test(arguments: ["DefaultPack", "TypewriterPack", "SoftPack", "ElectricPack"])
+/// carriage's stop in it; Stone's hand chime rings to 0.9 s), and as loud as the pack's Returns: its M max within 3 LU
+/// of theirs. Pass 19a asked for a peak of -6 dBFS, as the clicks; the four sends cut so land 0.2–1.7 LU from their
+/// Returns, but a ringing tone at that peak would stand 14 LU over them (pass 23a), so the rule is now one of loudness.
+@Test(arguments: ["DefaultPack", "TypewriterPack", "SoftPack", "ElectricPack", "StonePack"])
 func everyPackHasItsSend(_ folder: String) throws {
-    let urls = try pack(folder).files[.send] ?? []
+    let p = try pack(folder)
+    let urls = p.files[.send] ?? []
     #expect(urls.map(\.lastPathComponent) == ["send-1.wav"])
+    let returns = try (p.files[.paragraph] ?? []).map(momentaryMax)
     for url in urls {
         let file = try AVAudioFile(forReading: url)
         #expect(file.fileFormat.sampleRate == 48_000 && file.fileFormat.channelCount == 1)
         #expect(file.fileFormat.commonFormat == .pcmFormatInt16)
         let seconds = Double(file.length) / 48_000
-        #expect(seconds > 0.2 && seconds <= 0.45, "\(seconds) s")
-        let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length))!
-        try file.read(into: buffer)
-        let peak = UnsafeBufferPointer(start: buffer.floatChannelData![0], count: Int(buffer.frameLength)).map(abs).max() ?? 0
-        #expect(abs(20 * log10(peak) + 6) < 0.1, "peak \(peak)")
+        #expect(seconds > 0.2 && seconds <= (folder == "StonePack" ? 1.0 : 0.45), "\(seconds) s")
+        let loudness = try momentaryMax(url)
+        #expect(abs(loudness - returns.reduce(0, +) / Double(returns.count)) <= 3, "M max \(loudness), Returns \(returns)")
     }
 }
 
@@ -107,8 +177,8 @@ func everyPackHasItsSend(_ folder: String) throws {
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: folder) }
     try Data().write(to: folder.appendingPathComponent("a.wav"))
-    func write(_ files: String) throws {
-        let json = #"{"name": "t", "licence": "CC0-1.0", "source": "-", "files": {\#(files)}}"#
+    func write(_ files: String, _ more: String = "") throws {
+        let json = #"{"name": "t", "licence": "CC0-1.0", "source": "-", \#(more) "files": {\#(files)}}"#
         try json.write(to: folder.appendingPathComponent("pack.json"), atomically: true, encoding: .utf8)
     }
     try write(#""letter": ["a.wav"], "space": ["a.wav"], "paragraph": ["a.wav"], "backspace": ["a.wav"], "send": ["a.wav"]"#)
@@ -118,6 +188,13 @@ func everyPackHasItsSend(_ folder: String) throws {
     try write(#""letter": ["a.wav"], "space": ["a.wav"], "paragraph": ["a.wav"], "backspace": ["a.wav"], "send": ["a.wav"], "enter": ["a.wav"]"#)
     #expect(throws: ClickError.self) { try SoundPack(folder: folder) }
     try write(#""letter": ["b.wav"], "space": ["a.wav"], "paragraph": ["a.wav"], "backspace": ["a.wav"], "send": ["a.wav"]"#)
+    #expect(throws: ClickError.self) { try SoundPack(folder: folder) }
+    let all = #""letter": ["a.wav"], "space": ["a.wav"], "paragraph": ["a.wav"], "backspace": ["a.wav"], "send": ["a.wav"]"#
+    try write(all)
+    #expect(try SoundPack(folder: folder).pitched.isEmpty)  // unpitched unless named
+    try write(all, #""pitched": ["send"],"#)
+    #expect(try SoundPack(folder: folder).pitched == [.send])
+    try write(all, #""pitched": ["chime"],"#)
     #expect(throws: ClickError.self) { try SoundPack(folder: folder) }
 }
 
@@ -193,6 +270,23 @@ func everyPackHasItsSend(_ folder: String) throws {
     #expect(low < 0.975 && high > 1.025)  // and the whole spread is used
 }
 
+/// A pitched kind keeps its recorded rate, so its repeats are one note, not a tune within a semitone (sound.md §4.2);
+/// the others keep the ±3 %. Only the Stone pack names any: its slit drum (Return) and its chime (the send).
+@Test func pitchedKindsPlayAtTheirRecordedRate() throws {
+    var picker = Picker(counts: [8, 2, 2, 2, 1], seed: 11, pitched: [.paragraph, .send])
+    var low: [KeyKind: Float] = [:], high: [KeyKind: Float] = [:]
+    for i in 0..<10_000 {
+        let kind = KeyKind.allCases[i % 5]
+        let rate = picker.next(kind).rate
+        low[kind] = min(low[kind] ?? 2, rate)
+        high[kind] = max(high[kind] ?? 0, rate)
+    }
+    for kind in [KeyKind.paragraph, .send] { #expect(low[kind] == 1 && high[kind] == 1, "\(kind)") }
+    for kind in [KeyKind.letter, .space, .backspace] { #expect(low[kind]! < 0.975 && high[kind]! > 1.025, "\(kind)") }
+    #expect(try pack("StonePack").pitched == [.paragraph, .send])
+    for folder in ["DefaultPack", "TypewriterPack", "SoftPack", "ElectricPack"] { #expect(try pack(folder).pitched.isEmpty) }
+}
+
 // MARK: Mixing
 
 private func render(_ mixer: Mixer, _ frames: Int) -> (sounded: Bool, out: [Float]) {
@@ -228,6 +322,104 @@ private func render(_ mixer: Mixer, _ frames: Int) -> (sounded: Bool, out: [Floa
     #expect(mixer.consumed == Mixer.voiceCount + 4)
     #expect(mixer.activeVoices == Mixer.voiceCount)
     #expect(abs(r.out[0] - Float(Mixer.voiceCount) * 0.01) < 1e-5)
+}
+
+// MARK: The bed (sound.md §2, pass 23a)
+
+@Test func bedJSONNamesItsLoop() throws {
+    let bed = try rain()
+    #expect(bed.licence == "CC0-1.0" && bed.attribution == nil)  // CC0: no credit owed
+    #expect(bed.source == "https://freesound.org/people/felix.blume/sounds/585845/")
+    #expect(bed.file.lastPathComponent == "rain.caf")
+    #expect(throws: ClickError.self) { try Bed.bundled("Rain") }  // the test runner is not an app
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("lemnaclicks-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let json = #"{"name": "t", "licence": "CC0-1.0", "source": "-", "file": "loop.caf", "lufs": -30}"#
+    try json.write(to: folder.appendingPathComponent("bed.json"), atomically: true, encoding: .utf8)
+    #expect(throws: ClickError.self) { try Bed(folder: folder) }  // no loop.caf
+    try Data().write(to: folder.appendingPathComponent("loop.caf"))
+    #expect(try Bed(folder: folder).lufs == -30)
+}
+
+/// The rain as it ships: 90 s of 48 kHz stereo AAC, exact to the frame (the seam is in the samples, so a frame of
+/// padding would put a gap in it), about 1.5 MB, and no step at the wrap bigger than the loop's own sample steps.
+@Test func theRainIsANinetySecondStereoLoopWithoutASeam() throws {
+    let url = try rain().file
+    let file = try AVAudioFile(forReading: url)
+    #expect(file.fileFormat.sampleRate == 48_000 && file.fileFormat.channelCount == 2)
+    #expect(file.length == 90 * 48_000)
+    #expect(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0 <= 1_600_000)
+    for x in try channels(url) {
+        let wrap = abs(x[0] - x[x.count - 1])
+        var larger = 0
+        for i in 1..<x.count where abs(x[i] - x[i - 1]) > wrap { larger += 1 }
+        #expect(larger > x.count / 1000, "the wrap's step \(wrap) is in the loop's largest 0.1 %")
+        func rms(_ s: ArraySlice<Float>) -> Double { 10 * log10(s.reduce(0.0) { $0 + Double($1 * $1) } / Double(s.count)) }
+        let half = 24_000
+        #expect(abs(rms(x[(x.count - half)...]) - rms(x[..<half])) < 1, "level either side of the wrap")
+    }
+}
+
+/// bed.json's lufs is the loop's loudness, and the gain from it puts the rain at `Bed.level` under a bedVolume of 0.6.
+@Test func theRainPlaysAtTheBedLevel() throws {
+    let bed = try rain()
+    let measured = try loudness(bed.file)
+    #expect(abs(measured - bed.lufs) < 0.3, "the loop measures \(measured) LUFS")
+    #expect(Bed.level == -43)
+    #expect(abs(measured + 20 * log10(Double(bed.gain) * 0.6) - Bed.level) < 0.3)
+}
+
+private func loopBuffer(_ left: [Float], _ right: [Float]) -> AVAudioPCMBuffer {
+    let buffer = AVAudioPCMBuffer(pcmFormat: AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 2)!,
+                                  frameCapacity: AVAudioFrameCount(left.count))!
+    buffer.frameLength = AVAudioFrameCount(left.count)
+    for i in left.indices {
+        buffer.floatChannelData![0][i] = left[i]
+        buffer.floatChannelData![1][i] = right[i]
+    }
+    return buffer
+}
+
+private func render(_ loop: BedLoop, _ frames: Int) -> (sounded: Bool, left: [Float], right: [Float]) {
+    var l = [Float](repeating: 1, count: frames), r = [Float](repeating: 1, count: frames)
+    let sounded = l.withUnsafeMutableBufferPointer { lp in
+        r.withUnsafeMutableBufferPointer { rp in loop.render(frames: frames, left: lp.baseAddress!, right: rp.baseAddress!) }
+    }
+    return (sounded, l, r)
+}
+
+@Test func theBedLoopsRoundByIndex() {
+    let loop = BedLoop(loopBuffer((0..<10).map(Float.init), (0..<10).map { -Float($0) }), gain: 0.5)
+    #expect(!render(loop, 8).sounded && loop.position == 0)  // silent, and the loop waits, until a fade
+    loop.fade(to: 1, over: 0)
+    let r = render(loop, 25)
+    let expected = (Array(0..<10) + Array(0..<10) + Array(0..<5)).map { 0.5 * Float($0) }
+    #expect(r.sounded && zip(r.left, expected).allSatisfy { abs($0 - $1) < 1e-6 })
+    #expect(zip(r.right, expected).allSatisfy { abs($0 + $1) < 1e-6 })
+    #expect(loop.position == 5)
+}
+
+@Test func theBedFadesAlongASineFromWhereItIs() {
+    let loop = BedLoop(loopBuffer(Array(repeating: 1, count: 4800), Array(repeating: 1, count: 4800)), gain: 0.5)
+    loop.fade(to: 1, over: 0.01)  // 480 frames at 48 kHz
+    var r = render(loop, 600)
+    for i in [0, 119, 239, 359, 479, 599] {
+        let expected = 0.5 * sin(Float.pi / 2 * min(Float(i + 1) / 480, 1))
+        #expect(abs(r.left[i] - expected) < 1e-3 && r.right[i] == r.left[i], "frame \(i)")
+    }
+    #expect(loop.level == 1)
+    loop.fade(to: 0, over: 0.01)
+    r = render(loop, 240)  // half way out: the cosine at a quarter turn
+    let midway = r.left[239]
+    #expect(abs(midway - 0.5 * sin(Float.pi / 4)) < 1e-3)
+    loop.fade(to: 1, over: 0.01)  // a summon during the fade-out
+    r = render(loop, 240)
+    #expect(abs(r.left[0] - midway) < 0.01)  // on from where it was, no jump
+    #expect(abs(r.left[239] - 0.5) < 1e-3)  // full again after the rest of the way
+    loop.fade(to: 0, over: 0)
+    #expect(render(loop, 64).left.allSatisfy { $0 == 0 })
+    #expect(!render(loop, 64).sounded)
 }
 
 // MARK: The engine (needs an output device; the clicks are audible)
@@ -286,14 +478,61 @@ private var hasOutput: Bool { OutputDevice.defaultID() != nil }
     /// Silent: loads every pack into one player and switches between them; nothing is played.
     @Test(.enabled(if: hasOutput, "no audio output device: engine test skipped"))
     func allPacksLoadIntoOnePlayer() throws {
-        let folders = ["DefaultPack", "TypewriterPack", "SoftPack", "ElectricPack"]
+        let folders = ["DefaultPack", "TypewriterPack", "SoftPack", "ElectricPack", "StonePack"]
         let player = try ClickPlayer(packs: folders.map(pack))
         #expect(player.packs.map(\.name) == (try folders.map { try pack($0).name }))
-        #expect(player.mixer.sampleCount == 52)  // 13 per pack, all in one table
+        #expect(player.mixer.sampleCount == 67)  // 13 per pack and Stone's 15, all in one table
         #expect(player.pack == 0)
         player.pack = 3
         #expect(player.pack == 3)
         #expect(player.mixer.consumed == 0)
+    }
+
+    /// Plays the rain for about half a second, quietly: decoded off the main thread, faded in and out on the engine,
+    /// silenced by `enabled`, taken off by `bed = nil`.
+    @Test(.enabled(if: hasOutput, "no audio output device: engine test skipped")) @MainActor
+    func theBedFadesInAndOutOnTheEngine() async throws {
+        let player = try ClickPlayer(pack: defaultPack())
+        player.bedVolume = 0.3
+        player.startBed(fadeIn: 0.05)  // asked for before the loop is ready: it starts once it is
+        player.bed = try rain()
+        for _ in 0..<300 where player.bedLoop == nil { try await Task.sleep(nanoseconds: 10_000_000) }
+        let loop = try #require(player.bedLoop)
+        let lock = NSLock()
+        var outputPeak: Float = 0
+        let mixer = player.engine.mainMixerNode
+        mixer.installTap(onBus: 0, bufferSize: 1024, format: nil) { buffer, _ in
+            guard let channel = buffer.floatChannelData?[1] else { return }
+            var peak: Float = 0
+            for i in 0..<Int(buffer.frameLength) { peak = max(peak, abs(channel[i])) }
+            lock.withLock { outputPeak = max(outputPeak, peak) }
+        }
+        defer { mixer.removeTap(onBus: 0) }
+        try await Task.sleep(nanoseconds: 400_000_000)
+        #expect(loop.level == 1 && loop.position > 0)
+        let heard = lock.withLock { outputPeak }
+        print(String(format: "LemnaClicks bed output peak %.4f (bedVolume 0.3)", heard))
+        #expect(heard > 0.001)
+
+        player.stopBed(fadeOut: 0.05)
+        try await Task.sleep(nanoseconds: 200_000_000)
+        #expect(loop.level == 0)
+        let stopped = loop.position
+        try await Task.sleep(nanoseconds: 100_000_000)
+        #expect(loop.position == stopped)  // silent: the loop waits where it was
+
+        player.startBed(fadeIn: 0.05)
+        try await Task.sleep(nanoseconds: 200_000_000)
+        #expect(loop.level == 1)
+        player.enabled = false  // ⌘K: the bed with the clicks
+        player.startBed()
+        player.enabled = true
+        try await Task.sleep(nanoseconds: 200_000_000)
+        #expect(loop.level == 0)  // off until asked again
+
+        let attached = player.engine.attachedNodes.count
+        player.bed = nil
+        #expect(player.bedLoop == nil && player.engine.attachedNodes.count == attached - 1)
     }
 
     @Test func bluetoothFlagReads() throws {
