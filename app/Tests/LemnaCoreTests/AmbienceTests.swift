@@ -688,7 +688,7 @@ private func typing(_ typed: [Character], _ mode: Mode, rate: Double, after: Dou
 /// Written as app/renders/ambience-water-day.png and ambience-water-night.png.
 @Test(.enabled(if: Ambience.Renderer.available)) func stillWaterShowsOnStillsDayAndNightDim() throws {
     #expect(Theme.still.defaults.ambience == .water && Theme.lemna.defaults.ambience == nil)  // the presets (TH1)
-    let font = try #require(Theme.still.type.font)
+    let font = try #require(stillFont)  // registered first (the tests run in parallel)
     let renderer = try #require(Ambience.Renderer(font: Ambience.Glyphs.atlasFont(for: font)))
     let day = Style(.still, dark: false, font: font), night = Style(.still, dark: true, font: font)
     let shown = BoxFrame.line(in: CGRect(x: 0, y: 80, width: 1512, height: 868), height: BoxFrame.height(fontSize: day.size))
