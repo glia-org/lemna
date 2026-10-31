@@ -14,6 +14,10 @@ app=build/Lemna.app
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin/Lemna" "$app/Contents/MacOS/Lemna"
+# The symbol table's debug entries (STABS SO/OSO) name this machine's build folders by absolute path; strip them, and
+# refuse a binary that still names any home folder (`strings` misses these entries, `nm -pa` sees them).
+strip -S "$app/Contents/MacOS/Lemna"
+if nm -pa "$app/Contents/MacOS/Lemna" | grep -q '/Users/'; then echo "the executable names a home folder; not built" >&2; exit 1; fi
 swift make-icon.swift "$icon" build
 cp build/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 # The click packs (lib/LemnaClicks, each a pack.json and its WAVs): SoundPack.bundled(<folder>) loads them from
