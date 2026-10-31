@@ -59,8 +59,9 @@ extension Ambience {
     /// 15: "The ambience effects are way too subtle") made every mode plain from its first frame, about two to three
     /// times pass 15's alphas, larger where that reads better, a little longer where the fade took them early; pass
     /// 15's values, the panel's, stand beside each as "subtle". Times in seconds, lengths in points, alphas over the
-    /// dim. The colours are the box's (C1): text for glyphs, rings and grid lines, the accent for the lit cells; Rain's
-    /// heads in the text colour and its trails in the accent (C2, pass 19b).
+    /// dim. The colours are the theme's ink (`Stage.ink`; Lemna's the box's text and accent, C1): text for glyphs,
+    /// rings and grid lines, the accent for the lit cells; Rain's heads in the text colour and its trails in the accent
+    /// (C2, pass 19b).
     public enum Tuning {
         /// Every mode: at most this many sprites a frame (the panel's 2,000 particles), stepped and drawn at 60 Hz
         /// (Rain at rest at `rainIdleRate`).
@@ -76,8 +77,6 @@ extension Ambience {
         /// The typing rate is the keys of the last `rateWindow`; magnitudes set by it reach their top at `fastRate`
         /// keys a second (about 100 words a minute).
         public static let rateWindow = 2.0, fastRate = 10.0
-        /// C1: the box's text and accent (`Style.text`, `Style.accent`).
-        public static let text: UInt32 = 0xd8dce3, accent: UInt32 = 0x7aa7f0
 
         /// Where a key is (pass 16, `Keyboard`): across the screen, Rain's columns from the left to the right end of
         /// `screenSpan`; along the box, where Rings start, `boxSpan` of its width; down the keyboard, Rain's start from
@@ -179,17 +178,18 @@ extension Ambience {
     }
 
     /// Where a scene plays: one screen's dim, in its points (origin at the bottom left, as AppKit's). On the box's screen
-    /// `box` is the box there and `band`, `baseline` and `caret` are the line's; on another screen `box` is nil.
+    /// `box` is the box there and `band`, `baseline` and `caret` are the line's; on another screen `box` is nil. `ink`:
+    /// the theme's colours, blend and alpha for the scenes (TH1).
     public struct Stage: Equatable {
-        public var size: CGSize, box: CGRect?, corner: CGFloat, keyboard: Keyboard.Kind
+        public var size: CGSize, box: CGRect?, corner: CGFloat, keyboard: Keyboard.Kind, ink: Theme.Ink
         public var band = CGRect.zero, baseline: CGFloat = 0, caret: CGFloat = 0
 
         /// `box` in the stage's points; the line sits `inset` inside it (its border), its band and baseline as
         /// `Line.draw` places them, the caret's left edge at 60 % of the band. `keyboard`: the physical layout, for
-        /// where a key is.
+        /// where a key is; the ink is `style`'s palette's.
         public init(size: CGSize, box: CGRect? = nil, inset: CGFloat = 1, corner: CGFloat = 10,
                     keyboard: Keyboard.Kind = .ansi, style: Style) {
-            (self.size, self.box, self.corner, self.keyboard) = (size, box, corner, keyboard)
+            (self.size, self.box, self.corner, self.keyboard, ink) = (size, box, corner, keyboard, style.palette.ink)
             guard let box else { return }
             let line = box.insetBy(dx: inset, dy: inset)
             band = Line.band(in: line.size, style: style).offsetBy(dx: line.minX, dy: line.minY)
@@ -308,6 +308,14 @@ extension Ambience {
         public var rows: Int { (ids.count + Self.columns - 1) / Self.columns }
         /// The atlas's size in pixels.
         public var atlas: (w: Int, h: Int) { (Self.columns * pixels.w, rows * pixels.h) }
+
+        /// The atlas's font for a line in `font`: the same when it is monospaced, else Menlo at its size, so Rain's grid
+        /// keeps a monospaced face whatever the theme's line uses (TY1; architecture §6). Drift finds no glyph of a
+        /// line in another font than the atlas's (`slot(glyph:font:)`), so under Still it shows nothing.
+        public static func atlasFont(for font: CTFont) -> CTFont {
+            CTFontGetSymbolicTraits(font).contains(.traitMonoSpace) ? font
+                : CTFontCreateWithName("Menlo" as CFString, CTFontGetSize(font), nil)
+        }
 
         public func slot(_ c: Character) -> Int? { byCharacter[c] }
         /// A shaped glyph's slot: only the line's own font (not a fallback for a character Menlo lacks).
@@ -444,11 +452,11 @@ extension Ambience {
 
         /// The alpha every sprite is drawn at, at `t`: the last second before `linger` after the last key fades
         /// evenly (not in an ambient mode), and a close fades over its time on the curve (evenly until pass 18); 0 when
-        /// it is over.
+        /// it is over. Times the theme's ink's alpha (1 for Lemna).
         public func alpha(at t: Double) -> Double {
             var a = mode.ambient ? 1 : min(max((lastKey + Tuning.linger - t) / Tuning.fadeOut, 0), 1)
             if let c = closing { a *= c.over > 0 ? 1 - Curve.easeOutQuint((t - c.at) / c.over) : 0 }
-            return a
+            return a * stage.ink.alpha
         }
 
         /// One frame at `t`, `dt` after the last: the scene stepped with the events since, its sprites appended to

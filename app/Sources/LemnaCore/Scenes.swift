@@ -30,11 +30,11 @@ struct Drift: Ambience.Scene {
     private var leaves: [Leaf] = []
     /// The current's speed now, easing toward the one the rate sets.
     private(set) var current = T.driftCurrent.lowerBound
-    private let glyphs: Ambience.Glyphs, advance: Double
+    private let glyphs: Ambience.Glyphs, advance: Double, ink: Theme.Ink
     private var random: Ambience.Random
 
     init(stage: Ambience.Stage, glyphs: Ambience.Glyphs, seed: UInt64) {
-        (self.glyphs, random) = (glyphs, Ambience.Random(seed: seed))
+        (self.glyphs, ink, random) = (glyphs, stage.ink, Ambience.Random(seed: seed))
         advance = Double(glyphs.cell.width - 2 * Ambience.Glyphs.pad)  // one cell of the monospaced line
     }
 
@@ -67,7 +67,7 @@ struct Drift: Ambience.Scene {
         leaves.removeAll { $0.age >= T.driftLife || $0.x < -100 }
         for l in leaves {
             out.append(glyphs.sprite(l.slot, baselineLeft: CGPoint(x: l.x, y: l.y), rotation: l.rotation,
-                                     alpha: Self.alpha(age: l.age), colour: T.text))
+                                     alpha: Self.alpha(age: l.age), colour: ink.text))
         }
     }
 }
@@ -153,7 +153,8 @@ struct Rain: Ambience.Scene {
                 let r = Int(h.row), x = h.column * rows + r
                 guard !under[x] else { continue }
                 under[x] = true
-                add(h.glyph ?? glyph[x], h.column, r, alpha: key ? T.rainKeyHead : head, colour: T.text, into: &out)
+                add(h.glyph ?? glyph[x], h.column, r, alpha: key ? T.rainKeyHead : head, colour: stage.ink.text,
+                    into: &out)
             }
         }
         for c in 0..<columns {
@@ -166,7 +167,7 @@ struct Rain: Ambience.Scene {
                 let age = now - lit[x]
                 guard age < trail[x] else { continue }
                 let a = (top[x] > 0 ? top[x] : trailTop) * (1 - age / trail[x])
-                if a > T.rainShown { add(glyph[x], c, x - c * rows, alpha: a, colour: T.accent, into: &out) }
+                if a > T.rainShown { add(glyph[x], c, x - c * rows, alpha: a, colour: stage.ink.accent, into: &out) }
             }
         }
     }
@@ -301,7 +302,7 @@ struct Rings: Ambience.Scene {
         for r in rings {
             let u = r.age / T.ringLife, e = Curve.easeOutQuint(u)
             circle(x: r.x, y: r.y, radius: r.inward ? T.ringInward * (1 - e) : r.reach * e, width: T.ringWidth,
-                   alpha: T.ringPeak * (1 - u), colour: T.text, on: stage.size, into: &out)
+                   alpha: T.ringPeak * (1 - u), colour: stage.ink.text, on: stage.size, into: &out)
         }
     }
 }
@@ -341,19 +342,20 @@ struct Grid: Ambience.Scene {
     /// Since the first key: the lines fade in over `gridIn`; nil before it.
     private var shown: Double?
     private var random: Ambience.Random
+    private let ink: Theme.Ink
 
     init(stage: Ambience.Stage, glyphs: Ambience.Glyphs, seed: UInt64) {
-        random = Ambience.Random(seed: seed)
+        (random, ink) = (Ambience.Random(seed: seed), stage.ink)
         guard let box = stage.box else { return }
         let c = T.gridCell, (w, h) = (Double(stage.size.width), Double(stage.size.height))
         let (x0, y0) = (Double(box.minX), Double(box.minY))
         let first = Int((-x0 / c).rounded(.up)), last = max(Int(((w - x0) / c).rounded(.down)), first)
         for k in first...last {
-            lines.append(Sprite(x: x0 + Double(k) * c, y: h / 2, w: 1, h: h, alpha: 1, colour: T.text, kind: .rect))
+            lines.append(Sprite(x: x0 + Double(k) * c, y: h / 2, w: 1, h: h, alpha: 1, colour: ink.text, kind: .rect))
         }
         let low = Int((-y0 / c).rounded(.up)), high = max(Int(((h - y0) / c).rounded(.down)), low)
         for k in low...high {
-            lines.append(Sprite(x: w / 2, y: y0 + Double(k) * c, w: w, h: 1, alpha: 1, colour: T.text, kind: .rect))
+            lines.append(Sprite(x: w / 2, y: y0 + Double(k) * c, w: w, h: 1, alpha: 1, colour: ink.text, kind: .rect))
         }
         if lines.count > T.cap / 2 { lines.removeLast(lines.count - T.cap / 2) }
         // The keyboard: centred under the box on the grid's cells, a gap of `gridGap` cells below it; over it if the
@@ -431,7 +433,7 @@ struct Grid: Ambience.Scene {
         let side = T.gridCell - 1  // inside the lines
         func cell(_ p: CGPoint, _ age: Double) -> Sprite {
             Sprite(x: Double(p.x), y: Double(p.y), w: side, h: side,
-                   alpha: T.gridLit * min(age / 0.05, 1) * (1 - age / T.gridLife), colour: T.accent, kind: .rect)
+                   alpha: T.gridLit * min(age / 0.05, 1) * (1 - age / T.gridLife), colour: ink.accent, kind: .rect)
         }
         if keysLit > 0 {
             for i in keys.indices where keys[i] >= 0 {

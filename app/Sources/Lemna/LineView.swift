@@ -11,8 +11,15 @@ import LemnaJournal
 import QuartzCore
 
 final class LineView: NSView, NSTextInputClient {
-    /// Its muted colour follows Increase Contrast, set by the app as the line comes on screen.
-    var style: Style
+    /// The theme as it shows (TH1; with Increase Contrast's muted grey), set by the app as a container comes on screen:
+    /// the line is laid out again in its font, and the next frame draws it (the container's show or `redraw`).
+    var style: Style {
+        didSet {
+            word = Self.word(style.font)
+            shaped = Line.shape(text, marked: marked, font: style.font)
+            needsDisplay = true  // the layer's background (`updateLayer`)
+        }
+    }
     private let strip = Strip()
     private(set) var text = Text()
     private var marked = ""
@@ -39,14 +46,17 @@ final class LineView: NSView, NSTextInputClient {
     /// `glide` moves the text before the caret (an edit there), `slide` the whole text (a caret move): S1, B4.
     private var shaped = Shaped(), glide = Glide(), slide = Glide()
     /// About one word: the most a held ← leaves the text behind the caret.
-    private lazy var word = Line.width(String(repeating: "n", count: Line.wordCells), font: style.font)
+    private var word: CGFloat
+    private static func word(_ font: CTFont) -> CGFloat {
+        Line.width(String(repeating: "n", count: Line.wordCells), font: font)
+    }
     private var link: CADisplayLink?
     private var keyFrame = 0.0  // when a key last drew a frame
     /// The offsets the last frame drew the two parts at (`Line.draw`'s `before` and `after`), for the hand-off's cut.
     private var drawn = (before: CGFloat(0), after: CGFloat(0))
 
     init(style: Style) {
-        self.style = style
+        (self.style, word) = (style, Self.word(style.font))
         super.init(frame: .zero)
         wantsLayer = true
         addSubview(strip)

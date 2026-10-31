@@ -24,21 +24,28 @@ public struct Newest: Equatable {
     public init(units: Int = 0, alpha: Double = 1) { (self.units, self.alpha) = (units, alpha) }
 }
 
-/// The colours, in the box and in the window: Lemna's own (DESIGN.md F1 T2; Tokyo Night's roles, T1, were tried in
-/// pass 14 and the user went back to these).
+/// The colours and the font, in the box and in the window: a theme as it shows now (DESIGN.md TH1), its night palette
+/// when `dark` (LK1: the system's appearance, unless the theme keeps one), with the muted grey of Increase Contrast or
+/// not. `Style(font:)` is Lemna's, today's look (F1 T2). The app takes a new one as a container comes on screen.
 public struct Style {
     public var font: CTFont
-    public var background = rgb(0x0e1013), text = rgb(0xd8dce3), muted = Style.muted(increasedContrast: false),
-               caret = Style.accent
-    public init(font: CTFont) { self.font = font }
+    /// The box's surface, the text, the muted grey (the ` ¶ `, the bottom edge) and the caret (the accent).
+    public var background: CGColor, text: CGColor, muted: CGColor, caret: CGColor
+    /// The box's edge: the accent (B1) or the theme's hairline.
+    public var border: CGColor
+    public let theme: Theme, dark: Bool, increasedContrast: Bool
+
+    public init(_ theme: Theme = .lemna, dark: Bool = true, increasedContrast: Bool = false, font: CTFont) {
+        (self.theme, self.dark, self.increasedContrast, self.font) = (theme, dark, increasedContrast, font)
+        let p = dark ? theme.night : theme.day
+        (background, text, muted, caret) = (rgb(p.surface), rgb(p.text), p.muted(increasedContrast: increasedContrast),
+                                            rgb(p.accent))
+        border = theme.box.border == .accent ? caret : rgb(p.line)
+    }
+
+    /// The palette that shows: the dim, its opacity, the ambience's ink.
+    public var palette: Theme.Palette { dark ? theme.night : theme.day }
     public var size: CGFloat { CTFontGetSize(font) }
-
-    /// The accent (the caret, the box's border, B1): #7aa7f0.
-    public static let accent = rgb(0x7aa7f0)
-
-    /// The muted colour (the ` ¶ `, the surface's bottom edge): #5c646f, 3.2:1 on the background; under Increase
-    /// Contrast #8d95a0, 6.3:1 (the HIG asks at least 4.5:1).
-    public static func muted(increasedContrast: Bool) -> CGColor { rgb(increasedContrast ? 0x8d95a0 : 0x5c646f) }
 }
 
 /// An sRGB colour from 0xRRGGBB.

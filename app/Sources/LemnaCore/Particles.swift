@@ -1,6 +1,7 @@
-// The ambience's drawing (DESIGN.md A1, R1): one Metal pipeline that draws a frame's sprites as instanced quads,
-// glyphs from an atlas of the line's font drawn once with Core Text, the rings' arcs and the grid's lines and cells as
-// shapes in the fragment shader. The shader is Metal source compiled at runtime once per device (`makeLibrary(source:)`): the
+// The ambience's drawing (DESIGN.md A1, R1): one Metal pipeline that draws a frame's sprites as instanced quads (one
+// for each blend of the theme's ink since pass 21, TH1), glyphs from an atlas of the line's font (a monospaced one,
+// `Glyphs.atlasFont`) drawn once with Core Text, the rings' arcs and the grid's lines and cells as shapes in the
+// fragment shader. The shader is Metal source compiled at runtime once per device (`makeLibrary(source:)`): the
 // Command Line Tools have no Metal compiler, and the system compiles it in a few milliseconds. The app draws into a
 // CAMetalLayer's drawable on the scene's thread; the tests draw into an offscreen texture.
 import CoreGraphics
@@ -11,7 +12,8 @@ import Metal
 extension Ambience {
     public final class Renderer {
         public let device: MTLDevice, queue: MTLCommandQueue, glyphs: Glyphs
-        private let pipeline: MTLRenderPipelineState, atlas: MTLTexture, sampler: MTLSamplerState
+        private let pipelines: (add: MTLRenderPipelineState, over: MTLRenderPipelineState)
+        private let atlas: MTLTexture, sampler: MTLSamplerState
 
         /// Whether this Mac has a Metal device at all.
         public static var available: Bool { MTLCreateSystemDefaultDevice() != nil }
@@ -19,18 +21,18 @@ extension Ambience {
         /// How long the one compile took, in seconds (0 until it ran).
         public private(set) static var compileSeconds = 0.0
         private static let lock = NSLock()
-        private static var pipelines: [UInt64: MTLRenderPipelineState] = [:]
+        private static var made: [UInt64: MTLRenderPipelineState] = [:], libraries: [UInt64: MTLLibrary] = [:]
 
         /// Nil without a Metal device or when the shader does not compile (the app then plays no ambience, and says
         /// so once in the system log).
         public init?(device: MTLDevice? = MTLCreateSystemDefaultDevice(), font: CTFont,
                      pixelFormat: MTLPixelFormat = .bgra8Unorm) {
-            guard let device, let queue = device.makeCommandQueue(),
-                  let pipeline = Self.pipeline(device, pixelFormat), let sampler = Self.sampler(device) else { return nil }
+            guard let device, let queue = device.makeCommandQueue(), let add = Self.pipeline(device, pixelFormat, .add),
+                  let over = Self.pipeline(device, pixelFormat, .over), let sampler = Self.sampler(device) else { return nil }
             let glyphs = Glyphs(font: font)
             guard let atlas = Self.atlas(glyphs, device: device, queue: queue) else { return nil }
-            (self.device, self.queue, self.glyphs, self.pipeline, self.atlas, self.sampler) =
-                (device, queue, glyphs, pipeline, atlas, sampler)
+            (self.device, self.queue, self.glyphs, self.pipelines, self.atlas, self.sampler) =
+                (device, queue, glyphs, (add, over), atlas, sampler)
         }
 
         /// A buffer with room for `Tuning.cap` sprites, for a frame's instances.
@@ -39,10 +41,10 @@ extension Ambience {
         }
 
         /// Encodes one frame into `commands`: `target` cleared to nothing, then `count` sprites from `instances` (a
-        /// buffer of `Sprite`s, written by the caller) at `alpha`, over a stage `viewport` points large at `scale`
-        /// pixels a point. The caller presents and commits.
+        /// buffer of `Sprite`s, written by the caller) at `alpha` and combined by `blend` (the theme's ink's), over a
+        /// stage `viewport` points large at `scale` pixels a point. The caller presents and commits.
         public func encode(_ commands: MTLCommandBuffer, instances: MTLBuffer?, count: Int, into target: MTLTexture,
-                           viewport: CGSize, scale: CGFloat, alpha: Double) {
+                           viewport: CGSize, scale: CGFloat, alpha: Double, blend: Theme.Ink.Blend = .add) {
             let pass = MTLRenderPassDescriptor()
             pass.colorAttachments[0].texture = target
             pass.colorAttachments[0].loadAction = .clear
@@ -55,7 +57,7 @@ extension Ambience {
                                           alpha: Float(alpha),
                                           cell: SIMD2(Float(glyphs.pixels.w) / Float(aw), Float(glyphs.pixels.h) / Float(ah)),
                                           columns: UInt32(Glyphs.columns), unused: 0)
-                draw.setRenderPipelineState(pipeline)
+                draw.setRenderPipelineState(blend == .add ? pipelines.add : pipelines.over)
                 draw.setVertexBuffer(instances, offset: 0, index: 0)
                 draw.setVertexBytes(&frame, length: MemoryLayout<FrameUniforms>.stride, index: 1)
                 draw.setFragmentBytes(&frame, length: MemoryLayout<FrameUniforms>.stride, index: 0)
@@ -69,7 +71,8 @@ extension Ambience {
 
         /// One frame drawn into an offscreen texture `size` points large at `scale`, read back: BGRA, premultiplied,
         /// rows from the top; nil without a device. For the tests and the renders.
-        public func offscreen(_ sprites: [Sprite], size: CGSize, scale: CGFloat, alpha: Double = 1) -> [UInt8]? {
+        public func offscreen(_ sprites: [Sprite], size: CGSize, scale: CGFloat, alpha: Double = 1,
+                              blend: Theme.Ink.Blend = .add) -> [UInt8]? {
             let (w, h) = (Int((size.width * scale).rounded()), Int((size.height * scale).rounded()))
             let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
             d.usage = [.renderTarget]
@@ -81,7 +84,8 @@ extension Ambience {
             sprites.withUnsafeBytes {
                 instances.contents().copyMemory(from: $0.baseAddress!, byteCount: n * MemoryLayout<Sprite>.stride)
             }
-            encode(commands, instances: instances, count: n, into: target, viewport: size, scale: scale, alpha: alpha)
+            encode(commands, instances: instances, count: n, into: target, viewport: size, scale: scale, alpha: alpha,
+                   blend: blend)
             guard let blit = commands.makeBlitCommandEncoder() else { return nil }
             blit.copy(from: target, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                       sourceSize: MTLSize(width: w, height: h, depth: 1), to: readBack, destinationOffset: 0,
@@ -95,28 +99,33 @@ extension Ambience {
 
         // MARK: Made once
 
-        /// The library compiled from `source` and the pipeline made from it, once per device: premultiplied output,
-        /// the colours added (the scenes are light spilling onto the dim, and rings add) and the alpha laid over.
-        private static func pipeline(_ device: MTLDevice, _ format: MTLPixelFormat) -> MTLRenderPipelineState? {
+        /// The library compiled from `source` once per device, and the pipeline made from it once per blend:
+        /// premultiplied output, the alpha laid over, and the colours added (`.add`: the scenes are light spilling onto
+        /// a dark dim, and rings add) or laid over too (`.over`: ink on a light dim, where added light shows nothing).
+        private static func pipeline(_ device: MTLDevice, _ format: MTLPixelFormat,
+                                     _ blend: Theme.Ink.Blend) -> MTLRenderPipelineState? {
             lock.lock()
             defer { lock.unlock() }
-            let key = device.registryID ^ UInt64(format.rawValue) << 56
-            if let p = pipelines[key] { return p }
+            let key = device.registryID ^ UInt64(format.rawValue) << 56 ^ (blend == .add ? 0 : 1 << 55)
+            if let p = made[key] { return p }
             let start = DispatchTime.now().uptimeNanoseconds
             do {
-                let library = try device.makeLibrary(source: shader, options: nil)
+                let compiled = libraries[device.registryID] == nil
+                let library = try libraries[device.registryID] ?? device.makeLibrary(source: shader, options: nil)
+                libraries[device.registryID] = library
                 let d = MTLRenderPipelineDescriptor()
                 d.vertexFunction = library.makeFunction(name: "sprite_vertex")
                 d.fragmentFunction = library.makeFunction(name: "sprite_fragment")
                 let c = d.colorAttachments[0]!
                 c.pixelFormat = format
                 c.isBlendingEnabled = true
-                (c.rgbBlendOperation, c.sourceRGBBlendFactor, c.destinationRGBBlendFactor) = (.add, .one, .one)
+                (c.rgbBlendOperation, c.sourceRGBBlendFactor) = (.add, .one)
+                c.destinationRGBBlendFactor = blend == .add ? .one : .oneMinusSourceAlpha
                 (c.alphaBlendOperation, c.sourceAlphaBlendFactor) = (.add, .one)
                 c.destinationAlphaBlendFactor = .oneMinusSourceAlpha
                 let p = try device.makeRenderPipelineState(descriptor: d)
-                compileSeconds = Double(DispatchTime.now().uptimeNanoseconds - start) / 1e9
-                pipelines[key] = p
+                if compiled { compileSeconds = Double(DispatchTime.now().uptimeNanoseconds - start) / 1e9 }
+                made[key] = p
                 return p
             } catch {
                 NSLog("Lemna: the ambience's shader did not compile: %@", String(describing: error))

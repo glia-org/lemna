@@ -2,7 +2,52 @@
 
 `DESIGN.md` holds the decisions and the plan. This file says what is done and what is next.
 
-## State (2026-10-30)
+## State (2026-10-31)
+
+- App, pass 21, the theme layer (2026-10-31; DESIGN.md TH1, F1's T2 and T3 amended; the user's picks `TH1 DC1 LK1 TY1
+  MO1 AM1 (rest only) BD1 CK1 RM1 OR1` of `docs/design-panel-lemna-themes.html`; this pass is OR1's first step):
+  Session › Theme ▸ Lemna / Still, in the main menu and the menu-bar item's, above Sound ▸, ticked from the `theme`
+  default. A theme is a Swift literal in LemnaCore (`Theme.swift`): id, title, appearance (follows the system, dark,
+  light), a day and a night palette (surface, text, muted and its Increase Contrast variant, accent and caret, the
+  hairline, the dim's colour and opacity, the ambience's ink: two colours, added or laid over, an alpha scale), type
+  (face and size, bundled or not, a fallback), box (border accent or hairline, width, corners, shadow), motion (open by
+  pop or fade, hand-off by stream or fade) and the defaults its preset writes (pack, bed, ambience). `Style` is a theme
+  resolved for the appearance and Increase Contrast. Lemna is today's look exactly: its test compares it with the
+  literals it replaced, and every render in `app/renders` is byte for byte the one before the pass. Still is a stub
+  with LK1's palettes, TY1's face (Literata 30 is not bundled yet, so Charter 31 shows), no border but the hairline,
+  16 pt corners, no shadow, MO1's fades (the open a 300 ms fade without the scale; the hand-off the box's 200 ms fade
+  on Effects ▸ Hand-off's tick), and a preset of what exists (the Soft pack, no bed, Rain); passes 23 and 24 fill that
+  in. Choosing a theme writes its pack (sound stays on or off: `SoundChoice.preset`), the `bed` key (new, unread until
+  pass 23) and the ambience, then applies; the Effects ticks and ⌘K stay the user's; Sound ▸, Effects ▸ and Ambience ▸
+  go on overriding. **The look switches as a container comes on screen**: in the window at once when the theme is
+  chosen there, in a box that is up at its next summon (its tick at once); the system's appearance and Increase
+  Contrast are read at each show too. On a light wash the ambience's ink is laid over instead of added (a second Metal
+  pipeline; Rain's frame at rest shows on 2,228 pixels of Still's day wash at 1×, the light of Lemna's text added on
+  none), and the glyph atlas is made per font, in Menlo at the line's size under a proportional face (Rain keeps its
+  grid). The hand-off's shadow drop at its first frame stays the stream's, which only Lemna (dark) has; Still has no
+  shadow and fades its box (a test keeps any theme with a shadow and a light palette on the fade). Tests: 111, all
+  passing (103 before; new: seven in `ThemeTests` and Rain on Still's day wash in `AmbienceTests`); renders
+  `ambience-rain-still-day.png`, `ambience-rain-still-night.png`, `idle-still-day.png`, `idle-still-night.png`.
+  `LEMNA_VERSION=0.1.2 make-app.sh` built, signed with "Lemna Dev" (`Authority=Lemna Dev`) and verified; the executable
+  is 1,394,400 bytes. The release executable is not stripped: its symbol table's debug map holds the absolute paths of
+  the build folder (`strings` does not read that table, which is why earlier passes found none); the earlier builds
+  were made the same way. Not tried: nothing was launched. Try, after quitting the running Lemna and `open
+  app/build/Lemna.app`:
+  - Theme ▸ Still over a light app in light appearance: the paper box with its hairline, Charter, the green caret, the
+    pale sage wash; it opens by a fade without growing. Sound ▸ ticks Soft, Ambience ▸ Rain, Effects ▸ as before; ⌘K's
+    off stays off.
+  - The same in dark appearance (System Settings › Appearance › Dark, then summon again): the near-black box and the
+    deep green-black wash; over a light app too.
+  - The menus still override: Sound ▸ Keychron and Ambience ▸ Off under Still hold until a theme is chosen again.
+  - Rain on the light wash: dark-green glyphs falling, faint at rest, brighter while typing.
+  - ⌘⏎ into TextEdit under Still: the box fades (no glyph stream, no pop of a shadow), the wash lifts with it; ⌘⇧⏎ the
+    same; Esc the same.
+  - Theme ▸ Lemna: today's look, the Keychron pack, Ambience Off. Choose a theme while the box is up: the tick moves,
+    the look changes at the next summon; in the window (⌃⌘F) at once.
+  - Increase Contrast (Accessibility › Display) under Still: the darker muted grey on the ` ¶ ` and the bottom edge;
+    Reduce Transparency: nothing changes (the box is opaque, the wash a dim); Reduce Motion: the box opens and goes at
+    once, the ambience off.
+  - A sheet on the box under Still by day (Discard… from the menu-bar item): drawn for a light background.
 
 - App, pass 20 (2026-10-30; DESIGN.md Y1; the user: "Add a autostart option to the app"; no panel, no design choice):
   Start at Login in the menu-bar item's menu, after Ambience ▸, just above Quit Lemna. Lemna as a login item through

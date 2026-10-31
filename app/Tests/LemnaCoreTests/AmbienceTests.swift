@@ -20,6 +20,8 @@ private let stage = Ambience.Stage(size: screen, box: box, style: style)
 private let elsewhere = Ambience.Stage(size: screen, style: style)
 private let glyphs = Ambience.Glyphs(font: menlo)
 private let m = glyphs.slot("m")!
+/// The scenes' colours: Lemna's ink (C1, TH1).
+private let ink = stage.ink
 
 /// A key of a US keyboard by what it types (its kVK code), for the renders.
 private let us: [Character: UInt16] = {
@@ -91,11 +93,10 @@ private func near(_ a: Double, _ b: Double, _ tolerance: Double) -> Bool { abs(a
     #expect(T.rainFast == 6 && T.rainRise == 0.25 && T.rainSettle == 1.2 && T.rainHold == 0.8 && T.rainIdleRate == 30)
     #expect(T.ringPeak == 0.6 && T.ringWidth == 2 && T.ringLife == 2 && T.ringInward == 240)  // 0.25, 1, 1.5, 160
     #expect(T.gridCell == 32 && T.gridLines == 0.12 && T.gridLit == 0.6 && T.gridLife == 0.9)  // 24, 0.06, 0.2, 0.6
-    // C1: the box's text and accent (Rain's C2 the same two, the other way round).
-    func hex(_ c: CGColor) -> UInt32 {
-        c.components!.prefix(3).reduce(0) { $0 << 8 | UInt32(($1 * 255).rounded()) }
-    }
-    #expect(T.text == hex(style.text) && T.accent == hex(Style.accent))
+    // C1: Lemna's ink is the box's text and accent, added (Rain's C2 the same two, the other way round); every stage
+    // carries its theme's (TH1).
+    let lemna = Theme.lemna.night
+    #expect(ink == Theme.Ink(text: lemna.text, accent: lemna.accent, blend: .add, alpha: 1) && elsewhere.ink == ink)
 }
 
 @Test func aSpriteIsThe32BytesTheShaderReads() {
@@ -209,7 +210,7 @@ private func near(_ a: Double, _ b: Double, _ tolerance: Double) -> Bool { abs(a
     var s = scene(.drift)
     var out = play(&s, leaf + leaf + leaf + [.typed(slot: m, at: key("m")), .space(nil)], for: 1.0 / 60)
     #expect(s.count == 3)
-    #expect(out.allSatisfy { $0.kind == .glyph && $0.parameter == UInt32(m) && $0.colour == Sprite.packed(T.text) })
+    #expect(out.allSatisfy { $0.kind == .glyph && $0.parameter == UInt32(m) && $0.colour == Sprite.packed(ink.text) })
     #expect(out[0].alpha < 0.05)  // fading in
     out = play(&s, for: 0.3 - 1.0 / 60)
     #expect(near(Double(out[0].alpha), 0.7, 0.01))  // its peak at 0.3 s
@@ -262,7 +263,7 @@ private func cell(_ s: Sprite, on r: Rain, _ st: Ambience.Stage = stage) -> (c: 
     #expect(Set(cells.map(\.c)).count > 15 && cells.contains { $0.r < 10 } && cells.contains { $0.r > 44 })
     #expect(out.allSatisfy { glyphs.rainSet.contains(Int($0.parameter)) && $0.kind == .glyph })  // K1, no key yet
     #expect(out.allSatisfy { near(Double($0.h), 18.5, 0.01) && near(Double($0.w), Double(glyphs.cell.width) / 2, 0.01) })
-    let heads = out.filter { $0.colour == Sprite.packed(T.text) }, trail = out.filter { $0.colour == Sprite.packed(T.accent) }
+    let heads = out.filter { $0.colour == Sprite.packed(ink.text) }, trail = out.filter { $0.colour == Sprite.packed(ink.accent) }
     #expect(!heads.isEmpty && heads.allSatisfy { near(Double($0.alpha), 0.35, 1e-3) })  // C2: the head pale, the trail blue
     #expect(heads.count + trail.count == out.count && trail.allSatisfy { $0.alpha <= 0.2 + 1e-4 && $0.alpha > 0.02 })
     // About 30 % of the columns falling at rest (0.3 heads a column on average, about a quarter showing one; about
@@ -282,7 +283,7 @@ private func cell(_ s: Sprite, on r: Rain, _ st: Ambience.Stage = stage) -> (c: 
     var out = fall(&r, [.typed(slot: m, at: column(7.5))], for: 1.0 / 60)
     #expect(r.frameRate == 60)  // a key: 60 Hz
     let first = out.first { $0.parameter == UInt32(m) }!, start = cell(first, on: r)!
-    #expect(first.colour == Sprite.packed(T.text) && near(Double(first.alpha), 0.95, 1e-3))  // the typed glyph, pale
+    #expect(first.colour == Sprite.packed(ink.text) && near(Double(first.alpha), 0.95, 1e-3))  // the typed glyph, pale
     var rows = [start.r], alphas: [Float] = []
     for _ in 0..<90 {  // 1.5 s at 60 Hz
         out = fall(&r, for: 1.0 / 60)
@@ -290,7 +291,7 @@ private func cell(_ s: Sprite, on r: Rain, _ st: Ambience.Stage = stage) -> (c: 
         #expect(head.count == 1 && cell(head[0], on: r)!.c == start.c)  // its column
         rows.append(cell(head[0], on: r)!.r)
         if let left = out.first(where: { cell($0, on: r)! == start }), rows.last! > start.r {
-            #expect(left.colour == Sprite.packed(T.accent) && glyphs.rainSet.contains(Int(left.parameter)))
+            #expect(left.colour == Sprite.packed(ink.accent) && glyphs.rainSet.contains(Int(left.parameter)))
             alphas.append(left.alpha)  // the cell it left, where it was
         }
     }
@@ -308,7 +309,7 @@ private func cell(_ s: Sprite, on r: Rain, _ st: Ambience.Stage = stage) -> (c: 
         var last: [Int: (slot: UInt32, alpha: Float)] = [:], changed = 0, seen = 0
         for _ in 0..<Int(seconds * 60) {
             var now: [Int: (slot: UInt32, alpha: Float)] = [:]
-            for s in fall(&r, for: 1.0 / 60, rate: rate) where s.colour == Sprite.packed(T.accent) {
+            for s in fall(&r, for: 1.0 / 60, rate: rate) where s.colour == Sprite.packed(ink.accent) {
                 let c = cell(s, on: r)!, key = c.c * 1000 + c.r
                 now[key] = (s.parameter, s.alpha)
                 if let before = last[key], before.alpha > s.alpha {
@@ -348,7 +349,7 @@ private func cell(_ s: Sprite, on r: Rain, _ st: Ambience.Stage = stage) -> (c: 
     #expect(xs.count >= 3 && xs.allSatisfy { abs(Double($0) - 1512 * 0.5) <= within })  // spread over the key
     // Its trail from 0.55, above the rest's 0.2; Space, Return and ⌫ start none.
     var r = Rain(stage: stage, glyphs: glyphs, seed: 3)
-    let trail = fall(&r, [.typed(slot: m, at: column(7.5))], for: 0.5).filter { $0.colour == Sprite.packed(T.accent) }
+    let trail = fall(&r, [.typed(slot: m, at: column(7.5))], for: 0.5).filter { $0.colour == Sprite.packed(ink.accent) }
     #expect(trail.contains { $0.alpha > 0.4 })
     var quiet = Rain(stage: stage, glyphs: glyphs, seed: 3)
     let none = fall(&quiet, [.space(column(6.75, row: 4)), .paragraph(nil), .backspace(column(14, row: 0))], for: 0.5)
@@ -372,8 +373,8 @@ private func cell(_ s: Sprite, on r: Rain, _ st: Ambience.Stage = stage) -> (c: 
     var calm = Rain(stage: stage, glyphs: glyphs, seed: 9), busy = Rain(stage: stage, glyphs: glyphs, seed: 9)
     let a = fall(&calm, for: 4), b = fall(&busy, for: 4, rate: 6)
     #expect(near(busy.intensity, 1, 0.01) && b.count > 2 * a.count)
-    #expect(b.filter { $0.colour == Sprite.packed(T.text) }.allSatisfy { near(Double($0.alpha), 0.85, 0.01) })
-    #expect(b.contains { $0.colour == Sprite.packed(T.accent) && $0.alpha > 0.45 })
+    #expect(b.filter { $0.colour == Sprite.packed(ink.text) }.allSatisfy { near(Double($0.alpha), 0.85, 0.01) })
+    #expect(b.contains { $0.colour == Sprite.packed(ink.accent) && $0.alpha > 0.45 })
 }
 
 /// The most and the mean sprites Rain draws on `size` over 10 s, at rest or typing at `keys` a second on the keys
@@ -453,7 +454,7 @@ private func circleOf(_ out: [Sprite]) -> (x: Double, y: Double, r: Double) {
     var s = scene(.grid)
     #expect(play(&s, for: 0.5).isEmpty)  // no key yet: no grid
     var out = play(&s, [.typed(slot: m, at: Keyboard.position(of: 0x0C))], for: 0.3)  // Q
-    let lines = out.filter { $0.colour == Sprite.packed(T.text) }, lit = out.filter { $0.colour == Sprite.packed(T.accent) }
+    let lines = out.filter { $0.colour == Sprite.packed(ink.text) }, lit = out.filter { $0.colour == Sprite.packed(ink.accent) }
     let across = Int(screen.width / 32)...Int(screen.width / 32) + 1
     let up = Int(screen.height / 32)...Int(screen.height / 32) + 1
     #expect(across.contains(lines.filter { $0.h > 100 }.count) && up.contains(lines.filter { $0.w > 100 }.count))
@@ -464,20 +465,20 @@ private func circleOf(_ out: [Sprite]) -> (x: Double, y: Double, r: Double) {
     #expect(q.y < box.minY - 32 && abs(Double(g.centre(row: 0, column: 7)!.x) - Double(box.midX)) <= 32)  // under the box
     var bar: [Sprite] = []
     g.step(dt: 0.06, events: [.space(Keyboard.position(of: 0x31))], rate: 5, into: &bar)
-    let barCells = bar.filter { $0.colour == Sprite.packed(T.accent) }.map { CGPoint(x: Double($0.x), y: Double($0.y)) }
+    let barCells = bar.filter { $0.colour == Sprite.packed(ink.accent) }.map { CGPoint(x: Double($0.x), y: Double($0.y)) }
     #expect(barCells == space && near(Double(bar.last!.alpha), 0.6 * (1 - 0.06 / 0.9), 0.01))  // the space bar, lit
     out = play(&s, for: 0.61)
-    #expect(out.filter { $0.colour == Sprite.packed(T.accent) }.isEmpty)  // 0.9 s a cell
+    #expect(out.filter { $0.colour == Sprite.packed(ink.accent) }.isEmpty)  // 0.9 s a cell
     var iso = Grid(stage: Ambience.Stage(size: screen, box: box, keyboard: .iso, style: style), glyphs: glyphs, seed: 1)
     var tall: [Sprite] = []
     iso.step(dt: 0.06, events: [.paragraph(Keyboard.position(of: 0x24, on: .iso))], rate: 5, into: &tall)
-    #expect(tall.filter { $0.colour == Sprite.packed(T.accent) }.map { CGPoint(x: Double($0.x), y: Double($0.y)) }
+    #expect(tall.filter { $0.colour == Sprite.packed(ink.accent) }.map { CGPoint(x: Double($0.x), y: Double($0.y)) }
         == [iso.centre(row: 1, column: 14)!, iso.centre(row: 2, column: 14)!])
     // A key with no position: a cell near the caret more often, within three cells of the box.
     var picks = scene(.grid, seed: 3), distances: [Double] = []
     let caret = stage.caretPoint
     for _ in 0..<200 {
-        let shown = play(&picks, [.typed(slot: m, at: nil)], for: 1.0 / 60).filter { $0.colour == Sprite.packed(T.accent) }
+        let shown = play(&picks, [.typed(slot: m, at: nil)], for: 1.0 / 60).filter { $0.colour == Sprite.packed(ink.accent) }
         distances += shown.map { hypot(Double($0.x) - caret.x, Double($0.y) - caret.y) }
         _ = play(&picks, for: 0.9)
     }
@@ -517,10 +518,10 @@ private func circleOf(_ out: [Sprite]) -> (x: Double, y: Double, r: Double) {
     print("ambience shader compiled in \(Int(Ambience.Renderer.compileSeconds * 1000)) ms")
     let size = CGSize(width: 400, height: 100)
     var sprites = [
-        Sprite(x: 50, y: 50, w: 20, h: 20, alpha: 1, colour: T.accent, kind: .rect),
-        glyphs.sprite(glyphs.slot("M")!, centre: CGPoint(x: 250, y: 50), alpha: 1, colour: T.text),
+        Sprite(x: 50, y: 50, w: 20, h: 20, alpha: 1, colour: ink.accent, kind: .rect),
+        glyphs.sprite(glyphs.slot("M")!, centre: CGPoint(x: 250, y: 50), alpha: 1, colour: ink.text),
     ]
-    circle(x: 150, y: 50, radius: 29, width: 2, alpha: 1, colour: T.text, on: size, into: &sprites)  // as Rings draws
+    circle(x: 150, y: 50, radius: 29, width: 2, alpha: 1, colour: ink.text, on: size, into: &sprites)  // as Rings draws
     let px = try #require(renderer.offscreen(sprites, size: size, scale: 2))
     func pixel(_ x: Double, _ y: Double) -> [UInt8] {  // points, origin at the bottom left
         let i = 4 * (Int((size.height - y) * 2) * 800 + Int(x * 2))
@@ -538,18 +539,18 @@ private func circleOf(_ out: [Sprite]) -> (x: Double, y: Double, r: Double) {
     #expect(abs(Int(half[4 * (100 * 800 + 100) + 3]) - 128) <= 1)  // the run's alpha multiplies every sprite
 }
 
-/// A dark app under the dim, the ambience's frame `px` over it and the box with `text` on top: what the box's screen
-/// shows, 1512 × 982 pt at 2×, written to app/renders/`name`.
-private func compose(_ px: [UInt8], text: Text, name: String) throws {
-    let (w, h) = (Int(screen.width) * 2, Int(screen.height) * 2)
+/// A dark app (or a light one) under the theme's dim, the ambience's frame `px` over it and the box with `text` on top,
+/// in `look`: what the box's screen shows, 1512 × 982 pt at 2×, written to app/renders/`name`.
+private func compose(_ px: [UInt8], text: Text, name: String, look: Style = style, lightApp: Bool = false) throws {
+    let (w, h) = (Int(screen.width) * 2, Int(screen.height) * 2), style = look, shape = look.theme.box
     let c = Line.context(width: w, height: h, rowBytes: 4 * w, scale: 2, data: nil)
-    c.setFillColor(rgb(0x24272e))  // a dark app, a few lines of its text
+    c.setFillColor(rgb(lightApp ? 0xffffff : 0x24272e))  // an app, a few lines of its text
     c.fill(CGRect(origin: .zero, size: screen))
-    c.setFillColor(rgb(0x4a505a))
+    c.setFillColor(rgb(lightApp ? 0xaeb3ba : 0x4a505a))
     for (i, length) in [360, 540, 450, 270, 510, 390, 0, 450, 360, 240, 480, 330, 420].enumerated() where length > 0 {
         c.fill(CGRect(x: 48, y: screen.height - 90 - CGFloat(i) * 36, width: CGFloat(length), height: 9))
     }
-    c.setFillColor(style.background.copy(alpha: 0.5)!)  // the dim, D1
+    c.setFillColor(rgb(style.palette.dim).copy(alpha: CGFloat(style.palette.dimAlpha))!)  // the dim, D1
     c.fill(CGRect(origin: .zero, size: screen))
     let data = try #require(CFDataCreate(nil, px, px.count))
     let image = try #require(CGImage(width: w, height: h, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: 4 * w,
@@ -559,18 +560,20 @@ private func compose(_ px: [UInt8], text: Text, name: String) throws {
                                      provider: CGDataProvider(data: data)!, decode: nil, shouldInterpolate: false,
                                      intent: .defaultIntent))
     c.draw(image, in: CGRect(origin: .zero, size: screen))
-    c.addPath(CGPath(roundedRect: box, cornerWidth: 10, cornerHeight: 10, transform: nil))  // the box, opaque
+    let box = BoxFrame.line(in: CGRect(x: 0, y: 80, width: 1512, height: 868), height: BoxFrame.height(fontSize: style.size))
+    c.addPath(CGPath(roundedRect: box, cornerWidth: shape.corner, cornerHeight: shape.corner, transform: nil))  // opaque
     c.setFillColor(style.background)
     c.fillPath()
     c.saveGState()
-    let line = box.insetBy(dx: 1, dy: 1)
+    let line = box.insetBy(dx: shape.borderWidth, dy: shape.borderWidth)
     c.translateBy(x: line.minX, y: line.minY)
-    Line.draw(Line.shape(text, marked: "", font: menlo), before: 0, after: 0, in: c,
+    Line.draw(Line.shape(text, marked: "", font: style.font), before: 0, after: 0, in: c,
               band: Line.band(in: line.size, style: style), style: style)
     c.restoreGState()
-    c.addPath(CGPath(roundedRect: box.insetBy(dx: 0.5, dy: 0.5), cornerWidth: 9.5, cornerHeight: 9.5, transform: nil))
-    c.setStrokeColor(Style.accent)
-    c.setLineWidth(1)
+    let half = shape.borderWidth / 2, r = shape.corner - half
+    c.addPath(CGPath(roundedRect: box.insetBy(dx: half, dy: half), cornerWidth: r, cornerHeight: r, transform: nil))
+    c.setStrokeColor(style.border)
+    c.setLineWidth(shape.borderWidth)
     c.strokePath()
     savePNG(c, name, dpi: 144)
 }
@@ -621,8 +624,53 @@ private func typing(_ typed: [Character], _ mode: Mode, rate: Double, after: Dou
     try compose(try #require(renderer.offscreen(out, size: screen, scale: 2, alpha: alpha)), text: Text(String(words)),
                 name: "ambience-rain-idle.png")
     let fox = typing(Array("the quick brown fox"), .grid, rate: 20, after: 0.05)
-    let lit = fox.out.filter { $0.colour == Sprite.packed(T.accent) }
+    let lit = fox.out.filter { $0.colour == Sprite.packed(ink.accent) }
     #expect(lit.count >= 14)  // every letter's cell and the space bar, still lit
     try compose(try #require(renderer.offscreen(fox.out, size: screen, scale: 2, alpha: fox.alpha ?? 1)), text: fox.text,
                 name: "ambience-grid-keyboard.png")
+}
+
+/// Rain at rest on Still's day dim (TH1, architecture §7): its ink laid over shows, where light added (Lemna's text
+/// colour in both of Rain's roles) would not. Rain's frame 3 s after the summon, in Menlo at Still's size (the atlas's face under a proportional line), laid
+/// over the wash over a white app as Core Animation lays the ambience's layer over the shade; counted are the pixels
+/// that differ from the wash alone by 8 or more of 255 in a channel. Written as app/renders/ambience-rain-still-day.png,
+/// beside the box at rest by day and by night (idle-still-day.png over a light app, idle-still-night.png over a dark
+/// one) and Rain at rest on Still's night (ambience-rain-still-night.png, its ink added).
+@Test(.enabled(if: Ambience.Renderer.available)) func rainShowsOnStillsDayDim() throws {
+    let font = try #require(Theme.still.type.font)
+    let renderer = try #require(Ambience.Renderer(font: Ambience.Glyphs.atlasFont(for: font)))
+    let day = Style(.still, dark: false, font: font), night = Style(.still, dark: true, font: font)
+    func rain(_ stage: Ambience.Stage, scale: CGFloat) throws -> [UInt8] {
+        var run = Ambience.Run(mode: .rain, stage: stage, glyphs: renderer.glyphs, seed: 11), out: [Sprite] = []
+        var a: Double?
+        for f in 0..<90 { a = run.frame(at: Double(f) / 30, dt: 1.0 / 30, into: &out) }  // 3 s at 30 Hz
+        let alpha = try #require(a)
+        return try #require(renderer.offscreen(out, size: screen, scale: scale, alpha: alpha, blend: stage.ink.blend))
+    }
+    func shown(_ px: [UInt8]) -> Int {
+        let p = day.palette, k = Double(p.dimAlpha)
+        let channels: [UInt32] = [p.dim & 255, p.dim >> 8 & 255, p.dim >> 16 & 255]  // B G R
+        let wash = channels.map { (c: UInt32) -> Double in k * Double(c) + (1 - k) * 255 }  // over a white app
+        var n = 0
+        for i in stride(from: 0, to: px.count, by: 4) {  // BGRA; laid over, px + wash · (1 − a), so the step is px − wash · a
+            let a = Double(px[i + 3]) / 255
+            var step = 0.0
+            for j in 0..<3 { step = max(step, abs(Double(px[i + j]) - wash[j] * a)) }
+            if step >= 8 { n += 1 }
+        }
+        return n
+    }
+    let stillInk = Ambience.Stage(size: screen, box: box, style: day)
+    var added = stillInk, lemna = Theme.lemna.night.ink
+    added.ink = Theme.Ink(text: lemna.text, accent: lemna.text, blend: .add, alpha: 1)
+    let (ours, light) = (shown(try rain(stillInk, scale: 1)), shown(try rain(added, scale: 1)))
+    print("rain on Still's day dim: \(ours) pixels show in its ink, \(light) in light added")
+    #expect(ours > 1500 && light * 10 < ours)
+    let words = Text("the boats sat low in the water and the reeds bent over them")
+    try compose(try rain(stillInk, scale: 2), text: words, name: "ambience-rain-still-day.png", look: day, lightApp: true)
+    try compose(try rain(Ambience.Stage(size: screen, box: box, style: night), scale: 2), text: words,
+                name: "ambience-rain-still-night.png", look: night)
+    let clear = [UInt8](repeating: 0, count: 4 * Int(screen.width) * 2 * Int(screen.height) * 2)
+    try compose(clear, text: words, name: "idle-still-day.png", look: day, lightApp: true)
+    try compose(clear, text: words, name: "idle-still-night.png", look: night)
 }

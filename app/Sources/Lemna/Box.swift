@@ -4,7 +4,8 @@
 // through Core Animation, off the main thread: the open and the close (P1, the dim with them, D1) and the hand-off's
 // motion (H1, C1: the line's glyphs as layers of their own, the box's collapse, carried on in the ghost once the box has
 // gone); its accent border (B1) is still. The ambience (A1) plays on the dims, on a Metal layer over each shade
-// (Ambient.swift). Nothing runs at rest or while it is hidden.
+// (Ambient.swift). Nothing runs at rest or while it is hidden. Its look is the theme's (TH1, `restyle`), taken while it
+// is hidden: the colours, the edge, the corners, the shadow, the dim, the open's and the hand-off's kind.
 import AppKit
 import LemnaCore
 import QuartzCore
@@ -31,12 +32,11 @@ final class BoxPanel: NSPanel {
 let quint = CAMediaTimingFunction(controlPoints: Float(Curve.controlPoints.x1), Float(Curve.controlPoints.y1),
                                   Float(Curve.controlPoints.x2), Float(Curve.controlPoints.y2))
 
-/// The box's face (F1), over the line: a hand-off's glyphs (H1, C1) and over them the still accent border (B1). A layer
-/// tree of Lemna's own (a layer-hosting view, which AppKit leaves alone) that lets the mouse through. The box's last look
-/// as it goes has one too, with the line's last frame under it (Esc) or the hand-off's glyphs going on.
+/// The box's face (F1), over the line: a hand-off's glyphs (H1, C1) and over them the still border (B1's accent, or the
+/// theme's hairline). A layer tree of Lemna's own (a layer-hosting view, which AppKit leaves alone) that lets the mouse
+/// through. The box's last look as it goes has one too, with the line's last frame under it (Esc) or the hand-off's
+/// glyphs going on.
 final class Face: NSView {
-    /// B1: 1 pt, the siblings' 1 px line, on the box's whole points, so it is sharp at 1× and 2×.
-    static let borderWidth: CGFloat = 1, cornerRadius: CGFloat = 10
     private let shot = CALayer(), pieces = CALayer(), border = CALayer()
 
     init() {
@@ -45,12 +45,19 @@ final class Face: NSView {
         layer = root  // before wantsLayer: layer-hosting
         wantsLayer = true
         autoresizingMask = [.width, .height]
-        border.borderWidth = Self.borderWidth
-        border.cornerRadius = Self.cornerRadius
-        border.borderColor = Style.accent
         for l in [shot, pieces, border] { root.addSublayer(l) }
     }
     required init?(coder: NSCoder) { fatalError() }
+
+    /// The theme's edge: B1's 1 pt (the siblings' 1 px line, on the box's whole points, so it is sharp at 1× and 2×) in
+    /// the accent, or the hairline; along the box's corners.
+    func restyle(_ style: Style) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        (border.borderWidth, border.cornerRadius) = (style.theme.box.borderWidth, style.theme.box.corner)
+        border.borderColor = style.border
+        CATransaction.commit()
+    }
 
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
@@ -123,15 +130,17 @@ final class Box {
     /// box itself goes at once and the keys (and a paste's ⌘V) reach the app behind from the first instant.
     private let ghost: NSPanel
     private let card = NSView(), ghostFace = Face()
-    /// One overlay per screen, under the box: the box's background at 0.5 (D1), the opacity on a layer of Lemna's own,
-    /// and over it, once a mode has played there, the ambience's layer (A1).
+    /// One overlay per screen, under the box: the theme's dim (D1; Lemna's the box's background at 0.5), the opacity on
+    /// a layer of Lemna's own, and over it, once a mode has played there, the ambience's layer (A1).
     private final class Dim {
         let window: NSWindow, shade: CALayer
         var ambient: Ambient?
         init(window: NSWindow, shade: CALayer) { (self.window, self.shade) = (window, shade) }
     }
     private var dims: [Dim] = []
-    private let lineHeight: CGFloat, style: Style
+    /// The theme as the box shows it, and the box's height while it holds the line (`BoxFrame.height`).
+    private(set) var style: Style
+    private var lineHeight: CGFloat
     private weak var line: LineView?
     /// The Effects submenu (F1), set by the app; Reduce Motion is read with it at each show, hide and hand-off.
     var effects = Effects()
@@ -148,12 +157,11 @@ final class Box {
     }
     private var sending: Sending?
 
-    /// Every magnitude (the open and close, the dim, the hand-off) is `Effects.Tuning`'s.
+    /// Every magnitude (the open and close, the hand-off) is `Effects.Tuning`'s; the dim's opacity the theme's.
     private typealias T = Effects.Tuning
 
-    /// `lineHeight`: the box's height while it holds the line (`BoxFrame.height`).
-    init(lineHeight: CGFloat, style: Style) {
-        (self.lineHeight, self.style) = (lineHeight, style)
+    init(style: Style) {
+        (self.style, lineHeight) = (style, BoxFrame.height(fontSize: style.size))
         panel = BoxPanel(contentRect: .zero, styleMask: [.nonactivatingPanel, .borderless, .fullSizeContentView],
                          backing: .buffered, defer: true)
         panel.level = .floating
@@ -163,15 +171,12 @@ final class Box {
         panel.isMovableByWindowBackground = true
         panel.isReleasedWhenClosed = false
         panel.animationBehavior = .none  // AppKit's own open and close off: P1 is Lemna's
-        panel.appearance = NSAppearance(named: .darkAqua)  // its sheets' buttons, drawn for the dark background
-        // Clear around the rounded content so the corners show what is behind, with the system's shadow along them.
+        // Clear around the rounded content so the corners show what is behind, with the system's shadow along them
+        // where the theme has one.
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.hasShadow = true
         panel.alphaValue = 1  // opaque (Q1); P1's open fades it in from 0
         content.wantsLayer = true
-        content.layer?.backgroundColor = style.background
-        content.layer?.cornerRadius = Face.cornerRadius
         content.layer?.masksToBounds = true  // the line's square layers end at the rounded edge
         content.addSubview(face)  // the line goes in under it (`hold`)
         panel.contentView = content
@@ -184,13 +189,29 @@ final class Box {
         ghost.canHide = false  // Lemna hidden after a question or the save panel (`handBack`): the motion plays on
         ghost.isOpaque = false
         ghost.backgroundColor = .clear
-        ghost.hasShadow = true
         card.wantsLayer = true
-        card.layer?.backgroundColor = style.background
-        card.layer?.cornerRadius = Face.cornerRadius
         card.layer?.masksToBounds = true
         card.addSubview(ghostFace)
         ghost.contentView = card
+        restyle(style)
+    }
+
+    /// The theme as it shows now (TH1), taken while the box is hidden (the app gives it at a show that brings it on
+    /// screen): the box's and the last look's surface, corners and edge; the panel's appearance, which its sheets'
+    /// buttons are drawn for, and its shadow; the dims' colour; the height at the next show; the ambience's ink and
+    /// font with the next stage.
+    func restyle(_ s: Style) {
+        (style, lineHeight) = (s, BoxFrame.height(fontSize: s.size))
+        panel.appearance = NSAppearance(named: s.dark ? .darkAqua : .aqua)
+        (panel.hasShadow, ghost.hasShadow) = (s.theme.box.shadow, s.theme.box.shadow)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for l in [content.layer, card.layer].compactMap({ $0 }) {
+            (l.backgroundColor, l.cornerRadius) = (s.background, s.theme.box.corner)
+        }
+        for dim in dims { dim.shade.backgroundColor = rgb(s.palette.dim) }
+        CATransaction.commit()
+        for f in [face, ghostFace] { f.restyle(s) }
     }
 
     static let behavior: NSWindow.CollectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
@@ -209,7 +230,7 @@ final class Box {
             ghostFace.unsend()
             if let l = card.layer { uncollapse(l) }
             sending = nil
-            panel.hasShadow = true  // a hand-off took it away
+            panel.hasShadow = style.theme.box.shadow  // a hand-off took it away
             panel.setFrame(BoxFrame.line(in: screen.visibleFrame, height: lineHeight), display: false)
             face.unsend()
             dim(over: open)
@@ -231,7 +252,11 @@ final class Box {
     /// was (H1, C1); any other way out but `atOnce` fades the box's last look (`ghost`) and the dim with it (P1).
     func hide(_ leaving: Leaving = .fade) {
         let still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        let fade = leaving == .atOnce ? 0 : effects.duration(.pop, T.close, reduceMotion: still)
+        var fade = leaving == .atOnce ? 0 : effects.duration(.pop, T.close, reduceMotion: still)
+        if leaving == .handOff,  // the theme's hand-off is the box's fade (Still's MO1), on Hand-off's tick
+           case .fade(let d) = Handoff.leaving(effects, reduceMotion: still, handOff: style.theme.motion.handOff) {
+            fade = d
+        }
         let moving = leaving == .atOnce ? nil : sending
         sending = nil
         turn += 1
@@ -255,13 +280,16 @@ final class Box {
     /// The hand-off's motion (F1's H1 and C1, pass 17b), from the key-down's own turn, before anything waits: the line
     /// cut into one layer per glyph in place of its band (`LineView.cut`), sent off the right edge (`.send`, a paste) or
     /// up off the top edge (`.rise`, a copy or a save) on Core Animation; the dim lifting at once, the shadow gone with
-    /// it (under the dim it barely shows; the ghost has none either), and from 120 ms the emptied box collapsing.
+    /// it (under the dark dim it barely shows; the ghost has none either; a theme whose hand-off is the box's fade, as
+    /// light ones are, keeps it, and it fades with the box), and from 120 ms the emptied box collapsing.
     /// `stays`: the box stays (⌘⏎ copied instead and says why), and only the glyphs rise. Nothing in it waits for the
     /// paste and the paste waits for none of it (T1): at Return's key-up the box goes and the ghost carries on (`hide`).
-    /// False when it does not play: Effects ▸ Hand-off unticked, Off, Reduce Motion, the box off screen, nothing drawn.
+    /// False when it does not play: Effects ▸ Hand-off unticked, Off, Reduce Motion, the box off screen, nothing drawn,
+    /// or the theme's hand-off is the box's fade (`hide` then fades it).
     @discardableResult func handOff(_ way: Handoff.Way, stays: Bool = false) -> Bool {
         let still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        guard panel.isVisible, Handoff.leaving(effects, reduceMotion: still) == .motion, let line else { return false }
+        let leaving = Handoff.leaving(effects, reduceMotion: still, handOff: style.theme.motion.handOff)
+        guard panel.isVisible, leaving == .motion, let line else { return false }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         guard let cut = line.cut() else {
@@ -299,9 +327,9 @@ final class Box {
         guard sending != nil else { return }
         sending = nil
         if let l = content.layer { uncollapse(l) }
-        panel.hasShadow = true
+        panel.hasShadow = style.theme.box.shadow
         panel.invalidateShadow()
-        for dim in dims where dim.window.isVisible { fade(dim.shade, to: T.dim, over: 0) }
+        for dim in dims where dim.window.isVisible { fade(dim.shade, to: style.palette.dimAlpha, over: 0) }
         stageAmbience(on: panel.screen)
     }
 
@@ -317,7 +345,8 @@ final class Box {
     private func hold(_ line: LineView) {
         self.line = line
         panel.invalidateShadow()  // the shadow follows the outline (the box on another screen has another width)
-        let inner = content.bounds.insetBy(dx: 1, dy: 1)  // inside the border, which would cover the bottom edge
+        let edge = style.theme.box.borderWidth  // inside the border, which would cover the bottom edge
+        let inner = content.bounds.insetBy(dx: edge, dy: edge)
         // One frame per show: the strip's pool holds two drawables, and frames presented in the same turn of the run
         // loop come back only after it, so a third would wait. The size is set first, while the line is still where
         // nothing is drawn (off screen); then moving in draws once (`viewDidMoveToWindow`), else `redraw`.
@@ -333,24 +362,26 @@ final class Box {
 
     /// P1's open: the window fades in from transparent (its shadow with it; AppKit animates the window's alpha) while the
     /// content grows from `Tuning.openScale` about its middle (Core Animation scales the layer, the line's band with
-    /// it, sharp again at rest). The shadow is taken again at full size once it has grown.
+    /// it, sharp again at rest). The shadow is taken again at full size once it has grown. A theme that opens by the
+    /// fade alone (Still's MO1) does not grow it.
     private func pop(over d: Double) {
-        guard let layer = content.layer else { return }
-        let s = CGFloat(T.openScale), b = content.bounds, a = layer.anchorPoint
-        var grown = CATransform3DIdentity  // s·p + (1 − s)·m about the anchor, m the middle: the middle stays put
-        (grown.m11, grown.m22) = (s, s)
-        (grown.m41, grown.m42) = ((0.5 - a.x) * b.width * (1 - s), (0.5 - a.y) * b.height * (1 - s))
-        let grow = CABasicAnimation(keyPath: "transform")
-        (grow.fromValue, grow.toValue) = (NSValue(caTransform3D: grown), NSValue(caTransform3D: CATransform3DIdentity))
-        (grow.duration, grow.timingFunction) = (d, quint)
-        let mine = turn
-        CATransaction.begin()
-        CATransaction.setCompletionBlock { [weak self] in
-            guard let self, self.turn == mine else { return }
-            self.panel.invalidateShadow()
+        if style.theme.motion.open == .pop, let layer = content.layer {
+            let s = CGFloat(T.openScale), b = content.bounds, a = layer.anchorPoint
+            var grown = CATransform3DIdentity  // s·p + (1 − s)·m about the anchor, m the middle: the middle stays put
+            (grown.m11, grown.m22) = (s, s)
+            (grown.m41, grown.m42) = ((0.5 - a.x) * b.width * (1 - s), (0.5 - a.y) * b.height * (1 - s))
+            let grow = CABasicAnimation(keyPath: "transform")
+            (grow.fromValue, grow.toValue) = (NSValue(caTransform3D: grown), NSValue(caTransform3D: CATransform3DIdentity))
+            (grow.duration, grow.timingFunction) = (d, quint)
+            let mine = turn
+            CATransaction.begin()
+            CATransaction.setCompletionBlock { [weak self] in
+                guard let self, self.turn == mine else { return }
+                self.panel.invalidateShadow()
+            }
+            layer.add(grow, forKey: "pop")
+            CATransaction.commit()
         }
-        layer.add(grow, forKey: "pop")
-        CATransaction.commit()
         NSAnimationContext.runAnimationGroup { ctx in
             (ctx.duration, ctx.timingFunction) = (d, quint)
             panel.animator().alphaValue = 1
@@ -362,7 +393,7 @@ final class Box {
     private func leaveLook(fading: Double) {
         guard let shot = line?.snapshot() else { return }  // nothing drawn yet: it goes at once
         ghost.setFrame(panel.frame, display: false)
-        ghost.hasShadow = true
+        ghost.hasShadow = style.theme.box.shadow  // it fades with the look
         ghostFace.show(shot.image, in: shot.frame, scale: panel.backingScaleFactor)
         ghost.alphaValue = panel.alphaValue  // a close during the open goes on from where the open was
         ghost.orderFrontRegardless()
@@ -441,7 +472,8 @@ final class Box {
         }
     }
 
-    /// The dim over every screen, one level under the box, transparent to the mouse, fading in over `d` (P1, D1).
+    /// The dim over every screen, one level under the box, transparent to the mouse, fading in over `d` to the theme's
+    /// opacity (P1, D1).
     /// Overlays are made anew for screens that came since the last time and fitted to each screen's frame on each show.
     private func dim(over d: Double) {
         let screens = NSScreen.screens
@@ -457,7 +489,7 @@ final class Box {
             w.animationBehavior = .none
             w.canHide = false  // as the ghost: it fades out or lifts even when Lemna is hidden (`handBack`)
             let root = CALayer(), shade = CALayer(), v = NSView()
-            shade.backgroundColor = style.background
+            shade.backgroundColor = rgb(style.palette.dim)
             shade.opacity = 0
             root.addSublayer(shade)  // the ambience's layer goes over it (A1)
             v.layer = root  // layer-hosting: AppKit leaves the shade's opacity alone
@@ -471,7 +503,8 @@ final class Box {
             CATransaction.setDisableActions(true)
             dim.shade.frame = CGRect(origin: .zero, size: s.frame.size)
             CATransaction.commit()
-            fade(dim.shade, from: dim.window.isVisible ? nil : 0, to: T.dim, over: d)  // off screen: from nothing
+            // Off screen: from nothing.
+            fade(dim.shade, from: dim.window.isVisible ? nil : 0, to: style.palette.dimAlpha, over: d)
             dim.window.orderFrontRegardless()
         }
         for dim in dims.dropFirst(screens.count) { dim.window.orderOut(nil) }
@@ -502,7 +535,8 @@ final class Box {
 
     /// The ambience on the dims (A1): this show's mode, none under Reduce Motion, on the box's screen, and on the other
     /// screens for the mode that plays on every one (Rain); each dim's layer gets its screen's stage, the box and
-    /// its line where they are on it. A dim gets its layer the first time a mode plays on it.
+    /// its line where they are on it, in the theme's ink and the atlas's font for its line (`Glyphs.atlasFont`). A dim
+    /// gets its layer the first time a mode plays on it.
     private func stageAmbience(on boxScreen: NSScreen?) {
         let mode = ambience.playing(reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
         let keyboard = Keyboard.kind(layoutType: physicalLayout())  // where a key is (pass 16)
@@ -510,15 +544,15 @@ final class Box {
         for (dim, s) in zip(dims, NSScreen.screens) {
             let here = s == boxScreen, m = here || mode?.everyScreen == true ? mode : nil
             guard m != nil || dim.ambient != nil else { continue }
-            let a = dim.ambient ?? Ambient(font: style.font)
+            let a = dim.ambient ?? Ambient()
             if dim.ambient == nil {
                 dim.ambient = a
                 dim.window.contentView?.layer?.addSublayer(a.layer)
             }
             let box = here ? panel.frame.offsetBy(dx: -s.frame.minX, dy: -s.frame.minY) : nil
-            let stage = Ambience.Stage(size: s.frame.size, box: box, inset: 1, corner: Face.cornerRadius,
-                                       keyboard: keyboard, style: style)
-            a.begin(m, on: stage, scale: s.backingScaleFactor)
+            let stage = Ambience.Stage(size: s.frame.size, box: box, inset: style.theme.box.borderWidth,
+                                       corner: style.theme.box.corner, keyboard: keyboard, style: style)
+            a.begin(m, on: stage, font: Ambience.Glyphs.atlasFont(for: style.font), scale: s.backingScaleFactor)
             if m != nil { ambients.append(a) }
         }
     }

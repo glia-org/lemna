@@ -40,9 +40,9 @@ final class Hotkey {
 
 /// The menu-bar item: the mark (a template, so the menu bar tints it) and Lemna's menu. As an accessory app Lemna has no
 /// menu bar of its own, so this menu carries the main menu's items too: Show Lemna (with the hotkey's chord), Open
-/// Window, Done, Copy, Save…, Discard…, Sound ▸ (the packs, Off), Effects ▸ (each effect, Off), Ambience ▸ (each mode,
-/// Off), Start at Login, Quit. The App validates them: the hand-offs' state, the submenus' check marks, Open Window's
-/// title, Start at Login's tick and title.
+/// Window, Done, Copy, Save…, Discard…, Theme ▸ (each theme), Sound ▸ (the packs, Off), Effects ▸ (each effect, Off),
+/// Ambience ▸ (each mode, Off), Start at Login, Quit. The App validates them: the hand-offs' state, the submenus' check
+/// marks, Open Window's title, Start at Login's tick and title.
 func makeStatusItem(target: AnyObject) -> NSStatusItem {
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)  // retained by the caller
     let mark = NSImage(size: StatusMark.size, flipped: false) { _ in
@@ -65,6 +65,7 @@ func makeStatusItem(target: AnyObject) -> NSStatusItem {
     menu.addItem(withTitle: "Save…", action: #selector(App.saveText(_:)), keyEquivalent: "s")
     menu.addItem(withTitle: "Discard…", action: #selector(App.discard(_:)), keyEquivalent: "")
     menu.addItem(.separator())
+    menu.addItem(withTitle: "Theme", action: nil, keyEquivalent: "").submenu = themeMenu(target: target)
     menu.addItem(withTitle: "Sound", action: nil, keyEquivalent: "").submenu = soundMenu(target: target)
     menu.addItem(withTitle: "Effects", action: nil, keyEquivalent: "").submenu = effectsMenu(target: target)
     menu.addItem(withTitle: "Ambience", action: nil, keyEquivalent: "").submenu = ambienceMenu(target: target)

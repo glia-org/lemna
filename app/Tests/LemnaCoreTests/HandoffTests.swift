@@ -150,7 +150,7 @@ private func handOffFrame(_ text: Text, _ way: Handoff.Way, at t: Double, name: 
     for (i, len) in [620, 860, 740, 520, 900, 680, 800, 430, 760, 640, 880, 560].enumerated() {
         c.fill(CGRect(x: 40, y: size.height - 30 - CGFloat(i) * 22, width: CGFloat(len), height: 6))
     }
-    c.setFillColor(style.background.copy(alpha: CGFloat(Double(T.dim) * Handoff.dim(at: t)))!)
+    c.setFillColor(rgb(style.palette.dim).copy(alpha: CGFloat(Double(style.palette.dimAlpha) * Handoff.dim(at: t)))!)
     c.fill(CGRect(origin: .zero, size: size))
     // The band's last frame, as the strip drew it.
     let shaped = Line.shape(text, marked: "", font: menlo), strip = Geometry.strip
@@ -182,7 +182,7 @@ private func handOffFrame(_ text: Text, _ way: Handoff.Way, at t: Double, name: 
     }
     c.restoreGState()
     c.addPath(CGPath(roundedRect: box.insetBy(dx: 0.5, dy: 0.5), cornerWidth: 9.5, cornerHeight: 9.5, transform: nil))
-    c.setStrokeColor(Style.accent)
+    c.setStrokeColor(style.border)
     c.setLineWidth(1)
     c.strokePath()
     c.endTransparencyLayer()

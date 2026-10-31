@@ -59,14 +59,13 @@ final class SceneThread: Thread {
 final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
     /// Over the shade, the screen's size: clear, one pixel large while nothing plays, hidden after a close.
     let layer = CAMetalLayer()
-    private let font: CTFont
 
-    /// Between the main thread and the scene thread, under one lock: the plan (from each show), the keys since the
-    /// last frame, a close (the box went: when, and over how long the scene fades), whether the link runs, and whether
-    /// the ambience is shut down for this launch (Metal failed, or an exception was caught).
+    /// Between the main thread and the scene thread, under one lock: the plan and the atlas's font (from each show), the
+    /// keys since the last frame, a close (the box went: when, and over how long the scene fades), whether the link
+    /// runs, and whether the ambience is shut down for this launch (Metal failed, or an exception was caught).
     private struct Mail {
-        var plan: Ambience.Plan?, keys: [Ambience.Key] = [], closing: (at: Double, over: Double)?, running = false
-        var dead = false
+        var plan: Ambience.Plan?, font: CTFont?, keys: [Ambience.Key] = [], closing: (at: Double, over: Double)?
+        var running = false, dead = false
     }
     private let mail = OSAllocatedUnfairLock(uncheckedState: Mail())
 
@@ -76,18 +75,19 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
     // The scene thread's own.
     private var link: CAMetalDisplayLink?
     private var life = Ambience.Lifecycle(), keys: [Ambience.Key] = [], sprites: [Sprite] = []
+    /// The renderer of the show's font.
+    private var renderer: Ambience.Renderer?
     /// Three instance buffers, one per frame in flight.
     private var instances: [MTLBuffer] = [], next = 0
     private let inFlight = DispatchSemaphore(value: 3)
     /// What an Objective-C exception caught in the callback said.
     private var message = [CChar](repeating: 0, count: Ambient.messageSize)
     private static let messageSize = 512
-    /// Made once on the scene thread (the shader's one compile), shared by every screen; nil until then, or when it
-    /// failed.
-    private static var renderer: Ambience.Renderer?, failed = false
+    /// Made on the scene thread once per font (a theme's, TH1; the shader compiled once), shared by every screen; none
+    /// until then, and none at all once one failed.
+    private static var renderers: [String: Ambience.Renderer] = [:], failed = false
 
-    init(font: CTFont) {
-        self.font = font
+    override init() {
         super.init()
         layer.device = MTLCreateSystemDefaultDevice()
         layer.pixelFormat = .bgra8Unorm
@@ -107,11 +107,11 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
 
     // MARK: From the main thread
 
-    /// At each show: the mode on this screen (nil: none) on `stage`, at the screen's `scale`. A scene still playing
-    /// gives way to a new one, which starts at the next key with a cleared frame (an ambient mode's at once: the show
-    /// wakes the scene thread as a key would); with a mode, the renderer is made now on the scene thread, so the first
-    /// key finds the shader compiled.
-    func begin(_ mode: Ambience.Mode?, on stage: Ambience.Stage, scale: CGFloat) {
+    /// At each show: the mode on this screen (nil: none) on `stage`, its glyphs in `font` (the atlas's for the theme's
+    /// line), at the screen's `scale`. A scene still playing gives way to a new one, which starts at the next key with a
+    /// cleared frame (an ambient mode's at once: the show wakes the scene thread as a key would); with a mode, the
+    /// renderer is made now on the scene thread, so the first key finds the shader compiled and the atlas drawn.
+    func begin(_ mode: Ambience.Mode?, on stage: Ambience.Stage, font: CTFont, scale: CGFloat) {
         let frame = CGRect(origin: .zero, size: stage.size)
         if layer.frame != frame || layer.contentsScale != scale {  // a screen changed: else nothing to commit
             CATransaction.begin()
@@ -124,7 +124,7 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
         (open, wake) = mail.withLockUnchecked { m -> (Int, Bool) in
             let turn = (m.plan?.turn ?? 0) + 1
             m.plan = Ambience.Plan(mode: mode, stage: stage, pixels: pixels, scale: scale, turn: turn)
-            m.closing = nil
+            (m.font, m.closing) = (font, nil)
             guard mode?.ambient == true, !m.dead, !m.running else { return (turn, false) }
             m.running = true
             return (turn, true)
@@ -174,21 +174,26 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
 
     // MARK: On the scene thread
 
-    private func prepare() -> Ambience.Renderer? {
-        if Self.renderer == nil, !Self.failed {
-            Self.renderer = Ambience.Renderer(font: font)
-            if Self.renderer == nil {
+    /// The renderer of the show's font, made the first time that font plays.
+    private func prepare(_ font: CTFont? = nil) -> Ambience.Renderer? {
+        guard let font = font ?? mail.withLockUnchecked({ $0.font }) else { return nil }
+        if let renderer, CFEqual(renderer.glyphs.font, font) { return renderer }
+        let key = "\(CTFontCopyPostScriptName(font)) \(CTFontGetSize(font))"
+        if Self.renderers[key] == nil, !Self.failed {
+            Self.renderers[key] = Ambience.Renderer(font: font)
+            if Self.renderers[key] == nil {
                 Self.failed = true
                 NSLog("Lemna: no ambience: no Metal device, or its shader did not compile")
             }
         }
-        return Self.renderer
+        renderer = Self.renderers[key]
+        return renderer
     }
 
     /// The first key after a pause, or an ambient mode's show: the drawable back at the screen's size, the link running.
     private func start() {
         guard prepare() != nil, let link, !mail.withLockUnchecked({ $0.dead }) else { return shutDown(nil) }
-        if instances.isEmpty, let renderer = Self.renderer { instances = (0..<3).compactMap { _ in renderer.makeInstances() } }
+        if instances.isEmpty, let renderer { instances = (0..<3).compactMap { _ in renderer.makeInstances() } }
         if let size = life.start(mail.withLockUnchecked({ $0.plan })) { layer.drawableSize = size }
         link.isPaused = false
     }
@@ -205,10 +210,13 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
     /// The mail taken, the lifecycle's step drawn into the link's own drawable and committed, then the drawable's
     /// size changed, the layer shown, the link's frame rate changed or the link paused, as the step says.
     private func frame(_ link: CAMetalDisplayLink, _ update: CAMetalDisplayLink.Update) {
-        guard let renderer = Self.renderer else { return link.isPaused = true }
-        let (plan, closing) = mail.withLockUnchecked { m -> (Ambience.Plan?, (at: Double, over: Double)?) in
+        let (plan, closing, font) = mail.withLockUnchecked { m -> (Ambience.Plan?, (at: Double, over: Double)?, CTFont?) in
             swap(&m.keys, &keys)
-            return (m.plan, m.closing)
+            return (m.plan, m.closing, m.font)
+        }
+        guard let renderer = prepare(font) else {
+            keys.removeAll()
+            return link.isPaused = true
         }
         let step = life.frame(at: update.targetTimestamp, plan: plan, keys: keys, closing: closing,
                               glyphs: renderer.glyphs, into: &sprites)
@@ -252,10 +260,10 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
         }
     }
 
-    /// The first `count` of `sprites` into the link's `drawable` at `alpha` (none: it is cleared), committed and
-    /// presented; at most three frames in flight.
+    /// The first `count` of `sprites` into the link's `drawable` at `alpha` (none: it is cleared), in the blend of the
+    /// stage's ink, committed and presented; at most three frames in flight.
     private func draw(_ count: Int, alpha: Double, plan: Ambience.Plan?, into drawable: CAMetalDrawable) {
-        guard let renderer = Self.renderer, let commands = renderer.queue.makeCommandBuffer() else { return }
+        guard let renderer, let commands = renderer.queue.makeCommandBuffer() else { return }
         inFlight.wait()
         let buffer = instances.isEmpty ? nil : instances[next]
         next = (next + 1) % max(instances.count, 1)
@@ -267,7 +275,7 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
         }
         renderer.encode(commands, instances: buffer, count: n, into: drawable.texture,
                         viewport: plan?.stage.size ?? layer.bounds.size, scale: plan?.scale ?? layer.contentsScale,
-                        alpha: alpha)
+                        alpha: alpha, blend: plan?.stage.ink.blend ?? .add)
         commands.addCompletedHandler { [inFlight] _ in inFlight.signal() }
         commands.present(drawable)
         commands.commit()

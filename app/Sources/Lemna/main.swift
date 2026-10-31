@@ -2,7 +2,8 @@
 // doing, or in an ordinary window for long sessions (W2), kept in the journal (E2), with key clicks (K1), summoning
 // (hotkey, menu-bar item), and the end of a session: Done pastes into the app behind the box, or Copy, Save… or
 // Discard…, with R1 applied silently and the session finished at once (O1 O2 O3 R1); the effects, switched in the
-// Effects submenu (F1); the ambience on the dim, chosen in the Ambience submenu (A1); and Start at Login (Y1).
+// Effects submenu (F1); the ambience on the dim, chosen in the Ambience submenu (A1); Start at Login (Y1); and the theme,
+// chosen in the Theme submenu, with its preset for Sound and Ambience (TH1).
 import AppKit
 import Carbon.HIToolbox
 import LemnaClicks
@@ -40,8 +41,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
                              on: UserDefaults.standard.bool(forKey: Self.soundKey))
         effects = Effects(kept: UserDefaults.standard.dictionary(forKey: Self.effectsKey) as? [String: Bool])
         ambience = Ambience(kept: UserDefaults.standard.string(forKey: Self.ambienceKey))
-        let font = (NSFont(name: "Menlo", size: 28) ?? .monospacedSystemFont(ofSize: 28, weight: .regular)) as CTFont
-        let style = Style(font: font)
+        theme = Theme(kept: UserDefaults.standard.string(forKey: Self.themeKey))
+        let style = self.style(look())
         view = LineView(style: style)
         view.load(keeper.open())  // the silent restore: the last session's text, or an empty one
         view.onEdit = { [unowned self] in self.keeper.append($0) }
@@ -49,7 +50,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         view.onKey = { [unowned self] in self.edge.clearNote() }  // the next key, Esc included
         view.onAmbient = { [unowned self] in self.box.ambientKey($0) }  // A1, after the key's frame
         view.addSubview(edge)  // at the view's zero size, so the edge's autoresizing keeps it across the bottom
-        box = Box(lineHeight: BoxFrame.height(fontSize: style.size), style: style)
+        box = Box(style: style)
         view.effects = effects
         box.effects = effects
         box.ambience = ambience
@@ -60,8 +61,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
                           backing: .buffered, defer: false)
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.appearance = NSAppearance(named: .darkAqua)  // buttons drawn for the dark background
-        window.backgroundColor = NSColor(cgColor: style.background)
+        take(style)  // the window's appearance and background, the bottom edge's colour
         window.collectionBehavior = .fullScreenPrimary  // toggleFullScreen: may do nothing without it
         window.contentMinSize = NSSize(width: 600, height: 300)
         window.isReleasedWhenClosed = false
@@ -172,8 +172,66 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// A mode from Session › Ambience (the item's tag is its place in `Ambience.Mode.allCases`), or Off (tag −1).
     @objc func chooseAmbience(_ sender: NSMenuItem) {
         ambience.choose(Ambience.Mode.allCases.indices.contains(sender.tag) ? Ambience.Mode.allCases[sender.tag] : nil)
+        keepAmbience()
+    }
+
+    /// The choice kept across launches and given to the box.
+    private func keepAmbience() {
         UserDefaults.standard.set(ambience.kept, forKey: Self.ambienceKey)
         box.ambience = ambience
+    }
+
+    // MARK: Theme (TH1)
+
+    /// `theme`: the theme's id; `bed`: the sound bed's folder, written by a theme's preset (absent: none), read once the
+    /// beds come (pass 23).
+    private static let themeKey = "theme", bedKey = "bed"
+    /// Session › Theme: the look, kept across launches (read at launch).
+    private var theme = Theme.lemna
+
+    /// A theme from Session › Theme (the item's tag is its place in `Theme.all`): its pack, bed and ambience written
+    /// into their own keys and menus (the preset), which override it from then on; the Effects ticks and the sound's
+    /// on or off stay. The look shows in the window at once, in the box at its next show (`apply`); the tick at once.
+    @objc func chooseTheme(_ sender: NSMenuItem) {
+        theme = Theme.all[sender.tag]
+        UserDefaults.standard.set(theme.id, forKey: Self.themeKey)
+        choice.preset(theme.defaults.pack)
+        keepSound()
+        UserDefaults.standard.set(theme.defaults.bed, forKey: Self.bedKey)  // nil removes it
+        ambience.choose(theme.defaults.ambience)
+        keepAmbience()
+        if surface.onScreen == .window, restyle() { view.redraw() }
+    }
+
+    /// The system's appearance (LK1: day or night, for a theme that follows it) and Increase Contrast, as they are now.
+    private func look() -> (dark: Bool, high: Bool) {
+        (theme.dark(system: NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua),
+         NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast)
+    }
+
+    /// The theme in `look`, its font the theme's face or fallback, else the monospaced system font at its size.
+    private func style(_ look: (dark: Bool, high: Bool)) -> Style {
+        let font = theme.type.font ?? NSFont.monospacedSystemFont(ofSize: theme.type.face.size, weight: .regular)
+        return Style(theme, dark: look.dark, increasedContrast: look.high, font: font)
+    }
+
+    /// `s` taken by the line, the box, the window (its appearance, which its buttons and sheets are drawn for, and its
+    /// background) and the bottom edge.
+    private func take(_ s: Style) {
+        view.style = s
+        box.restyle(s)
+        edge.use(s)
+        window.appearance = NSAppearance(named: s.dark ? .darkAqua : .aqua)
+        window.backgroundColor = NSColor(cgColor: s.background)
+    }
+
+    /// The theme as the appearance and Increase Contrast stand now, taken when it differs from what shows; read as a
+    /// container comes on screen (`apply`). True when it changed.
+    private func restyle() -> Bool {
+        let now = look(), shown = view.style
+        guard shown.theme != theme || shown.dark != now.dark || shown.increasedContrast != now.high else { return false }
+        take(style(now))
+        return true
     }
 
     // MARK: Start at Login (Y1)
@@ -290,7 +348,9 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// motion carried on, H1 and C1); for the window it goes at once.
     private func apply(leaving: Box.Leaving = .fade) {
         let on = surface.onScreen
-        let recoloured = on != nil && readContrast()
+        // The theme, the appearance and Increase Contrast as they are now (TH1, LK1); a box already up keeps its look
+        // until its next show.
+        let restyled = on != nil && !(on == .box && box.isVisible) && restyle()
         if on != .box, box.isVisible {
             box.hide(on == .window ? .atOnce : leaving)
             keeper.flushSoon()  // leaving the box is leaving Lemna: the full flush deactivating did in v1's window
@@ -315,7 +375,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
                 view.autoresizingMask = [.width, .height]
                 view.frame = holder.bounds
                 holder.addSubview(view)
-            } else if recoloured {
+            } else if restyled {
                 view.redraw()  // the box draws on each show anyway; the window only when the line moves in
             }
             if window.attachedSheet == nil { window.makeFirstResponder(view) }
@@ -328,17 +388,6 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             notKept = false
             warnIfNotKept()
         }
-    }
-
-    /// Increase Contrast, read as a container comes on screen: the muted colour of the ` ¶ ` and of the bottom edge
-    /// (`Style.muted`). True when it changed since the last show.
-    private func readContrast() -> Bool {
-        let high = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
-        let muted = Style.muted(increasedContrast: high)
-        edge.use(increasedContrast: high)
-        guard view.style.muted != muted else { return false }
-        view.style.muted = muted
-        return true
     }
 
     /// Lemna comes forward: the window, and a question on the box (a sheet takes keys only in the active app; the box
@@ -435,6 +484,9 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             return Effects.available(effect, reduceMotion: still)
         case #selector(toggleEffects(_:)):
             item.state = effects.on ? .off : .on  // Off is ticked while the effects are off
+            return true
+        case #selector(chooseTheme(_:)):
+            item.state = Theme.all[item.tag] == theme ? .on : .off
             return true
         case #selector(chooseAmbience(_:)):  // Reduce Motion greys the modes and ticks Off, read as the menu opens
             let still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
@@ -769,9 +821,22 @@ func ambienceMenu(target: AnyObject?) -> NSMenu {
     return menu
 }
 
-/// Lemna: About, Quit; Session: Done, Copy, Save…, Discard…, Sound ▸, Effects ▸, Ambience ▸; View: Open Window. As an
-/// accessory app Lemna shows no menu bar, so this is where the key equivalents live (the menu-bar item's menu shows the
-/// items). No Edit menu yet, so no ⌘ shortcut but these reaches the text. Full screen: the window's green button.
+/// Session › Theme and the menu-bar item's Theme (TH1): the themes as radio items; choosing one sets the look and writes
+/// its preset into Sound and Ambience. No key (chosen once). `target` as for Sound.
+func themeMenu(target: AnyObject?) -> NSMenu {
+    let menu = NSMenu(title: "Theme")
+    for (i, theme) in Theme.all.enumerated() {
+        let item = menu.addItem(withTitle: theme.title, action: #selector(App.chooseTheme(_:)), keyEquivalent: "")
+        item.tag = i
+        item.target = target
+    }
+    return menu
+}
+
+/// Lemna: About, Quit; Session: Done, Copy, Save…, Discard…, Theme ▸, Sound ▸, Effects ▸, Ambience ▸; View: Open
+/// Window. As an accessory app Lemna shows no menu bar, so this is where the key equivalents live (the menu-bar item's
+/// menu shows the items). No Edit menu yet, so no ⌘ shortcut but these reaches the text. Full screen: the window's green
+/// button.
 func mainMenu() -> NSMenu {
     let bar = NSMenu(), app = NSMenu(title: "Lemna"), session = NSMenu(title: "Session"), view = NSMenu(title: "View")
     app.addItem(withTitle: "About Lemna", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
@@ -784,6 +849,7 @@ func mainMenu() -> NSMenu {
     session.addItem(withTitle: "Save…", action: #selector(App.saveText(_:)), keyEquivalent: "s")  // ⌘S
     session.addItem(withTitle: "Discard…", action: #selector(App.discard(_:)), keyEquivalent: "")
     session.addItem(.separator())
+    session.addItem(withTitle: "Theme", action: nil, keyEquivalent: "").submenu = themeMenu(target: nil)
     session.addItem(withTitle: "Sound", action: nil, keyEquivalent: "").submenu = soundMenu(target: nil)  // Off ⌘K
     session.addItem(withTitle: "Effects", action: nil, keyEquivalent: "").submenu = effectsMenu(target: nil)
     session.addItem(withTitle: "Ambience", action: nil, keyEquivalent: "").submenu = ambienceMenu(target: nil)

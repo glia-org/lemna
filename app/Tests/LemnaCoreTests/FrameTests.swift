@@ -79,25 +79,27 @@ func drawMark(scale: Int, name: String) -> (CGFloat, CGFloat) -> UInt8 {
     #expect(look(.requiresApproval) == ("Start at Login (approve in System Settings)", true, .openSettings))
 }
 
-@Test func theColoursReachTheHIGsContrast() {
-    /// WCAG's contrast ratio of two sRGB colours.
-    func ratio(_ a: CGColor, _ b: CGColor) -> Double {
-        func luminance(_ c: CGColor) -> Double {
-            let v = c.components!.prefix(3).map { x -> Double in
-                let x = Double(x)
-                return x <= 0.04045 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4)
-            }
-            return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]
+/// WCAG's contrast ratio of two sRGB colours: (L1 + 0.05) / (L2 + 0.05) of their relative luminances, L1 the lighter.
+func ratio(_ a: CGColor, _ b: CGColor) -> Double {
+    func luminance(_ c: CGColor) -> Double {
+        let v = c.components!.prefix(3).map { x -> Double in
+            let x = Double(x)
+            return x <= 0.04045 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4)
         }
-        let (x, y) = (luminance(a), luminance(b))
-        return (max(x, y) + 0.05) / (min(x, y) + 0.05)
+        return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]
     }
-    // Lemna's own colours (F1 T2, back after the user tried Tokyo Night's) on the box's #0e1013: the text 13.9:1, the
-    // caret 7.8:1, the muted grey 3.2:1, below the HIG's 4.5:1 as designed (T1's 4.9:1 is gone with T1), 6.3:1 under
-    // Increase Contrast.
-    let style = Style(font: menlo), background = style.background
-    #expect(style.muted == Style.muted(increasedContrast: false) && style.caret == Style.accent)
+    let (x, y) = (luminance(a), luminance(b))
+    return (max(x, y) + 0.05) / (min(x, y) + 0.05)
+}
+
+@Test func theColoursReachTheHIGsContrast() {
+    // Lemna's own colours (F1 T2, back after the user tried Tokyo Night's; the Lemna theme's since pass 21) on the
+    // box's #0e1013: the text 13.9:1, the caret 7.8:1, the muted grey 3.2:1, below the HIG's 4.5:1 as designed (T1's
+    // 4.9:1 is gone with T1), 6.3:1 under Increase Contrast. Every theme's in ThemeTests.
+    let style = Style(font: menlo), background = style.background, p = Theme.lemna.night
+    #expect(style.muted == p.muted(increasedContrast: false) && style.caret == rgb(p.accent) && style.border == style.caret)
     #expect(abs(ratio(style.text, background) - 13.9) < 0.05 && abs(ratio(style.caret, background) - 7.8) < 0.05)
-    #expect(abs(ratio(Style.muted(increasedContrast: false), background) - 3.2) < 0.05)
-    #expect(ratio(Style.muted(increasedContrast: true), background) >= 4.5)  // HIG Dark Mode's minimum
+    #expect(abs(ratio(p.muted(increasedContrast: false), background) - 3.2) < 0.05)
+    #expect(ratio(p.muted(increasedContrast: true), background) >= 4.5)  // HIG Dark Mode's minimum
+    #expect(Style(increasedContrast: true, font: menlo).muted == p.muted(increasedContrast: true))
 }

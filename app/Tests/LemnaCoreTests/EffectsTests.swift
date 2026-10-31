@@ -74,7 +74,7 @@ private typealias Item = Effects.Item
     typealias T = Effects.Tuning
     #expect(T.open == 0.300 && T.openScale == 0.87 && T.close == 0.200)  // subtle: 0.250, 0.95, 0.160
     #expect(T.glyphFade == 0.080)  // pass 18, opacity alone; the pop-in's 0.160 from 70 %, 3 pt low (subtle: 0.120)
-    #expect(T.paragraphFade == 0.200 && T.dim == 0.5)  // subtle: 0.120; the dim unchanged
+    #expect(T.paragraphFade == 0.200)  // subtle: 0.120; the dim is the theme's since pass 21 (ThemeTests)
     // Pass 17b, the hand-off (H1 on easeOutQuint, C1), in E1's place (a sheen, peak 0.35 over 0.350 s).
     #expect(T.exit == 0.200 && T.exitStagger == 0.007 && T.exitStaggerCap == 0.120)
     #expect(T.sendReach == 1.0 && T.riseReach == 1.25)

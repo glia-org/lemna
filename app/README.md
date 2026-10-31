@@ -19,7 +19,8 @@ hand-off's motion, the line's glyphs leaving the box from the key-down on (in pl
 motion revised, the glyph pop-in a fade, Border warms, Word sheen and the ambience's Beams, Fireworks and Swarm
 removed, one curve and one scale of durations; then pass 19a: a send sound per pack at ⌘⏎'s paste, Return's click at
 Copy, Save… and a ⌘⏎ that copies; then pass 19b: Rain as the films' rain, a fixed grid lit by stepping heads, falling
-from the summon to the close and raised by typing; then pass 20: Start at Login in the menu-bar item's menu.
+from the summon to the close and raised by typing; then pass 20: Start at Login in the menu-bar item's menu; then
+pass 21: the theme layer, Session › Theme ▸ with today's look as the theme Lemna and Still as a first light stub.
 Swift +
 AppKit, SwiftPM with the Command Line Tools only (no Xcode), two package dependencies by path (`../lib/LemnaJournal`,
 `../lib/LemnaClicks`) and one Objective-C function of its own (`Sources/LemnaCatch`), signed with a self-signed certificate or ad-hoc (there is no Developer ID yet).
@@ -66,7 +67,9 @@ drawn by the Metal pipeline over a dimmed dark app with the box; skipped without
 `ambience-grid-keyboard.png` ("the quick brown fox" at 20 keys/s, the keys lit as a keyboard), and since pass 17b
 `handoff-send-60ms.png`, `handoff-send-120ms.png`, `handoff-send-200ms.png` and `handoff-rise-120ms.png` (the box over
 a light app 60, 120 and 200 ms after ⌘⏎, and 120 ms after ⌘⇧⏎; composed as Core Animation composes the app's layers),
-and since pass 19b `ambience-rain-idle.png` (Rain at rest, 3 s after the summon; `ambience-rain.png` is Rain typing);
+and since pass 19b `ambience-rain-idle.png` (Rain at rest, 3 s after the summon; `ambience-rain.png` is Rain typing),
+and since pass 21 `ambience-rain-still-day.png` (Rain at rest on Still's day wash over a light app),
+`ambience-rain-still-night.png` (on its night wash over a dark app), `idle-still-day.png` and `idle-still-night.png`;
 the mark test writes
 `mark-M3-1x.png` and `mark-M3-2x.png` (16 and 32 px, black on clear). `app/build/` and `app/renders/` are
 git-ignored.
@@ -85,7 +88,7 @@ git-ignored.
   each physical key is on a MacBook's main block, ANSI and ISO (pass 16),
   `Mechanical.swift`
   the deterministic pass R1, `Session.swift` the end of a session as a state machine, `Summoning.swift` the menu-bar
-  mark, when the Bluetooth notice shows and since pass 20 Start at Login's title and tick (`LoginItem`), `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
+  mark, when the Bluetooth notice shows and since pass 20 Start at Login's title and tick (`LoginItem`), `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`), `Theme.swift` (pass 21) the themes, one literal each (`Theme`: palettes for day and night, type, box, motion, the preset's defaults; `Theme.all`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
   holds the line (`Surface`) and when a click outside hides the box (`ClickOutside`), `Paste.swift` the paste's
   decision table, and since pass 17a its steps in order (`Paste.acts`) and the wait for Return to come up
   (`ReturnUp`), `Handoff.swift` (pass 17b) the hand-off's motion: the line cut into its glyphs, when each sets off
@@ -122,7 +125,10 @@ git-ignored.
   close at once, a new show, the end 4 s after the last key, the Esc sequence on a real layer and link
   (`AmbienceLinkTests`); since pass 16 the keymap (`KeyboardTests`) and where each mode's sprites start for a key;
   since pass 17a the paste's steps and the wait for Return (`PasteTests`); since pass 17b the hand-off's cut, its
-  schedule for a paste and a copy, the collapse and the lift, when it plays, and its renders (`HandoffTests`).
+  schedule for a paste and a copy, the collapse and the lift, when it plays, and its renders (`HandoffTests`); since
+  pass 21 the themes: Lemna equal to the literals it replaced, the packs and modes named, the contrast per appearance,
+  the palette by appearance, the font and the atlas's, the preset, Still's fades (`ThemeTests`), and Rain on Still's
+  day wash (`AmbienceTests`).
 
 ## What it covers
 
@@ -771,7 +777,65 @@ Pass 20, Start at Login (DESIGN.md Y1; 2026-10-30; the user: "Add a autostart op
 - Build: `LEMNA_VERSION=0.1.1 make-app.sh`; the executable is 1,297,280 bytes, no `/Users/` path in it, linked
   against ServiceManagement; signed with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
 
+Pass 21, the theme layer (DESIGN.md TH1, F1's T2 and T3 amended; 2026-10-31; the user: "I want to add different themes
+that really change the way the app looks. [...] Keep in mind that we in the future might want to add other themes and
+ambients as well.", then the picks `TH1 DC1 LK1 TY1 MO1 AM1 (rest only) BD1 CK1 RM1 OR1` of
+`docs/design-panel-lemna-themes.html`; OR1's first step):
+
+- `Theme` (LemnaCore, `Theme.swift`), one Swift literal per theme (DC1): `id`, `title`, `appearance` (`.followsSystem`,
+  `.dark`, `.light`), `day` and `night` palettes (`surface`, `text`, `muted`, `mutedContrast`, `accent`, `line`, `dim`,
+  `dimAlpha`, `ink`: `text`, `accent`, `blend` `.add` or `.over`, `alpha`), `type` (`face`, `bundled`, `fallback`;
+  `Typeface.font` resolves it with Core Text and refuses the face Core Text gives for a missing name), `box` (`border`
+  `.accent` or `.hairline`, `borderWidth`, `corner`, `shadow`), `motion` (`open` `.pop` or `.fade`, `handOff` `.stream`
+  or `.fade`), `defaults` (`pack`, `bed`, `ambience`), `dark(system:)`, `Theme(kept:)`, `Theme.all` (Lemna first).
+  `Theme.lemna` holds the literals that were in `Style`, `Effects.Tuning.dim`, `Ambience.Tuning.text` and `.accent`,
+  `main.swift` (Menlo 28) and `Face` (1 pt, 10 pt); `Theme.still` LK1's day and night, Literata 30 with Charter 31,
+  the hairline, 16 pt, no shadow, fades, and a stub preset (Soft, no bed, Rain).
+- `Style(theme, dark:, increasedContrast:, font:)` (`Line.swift`): the palette resolved, `border` the accent or the
+  hairline, `palette`; `Style(font:)` is Lemna's. `Style.accent` and `Style.muted(increasedContrast:)` are gone into the
+  palette.
+- The look follows the theme: `App.look()` reads `NSApp.effectiveAppearance` (aqua or dark aqua) and Increase Contrast,
+  `restyle()` builds the style when either or the theme changed and `take(_:)` hands it to the line
+  (`LineView.style`'s `didSet`: the word's width and the shape in the new font), the box (`Box.restyle`: surface,
+  corners, the faces' edge, the panel's appearance and shadow, the dims' colour, the height), the bottom edge
+  (`EdgeView.use`) and the window (appearance, background). `apply()` calls it as a container comes on screen, not for
+  a box already up; `chooseTheme` calls it at once for the window. The box opens by the fade alone under
+  `motion.open == .fade` (`pop` skips the scale); `Handoff.leaving(_:reduceMotion:handOff:)` gives a fade hand-off
+  P1's close on Hand-off's tick, which `Box.hide` uses for `.handOff`; the panel's and the ghost's shadow are the
+  theme's (the stream still drops it at its first frame).
+- The ambience: `Stage.ink` (from the style's palette) gives the scenes their colours (`Tuning.text` and `.accent`
+  gone), `Run.alpha` is scaled by `ink.alpha`; `Renderer` holds a pipeline per blend (the library compiled once per
+  device; `.over` lays the colours over with one minus the source's alpha) and `encode`/`offscreen` take the blend;
+  `Ambient` takes the atlas's font at each `begin` and keeps a renderer per font (`Glyphs.atlasFont(for:)`: the line's
+  font when monospaced, else Menlo at its size).
+- The preset (TH1): `chooseTheme` writes `theme`, the pack through `SoundChoice.preset` (the sound's on or off stays),
+  `bed` (removed when nil) and the ambience (`keepAmbience`, split from `chooseAmbience`); Effects untouched.
+  `themeMenu(target:)` in the main menu's Session and the menu-bar item's menu, above Sound.
+- Tests: 111 (103 before; new: `lemnaIsTodaysLook`, `everyThemeNamesAPackAndAModeThatExist`,
+  `everyThemeReachesItsContrastInEachAppearance` (WCAG's ratio, now `FrameTests`' file-level `ratio`),
+  `theAppearancePicksStillsDayOrNight`, `eachThemesFontResolvesAndRainsAtlasStaysMonospaced`,
+  `thePresetSetsThePackAndLeavesTheSoundOnOrOff`, `stillOpensAndHandsOffByFades` in `ThemeTests`, and
+  `rainShowsOnStillsDayDim` in `AmbienceTests`: Rain at rest laid over Still's day wash over a white app, 2,228 pixels
+  differ from the wash by 8 of 255 or more, the light of Lemna's text added none). Changed: the tuning test (Lemna's ink
+  in place of the colour copy), `theColoursReachTheHIGsContrast` (the palette), the renders' dim, edge and corners from
+  the style. Every render that existed is byte for byte the same as before the pass.
+- Build: `LEMNA_VERSION=0.1.2 make-app.sh`; the executable is 1,394,400 bytes; signed with "Lemna Dev"
+  (`Authority=Lemna Dev`) and verified.
+
 ## Known gaps
+
+- Pass 21 is not tried: nothing was launched. Untried: Still over light and dark apps in both appearances; the window's
+  and the panel's `.aqua` (the traffic lights, the sheets); the fade open and the fade hand-off; Rain's ink on the
+  wash by eye; a theme switch in the window. A theme chosen while the box is up shows at its next summon, and so does
+  a change of the appearance or of Increase Contrast while it is up (before the pass Increase Contrast's grey was taken
+  then, drawn at the next key). Under Still (Charter): Drift shows nothing (its glyphs are the line's, the atlas is
+  Menlo; RM1 removes Drift); `Line.tail`'s 200 characters span about 2,700 pt, so the fade after the caret ends early
+  in a window wider than about 7,700 pt (9,000 under Menlo); the bottom edge's note at 12 pt still clears the band
+  (31 pt type: the band starts 30 pt up in the 122 pt inside of the box). Literata is not bundled: `bundled` is true
+  and nothing registers a font yet. Not built: MO1's ring, the corners' continuous curve, the caret's rounded ends.
+- The release executable is not stripped: the debug map in its symbol table names the build folder's absolute paths
+  (source and object files). `strings`, which earlier passes used for the "no `/Users/` path" check, does not read that
+  table; `nm -pa` does. `strip -S` on the executable before signing, or the linker's `-S`, would drop it.
 
 - Pass 20 is not tried: nothing was launched and nothing registered. `SMAppService.mainApp` registers the bundle at
   the path it has then: if Lemna.app is moved, the login item breaks until Start at Login is turned off and on again,

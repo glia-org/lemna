@@ -97,14 +97,17 @@ public enum Handoff {
     public enum Leaving: Equatable {
         /// This motion (Effects ▸ Hand-off).
         case motion
-        /// P1's close, as Esc's, over the duration given (Hand-off unticked, Pop ticked).
+        /// P1's close, as Esc's, over the duration given (Hand-off unticked, Pop ticked; or Hand-off ticked under a
+        /// theme whose hand-off is the box's fade, Still's MO1).
         case fade(Double)
         /// At once: Reduce Motion (it stops both), Effects ▸ Off, or neither ticked.
         case atOnce
     }
 
-    public static func leaving(_ effects: Effects, reduceMotion: Bool) -> Leaving {
-        if effects.plays(.handOff, reduceMotion: reduceMotion) { return .motion }
+    /// `handOff`: the theme's (`Theme.Motion`); a fade there plays as P1's close, on Effects ▸ Hand-off's tick.
+    public static func leaving(_ effects: Effects, reduceMotion: Bool,
+                               handOff: Theme.Motion.HandOff = .stream) -> Leaving {
+        if effects.plays(.handOff, reduceMotion: reduceMotion) { return handOff == .stream ? .motion : .fade(T.close) }
         let close = effects.duration(.pop, T.close, reduceMotion: reduceMotion)
         return close > 0 ? .fade(close) : .atOnce
     }

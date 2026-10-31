@@ -29,6 +29,13 @@ public struct SoundChoice: Equatable {
         on = true
     }
 
+    /// A theme's pack (TH1, the preset): it plays from now on, and the sound stays on or off as it was (⌘K's is the
+    /// user's). An unknown folder changes nothing.
+    public mutating func preset(_ folder: String) {
+        guard Self.packs.contains(where: { $0.folder == folder }) else { return }
+        pack = folder
+    }
+
     /// Off (⌘K): the sound goes off, or, when it is off, comes back with the last pack.
     public mutating func toggle() { on.toggle() }
 }

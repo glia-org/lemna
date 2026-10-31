@@ -92,8 +92,8 @@ extension Effects {
         /// P1, the box: open from `openScale` with a fade, close in a fade. Omarchy's released window open was 410 ms
         /// from 87 %. Subtle: 0.250 s from 0.95, close 0.160 s.
         public static let open = 0.300, openScale = 0.87, close = 0.200
-        /// D1, the dim's opacity (the box's background at it). Unchanged.
-        public static let dim: Float = 0.5
+        /// D1, the dim's colour and opacity, are the theme's since pass 21 (`Theme.Palette.dim`, `dimAlpha`; Lemna's
+        /// the box's background at 0.5, as before).
         /// K1, the newest glyph, fading in: opacity alone (pass 18; the glyph fade). Was the pop-in (pass 14b): 0.160 s
         /// from 70 % about its baseline-left, rising 3 pt from below the baseline (subtle: 0.120 s from 0.95, no rise).
         public static let glyphFade = 0.080
