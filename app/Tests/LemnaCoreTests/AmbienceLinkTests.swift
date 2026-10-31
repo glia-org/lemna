@@ -3,8 +3,9 @@
 // CAMetalDisplayLink drives ("-nextDrawable should not be called when using CAMetalDisplayLink."): the exception
 // crossed the link's callback and Lemna died at Esc, and 4 s after the last key, whenever a scene played. Here: that
 // refusal on a real layer and link, and the lifecycle that replaces it, driven through Esc, the close's fade, the
-// dim's, a hand-off, a close at once, a new show, the end 4 s after the last key and Off; and since pass 19b an ambient
-// mode's (Rain's), born at the show without a key, playing until the close at the frame rate it asks for. No
+// dim's, a hand-off, a close at once, a new show and Off; and since pass 19b an ambient mode's (Rain's, and since pass
+// 24 Still water's: every mode left), born at the show without a key, playing until the close at the frame rate it
+// asks for. (Pass 24 removed the modes that started at a key and ended 4 s after the last, and their sequences.) No
 // Foundation here.
 import CoreGraphics
 import LemnaCatch
@@ -111,40 +112,10 @@ private func lawful(_ steps: [(t: Double, step: Life.Step)]) -> Bool {
     #expect(life.phase == .idle && life.run == nil)
 }
 
-@Test func theNextShowNeverDrawsBeforeAClearedFrame() {
-    // A hand-off (the close waits 0.15 s and fades 0.2 s) and a close at once (Pop off): the window goes before the
-    // scene can clear itself, the next show starts over with a cleared frame.
-    for close in [(at: 1.05, over: 0.35), (at: 1.05, over: 0.0)] {
-        var life = Life()
-        let first = drive(&life, plan(.rings, turn: 1), from: 0, to: 2, keys: [0, 0.5, 1], close: close,
-                          stop: close.at + close.over, frames: close.at + close.over)
-        let next = drive(&life, plan(.rings, turn: 2), from: 3, to: 4, keys: [3.1, 3.3])
-        #expect(lawful(first) && lawful(next), "\(close)")
-        // The link still runs as the window comes back: its first frame clears and parks, the next pauses; the key
-        // at 3.1 starts the new scene with a cleared frame at the screen's size, and the layer shows after it.
-        #expect(next[0].step.alpha == nil && next[0].step.resize == Life.parked && next[1].step.pause, "\(close)")
-        let key = next.firstIndex { $0.t >= 3.1 }!
-        #expect(next[key].step.alpha == nil && next[key].step.resize == pixels && next[key + 1].step.show == 2)
-    }
-}
-
-@Test func fourSecondsAfterTheLastKeyTheSceneParksAndOffDrawsNothing() {
-    var life = Life()
-    let steps = drive(&life, plan(.drift, turn: 1), from: 0, to: 6, keys: [0, 0.2, 0.4, 1])
-    #expect(lawful(steps) && life.phase == .idle)
-    let end = steps.firstIndex { $0.step.resize == Life.parked }!
-    #expect(abs(steps[end].t - 5) < 0.05 && steps[end + 1].step.pause && steps.count == end + 2)  // then no frames
-    var again = drive(&life, plan(.drift, turn: 1), from: 6, to: 7, keys: [6.5])  // the same show, typing again
-    #expect(lawful(again) && again.first { $0.step.alpha != nil } != nil)
-    var off = Life()
-    again = drive(&off, plan(nil, turn: 1), from: 0, to: 1, keys: [0, 0.5])
-    #expect(again.allSatisfy { $0.step.alpha == nil } && off.phase == .idle)  // Off: cleared, parked, paused
-}
-
 @Test(.enabled(if: Ambience.Renderer.available)) func theEscSequenceRunsOnARealLayerAndLinkWithoutAnException() throws {
     // The same Esc as above, every step done to a real layer and link: the size between frames, the frame rate (Rain,
-    // pass 19b: 30 Hz at rest, 60 from its first key, set while the link runs), the pause, and each frame drawn by the
-    // renderer into a texture standing in for the link's drawable.
+    // pass 19b: 30 Hz at rest, 60 from its first key; Still water 30 throughout; set while the link runs), the pause,
+    // and each frame drawn by the renderer into a texture standing in for the link's drawable.
     let renderer = try #require(Ambience.Renderer(font: menlo))
     let layer = CAMetalLayer()
     (layer.device, layer.pixelFormat) = (renderer.device, .bgra8Unorm)
@@ -155,9 +126,9 @@ private func lawful(_ steps: [(t: Double, step: Life.Step)]) -> Bool {
     d.storageMode = .private
     let drawable = try #require(renderer.device.makeTexture(descriptor: d)), instances = renderer.makeInstances()
     var message = [CChar](repeating: 0, count: 256)
-    for mode in [Ambience.Mode.rings, .rain] {
+    for mode in Ambience.Mode.allCases {
         var life = Life(), out: [Sprite] = [], rates: [Double] = []
-        let p = plan(mode, turn: 1), typing = mode == .rain ? 0.1 : 0  // Rain plays before its first key
+        let p = plan(mode, turn: 1), typing = 0.1  // it plays before its first key
         let threw = LemnaCatch({
             if let size = life.start(p) { layer.drawableSize = size }
             link.isPaused = false
@@ -188,7 +159,7 @@ private func lawful(_ steps: [(t: Double, step: Life.Step)]) -> Bool {
         }, &message, 256)
         #expect(threw == 0, "\(mode) \(String(cString: message))")
         #expect(life.phase == .idle && layer.drawableSize == Life.parked && link.isPaused, "\(mode)")
-        #expect(rates == (mode == .rain ? [30, 60] : []), "\(mode)")  // Rain at rest, then from its first key
+        #expect(rates == (mode == .rain ? [30, 60] : [30]), "\(mode)")  // Rain at rest, then from its first key
     }
     link.invalidate()
 }
@@ -248,19 +219,23 @@ private func lawful(_ steps: [(t: Double, step: Life.Step)]) -> Bool {
     #expect(steps[parked].t <= 15.2 && steps[parked + 1].step.pause && steps.count == parked + 2)
 }
 
-@Test func aNewShowAfterACloseStartsTheRainAgainWithACleanFrame() {
+@Test func aNewShowAfterACloseStartsTheSceneAgainWithACleanFrame() {
     // Esc at once (Pop off) at 2 s and a hand-off's close at 5 s, each window gone before the scene could clear itself;
-    // each next show starts the rain without a key, with a cleared frame before the layer shows; Off after it clears,
-    // parks and pauses.
+    // each next show starts the scene without a key, with a cleared frame before the layer shows; Off after it clears,
+    // parks and pauses. Rain and Still water alike (pass 24; the old sequence's Rings with keys went with them).
+    for mode in Ambience.Mode.allCases { newShows(mode) }
+}
+
+private func newShows(_ mode: Ambience.Mode) {
     var life = Life()
-    let first = drive(&life, plan(.rain, turn: 1), from: 0, to: 2.1, keys: [], close: (2, 0), stop: 2, frames: 2)
+    let first = drive(&life, plan(mode, turn: 1), from: 0, to: 2.1, keys: [], close: (2, 0), stop: 2, frames: 2)
     #expect(lawful(first) && first.contains { $0.step.alpha == 1 })
-    let again = drive(&life, plan(.rain, turn: 2), from: 3, to: 5.4, keys: [], close: (5, 0.35), stop: 5.35,
+    let again = drive(&life, plan(mode, turn: 2), from: 3, to: 5.4, keys: [], close: (5, 0.35), stop: 5.35,
                       frames: 5.35)
     #expect(lawful(again) && again[0].step.alpha == nil && again[0].step.resize == pixels)
     #expect(again[1].step.show == 2 && again[1].step.alpha == 1)
     #expect(again.contains { $0.t > 4.9 && $0.t < 5 && $0.step.alpha == 1 })
-    let third = drive(&life, plan(.rain, turn: 3), from: 6, to: 7, keys: [6.5])
+    let third = drive(&life, plan(mode, turn: 3), from: 6, to: 7, keys: [6.5])
     #expect(lawful(third) && third[0].step.alpha == nil && third[0].step.resize == pixels && third[1].step.show == 3)
     #expect(life.phase == .playing && third.last!.step.alpha == 1)
     let off = drive(&life, plan(nil, turn: 4), from: 7, to: 7.5, keys: [7.2])

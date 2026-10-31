@@ -1,9 +1,9 @@
 // The ambience on the dim (DESIGN.md A1, R1): over each screen's shade, a clear CAMetalLayer that its own
-// CAMetalDisplayLink draws at 60 Hz on the scene thread, from the first key until the scene has died out (4 s after the
-// last key, the last second fading, or with the dim as the box goes); then the link pauses and the layer holds one
-// cleared pixel, so idle costs nothing. Rain (pass 19b, an ambient mode) runs it from the show until the close instead,
-// at 30 Hz while it is at rest. The line's key path only hands it the key as a value (`key(_:)`: a lock and an
-// append, after the key's frame); the scene is stepped and drawn off the main thread (`Ambience.Run`,
+// CAMetalDisplayLink draws on the scene thread from the show until the close (an ambient mode: Rain since pass 19b, at
+// 30 Hz while it is at rest and 60 while typing raises it; Still water since pass 24, at 30 Hz); then the link pauses
+// and the layer holds one cleared pixel, so a box with Ambience Off costs nothing. (Until pass 24 the other modes ran
+// it from the first key until 4 s after the last.) The line's key path only hands it the key as a value (`key(_:)`: a
+// lock and an append, after the key's frame); the scene is stepped and drawn off the main thread (`Ambience.Run`,
 // `Ambience.Lifecycle` and `Ambience.Renderer` in LemnaCore). The line's own display link and its band are untouched.
 // Every frame is drawn into the drawable the link hands its callback and into no other: `-[CAMetalLayer nextDrawable]`
 // raises on a layer a CAMetalDisplayLink drives, and pass 15, which cleared the layer with it, died at Esc (pass 15b).

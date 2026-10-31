@@ -3,9 +3,11 @@
 // O3). The line moves into it from the window and back (one LineView). Its effects (F1) run on layers of its own
 // through Core Animation, off the main thread: the open and the close (P1, the dim with them, D1) and the hand-off's
 // motion (H1, C1: the line's glyphs as layers of their own, the box's collapse, carried on in the ghost once the box has
-// gone); its accent border (B1) is still. The ambience (A1) plays on the dims, on a Metal layer over each shade
-// (Ambient.swift). Nothing runs at rest or while it is hidden. Its look is the theme's (TH1, `restyle`), taken while it
-// is hidden: the colours, the edge, the corners, the shadow, the dim, the open's and the hand-off's kind.
+// gone); its accent border (B1) is still. Under a theme whose hand-off is the box's fade (Still), a paste sends MO1's
+// ring across the wash instead (pass 24), on layers of its own over the box's screen's dim. The ambience (A1) plays on
+// the dims, on a Metal layer over each shade (Ambient.swift). Nothing runs at rest or while it is hidden. Its look is
+// the theme's (TH1, `restyle`), taken while it is hidden: the colours, the edge, the corners, the shadow, the dim, the
+// open's and the hand-off's kind.
 import AppKit
 import LemnaCore
 import QuartzCore
@@ -156,6 +158,10 @@ final class Box {
         let way: Handoff.Way, t0: Double, cut: LineView.Cut, reach: CGFloat
     }
     private var sending: Sending?
+    /// MO1's ring under way (pass 24): when it began (nil once the box has gone, the ring carried on), and its layers
+    /// over the shade and the ambience's layer of the box's screen, there until the ring's end or the next show.
+    private var ringFrom: Double?
+    private var ringLayer: CALayer?
 
     /// Every magnitude (the open and close, the hand-off) is `Effects.Tuning`'s; the dim's opacity the theme's.
     private typealias T = Effects.Tuning
@@ -230,6 +236,7 @@ final class Box {
             ghostFace.unsend()
             if let l = card.layer { uncollapse(l) }
             sending = nil
+            endRing()  // a ring still crossing the wash goes at once
             panel.hasShadow = style.theme.box.shadow  // a hand-off took it away
             panel.setFrame(BoxFrame.line(in: screen.visibleFrame, height: lineHeight), display: false)
             face.unsend()
@@ -249,7 +256,8 @@ final class Box {
     enum Leaving { case atOnce, fade, handOff }
 
     /// Off screen at once. A hand-off's motion under way goes on in the ghost where it stands, the dim lifting as it
-    /// was (H1, C1); any other way out but `atOnce` fades the box's last look (`ghost`) and the dim with it (P1).
+    /// was (H1, C1); any other way out but `atOnce` fades the box's last look (`ghost`) and the dim with it (P1), or,
+    /// with MO1's ring under way, fades the look while the ring and the dim's lift go on to the ring's end.
     func hide(_ leaving: Leaving = .fade) {
         let still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         var fade = leaving == .atOnce ? 0 : effects.duration(.pop, T.close, reduceMotion: still)
@@ -257,14 +265,15 @@ final class Box {
            case .fade(let d) = Handoff.leaving(effects, reduceMotion: still, handOff: style.theme.motion.handOff) {
             fade = d
         }
-        let moving = leaving == .atOnce ? nil : sending
-        sending = nil
+        let moving = leaving == .atOnce ? nil : sending, ringing = leaving == .atOnce ? nil : ringFrom
+        (sending, ringFrom) = (nil, nil)
+        if ringing == nil { endRing() }
         turn += 1
         if let moving {
             let left = moving.t0 + Handoff.end - CACurrentMediaTime()
             if panel.isVisible, left > 0 { carryOn(moving, for: left) }
         } else {
-            for a in ambients { a.close(over: fade) }  // the scene fades with the dim
+            if ringing == nil { for a in ambients { a.close(over: fade) } }  // the scene fades with the dim
             if panel.isVisible, fade > 0 { leaveLook(fading: fade) }
         }
         panel.orderOut(nil)
@@ -274,7 +283,13 @@ final class Box {
         }
         face.unsend()
         NSAnimationContext.runAnimationGroup { $0.duration = 0; panel.animator().alphaValue = 1 }  // ends an open's fade
-        if let moving { afterLift(from: moving.t0) } else { undim(over: fade) }
+        if let moving {
+            afterLift(from: moving.t0)
+        } else if let ringing {
+            afterLift(from: ringing, over: T.ringLife)
+        } else {
+            undim(over: fade)
+        }
     }
 
     /// The hand-off's motion (F1's H1 and C1, pass 17b), from the key-down's own turn, before anything waits: the line
@@ -285,11 +300,17 @@ final class Box {
     /// `stays`: the box stays (⌘⏎ copied instead and says why), and only the glyphs rise. Nothing in it waits for the
     /// paste and the paste waits for none of it (T1): at Return's key-up the box goes and the ghost carries on (`hide`).
     /// False when it does not play: Effects ▸ Hand-off unticked, Off, Reduce Motion, the box off screen, nothing drawn,
-    /// or the theme's hand-off is the box's fade (`hide` then fades it).
+    /// or the theme's hand-off is the box's fade (`hide` then fades it), where a paste sends MO1's ring instead (`ring`).
     @discardableResult func handOff(_ way: Handoff.Way, stays: Bool = false) -> Bool {
-        let still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        let leaving = Handoff.leaving(effects, reduceMotion: still, handOff: style.theme.motion.handOff)
-        guard panel.isVisible, leaving == .motion, let line else { return false }
+        let still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion, kind = style.theme.motion.handOff
+        let leaving = Handoff.leaving(effects, reduceMotion: still, handOff: kind)
+        if leaving != .motion {  // the box's fade: at a paste, MO1's ring
+            guard panel.isVisible, !stays, Handoff.rings(way, effects, reduceMotion: still, handOff: kind) else {
+                return false
+            }
+            return ring()
+        }
+        guard panel.isVisible, let line else { return false }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         guard let cut = line.cut() else {
@@ -320,11 +341,79 @@ final class Box {
         return true
     }
 
+    /// MO1's ring (pass 24), from the key-down's own turn: one ring of two crests leaves the box's outline across the
+    /// wash of the box's screen, the box's rounded rectangle grown as it goes (`Handoff.ring`, `ringOutline`), on Core
+    /// Animation layers over the shade and the ambience's layer, so nothing on the main thread holds it up; every dim
+    /// lifts evenly over the ring's `Tuning.ringLife` and the scenes fade with it. The box stays as it is until Return
+    /// comes up; then it goes, its look fading over P1's close, the paste goes out, and the ring and the lift go on
+    /// (`hide`, `afterLift`). False when the box's screen has no dim.
+    private func ring() -> Bool {
+        guard let screen = panel.screen, let i = NSScreen.screens.firstIndex(of: screen), i < dims.count,
+              let root = dims[i].window.contentView?.layer else { return false }
+        let t0 = CACurrentMediaTime(), life = T.ringLife
+        let box = panel.frame.offsetBy(dx: -screen.frame.minX, dy: -screen.frame.minY), corner = style.theme.box.corner
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        endRing()
+        let holder = CALayer()  // the ring's alpha over its life
+        holder.frame = CGRect(origin: .zero, size: screen.frame.size)  // as the shade
+        holder.opacity = 0  // where it ends
+        holder.allowsGroupOpacity = false  // each stroke at its own alpha times the ring's, laid over the others
+        root.addSublayer(holder)
+        let samples = 48, envelope = CAKeyframeAnimation(keyPath: "opacity")
+        envelope.keyTimes = (0...samples).map { NSNumber(value: Double($0) / Double(samples)) }
+        envelope.values = (0...samples).map { k in
+            Handoff.ringAlpha(at: life * Double(k) / Double(samples), dark: style.dark)
+        }
+        (envelope.duration, envelope.calculationMode) = (life, .linear)
+        envelope.beginTime = holder.convertTime(t0, from: nil)
+        holder.add(envelope, forKey: "ring")
+        let ink = rgb(style.palette.ink.text), even = CAMediaTimingFunction(name: .linear)
+        for line in Handoff.ring {
+            for stroke in T.ringStrokes {
+                let l = CALayer()
+                let from = Handoff.ringOutline(box, corner: corner, offset: 0, width: stroke.width)
+                let to = Handoff.ringOutline(box, corner: corner, offset: line.offset(at: life), width: stroke.width)
+                (l.borderWidth, l.borderColor) = (stroke.width, ink.copy(alpha: CGFloat(line.share * stroke.share)))
+                (l.position, l.bounds) = (CGPoint(x: box.midX, y: box.midY), CGRect(origin: .zero, size: to.rect.size))
+                (l.cornerRadius, l.opacity) = (to.corner, 0)  // where it ends; hidden but while it runs
+                holder.addSublayer(l)
+                let size = CABasicAnimation(keyPath: "bounds.size"), round = CABasicAnimation(keyPath: "cornerRadius")
+                (size.fromValue, size.toValue) = (NSValue(size: from.rect.size), NSValue(size: to.rect.size))
+                (round.fromValue, round.toValue) = (from.corner, to.corner)
+                let shown = CABasicAnimation(keyPath: "opacity")
+                (shown.fromValue, shown.toValue) = (1, 1)
+                let run = CAAnimationGroup(), d = life - line.start
+                for a in [size, round, shown] { a.duration = d }
+                (run.animations, run.duration, run.timingFunction) = ([size, round, shown], d, even)
+                run.beginTime = l.convertTime(t0 + line.start, from: nil)
+                l.add(run, forKey: "ring")
+            }
+        }
+        (ringLayer, ringFrom) = (holder, t0)
+        for dim in dims where dim.window.isVisible {  // the wash lifts with the ring, evenly
+            fade(dim.shade, to: 0, over: life, evenly: true)
+            if let a = dim.ambient { fade(a.layer, to: 0, over: life, evenly: true) }
+        }
+        for a in ambients { a.close(over: life) }  // the scene fades with the dim
+        CATransaction.commit()
+        CATransaction.flush()  // its first frame now, whatever else the key's turn does
+        return true
+    }
+
+    /// The ring's layers gone, at its end or at once.
+    private func endRing() {
+        ringLayer?.removeFromSuperlayer()
+        (ringLayer, ringFrom) = (nil, nil)
+    }
+
     /// The hand-off did not happen after its motion began (the pasteboard refused, ⌘V could not be made): the box as it
     /// was, its dim and shadow back at once; the line comes back with `LineView.resume`.
     func unsend() {
         face.unsend()
-        guard sending != nil else { return }
+        let ringing = ringFrom != nil
+        endRing()
+        guard sending != nil || ringing else { return }
         sending = nil
         if let l = content.layer { uncollapse(l) }
         panel.hasShadow = style.theme.box.shadow
@@ -462,12 +551,14 @@ final class Box {
         l.removeAnimation(forKey: "collapseFade")
     }
 
-    /// The dim lifting since the hand-off's first frame (`handOff`): its windows go, and the ambience stops, once it has.
-    private func afterLift(from t0: Double) {
+    /// The dim lifting since the hand-off's first frame (`handOff`) over `d` (MO1's ring's `ringLife`): its windows
+    /// go, the ring's layers with them, and the ambience stops, once it has.
+    private func afterLift(from t0: Double, over d: Double = T.lift) {
         let mine = turn
-        DispatchQueue.main.asyncAfter(deadline: .now() + max(t0 + T.lift - CACurrentMediaTime(), 0)) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + max(t0 + d - CACurrentMediaTime(), 0)) { [weak self] in
             guard let self, self.turn == mine else { return }
             for dim in self.dims { dim.window.orderOut(nil) }
+            self.endRing()
             self.stopAmbience()
         }
     }
@@ -562,8 +653,9 @@ final class Box {
         ambients = []
     }
 
-    /// A layer's opacity to `value` from `start` (nil: wherever it stands), over `d` on the curve (0: at once).
-    private func fade(_ l: CALayer, from start: Float? = nil, to value: Float, over d: Double) {
+    /// A layer's opacity to `value` from `start` (nil: wherever it stands), over `d` on the curve, or `evenly` (MO1's
+    /// lift under the ring; 0: at once).
+    private func fade(_ l: CALayer, from start: Float? = nil, to value: Float, over d: Double, evenly: Bool = false) {
         let from = start ?? l.presentation()?.opacity ?? l.opacity
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -571,7 +663,8 @@ final class Box {
         l.removeAnimation(forKey: "fade")
         if d > 0 {
             let a = CABasicAnimation(keyPath: "opacity")
-            (a.fromValue, a.toValue, a.duration, a.timingFunction) = (from, value, d, quint)
+            (a.fromValue, a.toValue, a.duration) = (from, value, d)
+            a.timingFunction = evenly ? CAMediaTimingFunction(name: .linear) : quint
             l.add(a, forKey: "fade")
         }
         CATransaction.commit()

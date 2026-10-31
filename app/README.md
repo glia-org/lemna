@@ -822,7 +822,64 @@ ambients as well.", then the picks `TH1 DC1 LK1 TY1 MO1 AM1 (rest only) BD1 CK1 
 - Build: `LEMNA_VERSION=0.1.2 make-app.sh`; the executable is 1,394,400 bytes; signed with "Lemna Dev"
   (`Authority=Lemna Dev`) and verified.
 
+Pass 24, Still water and the removals (DESIGN.md A1 and F1 amended; 2026-10-31; the user's picks AM1 with drops at
+rest only, MO1 and RM1 of `docs/design-panel-lemna-themes.html`; on the other modes: "I like the rain animation but the
+other ones are not really great"):
+
+- `Water` (`Scenes.swift`), `Mode.water` ("Still water"; `everyScreen` false, `ambient` true): drops in an array of at
+  most `waterDrops` (24), each its landing point, age and three crests (speed, width, start, jittered at the drop);
+  one at its birth 48 pt above the middle of the box's top edge (`waterSummon`), then Poisson at `waterRate` × the
+  stage's area / 1512 × 982 pt, a Bernoulli draw a frame, placed by rejection at least `waterClear` from the box (20
+  tries). It reads neither the events nor the typing rate, and its random draws do not depend on them, so keys change
+  nothing (tested frame by frame). A step emits for each crest a `ring` sprite at its radius and, inside it, its trough
+  at `waterTroughShare`; alpha `peak · easeOutQuint(a / waterOnset) · e^(−age / waterDecay) · √(waterNear / r)`, the
+  peak by the ink's blend (`waterPeak.over` 0.27, `.add` 0.14: on screen 0.16 and 0.07 under Still's ink alphas, look
+  §5.3's); none under `waterShown`; a drop goes at `waterLife`. `frameRate` 30. `Theme.still.defaults.ambience` is
+  `.water`; Lemna's stays Off.
+- The shape (`Particles.swift`, `Sprite.Kind.ring`, raw value 1): the quad is the circle's square out to twice the
+  width beyond the radius (`Sprite.ring(x:y:radius:width:alpha:colour:)`); the fragment's coverage is
+  `exp(−2u²)` for |u| < 2, u = (|p| − r) / width, r and width packed as `bend` packed them (half points, sixteenths).
+  Rings that cross add through the pipeline's blend, nothing new: light added on `.add`, ink laid over on `.over`.
+- MO1's ring (`Handoff.rings`, `ring`, `RingLine`, `ringAlpha`, `ringOutline`, `washUnderRing`; `Effects.Tuning.ring*`):
+  `Box.handOff(.send)` under a fade theme on Hand-off's tick (not `stays`, not `.rise`, not under Reduce Motion or
+  Effects Off) calls `ring()`: on the box's screen's dim window, over the shade and the ambience's layer, a holder layer
+  (group opacity off) whose opacity is a 48-step keyframe envelope of `ringAlpha`, holding per line (two crests, two
+  troughs) three bordered layers (`ringStrokes`) whose `bounds.size` and `cornerRadius` run evenly from the box's
+  outline to where the line is at 1.2 s, each shown from its start; every visible shade and ambience layer fades to 0
+  evenly over `ringLife` and the ambiences close over it. `hide(.handOff)` then fades the box's last look over P1's close
+  as before but leaves the dim and the scenes to the ring, and `afterLift(from:over:)` orders the dims out and removes
+  the ring at its end; `show`, `hide(.atOnce)` and `unsend` end it at once. Rounded, not a circle from the centre: the
+  rounded rectangle is native to Core Animation, so it costs nothing more.
+- RM1: `Drift`, `Rings`, `circle()`, `Grid` and `pace()` gone from `Scenes.swift`; from `Ambience.swift` the modes,
+  their tuning, `fastRate`, `boxSpan`, `Event.leaving` and `isKey`, `Run`'s `leaving`, `Stage.baseline`, `caretPoint`
+  and `boxX`, `Glyphs.sprite(baselineLeft:)`, `slot(glyph:font:)` and the glyph index behind it; from the shader the
+  rectangle and the bend. Left (no mode takes them now; DESIGN A1): the linger path in `Run` and `Lifecycle`,
+  `Key.line` and `pushed` (LineView still sends them), `Keyboard.Position.rows`/`columns`/`cells` (read by
+  `KeyboardTests`) and `Glyphs.letters` (read by a test, as before).
+- Tests: 114 (111 before; removed with the modes: Drift's, Rings', Grid's, the glyph leaving the box's edge, and the
+  two lifecycle sequences of a mode that starts at a key (the next show's cleared frame, the end 4 s after the last
+  key); the run's linger test is now its close alone, on Still water; the real-link test and the new-show sequence run
+  every mode. New: `stillWaterDropsAtRestAtItsRateScaledToTheScreen` (235 drops in 2,000 s on 1512 × 982, 240
+  expected; 578 on 2560 × 1440, 596; all 48 pt clear), `stillWaterTakesNoKeys`, `aDropsRingsRiseSoftlyThenFadeWithRadiusAndTime`,
+  `stillWaterStaysUnderTheCapOnALargeScreen` (at rest at most 7 drops and 27 sprites; 141 at its 24 drops),
+  `ringsThatCrossAdd` (Metal, both blends), `stillWaterShowsOnStillsDayAndNightDim` (1,699 and 1,612 pixels show at
+  1×) in `AmbienceTests`; `stillsPasteSendsOneRingAndCopySaveAndReduceMotionNone`,
+  `theRingLeavesTheOutlineAndTheWashLiftsWithItOver1200ms`, `stillHandOffRenders` in `HandoffTests`.
+- Renders: `ambience-water-day.png` and `ambience-water-night.png` (the summon's drop 1.2 s on, two drops crossing
+  beside it, one more; on Still's washes over a light and a dark app), `handoff-still-600ms.png` (MO1's ring 600 ms
+  after ⌘⏎ by day, the wash at half). No longer written: `ambience-drift.png`, `ambience-rings.png`,
+  `ambience-grid.png`, `ambience-grid-keyboard.png`.
+- Build: `LEMNA_VERSION=0.1.2 make-app.sh`; the executable is 1,145,248 bytes, no home folder in its symbols; signed
+  with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
+
 ## Known gaps
+
+- Pass 24 is not tried: nothing was launched. Untried: whether the water reads by eye on a real wash (its alphas are
+  look §5.3's and the panel's, a starting value; by night it is faint), whether a drop every 8 s or so feels like a bed
+  or like waiting, the drop above the box at the summon as the box fades in, the ring's Core Animation layers against
+  the render (borders on growing rounded layers; Still's corners are circular arcs, the box's too until a continuous
+  curve comes), the even lift beside the curve elsewhere, and whether the dim windows staying 1.2 s after the paste
+  disturb the app behind (they take no clicks). Under Reduce Motion the hand-off goes at once, as before, not as a fade.
 
 - Pass 21 is not tried: nothing was launched. Untried: Still over light and dark apps in both appearances; the window's
   and the panel's `.aqua` (the traffic lights, the sheets); the fade open and the fade hand-off; Rain's ink on the
