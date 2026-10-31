@@ -1,10 +1,10 @@
-// The ambience (DESIGN.md A1): a scene that plays on the dim around the box while you type and dies out within seconds
-// of silence (Rain, since pass 19b, from the show to the close), one mode at a time from Session › Ambience ▸, Off at
-// first. Here, free of AppKit and Metal: the choice, every magnitude (`Ambience.Tuning`), what the line sends (`Key`),
-// what a scene is told (`Event`), where it plays (`Stage`), what it draws (`Sprite`), the atlas's index (`Glyphs`), the
-// scenes' protocol and the run of one scene from the first key to its last particle (`Run`), so the tests step every
-// mode without a window. The scenes themselves are in Scenes.swift, the Metal pipeline that draws the sprites in
-// Particles.swift.
+// The ambience (DESIGN.md A1): a scene that plays on the dim around the box from the show to the close (Rain since
+// pass 19b, Still water since pass 24; until pass 24 the other modes played while you typed and died out within
+// seconds of silence), one mode at a time from Session › Ambience ▸, Off at first. Here, free of AppKit and Metal: the
+// choice, every magnitude (`Ambience.Tuning`), what the line sends (`Key`), what a scene is told (`Event`), where it
+// plays (`Stage`), what it draws (`Sprite`), the atlas's index (`Glyphs`), the scenes' protocol and the run of one
+// scene (`Run`), so the tests step every mode without a window. The scenes themselves are in Scenes.swift, the Metal
+// pipeline that draws the sprites in Particles.swift.
 import CoreGraphics
 import CoreText
 
@@ -12,26 +12,27 @@ import CoreText
 /// and greys the modes, and keeps the pick for when it is turned off again.
 public struct Ambience: Equatable {
     public enum Mode: String, CaseIterable {
-        /// M1, M2, M3 and M5 of `docs/design-panel-lemna-ambience.html`, in the submenu's order (M8 Burn was not
-        /// picked; pass 18 removed M4 Beams, M6 Fireworks and M7 Swarm, whose kept `ambience` is now Off).
-        case drift, rain, rings, grid
+        /// M2 of `docs/design-panel-lemna-ambience.html` and, since pass 24, AM1 of
+        /// `docs/design-panel-lemna-themes.html`, in the submenu's order. M8 Burn was not picked; pass 18 removed M4
+        /// Beams, M6 Fireworks and M7 Swarm, pass 24 (RM1) M1 Drift, M3 Rings and M5 Grid: a kept `ambience` naming one
+        /// of them is Off.
+        case rain, water
 
         public var title: String {
             switch self {
-            case .drift: "Drift"
             case .rain: "Rain"
-            case .rings: "Rings"
-            case .grid: "Grid"
+            case .water: "Still water"
             }
         }
 
-        /// Plays on every screen's dim, not only on the box's: Rain falls over the whole dim. The others come from the
-        /// box and stay on its screen.
+        /// Plays on every screen's dim, not only on the box's: Rain falls over the whole dim. Still water stays on the
+        /// box's screen.
         public var everyScreen: Bool { self == .rain }
 
-        /// Plays from the show until the close, keys or none (pass 19b, I1): Rain. The others start at the first key
-        /// and are gone `Tuning.linger` after the last.
-        public var ambient: Bool { self == .rain }
+        /// Plays from the show until the close, keys or none (pass 19b, I1): Rain, and Still water (pass 24). The modes
+        /// pass 24 removed started at the first key and were gone `Tuning.linger` after the last; `Run` and `Lifecycle`
+        /// still have that path, which no mode takes now.
+        public var ambient: Bool { true }
     }
 
     public private(set) var mode: Mode?
@@ -56,15 +57,13 @@ public struct Ambience: Equatable {
 
 extension Ambience {
     /// Every magnitude of the ambience in one place (A1, I1: fixed per mode). Pass 16 (the user, having tried pass
-    /// 15: "The ambience effects are way too subtle") made every mode plain from its first frame, about two to three
-    /// times pass 15's alphas, larger where that reads better, a little longer where the fade took them early; pass
-    /// 15's values, the panel's, stand beside each as "subtle". Times in seconds, lengths in points, alphas over the
-    /// dim. The colours are the theme's ink (`Stage.ink`; Lemna's the box's text and accent, C1): text for glyphs,
-    /// rings and grid lines, the accent for the lit cells; Rain's heads in the text colour and its trails in the accent
-    /// (C2, pass 19b).
+    /// 15: "The ambience effects are way too subtle") made every mode plain from its first frame. Times in seconds,
+    /// lengths in points, alphas over the dim (times the ink's `alpha`). The colours are the theme's ink (`Stage.ink`;
+    /// Lemna's the box's text and accent, C1): Rain's heads in the text colour and its trails in the accent (C2, pass
+    /// 19b); Still water's rings in the text colour.
     public enum Tuning {
         /// Every mode: at most this many sprites a frame (the panel's 2,000 particles), stepped and drawn at 60 Hz
-        /// (Rain at rest at `rainIdleRate`).
+        /// (Rain at rest at `rainIdleRate`, Still water at `waterFrameRate`).
         public static let cap = 2000, frameRate = 60.0
         /// Nothing new after the last key, and the scene is gone `linger` after it, fading out evenly over the last
         /// `fadeOut` (a decay nobody triggered, kept off the curve, so the scene does not drop half of itself in the
@@ -74,24 +73,14 @@ extension Ambience {
         /// At the box's close the scene fades out over the dim's wait and fade less `closeAhead`, so its cleared frames
         /// are out and the link pauses while the dim is still on screen (a window gone gets no more frames).
         public static let closeAhead = 0.05
-        /// The typing rate is the keys of the last `rateWindow`; magnitudes set by it reach their top at `fastRate`
-        /// keys a second (about 100 words a minute).
-        public static let rateWindow = 2.0, fastRate = 10.0
+        /// The typing rate is the keys of the last `rateWindow` (pass 24 removed `fastRate`, Drift's top).
+        public static let rateWindow = 2.0
 
         /// Where a key is (pass 16, `Keyboard`): across the screen, Rain's columns from the left to the right end of
-        /// `screenSpan`; along the box, where Rings start, `boxSpan` of its width; down the keyboard, Rain's start from
-        /// the top of `rainRows` (the number row) to its bottom (the space bar's), a share of the screen's height. A key
-        /// with no position (an arrow, the accent menu's pick) takes the caret's x.
-        public static let screenSpan = 0.1...0.9, boxSpan = 0.05...0.95, rainRows = 0.55...0.95
-
-        /// M1 Drift: a glyph that leaves the box's left edge fades in over `driftIn` to `driftPeak`, holds it for
-        /// `driftHold` and fades out by `driftLife`. It leaves at the line's own speed (its advance times the typing
-        /// rate), so the glyphs keep their spacing as they come out, and slows over `driftCarry` onto a current of
-        /// 8–40 pt/s set by the rate (eased over `driftEase`), rising at its own pace (more often up than down),
-        /// wandering and turning slowly. About 20 live at 5 keys/s. Subtle: peak 0.35, no hold.
-        public static let driftPeak = 0.7, driftIn = 0.3, driftHold = 1.5, driftLife = 4.0, driftEase = 0.6
-        public static let driftCarry = 1.0, driftCurrent = 8.0...40.0, driftRise = -6.0...18.0, driftWander = 6.0
-        public static let driftTurn = 0.05...0.2
+        /// `screenSpan`; down the keyboard, Rain's start from the top of `rainRows` (the number row) to its bottom (the
+        /// space bar's), a share of the screen's height. A key with no position (an arrow, the accent menu's pick)
+        /// takes the caret's x. (Rings' `boxSpan` went with them in pass 24.)
+        public static let screenSpan = 0.1...0.9, rainRows = 0.55...0.95
 
         /// M2 Rain (pass 19b; G1 I1 T1 C2 K1 W1 of `docs/design-panel-lemna-rain.html`, matrix §6.2): glyphs at
         /// `rainScale` of the line's size in a fixed grid of square cells, `rainPitch` of the glyph's cell height on a
@@ -123,21 +112,24 @@ extension Ambience {
         public static let rainFast = 6.0, rainRise = 0.25, rainSettle = 1.2, rainHold = 0.8
         public static let rainAhead = 20.0, rainIdleRate = 30.0, rainCalm = 0.05, rainShown = 0.02
 
-        /// M3 Rings: each key sends one circle of `ringWidth` out from the box's top edge where the key is, to the
-        /// screen's farthest corner on the curve, its alpha from `ringPeak` to nothing over `ringLife`; ⌫ (at its key)
-        /// sends one in from `ringInward`. Drawn as arcs of about `ringArc` points (8 to `ringArcs` a circle). Subtle:
-        /// the box's outline grown to 400 pt, 1 pt, peak 0.25, 1.5 s, inward from 160 pt.
-        public static let ringPeak = 0.6, ringWidth = 2.0, ringLife = 2.0, ringInward = 240.0, ringArc = 100.0
-        public static let ringArcs = 96
-
-        /// M5 Grid: square cells of `gridCell` over the box's screen, the lines at `gridLines` fading in over `gridIn`
-        /// at the first key; each key lights its own cells in a keyboard of 5 × 15 cells `gridGap` cells under the
-        /// box (over it where there is no room), in the accent at `gridLit`, fading out by `gridLife`, so typing
-        /// draws the keyboard's shape. A key with no position lights one cell within `gridReach` of the box, near the
-        /// caret more often (weight e^(−distance / `gridNear`)). Subtle: 24 pt cells, lines 0.06, lit 0.2 for 0.6 s,
-        /// a random cell near the caret for every key.
-        public static let gridCell = 32.0, gridLines = 0.12, gridIn = 0.3, gridLit = 0.6, gridLife = 0.9
-        public static let gridGap = 1, gridReach = 3, gridNear = 150.0
+        /// Still water (pass 24; AM1 of `docs/design-panel-lemna-themes.html` with drops at rest only, the user's pick;
+        /// `research_notes/Lemna themes/look.md` §5.3's Ripples): drops land at random on the dim at least `waterClear`
+        /// from the box, Poisson at `waterRate` a second on a 1512 × 982 pt screen, scaled to the stage's area, and one
+        /// at the show `waterSummon` above the middle of the box's top edge; none for a key, and typing changes
+        /// nothing. A drop is `waterCrests` rings that leave together at `waterSpeed`, each further one `waterSpread`
+        /// slower than the one outside it (±`waterJitter` of that), so the calm centre follows the lead at about 0.7 of
+        /// its speed and the crests stand about 9 pt apart at 1.7 s; each a Gaussian across it `waterWidth` wide, its
+        /// start within ±`waterStart` of the drop's, with a fainter trough ring `waterTrough` inside it at
+        /// `waterTroughShare` of its alpha. A ring's alpha rises over `waterOnset` on the curve to the peak, laid over on
+        /// a light wash and added on a dark one (`waterPeak`; times Still's ink alpha, 0.6 by day and 0.5 by night, look
+        /// §5.3's 0.16 laid over by day and 0.07 added by night on screen), then falls as e^(−age / `waterDecay`) · √(`waterNear` / r); under `waterShown` it is not drawn, and a
+        /// drop is gone at `waterLife`. Rings that cross add. At most `waterDrops` alive, at `waterFrameRate` frames a
+        /// second (36 pt/s is 1.2 pt a frame).
+        public static let waterRate = 0.12, waterClear = 48.0, waterSummon = 48.0, waterDrops = 24
+        public static let waterCrests = 3, waterSpeed = 36.0, waterSpread = 0.15, waterJitter = 0.15
+        public static let waterWidth = 1.2...2.0, waterStart = 0.04, waterTrough = 3.0, waterTroughShare = 0.4
+        public static let waterOnset = 0.18, waterPeak = (over: 0.27, add: 0.14), waterDecay = 1.4, waterNear = 12.0
+        public static let waterShown = 0.01, waterLife = 4.5, waterFrameRate = 30.0
     }
 }
 
@@ -147,8 +139,8 @@ extension Ambience {
     /// A key the line took, as it hands it on after the key's frame (on the main thread: a value and an enqueue,
     /// nothing else). `code`: the physical key (NSEvent's keyCode), nil when no key event brought it (the accent
     /// menu's pick); the scene's thread finds where it is (`Keyboard`). `pushed`: how far the text before the caret
-    /// moved left (typing; 0 or less for a delete); with `line`, the line as now shaped (a reference to its glyphs,
-    /// copied by no one), the scene's thread finds what left the box's left edge.
+    /// moved left (typing; 0 or less for a delete), and `line`, the line as now shaped (a reference to its glyphs,
+    /// copied by no one): Drift found in them what left the box's left edge; no scene reads them since pass 24.
     public struct Key {
         public enum Kind: Equatable { case glyph(Character), space, paragraph, backspace }
         public var t: Double, kind: Kind, code: UInt16?, line: Shaped?, pushed: Double
@@ -158,58 +150,42 @@ extension Ambience {
     }
 
     /// What a scene is told, in order, since its last step: a key, where it is on the keyboard (nil: no position,
-    /// the caret's x then), a glyph key with its atlas slot (nil when the atlas lacks it); or a glyph of the line that
-    /// left the box's left edge, its baseline-left there.
+    /// the caret's x then), a glyph key with its atlas slot (nil when the atlas lacks it). (Drift's glyph leaving the
+    /// box's left edge went with it in pass 24.)
     public enum Event: Equatable {
         case typed(slot: Int?, at: Keyboard.Position?), space(Keyboard.Position?), paragraph(Keyboard.Position?)
         case backspace(Keyboard.Position?)
-        case leaving(slot: Int, at: CGPoint)
-
-        /// Any key (not a glyph leaving).
-        var isKey: Bool { if case .leaving = self { false } else { true } }
 
         /// The key's place on the keyboard.
         var key: Keyboard.Position? {
             switch self {
             case .typed(_, let p), .space(let p), .paragraph(let p), .backspace(let p): p
-            case .leaving: nil
             }
         }
     }
 
     /// Where a scene plays: one screen's dim, in its points (origin at the bottom left, as AppKit's). On the box's screen
-    /// `box` is the box there and `band`, `baseline` and `caret` are the line's; on another screen `box` is nil. `ink`:
-    /// the theme's colours, blend and alpha for the scenes (TH1).
+    /// `box` is the box there and `band` and `caret` are the line's; on another screen `box` is nil. `ink`: the theme's
+    /// colours, blend and alpha for the scenes (TH1).
     public struct Stage: Equatable {
         public var size: CGSize, box: CGRect?, corner: CGFloat, keyboard: Keyboard.Kind, ink: Theme.Ink
-        public var band = CGRect.zero, baseline: CGFloat = 0, caret: CGFloat = 0
+        public var band = CGRect.zero, caret: CGFloat = 0
 
-        /// `box` in the stage's points; the line sits `inset` inside it (its border), its band and baseline as
-        /// `Line.draw` places them, the caret's left edge at 60 % of the band. `keyboard`: the physical layout, for
-        /// where a key is; the ink is `style`'s palette's.
+        /// `box` in the stage's points; the line sits `inset` inside it (its border), its band as `Line.draw` places
+        /// it, the caret's left edge at 60 % of the band. `keyboard`: the physical layout, for where a key is; the ink
+        /// is `style`'s palette's.
         public init(size: CGSize, box: CGRect? = nil, inset: CGFloat = 1, corner: CGFloat = 10,
                     keyboard: Keyboard.Kind = .ansi, style: Style) {
             (self.size, self.box, self.corner, self.keyboard, ink) = (size, box, corner, keyboard, style.palette.ink)
             guard let box else { return }
             let line = box.insetBy(dx: inset, dy: inset)
             band = Line.band(in: line.size, style: style).offsetBy(dx: line.minX, dy: line.minY)
-            baseline = band.midY - (CTFontGetAscent(style.font) - CTFontGetDescent(style.font)) / 2
             caret = band.minX + Line.caret * band.width
         }
-
-        /// The caret's point: its x on the band's middle.
-        public var caretPoint: CGPoint { CGPoint(x: caret, y: band.midY) }
 
         /// Where a key is across the screen (`Tuning.screenSpan`); nil without a position.
         public func screenX(_ key: Keyboard.Position?) -> Double? {
             key.map { Double(size.width) * mix(Tuning.screenSpan, $0.across) }
-        }
-
-        /// Where a key is along the box (`Tuning.boxSpan`), or the caret's x without a position; nil off the box's
-        /// screen.
-        public func boxX(_ key: Keyboard.Position?) -> Double? {
-            guard let box else { return nil }
-            return key.map { Double(box.minX) + Double(box.width) * mix(Tuning.boxSpan, $0.across) } ?? Double(caret)
         }
     }
 }
@@ -221,16 +197,16 @@ func mix(_ r: ClosedRange<Double>, _ u: Double) -> Double { r.lowerBound + (r.up
 
 /// One sprite: a quad centred at (x, y), w × h points, turned by `rotation` radians about its centre, at `alpha` (times
 /// the run's), in `colour` (0xRRGGBB packed as the shader unpacks it). `shape`: the kind in its low byte and a
-/// parameter above it (a glyph's atlas slot; a bend's radius and stroke width). 32 bytes, the layout the shader reads.
+/// parameter above it (a glyph's atlas slot; a ring's radius and width). 32 bytes, the layout the shader reads.
 public struct Sprite: Equatable {
     public var x: Float, y: Float, w: Float, h: Float, rotation: Float, alpha: Float, colour: UInt32, shape: UInt32
 
     public enum Kind: UInt32 {
-        /// A glyph from the atlas; a filled rectangle; a stretch of a large circle's stroke (`bend`: the circle's centre
-        /// lies below the quad's middle by the radius, on its turned y axis, and the stroke is cut square at the quad's
-        /// ends, so arcs side by side make the circle). Pass 18 took out the disc, the small circle's stroke and the
-        /// beam, which only the removed modes drew.
-        case glyph, rect, bend
+        /// A glyph from the atlas; a soft ring (pass 24, Still water: a circle about the quad's middle, its coverage a
+        /// Gaussian across the circle, `Sprite.ring`; the quad is the circle's square with the falloff). Pass 18 took
+        /// out the disc, the small circle's stroke and the beam, pass 24 the filled rectangle and the large circle's
+        /// stroke (`bend`), which only the removed modes drew.
+        case glyph, ring
     }
 
     public init(x: Double, y: Double, w: Double, h: Double, rotation: Double = 0, alpha: Double, colour: UInt32,
@@ -241,7 +217,7 @@ public struct Sprite: Equatable {
         shape = kind.rawValue | parameter << 8
     }
 
-    public var kind: Kind { Kind(rawValue: shape & 0xff) ?? .rect }
+    public var kind: Kind { Kind(rawValue: shape & 0xff) ?? .glyph }
     public var parameter: UInt32 { shape >> 8 }
 
     /// 0xRRGGBB as the shader's unpack_unorm4x8 reads it: red in the low byte, alpha (unused) full.
@@ -249,9 +225,18 @@ public struct Sprite: Equatable {
         (rgb >> 16 & 0xff) | (rgb >> 8 & 0xff) << 8 | (rgb & 0xff) << 16 | 0xff << 24
     }
 
-    /// A bend's radius (in half points, to 8,191 pt) and stroke width (in sixteenths, to 63 pt) as a parameter.
-    static func bend(radius r: Double, width w: Double) -> UInt32 {
+    /// A ring's radius (in half points, to 8,191 pt) and width (in sixteenths, to 63 pt) as a parameter: the circle on
+    /// which its coverage peaks, and the width over which the Gaussian across it falls to e^(−2) on either side (σ half
+    /// of it), nothing beyond twice that.
+    static func ring(radius r: Double, width w: Double) -> UInt32 {
         UInt32(min(max((r * 2).rounded(), 0), 16383)) | UInt32(min(max((w * 16).rounded(), 0), 1023)) << 14
+    }
+
+    /// A soft ring about (x, y): the quad is the circle's square, out to twice the width beyond the radius.
+    static func ring(x: Double, y: Double, radius r: Double, width w: Double, alpha: Double, colour: UInt32) -> Sprite {
+        let side = 2 * (r + 2 * w)
+        return Sprite(x: x, y: y, w: side, h: side, alpha: alpha, colour: colour, kind: .ring,
+                      parameter: ring(radius: r, width: w))
     }
 }
 
@@ -260,7 +245,7 @@ public struct Sprite: Equatable {
 extension Ambience {
     /// Which glyphs of the line's font the atlas holds, in which cell, and a cell's size. The renderer draws them once
     /// with Core Text (Particles.swift); the scenes place glyph sprites by it. ASCII, Latin-1's letters and the common
-    /// punctuation of German and English text; a character outside it does not drift or rain.
+    /// punctuation of German and English text; a character outside it does not rain.
     public struct Glyphs {
         public static let characters: [Character] = {
             var cs = (33...126).map { Character(Unicode.Scalar(UInt8($0))) }
@@ -278,7 +263,7 @@ extension Ambience {
         /// The slots of a to z; and of Rain's glyphs (K1, pass 19b): the films' set as far as ASCII has it, digits
         /// without 6, Z z : . " = * + - < > | _, not mirrored.
         public let letters: [Int], rainSet: [Int]
-        private let byCharacter: [Character: Int], byGlyph: [CGGlyph: Int]
+        private let byCharacter: [Character: Int]
 
         public init(font: CTFont) {
             self.font = font
@@ -298,7 +283,7 @@ extension Ambience {
             let p = Self.pad, s = Self.scale
             pixels = (Int(((right - left + 2 * p) * s).rounded(.up)), Int(((ink.maxY - ink.minY + 2 * p) * s).rounded(.up)))
             origin = CGPoint(x: p - left, y: p - ink.minY)
-            (self.ids, self.byCharacter, self.byGlyph) = (ids, byCharacter, byGlyph)
+            (self.ids, self.byCharacter) = (ids, byCharacter)
             letters = "abcdefghijklmnopqrstuvwxyz".compactMap { byCharacter[$0] }
             rainSet = "012345789Zz:.\"=*+-<>|_".compactMap { byCharacter[$0] }
         }
@@ -310,24 +295,13 @@ extension Ambience {
         public var atlas: (w: Int, h: Int) { (Self.columns * pixels.w, rows * pixels.h) }
 
         /// The atlas's font for a line in `font`: the same when it is monospaced, else Menlo at its size, so Rain's grid
-        /// keeps a monospaced face whatever the theme's line uses (TY1; architecture §6). Drift finds no glyph of a
-        /// line in another font than the atlas's (`slot(glyph:font:)`), so under Still it shows nothing.
+        /// keeps a monospaced face whatever the theme's line uses (TY1; architecture §6).
         public static func atlasFont(for font: CTFont) -> CTFont {
             CTFontGetSymbolicTraits(font).contains(.traitMonoSpace) ? font
                 : CTFontCreateWithName("Menlo" as CFString, CTFontGetSize(font), nil)
         }
 
         public func slot(_ c: Character) -> Int? { byCharacter[c] }
-        /// A shaped glyph's slot: only the line's own font (not a fallback for a character Menlo lacks).
-        public func slot(glyph: CGGlyph, font f: CTFont) -> Int? { CFEqual(f, font) ? byGlyph[glyph] : nil }
-
-        /// A glyph sprite with its baseline-left at `p`, `scale` times the line's size, turned about its cell's middle.
-        public func sprite(_ slot: Int, baselineLeft p: CGPoint, scale: Double = 1, rotation: Double = 0,
-                           alpha: Double, colour: UInt32) -> Sprite {
-            let c = cell, k = CGFloat(scale)
-            let centre = CGPoint(x: p.x + (c.width / 2 - origin.x) * k, y: p.y + (c.height / 2 - origin.y) * k)
-            return sprite(slot, centre: centre, scale: scale, rotation: rotation, alpha: alpha, colour: colour)
-        }
 
         /// A glyph sprite with its cell's middle at `centre`.
         public func sprite(_ slot: Int, centre: CGPoint, scale: Double = 1, rotation: Double = 0, alpha: Double,
@@ -341,7 +315,7 @@ extension Ambience {
 // MARK: Scenes and their run
 
 extension Ambience {
-    /// One mode's scene on one stage: particles on the CPU, stepped once a frame (Scenes.swift has the four).
+    /// One mode's scene on one stage: particles on the CPU, stepped once a frame (Scenes.swift has the two).
     public protocol Scene {
         init(stage: Stage, glyphs: Glyphs, seed: UInt64)
         /// Moves the scene on by `dt` seconds, `events` having come since the last step, at the typing `rate` (keys a
@@ -349,17 +323,15 @@ extension Ambience {
         mutating func step(dt: Double, events: [Event], rate: Double, into out: inout [Sprite])
         /// The most sprites it draws now, which never passes `Tuning.cap`: a scene spawns nothing that would.
         var count: Int { get }
-        /// The frames a second it wants now: `Tuning.frameRate`, Rain at rest fewer.
+        /// The frames a second it wants now: `Tuning.frameRate`, Rain at rest and Still water fewer.
         var frameRate: Double { get }
     }
 
     /// The scene of `mode`.
     public static func scene(_ mode: Mode, stage: Stage, glyphs: Glyphs, seed: UInt64) -> any Scene {
         switch mode {
-        case .drift: Drift(stage: stage, glyphs: glyphs, seed: seed)
         case .rain: Rain(stage: stage, glyphs: glyphs, seed: seed)
-        case .rings: Rings(stage: stage, glyphs: glyphs, seed: seed)
-        case .grid: Grid(stage: stage, glyphs: glyphs, seed: seed)
+        case .water: Water(stage: stage, glyphs: glyphs, seed: seed)
         }
     }
 
@@ -391,10 +363,10 @@ extension Ambience {
         mutating func unit() -> Double { Double.random(in: 0..<1, using: &self) }
     }
 
-    /// One scene from the first key until it has died out (an ambient mode's from the show until the close): the keys
-    /// turned into its events (what left the box's left edge found from each key's push), the typing rate, and the
-    /// alpha every sprite is drawn at, 1 until the last second of `Tuning.linger` after the last key (fading evenly;
-    /// an ambient mode stays at 1), or fading over a close (the box going, on the curve, as the dim it goes with).
+    /// One scene from the first key until it has died out (an ambient mode's, every mode's since pass 24, from the
+    /// show until the close): the keys turned into its events, the typing rate, and the alpha every sprite is drawn
+    /// at, 1 until the last second of `Tuning.linger` after the last key (fading evenly; an ambient mode stays at 1),
+    /// or fading over a close (the box going, on the curve, as the dim it goes with).
     /// Stepped by the scene's thread once a frame; `frame` says when it is over, and the caller pauses.
     public struct Run {
         public let mode: Mode, stage: Stage
@@ -421,7 +393,6 @@ extension Ambience {
             for k in keys {
                 lastKey = max(lastKey, k.t)
                 typing.key(at: k.t)
-                if k.pushed > 0, let line = k.line, stage.box != nil { leaving(line, pushed: k.pushed) }
                 let at = k.code.flatMap { Keyboard.position(of: $0, on: stage.keyboard) }
                 switch k.kind {
                 case .glyph(let c): events.append(.typed(slot: glyphs.slot(c), at: at))
@@ -429,19 +400,6 @@ extension Ambience {
                 case .paragraph: events.append(.paragraph(at))
                 case .backspace: events.append(.backspace(at))
                 }
-            }
-        }
-
-        /// The glyphs before the caret whose middle the push took past the band's left edge (the box's inner edge),
-        /// where the line has them at rest: their baseline-left there. V2 has faded them out long before, so Drift's
-        /// glyph is the line's own glyph coming out from under the box.
-        private mutating func leaving(_ line: Shaped, pushed: Double) {
-            let edge = Double(stage.band.minX), x0 = Double(stage.caret - line.caret)
-            for g in line.glyphs where !g.after && !g.muted {
-                let left = x0 + Double(g.x), middle = left + Double(g.advance) / 2
-                guard middle < edge, middle + pushed >= edge, let slot = glyphs.slot(glyph: g.id, font: g.font)
-                else { continue }
-                events.append(.leaving(slot: slot, at: CGPoint(x: left, y: stage.baseline)))
             }
         }
 

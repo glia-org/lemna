@@ -112,6 +112,20 @@ extension Effects {
         public static let exit = 0.200, exitStagger = 0.007, exitStaggerCap = 0.120
         public static let sendReach: CGFloat = 1.0, riseReach: CGFloat = 1.25
         public static let lift = 0.140, collapseAt = 0.120, collapse = 0.140, collapseScale = 0.9
+        /// MO1's ring (pass 24; the user's pick of `docs/design-panel-lemna-themes.html`, its preview's values and
+        /// "chosen here" timing, look §5.3): at a paste under a theme whose hand-off is the box's fade (Still), on
+        /// Hand-off's tick, `ringCrests` crests `ringSpacing` apart leave the box's outline from the key-down at
+        /// `ringSpeed`, the box's rounded rectangle grown by how far out each is (its corners with it), each with a
+        /// trough `ringTrough` inside it at `ringTroughShare` of its alpha, each line drawn as the strokes of
+        /// `ringStrokes` (width, share of the alpha) laid over each other, so its section is soft. The ring's alpha rises
+        /// over `ringOnset` on the curve to `ringPeak` (by day, by night) and falls as (1 − t / `ringLife`)^1.5, nothing
+        /// at `ringLife`; the dim lifts evenly over the same `ringLife` (not on the curve, which would take the wash away
+        /// before the ring crossed it), so wash and ring are gone together. The glyphs fade in place with the box's last
+        /// look over `close`, from Return's key-up, and nothing waits for the ring: the paste goes out as before, about
+        /// 130 ms after the key-down. The 1.2 s is the ring's travel, off the scale of durations.
+        public static let ringCrests = 2, ringSpacing: CGFloat = 9, ringSpeed: CGFloat = 60, ringTrough: CGFloat = 3
+        public static let ringTroughShare = 0.4, ringOnset = 0.18, ringPeak = (day: 0.18, night: 0.08), ringLife = 1.2
+        public static let ringStrokes: [(width: CGFloat, share: Double)] = [(3.2, 0.2), (1.8, 0.35), (0.9, 0.45)]
         /// Removed in pass 18: K3's word sheen (0.300 s, peak 0.7) and B2's warming border (back in 0.150 s, cooling
         /// over 1.0 s from 0.5 s after the last key).
     }

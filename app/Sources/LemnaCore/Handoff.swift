@@ -2,9 +2,11 @@
 // used is really lackluster and not well done. This can be improved a lot."; the picks H1 A0 T1 C1 of
 // docs/design-panel-lemna-handoff.html, H1 on easeOutQuint): from the key-down on, the line's glyphs leave the box one
 // after another from the caret outwards, off its right edge at a paste or up off its top edge at a copy or a save; the
-// dim lifts from the first frame and the emptied box collapses, 260 ms in all. Where each glyph is and when, as pure
-// functions: the app's Core Animation layers and the tests' renders take their places and times from here. Free of
-// AppKit.
+// dim lifts from the first frame and the emptied box collapses, 260 ms in all. Since pass 24, under a theme whose
+// hand-off is the box's fade (Still, MO1 of docs/design-panel-lemna-themes.html), a paste sends one ring of two crests
+// from the box's outline out across the wash instead, while the box fades and the wash lifts with the ring. Where each
+// glyph and each line of the ring is and when, as pure functions: the app's Core Animation layers and the tests'
+// renders take their places and times from here. Free of AppKit.
 import CoreGraphics
 import CoreText
 
@@ -111,4 +113,50 @@ public enum Handoff {
         let close = effects.duration(.pop, T.close, reduceMotion: reduceMotion)
         return close > 0 ? .fade(close) : .atOnce
     }
+
+    // MARK: MO1's ring (pass 24)
+
+    /// Whether a hand-off sends MO1's ring across the wash, beside the box's fade: a paste, under a theme whose hand-off
+    /// is the box's fade, on Effects ▸ Hand-off's tick. Copy and Save… keep the plain fade (`.rise`); Reduce Motion stops
+    /// the hand-off, ring and all (the box then goes as `leaving` says: at once), and so does Effects ▸ Off.
+    public static func rings(_ way: Way, _ effects: Effects, reduceMotion: Bool,
+                             handOff: Theme.Motion.HandOff) -> Bool {
+        way == .send && handOff == .fade && effects.plays(.handOff, reduceMotion: reduceMotion)
+    }
+
+    /// One line of the ring, a crest or the trough inside it: it leaves the box's outline `start` seconds after the key
+    /// and runs out at `Tuning.ringSpeed`; `share`, its alpha's share of the ring's.
+    public struct RingLine: Equatable {
+        public let start: Double, share: Double
+
+        /// How far outside the box's outline it is `t` seconds after the key (not yet out: 0 or less).
+        public func offset(at t: Double) -> CGFloat { T.ringSpeed * CGFloat(t - start) }
+    }
+
+    /// The ring's lines, the first crest first: each crest `Tuning.ringSpacing` behind the one before, each trough
+    /// `ringTrough` inside its crest at `ringTroughShare` of the alpha.
+    public static let ring: [RingLine] = (0..<T.ringCrests).flatMap { k -> [RingLine] in
+        let start = Double(CGFloat(k) * T.ringSpacing / T.ringSpeed)
+        return [RingLine(start: start, share: 1),
+                RingLine(start: start + Double(T.ringTrough / T.ringSpeed), share: T.ringTroughShare)]
+    }
+
+    /// The ring's alpha `t` seconds after the key, by night or by day (`Tuning.ringPeak`): up over `ringOnset` on the
+    /// curve, down as (1 − t / `ringLife`)^1.5, nothing from `ringLife` on.
+    public static func ringAlpha(at t: Double, dark: Bool) -> Double {
+        guard t < T.ringLife else { return 0 }
+        let peak = dark ? T.ringPeak.night : T.ringPeak.day
+        return peak * Curve.easeOutQuint(t / T.ringOnset) * pow(1 - max(t, 0) / T.ringLife, 1.5)
+    }
+
+    /// A line `d` points out from the box's outline (`box`, its corners `corner`), as a stroke `width` wide centred on
+    /// it: the rectangle the stroke's outer edge follows and its corners (a layer's bounds and radius for its border).
+    public static func ringOutline(_ box: CGRect, corner: CGFloat, offset d: CGFloat,
+                                   width: CGFloat) -> (rect: CGRect, corner: CGFloat) {
+        let grow = d + width / 2
+        return (box.insetBy(dx: -grow, dy: -grow), corner + grow)
+    }
+
+    /// The dim's share of its strength `t` seconds after the key under the ring: it lifts evenly over `ringLife`.
+    public static func washUnderRing(at t: Double) -> Double { min(max(1 - t / T.ringLife, 0), 1) }
 }

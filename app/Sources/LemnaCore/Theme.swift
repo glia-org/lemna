@@ -67,7 +67,8 @@ public struct Theme: Equatable {
     }
 
     /// How the box opens (P1: grown from `Effects.Tuning.openScale` with the fade, or the fade alone; the close is a
-    /// fade either way) and how a hand-off leaves (H1 and C1: the glyphs streaming off the box, or the box's fade).
+    /// fade either way) and how a hand-off leaves (H1 and C1: the glyphs streaming off the box, or the box's fade, with
+    /// MO1's ring on the water at a paste since pass 24, `Handoff.rings`).
     public struct Motion: Equatable {
         public enum Open: Equatable { case pop, fade }
         public enum HandOff: Equatable { case stream, fade }
@@ -144,7 +145,7 @@ extension Theme {
                        smoothed: false),
         box: Shape(border: .hairline, borderWidth: 1, corner: 16, shadow: false, continuous: true, caretEnds: 1),
         motion: Motion(open: .fade, handOff: .fade),
-        defaults: Defaults(pack: "SoftPack", bed: nil, ambience: .rain))
+        defaults: Defaults(pack: "SoftPack", bed: nil, ambience: .water))
 }
 
 extension Theme.Typeface {

@@ -1,7 +1,7 @@
 // The ambience's drawing (DESIGN.md A1, R1): one Metal pipeline that draws a frame's sprites as instanced quads (one
 // for each blend of the theme's ink since pass 21, TH1), glyphs from an atlas of the line's font (a monospaced one,
-// `Glyphs.atlasFont`) drawn once with Core Text, the rings' arcs and the grid's lines and cells as shapes in the
-// fragment shader. The shader is Metal source compiled at runtime once per device (`makeLibrary(source:)`): the
+// `Glyphs.atlasFont`) drawn once with Core Text, and since pass 24 Still water's soft rings as a shape in the fragment
+// shader (the rings' arcs and the grid's lines and cells went with their modes). The shader is Metal source compiled at runtime once per device (`makeLibrary(source:)`): the
 // Command Line Tools have no Metal compiler, and the system compiles it in a few milliseconds. The app draws into a
 // CAMetalLayer's drawable on the scene's thread; the tests draw into an offscreen texture.
 import CoreGraphics
@@ -101,7 +101,8 @@ extension Ambience {
 
         /// The library compiled from `source` once per device, and the pipeline made from it once per blend:
         /// premultiplied output, the alpha laid over, and the colours added (`.add`: the scenes are light spilling onto
-        /// a dark dim, and rings add) or laid over too (`.over`: ink on a light dim, where added light shows nothing).
+        /// a dark dim, and rings that cross add) or laid over too (`.over`: ink on a light dim, where added light shows
+        /// nothing, and rings that cross darken it the more).
         private static func pipeline(_ device: MTLDevice, _ format: MTLPixelFormat,
                                      _ blend: Theme.Ink.Blend) -> MTLRenderPipelineState? {
             lock.lock()
@@ -190,7 +191,6 @@ extension Ambience {
         struct Shaded {
             float4 position [[position]];
             float2 local;
-            float2 half_size [[flat]];
             float4 colour [[flat]];
             float2 uv;
             uint kind [[flat]];
@@ -209,7 +209,6 @@ extension Ambience {
             Shaded o;
             o.position = float4(p / f.viewport * 2.0 - 1.0, 0.0, 1.0);
             o.local = local;
-            o.half_size = half_size;
             o.colour = float4(unpack_unorm4x8_to_float(s.colour).rgb, s.alpha * f.alpha);
             o.kind = kind;
             o.parameter = float(parameter);
@@ -220,23 +219,18 @@ extension Ambience {
 
         fragment float4 sprite_fragment(Shaded q [[stage_in]], constant Frame &f [[buffer(0)]],
                                         texture2d<float> atlas [[texture(0)]], sampler smp [[sampler(0)]]) {
-            float px = f.scale, cover = 0.0, a = q.colour.a;
+            float cover = 0.0, a = q.colour.a;
             float3 rgb = q.colour.rgb;
-            float2 h = q.half_size, p = q.local;
+            float2 p = q.local;
             switch (q.kind) {
             case 0u:  // a glyph
                 cover = atlas.sample(smp, q.uv).r;
                 break;
-            case 1u: {  // a rectangle
-                float2 e = (h - abs(p)) * px + 0.5;
-                cover = saturate(min(e.x, e.y));
-                break;
-            }
-            case 2u: {  // a stretch of a large circle's stroke, its centre the radius below the quad's middle
+            case 1u: {  // a soft ring about the quad's middle: a Gaussian across the circle, e^(-2) at its width
                 uint k = uint(q.parameter);
                 float r = float(k & 0x3fffu) / 2.0, w = float(k >> 14) / 16.0;
-                float d = abs(length(p + float2(0.0, r)) - r);
-                cover = saturate((w * 0.5 - d) * px + 0.5) * step(abs(p.x), h.x);  // cut square at the quad's ends
+                float u = (length(p) - r) / w;
+                cover = abs(u) < 2.0 ? exp(-2.0 * u * u) : 0.0;
                 break;
             }
             default:

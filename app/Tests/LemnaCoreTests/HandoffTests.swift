@@ -1,5 +1,7 @@
 // The hand-off's motion (DESIGN.md F1's H1 and C1, pass 17b): where each glyph is and when, the box's collapse and the
-// dim's lift, when it plays at all, and renders of it over a light app. No Foundation here (see RenderTests.swift).
+// dim's lift, when it plays at all, and renders of it over a light app; since pass 24 MO1's ring under Still: when it
+// plays, where each line of it is and when, its alpha and the wash's lift, and a render. No Foundation here (see
+// RenderTests.swift).
 import CoreGraphics
 import CoreText
 import Testing
@@ -215,4 +217,98 @@ private func handOffFrame(_ text: Text, _ way: Handoff.Way, at t: Double, name: 
     #expect(pixel(at200, 1100, 300)[0] > 240)  // the box nearly gone at 200 ms (2 % left)
     #expect(inked(rising, cols: 400..<1990, rows: 192..<244))  // risen above the band, still inside the box
     #expect(rising != at120)
+}
+
+// MARK: MO1's ring (pass 24)
+
+@Test func stillsPasteSendsOneRingAndCopySaveAndReduceMotionNone() {
+    // A paste under a theme whose hand-off is the box's fade, on Hand-off's tick: the ring, beside P1's 200 ms fade.
+    #expect(Handoff.rings(.send, Effects(), reduceMotion: false, handOff: .fade))
+    #expect(Handoff.leaving(Effects(), reduceMotion: false, handOff: .fade) == .fade(0.200))
+    // Copy and Save… keep the plain fade; Lemna's stream never rings.
+    #expect(!Handoff.rings(.rise, Effects(), reduceMotion: false, handOff: .fade))
+    #expect(!Handoff.rings(.send, Effects(), reduceMotion: false, handOff: .stream))
+    // Reduce Motion: no ring, and the box goes at once as before (it stops Pop's fade too); Effects ▸ Off the same;
+    // Hand-off unticked: P1's close alone, no ring.
+    #expect(!Handoff.rings(.send, Effects(), reduceMotion: true, handOff: .fade))
+    #expect(Handoff.leaving(Effects(), reduceMotion: true, handOff: .fade) == .atOnce)
+    var off = Effects()
+    off.toggle()
+    #expect(!Handoff.rings(.send, off, reduceMotion: false, handOff: .fade))
+    var unticked = Effects()
+    unticked.choose(.handOff)
+    #expect(!Handoff.rings(.send, unticked, reduceMotion: false, handOff: .fade))
+    #expect(Handoff.leaving(unticked, reduceMotion: false, handOff: .fade) == .fade(T.close))
+    #expect(Theme.still.motion.handOff == .fade && Theme.lemna.motion.handOff == .stream)
+}
+
+@Test func theRingLeavesTheOutlineAndTheWashLiftsWithItOver1200ms() {
+    // The panel's MO1 preview and look §5.3: two crests 9 pt apart at 60 pt/s from the box's outline, each with a
+    // trough 3 pt inside at 0.4 of its alpha, drawn as three strokes; peak 0.18 by day, 0.08 by night; gone by 1.2 s.
+    #expect(T.ringCrests == 2 && T.ringSpacing == 9 && T.ringSpeed == 60 && T.ringTrough == 3)
+    #expect(T.ringTroughShare == 0.4 && T.ringOnset == 0.18 && T.ringPeak == (0.18, 0.08) && T.ringLife == 1.2)
+    #expect(T.ringStrokes.map(\.width) == [3.2, 1.8, 0.9] && T.ringStrokes.map(\.share) == [0.2, 0.35, 0.45])
+    #expect(Handoff.ring.map(\.share) == [1, 0.4, 1, 0.4])
+    // From the key-down: the first crest on the outline, the rest still inside it; at 600 ms 36, 33, 27 and 24 pt out.
+    #expect(Handoff.ring[0].offset(at: 0) == 0 && Handoff.ring.dropFirst().allSatisfy { $0.offset(at: 0) < 0 })
+    #expect(zip(Handoff.ring.map { $0.offset(at: 0.6) }, [36, 33, 27, 24] as [CGFloat]).allSatisfy { abs($0 - $1) < 1e-9 })
+    // Its alpha: nothing at the key, up on the curve to its peak at 180 ms, down every frame after, nothing at 1.2 s.
+    let peak = Handoff.ringAlpha(at: 0.18, dark: false)
+    #expect(Handoff.ringAlpha(at: 0, dark: false) == 0 && Handoff.ringAlpha(at: 1.2, dark: false) == 0)
+    #expect(abs(peak - 0.18 * 0.85 * 0.85.squareRoot()) < 1e-12 && Handoff.ringAlpha(at: 1.0 / 60, dark: false) < peak / 2)
+    let falling = stride(from: 0.18, to: 1.2, by: 1.0 / 60).map { Handoff.ringAlpha(at: $0, dark: false) }
+    #expect(zip(falling, falling.dropFirst()).allSatisfy { $0 > $1 })
+    #expect(abs(Handoff.ringAlpha(at: 0.5, dark: true) / Handoff.ringAlpha(at: 0.5, dark: false) - 0.08 / 0.18) < 1e-12)
+    // The wash lifts evenly under it, half at 600 ms, gone with the ring (the stream's lift stays 140 ms on the curve).
+    #expect(Handoff.washUnderRing(at: 0) == 1 && abs(Handoff.washUnderRing(at: 0.6) - 0.5) < 1e-12)
+    #expect(Handoff.washUnderRing(at: 1.2) == 0 && Handoff.washUnderRing(at: 2) == 0 && Handoff.dim(at: 0.140) == 0)
+    // The outline: the box grown by the offset, its corners with it, a stroke centred on it.
+    let o = Handoff.ringOutline(CGRect(x: 100, y: 100, width: 907, height: 120), corner: 16, offset: 36, width: 2)
+    #expect(o.rect == CGRect(x: 63, y: 63, width: 981, height: 194) && o.corner == 53)
+}
+
+/// MO1's ring `t` seconds after ⌘⏎ under Still by day, over a light app, at 2×, as Core Animation composes the box's
+/// screen's dim: the app, the wash at its share under the ring, and each line of the ring as the borders of its three
+/// layers (each inside its bounds, `Handoff.ringOutline`) at the ring's alpha times its share; the box's last look has
+/// faded by then (P1's 200 ms from Return's key-up, about 100 ms in). Written to app/renders/`name` when one is given.
+private func stillRingFrame(at t: Double, name: String? = nil) -> [UInt8] {
+    let size = CGSize(width: 1100, height: 400), (w, h) = (2200, 800), style = Style(.still, dark: false, font: menlo)
+    let c = Line.context(width: w, height: h, rowBytes: 4 * w, scale: 2, data: nil)
+    c.setFillColor(rgb(0xffffff))
+    c.fill(CGRect(origin: .zero, size: size))
+    c.setFillColor(rgb(0xaeb3ba))
+    for (i, len) in [620, 860, 740, 520, 900, 680, 800, 430, 760, 640, 880, 560, 700, 820, 610, 900].enumerated() {
+        c.fill(CGRect(x: 40, y: size.height - 30 - CGFloat(i) * 22, width: CGFloat(len), height: 6))
+    }
+    let wash = Double(style.palette.dimAlpha) * Handoff.washUnderRing(at: t)
+    c.setFillColor(rgb(style.palette.dim).copy(alpha: CGFloat(wash))!)
+    c.fill(CGRect(origin: .zero, size: size))
+    let box = CGRect(x: 96, y: 140, width: 907, height: BoxFrame.height(fontSize: 30)), a = Handoff.ringAlpha(at: t, dark: false)
+    for line in Handoff.ring where line.offset(at: t) > 0 {
+        for s in T.ringStrokes {
+            let o = Handoff.ringOutline(box, corner: style.theme.box.corner, offset: line.offset(at: t), width: s.width)
+            let mid = o.rect.insetBy(dx: s.width / 2, dy: s.width / 2), r = o.corner - s.width / 2  // the border's middle
+            c.addPath(CGPath(roundedRect: mid, cornerWidth: r, cornerHeight: r, transform: nil))
+            c.setStrokeColor(rgb(style.palette.ink.text).copy(alpha: CGFloat(a * line.share * s.share))!)
+            c.setLineWidth(s.width)
+            c.strokePath()
+        }
+    }
+    if let name { savePNG(c, name, dpi: 144) }
+    let px = c.data!.assumingMemoryBound(to: UInt8.self)
+    return Array(UnsafeBufferPointer(start: px, count: 4 * w * h))
+}
+
+@Test func stillHandOffRenders() {
+    let at600 = stillRingFrame(at: 0.6, name: "handoff-still-600ms.png"), at0 = stillRingFrame(at: 0)
+    /// The pixel (BGRA) at points (x, y), origin at the bottom left.
+    func pixel(_ f: [UInt8], _ x: CGFloat, _ y: CGFloat) -> [Int] {
+        let i = 4 * (Int((400 - y) * 2) * 2200 + Int(x * 2))
+        return f[i..<i + 4].map { Int($0) }
+    }
+    // The first crest 36 pt above the box's top edge (260): darker than the wash 20 pt further out, where no line is.
+    let crest = pixel(at600, 550, 260 + 36), beyond = pixel(at600, 550, 260 + 56)
+    #expect((0..<3).allSatisfy { crest[$0] < beyond[$0] - 4 }, "\(crest) \(beyond)")
+    // The wash at half its strength: lighter far from the ring than at the key-down.
+    #expect((0..<3).allSatisfy { pixel(at600, 1080, 10)[$0] > pixel(at0, 1080, 10)[$0] })
 }

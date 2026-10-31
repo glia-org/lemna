@@ -4,6 +4,38 @@
 
 ## State (2026-10-31)
 
+- App, pass 24, Still water and the removals (2026-10-31; DESIGN.md A1 and F1 amended; the user's picks AM1 with drops
+  at rest only, MO1 and RM1 of `docs/design-panel-lemna-themes.html`; on the other modes: "I like the rain animation
+  but the other ones are not really great"). **Still water** is a new mode, Session › Ambience ▸ Still water, and
+  Still's preset (`Theme.still.defaults.ambience = .water`; Lemna's stays Off): on the box's screen's dim, from the
+  summon to the close, drops land at random at a slow rate (0.12 a second on a 1512 × 982 pt screen, by area on
+  others, at least 48 pt from the box) and one above the box at the summon; never for a key. Each drop is three soft
+  rings with troughs, spreading at 36 pt/s with the calm centre at 0.7, rising over 180 ms and fading with radius and
+  time, gone by 4.5 s; crossing rings add. A new `ring` sprite shape (a Gaussian across the circle) in the shader;
+  30 Hz; every magnitude in `Ambience.Tuning.water*`; peaks on screen look §5.3's (0.16 by day, 0.07 by night).
+  **MO1:** under Still, a ⌘⏎ that pastes also sends one rounded-rect ring of two crests from the box's outline across
+  the wash over 1.2 s (Core Animation layers over the dim, not the ambience's Metal layer), the wash lifting evenly
+  with it; the glyphs fade in place with the box over 200 ms from Return's key-up as before, and the paste does not
+  wait. Copy and Save… keep the plain fade; Reduce Motion: no ring, the box goes at once as before. **RM1:** Drift,
+  Rings and Grid removed with their scenes, tuning, tests, renders, menu items and the shader's rectangle and arc
+  shapes; Ambience ▸ is Rain, Still water, Off; a kept removed mode reads as Off. Tests: 114, all passing (111 before,
+  six removed with the modes, nine new: Still water's rate at rest and the 48 pt clearance, no reaction to keys, the
+  rings' rise and decay with radius and time, the cap on 2560 × 1440, rings that cross adding (Metal), the frame on
+  Still's day and night washes (1,699 and 1,612 pixels show at 1×), MO1's rule, its timing and its render). Renders
+  `ambience-water-day.png`, `ambience-water-night.png`, `handoff-still-600ms.png`. `LEMNA_VERSION=0.1.2
+  make-app.sh` built, signed with "Lemna Dev" (`Authority=Lemna Dev`) and verified; the executable is 1,145,248 bytes,
+  no home folder in its symbols. Not tried: nothing was launched. Try, after quitting the running Lemna and `open
+  app/build/Lemna.app`:
+  - Theme ▸ Still, summon: Ambience ▸ ticks Still water; a drop above the box as it opens, then now and then (about
+    one every 8 s on a laptop screen) rings somewhere on the wash. Wait and watch: soft, sparse, gone within seconds.
+  - Type a sentence and pause: nothing in the water changes with the keys.
+  - ⌘⏎ into TextEdit: the box and its glyphs fade, one ring of two crests leaves the box's outline and spreads over
+    the wash as the wash lifts, all gone by 1.2 s; the text lands in TextEdit at once, not after the ring. ⌘⇧⏎ (Copy)
+    and ⌘S: the plain fade, no ring.
+  - The same by night (dark appearance): faint light rings on the dark wash, the ring at ⌘⏎ fainter too.
+  - Ambience ▸ Rain under Still and under Lemna: as before. Ambience ▸ lists Rain, Still water, Off.
+  - Reduce Motion on: no water (Ambience greyed), and ⌘⏎ under Still closes the box at once, no ring.
+
 - App, pass 22, the Still look and its typeface (2026-10-31; DESIGN.md TH1 amended; the user's picks `LK1 TY1 MO1` of
   `docs/design-panel-lemna-themes.html`, OR1's second step; MO1's ring is pass 24's): **Literata is bundled**, the
   variable font (3.103, 955,132 bytes) with its `OFL.txt` in `app/Fonts/Literata/`, credited in `app/THIRD_PARTY.md`;
