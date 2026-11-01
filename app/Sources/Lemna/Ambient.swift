@@ -1,5 +1,5 @@
 // The ambience on the dim (DESIGN.md A1, R1): over each screen's shade, a clear CAMetalLayer that its own
-// CAMetalDisplayLink draws on the scene thread from the show until the close (an ambient mode: Rain since pass 19b, at
+// CAMetalDisplayLink draws on the scene thread from the show until the close (an ambient mode: Code since pass 19b, at
 // 30 Hz while it is at rest and 60 while typing raises it; Still water since pass 24, at 30 Hz); then the link pauses
 // and the layer holds one cleared pixel, so a box with Ambience Off costs nothing. (Until pass 24 the other modes ran
 // it from the first key until 4 s after the last.) The line's key path only hands it the key as a value (`key(_:)`: a

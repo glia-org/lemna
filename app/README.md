@@ -68,9 +68,11 @@ drawn by the Metal pipeline over a dimmed dark app with the box; skipped without
 `ambience-grid-keyboard.png` ("the quick brown fox" at 20 keys/s, the keys lit as a keyboard), and since pass 17b
 `handoff-send-60ms.png`, `handoff-send-120ms.png`, `handoff-send-200ms.png` and `handoff-rise-120ms.png` (the box over
 a light app 60, 120 and 200 ms after ⌘⏎, and 120 ms after ⌘⇧⏎; composed as Core Animation composes the app's layers),
-and since pass 19b `ambience-rain-idle.png` (Rain at rest, 3 s after the summon; `ambience-rain.png` is Rain typing),
-and since pass 21 `ambience-rain-still-day.png` (Rain at rest on Still's day wash over a light app),
-`ambience-rain-still-night.png` (on its night wash over a dark app), `idle-still-day.png` and `idle-still-night.png`;
+and since pass 19b `ambience-code-idle.png` (Code at rest, 3 s after the summon; `ambience-code.png` is Code typing),
+and since pass 21 `ambience-code-still-day.png` (Code at rest on Still's day wash over a light app),
+`ambience-code-still-night.png` (on its night wash over a dark app), `idle-still-day.png` and `idle-still-night.png`
+(the four `ambience-code*` named `ambience-rain*` until pass 25), and since pass 24 `ambience-water-day.png` and
+`ambience-water-night.png` (Still water on Still's washes; since pass 25 one of its drops a word's);
 the mark test writes
 `mark-M3-1x.png` and `mark-M3-2x.png` (16 and 32 px, black on clear). `app/build/` and `app/renders/` are
 git-ignored.
@@ -981,8 +983,52 @@ other ones are not really great"):
 - Build: `LEMNA_VERSION=0.1.2 make-app.sh`; the executable is 1,145,248 bytes, no home folder in its symbols; signed
   with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
 
+Pass 25, Code rain intensifies without speeding up, its name, and a drop per word on the water (DESIGN.md A1
+amended; 2026-11-01; the user, after trying passes 19–24: "I don't think the matrix code animation gets faster in the
+movie, it just gets more intense. That should be reflected in that animation. Also it's odd that it's called rain when
+we actually have a rain animation as well. Also the rain drops should probably also be increasing when typing as
+well."):
+
+- `Code` (`Scenes.swift`; `Rain` until now): `speed`, each column's rows a second, drawn once at the birth as
+  `mix(codeSpeed, u)` from the same draw that gave its share before, so the random sequence is unchanged; a step moves
+  a column by `speed[c] · dt` and a column starts a head with probability `active · speed[c] / crossing · dt`; the
+  intensity no longer touches the speed (`Tuning.codeSpeed` 8–16, was the pair `rainSpeed` 5–10 / 15–30). Everything
+  else of the ramp as in pass 19b.
+- The name: `Mode.code` ("Code"), raw value `code`; `Ambience(kept:)` reads `rain` as `code`; the tuning `rain*` →
+  `code*` (`rainRows` → `codeRows`), `Glyphs.rainSet` → `codeSet`; the menus take the title, so Session › Ambience ▸
+  and the menu-bar item's read Code, Still water, Off. `BedChoice` and its "Rain bed" untouched.
+- `Water`: the events now count: `.typed` marks a word begun and keeps the key's place; `.space` and `.paragraph`
+  after one drop `wordDrop(at:)` unless the last word's came less than `waterWordGap` (0.8 s) ago; `.backspace` and
+  the rate nothing. `wordDrop`: x `Stage.screenX(key)` (the caret's x without a place), y from `waterTop` (40 pt)
+  under the stage's top edge for row 0 to `waterClear` above the box for row 4, linear in `Keyboard.Position.down`.
+  The word's drop takes its crests' random draws before the frame's rest draw, so a word moves the rest drops' dice
+  but not their rate.
+- Tests: 126 (124 before). New: `aColumnKeepsItsSpeedWhateverTheIntensity` (speeds in 8–16, the extremes near both
+  ends; a key's head in one column row for row the same at rest and typing at 6 keys a second for 2 s),
+  `stillWatersRestRateHoldsWhileWriting` (a word every 1.5 s for 2,000 s: all 1,334 words' drops at their spot, 974 at
+  rest, 1,000 expected, all 48 pt clear). Replaced: `stillWaterTakesNoKeys` by
+  `stillWaterDropsOneForEachWordAndNoneForAKey` (a flood of glyph keys and ⌫ changes no frame; "mo " drops at o, a word
+  0.1 s later none, Spaces and Returns ending no word none, a Return after a number-row key at 40 pt under the top, the
+  accent menu's pick at the caret 48 pt above the box; through a `Run` too). Changed: the ramp test asserts no speed
+  and, 4 s later, more columns at the same speeds; the key head's travel at its column's speed; the grid's first-frame
+  spread (15–28 columns over 20 seeds, more than 12 asserted); `stillWaterStaysUnderTheCapOnALargeScreen` adds 10
+  words a second for a minute (67 words' drops, at most 17 drops, 71 sprites); the water render's drop at f 6 is now a
+  word's ("o" and a Space); every `.rain` is `.code`, the Rain tests' names Code's.
+- Site (`site/assets/site.js`, `index.html`, `site.css`): the Code tile's engine draws a speed per column, 8–16, and
+  runs its clock at real time (was `1/3 + 2/3 I`, Rezmason's rain clock); the new heads a second take the mean speed
+  12; `Water` ports `Scenes.swift`'s with the app's tuning in Lemna's ink (#d8dce3, 0.4 added, the canvas's
+  `lighter`), 6 s ahead at its start, fed the burst's keys half the 7 s interval after Code; `Drift`, `Rings`, `Grid`
+  and their `Runner` removed; reduced motion draws one still frame of each. Stills `assets/img/ambience-code.png`
+  (the tile mid-burst) and `ambience-water.png` (its reduced-motion frame), 1080 × 608, headless Chrome.
+- Build: `LEMNA_VERSION=0.1.2 make-app.sh`; the executable is 1,223,088 bytes, no home folder in its symbols; signed
+  with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
+
 ## Known gaps
 
+- Pass 25 is not tried: nothing was launched. Untried: whether 8–16 rows a second reads right at rest and while
+  typing, and whether the density building over a few seconds (new heads start at the top) feels like "more intense"
+  or slow; whether a drop per word on the water feels calm or busy at a fast pace (at most one every 0.8 s), and where
+  the drops land on a real screen. A hand-off's end of text drops no word (HANDOFF asks).
 - Pass 24 is not tried: nothing was launched. Untried: whether the water reads by eye on a real wash (its alphas are
   look §5.3's and the panel's, a starting value; by night it is faint), whether a drop every 8 s or so feels like a bed
   or like waiting, the drop above the box at the summon as the box fades in, the ring's Core Animation layers against

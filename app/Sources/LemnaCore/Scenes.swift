@@ -1,12 +1,13 @@
-// The two scenes of the ambience (DESIGN.md A1): Rain (M2 of docs/design-panel-lemna-ambience.html) and Still water
-// (pass 24, AM1 of docs/design-panel-lemna-themes.html), each a particle system on the CPU, stepped once a frame by
-// `Ambience.Run` on the scene's thread. Pass 18 removed M4 Beams, M6 Fireworks and M7 Swarm, pass 24 (RM1) M1 Drift, M3
-// Rings and M5 Grid. Rain, since pass 19b (G1 I1 T1 C2 K1 W1 of docs/design-panel-lemna-rain.html), is the films' rain
-// as research_notes/Lemna rain/matrix.md §6 sets it: a fixed grid of glyphs lit by heads that step down it, its cells
-// in flat arrays, falling from the show to the close, raised by typing and fed by where each key is on the keyboard
-// (`Keyboard`, pass 16). Still water is research_notes/Lemna themes/look.md §5.3's Ripples with drops at rest only:
-// soft rings on the dim from the show to the close that no key feeds. Every magnitude is `Ambience.Tuning`'s; a scene
-// draws no more than `Tuning.cap` sprites.
+// The two scenes of the ambience (DESIGN.md A1): Code (M2 of docs/design-panel-lemna-ambience.html, Rain until pass
+// 25) and Still water (pass 24, AM1 of docs/design-panel-lemna-themes.html), each a particle system on the CPU, stepped
+// once a frame by `Ambience.Run` on the scene's thread. Pass 18 removed M4 Beams, M6 Fireworks and M7 Swarm, pass 24
+// (RM1) M1 Drift, M3 Rings and M5 Grid. Code, since pass 19b (G1 I1 T1 C2 K1 W1 of docs/design-panel-lemna-rain.html),
+// is the films' code rain as research_notes/Lemna rain/matrix.md §6 sets it: a fixed grid of glyphs lit by heads that
+// step down it, its cells in flat arrays, falling from the show to the close, each column at its own speed, made more
+// intense by typing and fed by where each key is on the keyboard (`Keyboard`, pass 16). Still water is
+// research_notes/Lemna themes/look.md §5.3's Ripples: soft rings on the dim from the show to the close, from drops at
+// rest and, since pass 25, a drop for each word written. Every magnitude is `Ambience.Tuning`'s; a scene draws no more
+// than `Tuning.cap` sprites.
 import CoreGraphics
 import Foundation
 
@@ -16,23 +17,24 @@ extension Ambience.Scene {
     var frameRate: Double { T.frameRate }
 }
 
-// MARK: M2 Rain
+// MARK: M2 Code
 
-/// A magnitude between its idle and its typing value (`Tuning`'s pairs), at intensity `i`: Rain's.
+/// A magnitude between its idle and its typing value (`Tuning`'s pairs), at intensity `i`: Code's.
 private func between(_ p: (idle: Double, typing: Double), _ i: Double) -> Double { p.idle + (p.typing - p.idle) * i }
 private func between(_ p: (idle: ClosedRange<Double>, typing: ClosedRange<Double>), _ i: Double) -> ClosedRange<Double> {
     between((p.idle.lowerBound, p.typing.lowerBound), i)...between((p.idle.upperBound, p.typing.upperBound), i)
 }
 
-/// The films' rain over the dim (pass 19b; G1 I1 T1 C2 K1 W1 of docs/design-panel-lemna-rain.html): glyphs fixed in a
-/// grid of square cells over the whole screen, and heads stepping down the columns a cell at a time, each lighting the
-/// cell it enters in the text colour; behind it the cell dims in place in the accent, linearly, over the head's trail.
-/// A column keeps its speed; its heads (one or two at a time) start at the top after a random pause and end below the
-/// bottom; every lit glyph changes now and then. It falls low-key from the show until the close, and typing raises one
-/// intensity that sets how many columns fall, how fast, how long and how bright, and how often the glyphs change; each
-/// glyph key also starts a head where the key is across the screen, higher the higher its row, the typed glyph at it.
-/// Every screen.
-struct Rain: Ambience.Scene {
+/// The films' code rain over the dim (pass 19b; G1 I1 T1 C2 K1 W1 of docs/design-panel-lemna-rain.html; Rain until pass
+/// 25): glyphs fixed in a grid of square cells over the whole screen, and heads stepping down the columns a cell at a
+/// time, each lighting the cell it enters in the text colour; behind it the cell dims in place in the accent, linearly,
+/// over the head's trail. A column keeps the speed it drew at the birth, whatever the intensity (pass 25); its heads
+/// (one or two at a time) start at the top after a random pause and end below the bottom; every lit glyph changes now
+/// and then. It falls low-key from the show until the close, and typing raises one intensity that sets how many columns
+/// fall, how long and how bright, and how often the glyphs change, never how fast (the films' "more intense", matrix §2
+/// and §3); each glyph key also starts a head where the key is across the screen, higher the higher its row, the typed
+/// glyph at it. Every screen.
+struct Code: Ambience.Scene {
     /// A head: its column, its row (0 at the top; between two cells while it steps), its trail in cells, the typed
     /// glyph's slot at it (nil: the cell's own), and whether a key started it.
     private struct Head { let column: Int; var row: Double; let trail: Double, glyph: Int?, key: Bool }
@@ -44,12 +46,14 @@ struct Rain: Ambience.Scene {
     /// trail's top alpha (0: the intensity's), and whether a head is in it (set and cleared as the step draws); a cell
     /// at column × `rows` + row.
     private var glyph: [Int], lit: [Double], trail: [Double], top: [Double], under: [Bool]
-    /// Each column's share of `rainSpeed` (its own, kept), the cells its heads have stepped in all and in this step,
-    /// how many of its heads are not a key's, and the youngest of those: its start (in travel) and its trail.
-    private var share: [Double], travel: [Double], moved: [Double], falling: [Int]
+    /// Each column's speed in rows a second (drawn once from `codeSpeed`, kept whatever the intensity).
+    private(set) var speed: [Double]
+    /// Each column's cells its heads have stepped in all and in this step, how many of its heads are not a key's, and
+    /// the youngest of those: its start (in travel) and its trail.
+    private var travel: [Double], moved: [Double], falling: [Int]
     private var youngest: [(at: Double, trail: Double)]
     private var heads: [Head] = []
-    /// 0 at rest, 1 at `rainFast` keys a second; the time since the last key.
+    /// 0 at rest, 1 at `codeFast` keys a second; the time since the last key.
     private(set) var intensity = 0.0
     private var sinceKey = Double.infinity
     /// The sprites the last step would have drawn, before the cap.
@@ -58,24 +62,24 @@ struct Rain: Ambience.Scene {
 
     init(stage: Ambience.Stage, glyphs: Ambience.Glyphs, seed: UInt64) {
         (self.stage, self.glyphs) = (stage, glyphs)
-        pitch = Double(glyphs.cell.height) * T.rainScale * T.rainPitch
+        pitch = Double(glyphs.cell.height) * T.codeScale * T.codePitch
         let (w, h) = (Double(stage.size.width), Double(stage.size.height))
         (columns, rows) = (max(Int(w / pitch), 1), max(Int((h / pitch).rounded(.up)), 1))
         left = (w - Double(columns) * pitch) / 2
         var r = Ambience.Random(seed: seed)
-        let n = columns * rows, set = glyphs.rainSet.isEmpty ? [0] : glyphs.rainSet
+        let n = columns * rows, set = glyphs.codeSet.isEmpty ? [0] : glyphs.codeSet
         glyph = (0..<n).map { _ in set.randomElement(using: &r)! }
         (lit, trail, top, under) = (Array(repeating: -.infinity, count: n), Array(repeating: 1, count: n),
                                     Array(repeating: 0, count: n), Array(repeating: false, count: n))
-        share = (0..<columns).map { _ in r.unit() }
+        speed = (0..<columns).map { _ in mix(T.codeSpeed, r.unit()) }
         (travel, moved, falling) = (Array(repeating: 0, count: columns), Array(repeating: 0, count: columns),
                                     Array(repeating: 0, count: columns))
         youngest = Array(repeating: (-.infinity, 0), count: columns)
         random = r
         heads.reserveCapacity(limit)
         // Stepped ahead, undrawn, at rest: the summon finds the rain falling, the slowest column's first head through.
-        for _ in 0..<Int(T.rainAhead * T.rainIdleRate) {
-            advance(dt: 1 / T.rainIdleRate, events: [], rate: 0, changing: false)
+        for _ in 0..<Int(T.codeAhead * T.codeIdleRate) {
+            advance(dt: 1 / T.codeIdleRate, events: [], rate: 0, changing: false)
         }
     }
 
@@ -85,11 +89,11 @@ struct Rain: Ambience.Scene {
     var count: Int { min(shown, T.cap) }
 
     /// Fewer frames at rest: a head steps a cell at a time, and the films ran at 24.
-    var frameRate: Double { intensity > T.rainCalm || sinceKey < T.rainHold ? T.frameRate : T.rainIdleRate }
+    var frameRate: Double { intensity > T.codeCalm || sinceKey < T.codeHold ? T.frameRate : T.codeIdleRate }
 
     mutating func step(dt: Double, events: [Ambience.Event], rate: Double, into out: inout [Sprite]) {
         advance(dt: dt, events: events, rate: rate, changing: true)
-        let head = between(T.rainHead, intensity), trailTop = between(T.rainTrailTop, intensity)
+        let head = between(T.codeHead, intensity), trailTop = between(T.codeTrailTop, intensity)
         shown = 0
         for pass in 0..<2 {  // first, so the cap takes trail cells, not heads; one a cell, a key's before the others
             let key = pass == 0
@@ -97,7 +101,7 @@ struct Rain: Ambience.Scene {
                 let r = Int(h.row), x = h.column * rows + r
                 guard !under[x] else { continue }
                 under[x] = true
-                add(h.glyph ?? glyph[x], h.column, r, alpha: key ? T.rainKeyHead : head, colour: stage.ink.text,
+                add(h.glyph ?? glyph[x], h.column, r, alpha: key ? T.codeKeyHead : head, colour: stage.ink.text,
                     into: &out)
             }
         }
@@ -111,7 +115,7 @@ struct Rain: Ambience.Scene {
                 let age = now - lit[x]
                 guard age < trail[x] else { continue }
                 let a = (top[x] > 0 ? top[x] : trailTop) * (1 - age / trail[x])
-                if a > T.rainShown { add(glyph[x], c, x - c * rows, alpha: a, colour: stage.ink.accent, into: &out) }
+                if a > T.codeShown { add(glyph[x], c, x - c * rows, alpha: a, colour: stage.ink.accent, into: &out) }
             }
         }
     }
@@ -121,26 +125,27 @@ struct Rain: Ambience.Scene {
         shown += 1
         guard out.count < T.cap else { return }
         let centre = CGPoint(x: left + (Double(c) + 0.5) * pitch, y: Double(stage.size.height) - (Double(r) + 0.5) * pitch)
-        out.append(glyphs.sprite(slot, centre: centre, scale: T.rainScale, alpha: alpha, colour: colour))
+        out.append(glyphs.sprite(slot, centre: centre, scale: T.codeScale, alpha: alpha, colour: colour))
     }
 
-    /// The scene moved on by `dt`: the keys' heads, the intensity, every head a step down its column lighting the
-    /// cells it enters, those below the bottom gone, new heads at the top, and (`changing`) the lit glyphs changed.
+    /// The scene moved on by `dt`: the keys' heads, the intensity, every head a step down its column at the column's
+    /// speed lighting the cells it enters, those below the bottom gone, new heads at the top, and (`changing`) the lit
+    /// glyphs changed.
     private mutating func advance(dt: Double, events: [Ambience.Event], rate: Double, changing: Bool) {
         for e in events {
             sinceKey = 0
             if case .typed(let slot, let key) = e { startHead(slot: slot, at: key) }
         }
-        let target = min(rate / T.rainFast, 1)  // up at once, down only after a pause
+        let target = min(rate / T.codeFast, 1)  // up at once, down only after a pause
         if target > intensity {
-            intensity += (target - intensity) * (1 - exp(-dt / T.rainRise))
-        } else if sinceKey >= T.rainHold {
-            intensity += (target - intensity) * (1 - exp(-dt / T.rainSettle))
+            intensity += (target - intensity) * (1 - exp(-dt / T.codeRise))
+        } else if sinceKey >= T.codeHold {
+            intensity += (target - intensity) * (1 - exp(-dt / T.codeSettle))
         }
         sinceKey += dt
-        let i = intensity, speeds = between(T.rainSpeed, i)
+        let i = intensity
         for c in 0..<columns {
-            moved[c] = mix(speeds, share[c]) * dt
+            moved[c] = speed[c] * dt
             travel[c] += moved[c]
         }
         var k = 0
@@ -151,7 +156,7 @@ struct Rain: Ambience.Scene {
             let to = Int(h.row)
             if to > from, from + 1 < rows {
                 for r in (from + 1)...min(to, rows - 1) {
-                    light(h.column, r, trail: h.trail, top: h.key ? T.rainKeyTrailTop : 0)
+                    light(h.column, r, trail: h.trail, top: h.key ? T.codeKeyTrailTop : 0)
                 }
             }
             if to >= rows {  // below the bottom: it ends
@@ -163,13 +168,13 @@ struct Rain: Ambience.Scene {
             heads[k] = h
             k += 1
         }
-        // A new head at the top after a random pause, at the rate that keeps `rainActive` of the columns showing one
-        // (each shows for its crossing: the rows and its trail at the column's speed), and only `rainGap` cells behind
+        // A new head at the top after a random pause, at the rate that keeps `codeActive` of the columns showing one
+        // (each shows for its crossing: the rows and its trail at the column's speed), and only `codeGap` cells behind
         // the last one's trail.
-        let trails = between(T.rainTrail, i), gap = between(T.rainGap, i), active = between(T.rainActive, i)
+        let trails = between(T.codeTrail, i), gap = between(T.codeGap, i), active = between(T.codeActive, i)
         let crossing = Double(rows) + (trails.upperBound - trails.lowerBound) / log(trails.upperBound / trails.lowerBound)
         for c in 0..<columns where falling[c] < 2 && travel[c] - youngest[c].at >= youngest[c].trail + gap {
-            guard random.unit() < active * mix(speeds, share[c]) / crossing * dt, heads.count < limit else { continue }
+            guard random.unit() < active * speed[c] / crossing * dt, heads.count < limit else { continue }
             let t = logUniform(trails)
             youngest[c] = (travel[c], t)
             falling[c] += 1
@@ -177,11 +182,11 @@ struct Rain: Ambience.Scene {
             light(c, 0, trail: t, top: 0)
         }
         guard changing else { return }
-        let change = between(T.rainChange, i) * dt
+        let change = between(T.codeChange, i) * dt
         for c in 0..<columns {
             let now = travel[c]
             for x in c * rows..<(c + 1) * rows where now - lit[x] < trail[x] && random.unit() < change {
-                glyph[x] = glyphs.rainSet.randomElement(using: &random) ?? glyph[x]
+                glyph[x] = glyphs.codeSet.randomElement(using: &random) ?? glyph[x]
             }
         }
     }
@@ -195,12 +200,12 @@ struct Rain: Ambience.Scene {
         let width = w * (T.screenSpan.upperBound - T.screenSpan.lowerBound) / Keyboard.columns * (key?.width ?? 0)
         let spread = random.pick(-0.4...0.4) * width
         let along = stage.screenX(key).map { $0 + spread } ?? (stage.box != nil ? Double(stage.caret) : random.pick(0...w))
-        let height = key.map { mix(T.rainRows, 1 - $0.down) } ?? random.pick(T.rainRows)
+        let height = key.map { mix(T.codeRows, 1 - $0.down) } ?? random.pick(T.codeRows)
         let c = min(max(Int((along - left) / pitch), 0), columns - 1)
         let r = min(max(Int((1 - height + random.pick(-0.03...0.03)) * h / pitch), 0), rows - 1)
-        let t = logUniform(T.rainKeyTrail)
+        let t = logUniform(T.codeKeyTrail)
         heads.append(Head(column: c, row: Double(r), trail: t, glyph: slot, key: true))
-        light(c, r, trail: t, top: T.rainKeyTrailTop)
+        light(c, r, trail: t, top: T.codeKeyTrailTop)
     }
 
     /// A head lights cell `r` of column `c`: it dims from now over `t` cells of the column's travel, from `a` (0: the
@@ -218,11 +223,12 @@ struct Rain: Ambience.Scene {
 
 // MARK: Still water
 
-/// Still water (pass 24; AM1 of docs/design-panel-lemna-themes.html, drops at rest only, the user's pick): the dim is
+/// Still water (pass 24; AM1 of docs/design-panel-lemna-themes.html, per word and at rest since pass 25): the dim is
 /// still water, and drops land on it at random at a slow rate, at least `waterClear` from the box, and one above the
-/// box at the show; never for a key. Each drop is a few soft rings that leave together, the outer leading and the calm
-/// centre following, each with a fainter trough inside it; a ring rises softly, then fades with its radius and with
-/// time, and rings that cross add (the sprites' blend). The box's screen only.
+/// box at the show; while you write, one for each word, where its last key is, and never one for a key. Each drop is a
+/// few soft rings that leave together, the outer leading and the calm centre following, each with a fainter trough
+/// inside it; a ring rises softly, then fades with its radius and with time, and rings that cross add (the sprites'
+/// blend). The box's screen only.
 struct Water: Ambience.Scene {
     /// A crest: its speed, its width and its start (from the drop's landing).
     struct Crest { let speed, width, start: Double }
@@ -232,6 +238,9 @@ struct Water: Ambience.Scene {
     private(set) var drops: [Drop] = [], landed = 0
     private let stage: Ambience.Stage, peak: Double, rate: Double
     private var random: Ambience.Random
+    /// Whether a glyph key came since the last word's end, and where the last one is on the keyboard (nil: no place);
+    /// the time since the last word's drop.
+    private var inWord = false, lastKey: Keyboard.Position?, sinceWord = Double.infinity
 
     init(stage: Ambience.Stage, glyphs: Ambience.Glyphs, seed: UInt64) {
         (self.stage, random) = (stage, Ambience.Random(seed: seed))
@@ -275,8 +284,32 @@ struct Water: Ambience.Scene {
         return peak * Curve.easeOutQuint(a / T.waterOnset) * exp(-age / T.waterDecay) * spread
     }
 
-    /// `events`: none feeds it, and the typing rate neither (rest only); the random draws do not depend on them.
+    /// A word's drop (pass 25), where the panel's canvas drops it: across the screen where the word's last key is
+    /// (`Stage.screenX`), higher the higher the key's row, from `waterTop` under the stage's top edge for the number
+    /// row to `waterClear` above the box for the space bar's; a key without a place drops at the caret's x,
+    /// `waterClear` above the box.
+    private mutating func wordDrop(at key: Keyboard.Position?) {
+        let low = Double(stage.box?.maxY ?? 0) + T.waterClear, high = Double(stage.size.height) - T.waterTop
+        let x = stage.screenX(key) ?? Double(stage.box == nil ? stage.size.width / 2 : stage.caret)
+        drop(x: x, y: low + (1 - (key?.down ?? 1)) * max(high - low, 0))
+    }
+
+    /// `events`: a word's end (Space or Return after a glyph key) drops the word's drop, unless the last word's came
+    /// less than `waterWordGap` ago; a glyph key, ⌫ and the typing rate change nothing it draws.
     mutating func step(dt: Double, events: [Ambience.Event], rate _: Double, into out: inout [Sprite]) {
+        sinceWord += dt
+        for e in events {
+            switch e {
+            case .typed(_, let at): (inWord, lastKey) = (true, at)
+            case .space, .paragraph:
+                if inWord, sinceWord >= T.waterWordGap {
+                    wordDrop(at: lastKey)
+                    sinceWord = 0
+                }
+                inWord = false
+            case .backspace: break
+            }
+        }
         if random.unit() < rate * dt { restDrop() }  // Poisson, at `rate` a second
         for i in drops.indices { drops[i].age += dt }
         drops.removeAll { $0.age >= T.waterLife }

@@ -1,7 +1,7 @@
 // The ambience (DESIGN.md A1): the Ambience submenu's choice (S1), the tuning (I1, raised in pass 16), the run of a
-// scene and its close (R1), Rain's coupling to typing and, since pass 16, to where the key is on the keyboard, Still
-// water's drops at rest that no key feeds (pass 24), the cap, and the Metal pipeline drawing offscreen. No Foundation
-// here (see RenderTests.swift).
+// scene and its close (R1), Code's coupling to typing and, since pass 16, to where the key is on the keyboard, Still
+// water's drops at rest (pass 24) and per word (pass 25), the cap, and the Metal pipeline drawing offscreen. No
+// Foundation here (see RenderTests.swift).
 import CoreGraphics
 import CoreText
 import Darwin
@@ -58,22 +58,24 @@ private func near(_ a: Double, _ b: Double, _ tolerance: Double) -> Bool { abs(a
 
 @Test func ambienceStartsOffAndKeepsAModeAcrossLaunches() {
     #expect(Ambience().mode == nil && Ambience().kept == "off")  // D0
-    #expect(Mode.allCases.map(\.title) == ["Rain", "Still water"])  // pass 18 and pass 24 (RM1) removed six
+    #expect(Mode.allCases.map(\.title) == ["Code", "Still water"])  // pass 18 and 24 (RM1) removed six; Rain until 25
     for mode in Mode.allCases {
         #expect(Ambience(kept: Ambience(mode).kept) == Ambience(mode) && Ambience(mode).kept == mode.rawValue)
     }
     #expect(Ambience(kept: nil) == Ambience() && Ambience(kept: "off") == Ambience() && Ambience(.water).kept == "water")
+    // Code's name until pass 25: still Code, kept from now on under its own.
+    #expect(Ambience(kept: "rain") == Ambience(.code) && Ambience(kept: "rain").kept == "code")
     // M8, never built, or a mode removed in pass 18 or in pass 24: Off.
     for gone in ["burn", "beams", "fireworks", "swarm", "drift", "rings", "grid"] {
         #expect(Ambience(kept: gone) == Ambience() && Ambience(kept: gone).playing(reduceMotion: false) == nil)
     }
     var a = Ambience()
-    a.choose(.rain)
-    #expect(a.mode == .rain && a.playing(reduceMotion: false) == .rain)
+    a.choose(.code)
+    #expect(a.mode == .code && a.playing(reduceMotion: false) == .code)
     a.choose(nil)
     #expect(a == Ambience())
-    #expect(Mode.allCases.filter(\.everyScreen) == [.rain])  // Still water stays on the box's screen
-    #expect(Mode.allCases.filter(\.ambient) == [.rain, .water])  // from the show to the close (pass 19b, I1; pass 24)
+    #expect(Mode.allCases.filter(\.everyScreen) == [.code])  // Still water stays on the box's screen
+    #expect(Mode.allCases.filter(\.ambient) == [.code, .water])  // from the show to the close (pass 19b, I1; pass 24)
 }
 
 @Test func reduceMotionForcesOffAndKeepsThePick() {
@@ -86,22 +88,24 @@ private func near(_ a: Double, _ b: Double, _ tolerance: Double) -> Bool { abs(a
 @Test func theAmbienceTuningIsPlainToSee() {
     // Pass 16 (the user: "The ambience effects are way too subtle"); pass 15's, the panel's, in the comments.
     #expect(T.cap == 2000 && T.frameRate == 60 && T.linger == 4 && T.fadeOut == 1)
-    // Rain since pass 19b (matrix §6.2), each pair (idle, typing); pass 16's head 0.8, trail from 0.55, 3 s, 1.0.
-    #expect(T.rainScale == 0.5 && T.rainPitch == 1 && T.rainActive == (0.3, 0.7) && T.rainGap == (3, 2))
-    #expect(T.rainSpeed == (5...10, 15...30) && T.rainTrail == (6...18, 10...30))
-    #expect(T.rainHead == (0.35, 0.85) && T.rainTrailTop == (0.2, 0.5) && T.rainChange == (0.3, 1.5))
-    #expect(T.rainKeyHead == 0.95 && T.rainKeyTrailTop == 0.55 && T.rainKeyTrail == 8...20)
-    #expect(T.rainFast == 6 && T.rainRise == 0.25 && T.rainSettle == 1.2 && T.rainHold == 0.8 && T.rainIdleRate == 30)
+    // Code since pass 19b (matrix §6.2), each pair (idle, typing); pass 16's head 0.8, trail from 0.55, 3 s, 1.0. The
+    // speed one range since pass 25 (a column's own, whatever the intensity; 5–10 at rest and 15–30 typing before).
+    #expect(T.codeScale == 0.5 && T.codePitch == 1 && T.codeActive == (0.3, 0.7) && T.codeGap == (3, 2))
+    #expect(T.codeSpeed == 8...16 && T.codeTrail == (6...18, 10...30))
+    #expect(T.codeHead == (0.35, 0.85) && T.codeTrailTop == (0.2, 0.5) && T.codeChange == (0.3, 1.5))
+    #expect(T.codeKeyHead == 0.95 && T.codeKeyTrailTop == 0.55 && T.codeKeyTrail == 8...20)
+    #expect(T.codeFast == 6 && T.codeRise == 0.25 && T.codeSettle == 1.2 && T.codeHold == 0.8 && T.codeIdleRate == 30)
     // Still water (pass 24), look §5.3's Ripples raised 2026-11-01 ("it's showing nothing"): 0.5 drops a second a screen, 48 pt clear of the box, one at the
     // show; 3 crests from 36 pt/s, the calm centre at 0.7 of it; 1.2–2 pt, ±40 ms; troughs 3 pt in at 0.4; up over
     // 180 ms, e^(−t/2 s) · √(12 pt / r), under 0.01 not drawn, 6 s a drop; 32 drops; 30 Hz.
     #expect(T.waterRate == 0.5 && T.waterClear == 48 && T.waterSummon == 48 && T.waterDrops == 32)
+    #expect(T.waterWordGap == 0.8 && T.waterTop == 40)  // a word's drop (pass 25): 0.8 s apart, 40 pt under the top
     #expect(T.waterCrests == 3 && T.waterSpeed == 36 && T.waterSpread == 0.15 && T.waterJitter == 0.15)
     #expect(T.waterWidth == 2...3.5 && T.waterStart == 0.04 && T.waterTrough == 3 && T.waterTroughShare == 0.4)
     #expect(T.waterOnset == 0.18 && T.waterDecay == 2 && T.waterNear == 12 && T.waterShown == 0.01)
     #expect(T.waterPeak == (0.6, 0.4))  // times Still's ink alphas 0.6 and 0.5: 0.36 and 0.2 on screen (raised 2026-11-01)
     #expect(T.waterLife == 6 && T.waterFrameRate == 30 && near(1 - T.waterSpread * 2, 0.7, 1e-12))
-    // C1: Lemna's ink is the box's text and accent, added (Rain's C2 the same two, the other way round); every stage
+    // C1: Lemna's ink is the box's text and accent, added (Code's C2 the same two, the other way round); every stage
     // carries its theme's (TH1).
     let lemna = Theme.lemna.night
     #expect(ink == Theme.Ink(text: lemna.text, accent: lemna.accent, blend: .add, alpha: 1) && elsewhere.ink == ink)
@@ -125,7 +129,7 @@ private func near(_ a: Double, _ b: Double, _ tolerance: Double) -> Bool { abs(a
     #expect(stage.band.minY > box.minY && stage.band.maxY < box.maxY)
     #expect(elsewhere.box == nil && stage.keyboard == .ansi)
     #expect(glyphs.ids.count > 150 && glyphs.slot("é") != nil && glyphs.slot("„") != nil && glyphs.letters.count == 26)
-    #expect(glyphs.rainSet == Array("012345789Zz:.\"=*+-<>|_").map { glyphs.slot($0)! })  // K1, pass 19b
+    #expect(glyphs.codeSet == Array("012345789Zz:.\"=*+-<>|_").map { glyphs.slot($0)! })  // K1, pass 19b
     #expect(glyphs.cell.width >= Line.width("M", font: menlo) && glyphs.cell.height >= 28)
     // Where a key is: across the screen from a tenth to nine tenths.
     #expect(near(stage.screenX(column(0))!, 151.2, 1e-6) && near(stage.screenX(column(15))!, 1360.8, 1e-6))
@@ -156,8 +160,8 @@ private func near(_ a: Double, _ b: Double, _ tolerance: Double) -> Bool { abs(a
 }
 
 @Test func anAmbientRunPlaysWithoutKeysUntilTheClose() {
-    // Rain (pass 19b, I1): from its first frame, no key needed, and no end 4 s after the last; the close as any mode's.
-    var run = Ambience.Run(mode: .rain, stage: stage, glyphs: glyphs, seed: 1)
+    // Code (pass 19b, I1): from its first frame, no key needed, and no end 4 s after the last; the close as any mode's.
+    var run = Ambience.Run(mode: .code, stage: stage, glyphs: glyphs, seed: 1)
     var out: [Sprite] = []
     #expect(run.frame(at: 0, dt: 1.0 / 30, into: &out) == 1 && out.count > 100)
     run.take([Ambience.Key(t: 1, kind: .glyph("a"))])
@@ -167,14 +171,14 @@ private func near(_ a: Double, _ b: Double, _ tolerance: Double) -> Bool { abs(a
 }
 
 @Test func aKeysCodeBecomesItsPlaceOnTheKeyboardOfTheStage() {
-    var run = Ambience.Run(mode: .rain, stage: stage, glyphs: glyphs, seed: 1)
+    var run = Ambience.Run(mode: .code, stage: stage, glyphs: glyphs, seed: 1)
     run.take([Ambience.Key(t: 0, kind: .glyph("a"), code: 0x00), Ambience.Key(t: 0, kind: .space, code: 0x31),
               Ambience.Key(t: 0, kind: .paragraph, code: 0x24), Ambience.Key(t: 0, kind: .backspace, code: 0x33),
               Ambience.Key(t: 0, kind: .glyph("é"))])  // the accent menu's pick: no code
     #expect(run.events == [.typed(slot: glyphs.slot("a"), at: Keyboard.position(of: 0x00)),
                            .space(Keyboard.position(of: 0x31)), .paragraph(Keyboard.position(of: 0x24)),
                            .backspace(Keyboard.position(of: 0x33)), .typed(slot: glyphs.slot("é"), at: nil)])
-    var iso = Ambience.Run(mode: .rain, stage: Ambience.Stage(size: screen, box: box, keyboard: .iso, style: style),
+    var iso = Ambience.Run(mode: .code, stage: Ambience.Stage(size: screen, box: box, keyboard: .iso, style: style),
                            glyphs: glyphs, seed: 1)
     iso.take([Ambience.Key(t: 0, kind: .glyph("<"), code: 0x32), Ambience.Key(t: 0, kind: .paragraph, code: 0x24)])
     #expect(iso.events.map(\.key) == [Keyboard.position(of: 0x32, on: .iso), Keyboard.position(of: 0x24, on: .iso)])
@@ -183,8 +187,8 @@ private func near(_ a: Double, _ b: Double, _ tolerance: Double) -> Bool { abs(a
 
 // MARK: The modes
 
-/// Rain (pass 19b) stepped `seconds` at `hz`, `events` in the first step, at `rate` keys a second; its last sprites.
-private func fall(_ r: inout Rain, _ events: [Event] = [], for seconds: Double, rate: Double = 0,
+/// Code (pass 19b) stepped `seconds` at `hz`, `events` in the first step, at `rate` keys a second; its last sprites.
+private func fall(_ r: inout Code, _ events: [Event] = [], for seconds: Double, rate: Double = 0,
                   hz: Double = 60) -> [Sprite] {
     var out: [Sprite] = []
     for f in 0..<max(Int((seconds * hz).rounded()), 1) {
@@ -194,24 +198,26 @@ private func fall(_ r: inout Rain, _ events: [Event] = [], for seconds: Double, 
     return out
 }
 
-/// A Rain sprite's cell on `r`'s grid, or nil off it: column and row (0 at the top).
-private func cell(_ s: Sprite, on r: Rain, _ st: Ambience.Stage = stage) -> (c: Int, r: Int)? {
+/// A Code sprite's cell on `r`'s grid, or nil off it: column and row (0 at the top).
+private func cell(_ s: Sprite, on r: Code, _ st: Ambience.Stage = stage) -> (c: Int, r: Int)? {
     let left = (Double(st.size.width) - Double(r.columns) * r.pitch) / 2
     let c = (Double(s.x) - left) / r.pitch - 0.5, row = (Double(st.size.height) - Double(s.y)) / r.pitch - 0.5
     guard near(c, c.rounded(), 1e-3), near(row, row.rounded(), 1e-3) else { return nil }
     return (Int(c.rounded()), Int(row.rounded()))
 }
 
-@Test func rainIsAFixedGridOfTheFilmsGlyphsFallingFromItsFirstFrame() {
-    var r = Rain(stage: stage, glyphs: glyphs, seed: 7)
+@Test func codeIsAFixedGridOfTheFilmsGlyphsFallingFromItsFirstFrame() {
+    var r = Code(stage: stage, glyphs: glyphs, seed: 7)
     #expect(near(r.pitch, 18.5, 0.01) && r.columns == 81 && r.rows == 54)  // 14 pt glyphs on 18.5 pt, 1512 × 982
-    #expect(glyphs.rainSet.count == 22 && glyphs.rainSet.map { glyphs.ids[$0] }.count == 22)
+    #expect(glyphs.codeSet.count == 22 && glyphs.codeSet.map { glyphs.ids[$0] }.count == 22)
     var out = fall(&r, for: 1.0 / 30, hz: 30)
     // Born mid-rain (stepped ahead at rest): spread over the screen's whole height and width at once.
     let cells = out.compactMap { cell($0, on: r) }
     #expect(out.count > 100 && cells.count == out.count)
-    #expect(Set(cells.map(\.c)).count > 15 && cells.contains { $0.r < 10 } && cells.contains { $0.r > 44 })
-    #expect(out.allSatisfy { glyphs.rainSet.contains(Int($0.parameter)) && $0.kind == .glyph })  // K1, no key yet
+    let across = Set(cells.map(\.c))  // 15–28 columns at once over 20 seeds (pass 25)
+    #expect(across.count > 12 && across.min()! < 20 && across.max()! > 60)
+    #expect(cells.contains { $0.r < 10 } && cells.contains { $0.r > 44 })
+    #expect(out.allSatisfy { glyphs.codeSet.contains(Int($0.parameter)) && $0.kind == .glyph })  // K1, no key yet
     #expect(out.allSatisfy { near(Double($0.h), 18.5, 0.01) && near(Double($0.w), Double(glyphs.cell.width) / 2, 0.01) })
     let heads = out.filter { $0.colour == Sprite.packed(ink.text) }, trail = out.filter { $0.colour == Sprite.packed(ink.accent) }
     #expect(!heads.isEmpty && heads.allSatisfy { near(Double($0.alpha), 0.35, 1e-3) })  // C2: the head pale, the trail blue
@@ -229,7 +235,7 @@ private func cell(_ s: Sprite, on r: Rain, _ st: Ambience.Stage = stage) -> (c: 
 }
 
 @Test func aKeysHeadStepsACellATimeAndItsTrailDimsInPlace() {
-    var r = Rain(stage: stage, glyphs: glyphs, seed: 7)
+    var r = Code(stage: stage, glyphs: glyphs, seed: 7)
     var out = fall(&r, [.typed(slot: m, at: column(7.5))], for: 1.0 / 60)
     #expect(r.frameRate == 60)  // a key: 60 Hz
     let first = out.first { $0.parameter == UInt32(m) }!, start = cell(first, on: r)!
@@ -241,12 +247,14 @@ private func cell(_ s: Sprite, on r: Rain, _ st: Ambience.Stage = stage) -> (c: 
         #expect(head.count == 1 && cell(head[0], on: r)!.c == start.c)  // its column
         rows.append(cell(head[0], on: r)!.r)
         if let left = out.first(where: { cell($0, on: r)! == start }), rows.last! > start.r {
-            #expect(left.colour == Sprite.packed(ink.accent) && glyphs.rainSet.contains(Int(left.parameter)))
+            #expect(left.colour == Sprite.packed(ink.accent) && glyphs.codeSet.contains(Int(left.parameter)))
             alphas.append(left.alpha)  // the cell it left, where it was
         }
     }
     #expect(zip(rows, rows.dropFirst()).allSatisfy { $1 - $0 == 0 || $1 - $0 == 1 })  // a cell a step, no slide
-    #expect((7...16).contains(rows.last! - start.r))  // 5–10 rows a second at rest, for 1.5 s
+    // At its column's speed, 8–16 rows a second (pass 25; 5–10 at rest before), for 1.5 s.
+    let travelled = rows.last! - start.r
+    #expect((11...25).contains(travelled) && abs(Double(travelled) - 1.5 * r.speed[start.c]) <= 1.5)
     // Its trail dims in place, linearly, from the key's 0.55: an equal step a frame until it is gone.
     #expect(alphas.count > 10 && alphas[0] <= 0.55 && alphas[0] > 0.45)
     let steps = zip(alphas, alphas.dropFirst()).map { Double($0 - $1) }
@@ -255,7 +263,7 @@ private func cell(_ s: Sprite, on r: Rain, _ st: Ambience.Stage = stage) -> (c: 
 
 @Test func everyLitGlyphChangesInPlaceFasterWhenTyping() {
     /// Changes a lit-cell second, over `seconds`: a cell still dimming from one step to the next with another glyph.
-    func changes(_ r: inout Rain, rate: Double, for seconds: Double) -> Double {
+    func changes(_ r: inout Code, rate: Double, for seconds: Double) -> Double {
         var last: [Int: (slot: UInt32, alpha: Float)] = [:], changed = 0, seen = 0
         for _ in 0..<Int(seconds * 60) {
             var now: [Int: (slot: UInt32, alpha: Float)] = [:]
@@ -271,7 +279,7 @@ private func cell(_ s: Sprite, on r: Rain, _ st: Ambience.Stage = stage) -> (c: 
         }
         return Double(changed) / (Double(seen) / 60)
     }
-    var r = Rain(stage: stage, glyphs: glyphs, seed: 5)
+    var r = Code(stage: stage, glyphs: glyphs, seed: 5)
     let rest = changes(&r, rate: 0, for: 6)
     _ = fall(&r, for: 2, rate: 6)
     let typing = changes(&r, rate: 6, for: 4)
@@ -281,7 +289,7 @@ private func cell(_ s: Sprite, on r: Rain, _ st: Ambience.Stage = stage) -> (c: 
 
 @Test func aKeyStartsAHeadWhereTheKeyIsTheTypedGlyphAtIt() {
     func head(_ k: Keyboard.Position?, on st: Ambience.Stage = stage) -> Sprite {
-        var r = Rain(stage: st, glyphs: glyphs, seed: 3)
+        var r = Code(stage: st, glyphs: glyphs, seed: 3)
         return fall(&r, [.typed(slot: m, at: k)], for: 1.0 / 60).first { $0.parameter == UInt32(m) }!
     }
     // The left end of the keyboard a tenth across the screen, the right end nine tenths, anywhere on the key, on a
@@ -292,22 +300,22 @@ private func cell(_ s: Sprite, on r: Rain, _ st: Ambience.Stage = stage) -> (c: 
     #expect(head(column(5, row: 0)).y > head(column(5, row: 3)).y + 150)
     #expect(abs(Double(head(nil).x) - Double(stage.caret)) <= 18.5)  // no position: at the caret
     #expect(abs(Double(head(column(14.5), on: elsewhere).x) - 1512 * (0.1 + 0.8 * 14.5 / 15)) <= within)  // every screen
-    var again = Rain(stage: stage, glyphs: glyphs, seed: 3), xs = Set<Float>()  // one key typed again and again
+    var again = Code(stage: stage, glyphs: glyphs, seed: 3), xs = Set<Float>()  // one key typed again and again
     for _ in 0..<20 {
         xs.formUnion(fall(&again, [.typed(slot: m, at: column(7.5))], for: 1.0 / 60).filter { $0.parameter == UInt32(m) }.map(\.x))
     }
     #expect(xs.count >= 3 && xs.allSatisfy { abs(Double($0) - 1512 * 0.5) <= within })  // spread over the key
     // Its trail from 0.55, above the rest's 0.2; Space, Return and ⌫ start none.
-    var r = Rain(stage: stage, glyphs: glyphs, seed: 3)
+    var r = Code(stage: stage, glyphs: glyphs, seed: 3)
     let trail = fall(&r, [.typed(slot: m, at: column(7.5))], for: 0.5).filter { $0.colour == Sprite.packed(ink.accent) }
     #expect(trail.contains { $0.alpha > 0.4 })
-    var quiet = Rain(stage: stage, glyphs: glyphs, seed: 3)
+    var quiet = Code(stage: stage, glyphs: glyphs, seed: 3)
     let none = fall(&quiet, [.space(column(6.75, row: 4)), .paragraph(nil), .backspace(column(14, row: 0))], for: 0.5)
     #expect(none.allSatisfy { $0.alpha <= 0.35 + 1e-3 })  // nothing at a key's 0.95 or 0.55
 }
 
-@Test func typingRaisesTheRainAndAPauseSettlesIt() {
-    var r = Rain(stage: stage, glyphs: glyphs, seed: 9)
+@Test func typingIntensifiesTheCodeAndAPauseSettlesIt() {
+    var r = Code(stage: stage, glyphs: glyphs, seed: 9)
     #expect(r.intensity == 0)
     _ = fall(&r, [.space(nil)], for: 0.25, rate: 6)  // 6 keys a second (I* 1): up with τ 0.25 s
     #expect(near(r.intensity, 1 - exp(-1), 0.005))
@@ -319,19 +327,50 @@ private func cell(_ s: Sprite, on r: Rain, _ st: Ambience.Stage = stage) -> (c: 
     #expect(near(r.intensity, held * exp(-1), 0.01))
     _ = fall(&r, for: 3, rate: 0)
     #expect(r.intensity < 0.05 && r.frameRate == 30)  // at rest again: 30 Hz
-    // Every magnitude between its rest and its typing value: brighter, faster, denser.
-    var calm = Rain(stage: stage, glyphs: glyphs, seed: 9), busy = Rain(stage: stage, glyphs: glyphs, seed: 9)
+    // Every magnitude between its rest and its typing value: denser and brighter, not faster (pass 25): more columns
+    // falling, longer trails, brighter heads and trails.
+    var calm = Code(stage: stage, glyphs: glyphs, seed: 9), busy = Code(stage: stage, glyphs: glyphs, seed: 9)
     let a = fall(&calm, for: 4), b = fall(&busy, for: 4, rate: 6)
     #expect(near(busy.intensity, 1, 0.01) && b.count > 2 * a.count)
     #expect(b.filter { $0.colour == Sprite.packed(ink.text) }.allSatisfy { near(Double($0.alpha), 0.85, 0.01) })
     #expect(b.contains { $0.colour == Sprite.packed(ink.accent) && $0.alpha > 0.45 })
+    // More columns falling once the new heads have come down (they start at the top, at their columns' own pace: 4 s
+    // more), at the same speeds.
+    func columns(_ out: [Sprite], _ r: Code) -> Int { Set(out.compactMap { cell($0, on: r)?.c }).count }
+    let (a8, b8) = (fall(&calm, for: 4), fall(&busy, for: 4, rate: 6))
+    #expect(columns(b8, busy) > columns(a8, calm) + 8 && busy.speed == calm.speed, "\(columns(a8, calm)) \(columns(b8, busy))")
 }
 
-/// The most and the mean sprites Rain draws on `size` over 10 s, at rest or typing at `keys` a second on the keys
+@Test func aColumnKeepsItsSpeedWhateverTheIntensity() {
+    // Pass 25 (the user, 2026-11-01: "I don't think the matrix code animation gets faster in the movie, it just gets
+    // more intense"; matrix §2): each column's speed is drawn once from `codeSpeed`, about 2:1 between the slowest and
+    // the fastest, and typing changes none of them: a key's head steps down its column at rest and at full intensity
+    // alike, row for row.
+    var calm = Code(stage: stage, glyphs: glyphs, seed: 9)
+    var busy = calm
+    let speeds = calm.speed
+    #expect(speeds.count == calm.columns && speeds.allSatisfy { T.codeSpeed.contains($0) })
+    #expect(speeds.min()! < 8.5 && speeds.max()! > 15.5)  // the films' spread, 2:1 between columns
+    func head(_ out: [Sprite], _ r: Code) -> [Int]? {
+        out.first { $0.parameter == UInt32(m) }.flatMap { cell($0, on: r) }.map { [$0.c, $0.r] }
+    }
+    let key: [Event] = [.typed(slot: m, at: column(7.5))]
+    var a = fall(&calm, key, for: 1.0 / 60), b = fall(&busy, key, for: 1.0 / 60, rate: 6)
+    var rows: [Int] = [], same = head(a, calm) != nil && head(a, calm) == head(b, busy)
+    for _ in 0..<120 {  // 2 s at 60 Hz, one at rest, one typing at 6 keys a second
+        (a, b) = (fall(&calm, for: 1.0 / 60), fall(&busy, for: 1.0 / 60, rate: 6))
+        same = same && head(a, calm) != nil && head(a, calm) == head(b, busy)
+        rows += head(a, calm).map { [$0[1]] } ?? []
+    }
+    #expect(same && calm.intensity == 0 && busy.intensity > 0.95 && rows.last! - rows.first! >= 14)
+    #expect(calm.speed == speeds && busy.speed == speeds)
+}
+
+/// The most and the mean sprites Code draws on `size` over 10 s, at rest or typing at `keys` a second on the keys
 /// of a sentence (the rate as `Typing` counts it).
 private func sprites(on size: CGSize, keys: Double) -> (most: Int, mean: Int) {
     let b = BoxFrame.line(in: CGRect(x: 0, y: 80, width: size.width, height: size.height - 114), height: 112)
-    var r = Rain(stage: Ambience.Stage(size: size, box: b, style: style), glyphs: glyphs, seed: 13)
+    var r = Code(stage: Ambience.Stage(size: size, box: b, style: style), glyphs: glyphs, seed: 13)
     let line = Array("the boats sat low in the water and the reeds bent over them ")
     var out: [Sprite] = [], most = 0, sum = 0, next = 0.0, typed = 0
     let frames = 600
@@ -350,13 +389,13 @@ private func sprites(on size: CGSize, keys: Double) -> (most: Int, mean: Int) {
     return (most, sum / (frames - 180))
 }
 
-@Test func rainStaysUnderTheCapTypingOnALargeScreen() {
+@Test func codeStaysUnderTheCapTypingOnALargeScreen() {
     let laptop = CGSize(width: 1512, height: 982), large = CGSize(width: 2560, height: 1440)
     let counts = [(laptop, 0.0), (laptop, 6), (large, 0), (large, 6), (large, 10)].map { (size, keys) in
         (size, keys, sprites(on: size, keys: keys))
     }
     for (size, keys, n) in counts {
-        print("rain sprites \(Int(size.width)) × \(Int(size.height)) at \(keys) keys/s: mean \(n.mean), most \(n.most)")
+        print("code sprites \(Int(size.width)) × \(Int(size.height)) at \(keys) keys/s: mean \(n.mean), most \(n.most)")
     }
     #expect(counts[3].2.most < T.cap && counts[1].2.most < T.cap)  // typing at 6 keys a second (I 1), the large screen
     #expect(counts[0].2.mean < counts[1].2.mean / 2 && counts[2].2.mean < counts[3].2.mean / 2)
@@ -377,7 +416,7 @@ private func sprites(on size: CGSize, keys: Double) -> (most: Int, mean: Int) {
             #expect(out.count <= T.cap && s.count <= T.cap, "\(mode) \(seconds)")
         }
     }
-    var run = Ambience.Run(mode: .rain, stage: stage, glyphs: glyphs, seed: 1), out: [Sprite] = []
+    var run = Ambience.Run(mode: .code, stage: stage, glyphs: glyphs, seed: 1), out: [Sprite] = []
     run.take((0..<3000).map { Ambience.Key(t: Double($0) / 1000, kind: .glyph("m"), code: 0x2E) })
     _ = run.frame(at: 3, dt: 1.0 / 60, into: &out)
     #expect(out.count <= T.cap && run.count <= T.cap && out.contains { $0.parameter == UInt32(m) })
@@ -385,16 +424,16 @@ private func sprites(on size: CGSize, keys: Double) -> (most: Int, mean: Int) {
 
 // MARK: Still water (pass 24)
 
-/// Still water stepped `seconds` at 30 Hz, `events` and `rate` in every step; the most drops and sprites alive at once,
-/// every drop that landed (where), and the last step's sprites.
-private func pond(_ w: inout Water, for seconds: Double, events: [Event] = [], rate: Double = 0)
+/// Still water stepped `seconds` at 30 Hz, `events(frame)` and `rate` in each step; the most drops and sprites alive at
+/// once, every drop that landed (where), and the last step's sprites.
+private func pond(_ w: inout Water, for seconds: Double, events: (Int) -> [Event] = { _ in [] }, rate: Double = 0)
     -> (most: Int, sprites: Int, landed: [CGPoint], out: [Sprite]) {
     var out: [Sprite] = [], most = 0, sprites = 0, landed: [CGPoint] = []
-    for _ in 0..<Int((seconds * 30).rounded()) {
+    for f in 0..<Int((seconds * 30).rounded()) {
         let before = w.landed
         out.removeAll()
-        w.step(dt: 1.0 / 30, events: events, rate: rate, into: &out)
-        if w.landed > before, let d = w.drops.last { landed.append(CGPoint(x: d.x, y: d.y)) }
+        w.step(dt: 1.0 / 30, events: events(f), rate: rate, into: &out)
+        landed += w.drops.suffix(w.landed - before).map { CGPoint(x: $0.x, y: $0.y) }  // the new ones, last
         (most, sprites) = (max(most, w.drops.count), max(sprites, out.count))
     }
     return (most, sprites, landed, out)
@@ -418,29 +457,64 @@ private func pond(_ w: inout Water, for seconds: Double, events: [Event] = [], r
     }
 }
 
-@Test func stillWaterTakesNoKeys() {
-    // Rest only (the user's pick): a flood of keys at 12 a second, every kind, changes nothing a frame draws.
+/// Where the drop of a word whose last key is `k` lands on `stage` (the panel's canvas): pass 16's place across the
+/// screen, and the key's row between 40 pt under the top edge (the number row) and 48 pt above the box (the space
+/// bar's); without a place at the caret's x, 48 pt above the box.
+private func wordSpot(_ k: Keyboard.Position?) -> CGPoint {
+    let low = Double(box.maxY) + 48, high = Double(screen.height) - 40
+    return CGPoint(x: stage.screenX(k) ?? Double(stage.caret), y: low + (1 - (k?.down ?? 1)) * (high - low))
+}
+
+@Test func stillWaterDropsOneForEachWordAndNoneForAKey() {
+    // Pass 25 (the user, 2026-11-01: "the rain drops should probably also be increasing when typing as well"; AM1 per
+    // word + rest): glyph keys, ⌫ and the typing rate change nothing a frame draws, a flood of them for two minutes.
     var calm = Water(stage: stage, glyphs: glyphs, seed: 5)
     var typed = calm
-    let flood: [Event] = [.typed(slot: m, at: key("m")), .space(key(" ")), .paragraph(key("\n")), .backspace(nil)]
+    let keys: [Event] = [.typed(slot: m, at: key("m")), .backspace(nil), .typed(slot: m, at: key("q"))]
     var same = true, drawn = 0
-    for _ in 0..<(30 * 120) {  // two minutes at 30 Hz
+    for _ in 0..<(30 * 120) {
         var a: [Sprite] = [], b: [Sprite] = []
         calm.step(dt: 1.0 / 30, events: [], rate: 0, into: &a)
-        typed.step(dt: 1.0 / 30, events: flood, rate: 12, into: &b)
+        typed.step(dt: 1.0 / 30, events: keys, rate: 12, into: &b)
         (same, drawn) = (same && a == b, drawn + a.count)
     }
     #expect(same && drawn > 0 && calm.landed == typed.landed && calm.landed > 5)
-    // And through a run: keys or none, the same frames, and 30 Hz throughout.
-    var quiet = Ambience.Run(mode: .water, stage: stage, glyphs: glyphs, seed: 9), busy = quiet
-    var a: [Sprite] = [], b: [Sprite] = []
-    for f in 0..<300 {
-        let t = Double(f) / 30
-        busy.take([Ambience.Key(t: t, kind: .glyph("a"), code: 0x00), Ambience.Key(t: t, kind: .space, code: 0x31)])
-        #expect(quiet.frame(at: t, dt: 1.0 / 30, into: &a) == busy.frame(at: t, dt: 1.0 / 30, into: &b))
-        same = same && a == b && busy.frameRate == 30
-    }
-    #expect(same)
+    // A word's end (Space or Return after a glyph key): one drop, where the word's last key is, higher the higher its
+    // row; none for a Space that ends no word, none within 0.8 s of the last word's; a key without a place: the caret.
+    var w = Water(stage: stage, glyphs: glyphs, seed: 5)
+    let words: [Int: [Event]] = [
+        0: [.typed(slot: m, at: key("m")), .typed(slot: m, at: key("o")), .space(key(" "))],  // "mo ": at o
+        3: [.typed(slot: m, at: key("a")), .space(key(" "))],  // 0.1 s on: too soon, none
+        30: [.space(key(" ")), .paragraph(key("\n"))],  // 1 s: no word before them
+        33: [.typed(slot: m, at: column(3, row: 0)), .paragraph(key("\n"))],  // a Return ends it: the number row's
+        60: [.typed(slot: glyphs.slot("é"), at: nil), .space(key(" "))],  // the accent menu's pick: no place
+    ]
+    let spots = [wordSpot(key("o")), wordSpot(column(3, row: 0)), wordSpot(nil)]
+    let landed = pond(&w, for: 3, events: { words[$0] ?? [] }).landed
+    #expect(landed.filter { spots.contains($0) } == spots, "\(landed)")  // each once, in order, no other word's
+    #expect(spots[1].y == 982 - 40 && spots[2].y == Double(box.maxY) + 48 && spots[2].x == Double(stage.caret))
+    #expect(abs(spots[0].x - 1512 * (0.1 + 0.8 * 10 / 15)) < 1e-9 && spots[0].y < spots[1].y && spots[0].y > spots[2].y)
+    // Through a run: the keys as the line hands them on, a word's drop at its last key; 30 Hz throughout.
+    var run = Ambience.Run(mode: .water, stage: stage, glyphs: glyphs, seed: 9), out: [Sprite] = []
+    run.take([Ambience.Key(t: 0, kind: .glyph("o"), code: 0x1F), Ambience.Key(t: 0.1, kind: .space, code: 0x31)])
+    _ = run.frame(at: 0.1, dt: 1.0 / 30, into: &out)
+    #expect((run.scene as? Water)?.drops.contains { $0.x == spots[0].x && $0.y == spots[0].y } == true)
+    #expect(run.frameRate == 30)
+}
+
+@Test func stillWatersRestRateHoldsWhileWriting() {
+    // A word every 1.5 s for 2,000 s: the drops that are not the words' still land at `waterRate` a second (± 15 %),
+    // every one 48 pt clear of the box; every word's drop lands, at its last key.
+    var w = Water(stage: stage, glyphs: glyphs, seed: 21)
+    let word: [Event] = [.typed(slot: m, at: key("t")), .typed(slot: m, at: key("e")), .space(key(" "))]
+    let p = pond(&w, for: 2000, events: { $0 % 45 == 0 ? word : [] }, rate: 4)
+    let spot = wordSpot(key("e")), rest = p.landed.filter { $0 != spot }, words = p.landed.count - rest.count
+    print("still water writing: \(words) words' drops, \(rest.count) at rest in 2000 s"
+          + " (\(T.waterRate * 2000) expected), at most \(p.most) at once")
+    let typed = (2000 * 30 + 44) / 45  // frames 0, 45, … of 60,000
+    #expect(words == typed)
+    #expect(abs(Double(rest.count) - T.waterRate * 2000) < 0.15 * T.waterRate * 2000)
+    #expect(rest.allSatisfy { !box.insetBy(dx: -48, dy: -48).contains($0) })
 }
 
 @Test func aDropsRingsRiseSoftlyThenFadeWithRadiusAndTime() {
@@ -492,6 +566,17 @@ private func pond(_ w: inout Water, for seconds: Double, events: [Event] = [], r
     #expect(rest.sprites <= T.cap && rest.most < T.waterDrops)
     #expect(w.drops.count == T.waterDrops && full.out.count <= w.count && w.count <= T.cap)
     #expect(full.out.count > 4 * T.waterDrops)
+    // Writing at 10 words a second for a minute (pass 25): a word's drop at most every 0.8 s, under the cap.
+    var fast = Water(stage: Ambience.Stage(size: large, box: b, style: style), glyphs: glyphs, seed: 13)
+    let word: [Event] = [.typed(slot: m, at: key("o")), .space(key(" "))]
+    let typing = pond(&fast, for: 60, events: { $0 % 3 == 0 ? word : [] }, rate: 50)
+    let (low, high) = (Double(b.maxY) + 48, 1440.0 - 40), o = key("o")!
+    let spot = CGPoint(x: 2560 * (0.1 + 0.8 * o.across), y: low + (1 - o.down) * (high - low))
+    let words = typing.landed.filter { $0 == spot }.count
+    print("still water on 2560 × 1440 at 10 words a second: at most \(typing.most) drops, \(typing.sprites) sprites;"
+          + " \(words) words' drops and \(typing.landed.count - words) at rest in 60 s")
+    #expect(typing.most < T.waterDrops && typing.sprites <= T.cap && fast.count <= T.cap)
+    #expect((66...76).contains(words))  // one every 0.8–0.9 s (the 30 Hz steps), not ten a second
 }
 
 // MARK: Metal
@@ -590,39 +675,39 @@ private func typing(_ typed: [Character], _ mode: Mode, rate: Double, after: Dou
     return (out, alpha, text)
 }
 
-/// Rain after 10 s of typing at 6 keys a second and 0.6 s after a Return, drawn by the Metal pipeline over a dimmed
-/// dark app with the box on it, as the box's screen shows it: app/renders/ambience-rain.png (each mode's until pass 24,
-/// which removed Drift, Rings and Grid and with them ambience-grid-keyboard.png); Rain at rest 3 s after the summon
-/// (ambience-rain-idle.png, pass 19b). Still water's renders are Still's (`stillWaterShowsOnStillsDayAndNightDim`).
+/// Code after 10 s of typing at 6 keys a second and 0.6 s after a Return, drawn by the Metal pipeline over a dimmed
+/// dark app with the box on it, as the box's screen shows it: app/renders/ambience-code.png (each mode's until pass 24,
+/// which removed Drift, Rings and Grid and with them ambience-grid-keyboard.png; ambience-rain.png until pass 25); Code
+/// at rest 3 s after the summon (ambience-code-idle.png, pass 19b). Still water's renders are Still's (`stillWaterShowsOnStillsDayAndNightDim`).
 @Test(.enabled(if: Ambience.Renderer.available)) func ambienceRenders() throws {
     let renderer = try #require(Ambience.Renderer(font: menlo))
     let words = "the boats sat low in the water and the reeds bent over them"
-    let r = typing(Array(words) + ["\n"] + Array("as"), .rain, rate: 6, after: 0.27)
+    let r = typing(Array(words) + ["\n"] + Array("as"), .code, rate: 6, after: 0.27)
     let typed = try #require(r.alpha)
     #expect(!r.out.isEmpty)
     try compose(try #require(renderer.offscreen(r.out, size: screen, scale: 2, alpha: typed)), text: r.text,
-                name: "ambience-rain.png")
-    // Rain at rest, as the summon finds it (ambience-rain.png above is the rain while typing).
-    var idle = Ambience.Run(mode: .rain, stage: stage, glyphs: glyphs, seed: 11), out: [Sprite] = []
+                name: "ambience-code.png")
+    // Code at rest, as the summon finds it (ambience-code.png above is Code while typing).
+    var idle = Ambience.Run(mode: .code, stage: stage, glyphs: glyphs, seed: 11), out: [Sprite] = []
     var a: Double?
     for f in 0..<90 { a = idle.frame(at: Double(f) / 30, dt: 1.0 / 30, into: &out) }  // 3 s at 30 Hz
     let alpha = try #require(a)
     try compose(try #require(renderer.offscreen(out, size: screen, scale: 2, alpha: alpha)), text: Text(String(words)),
-                name: "ambience-rain-idle.png")
+                name: "ambience-code-idle.png")
 }
 
-/// Rain at rest on Still's day dim (TH1, architecture §7): its ink laid over shows, where light added (Lemna's text
-/// colour in both of Rain's roles) would not. Rain's frame 3 s after the summon, in Menlo at Still's size (the atlas's face under a proportional line), laid
+/// Code at rest on Still's day dim (TH1, architecture §7): its ink laid over shows, where light added (Lemna's text
+/// colour in both of Code's roles) would not. Code's frame 3 s after the summon, in Menlo at Still's size (the atlas's face under a proportional line), laid
 /// over the wash over a white app as Core Animation lays the ambience's layer over the shade; counted are the pixels
-/// that differ from the wash alone by 8 or more of 255 in a channel. Written as app/renders/ambience-rain-still-day.png,
+/// that differ from the wash alone by 8 or more of 255 in a channel. Written as app/renders/ambience-code-still-day.png,
 /// beside the box at rest by day and by night (idle-still-day.png over a light app, idle-still-night.png over a dark
-/// one) and Rain at rest on Still's night (ambience-rain-still-night.png, its ink added).
-@Test(.enabled(if: Ambience.Renderer.available)) func rainShowsOnStillsDayDim() throws {
+/// one) and Code at rest on Still's night (ambience-code-still-night.png, its ink added).
+@Test(.enabled(if: Ambience.Renderer.available)) func codeShowsOnStillsDayDim() throws {
     let font = try #require(stillFont)  // Literata from app/Fonts, registered once for every test (ThemeTests)
     let renderer = try #require(Ambience.Renderer(font: Ambience.Glyphs.atlasFont(for: font)))
     let day = Style(.still, dark: false, font: font), night = Style(.still, dark: true, font: font)
-    func rain(_ stage: Ambience.Stage, scale: CGFloat) throws -> [UInt8] {
-        var run = Ambience.Run(mode: .rain, stage: stage, glyphs: renderer.glyphs, seed: 11), out: [Sprite] = []
+    func code(_ stage: Ambience.Stage, scale: CGFloat) throws -> [UInt8] {
+        var run = Ambience.Run(mode: .code, stage: stage, glyphs: renderer.glyphs, seed: 11), out: [Sprite] = []
         var a: Double?
         for f in 0..<90 { a = run.frame(at: Double(f) / 30, dt: 1.0 / 30, into: &out) }  // 3 s at 30 Hz
         let alpha = try #require(a)
@@ -644,13 +729,13 @@ private func typing(_ typed: [Character], _ mode: Mode, rate: Double, after: Dou
     let stillInk = Ambience.Stage(size: screen, box: box, style: day)
     var added = stillInk, lemna = Theme.lemna.night.ink
     added.ink = Theme.Ink(text: lemna.text, accent: lemna.text, blend: .add, alpha: 1)
-    let (ours, light) = (shown(try rain(stillInk, scale: 1)), shown(try rain(added, scale: 1)))
-    print("rain on Still's day dim: \(ours) pixels show in its ink, \(light) in light added")
+    let (ours, light) = (shown(try code(stillInk, scale: 1)), shown(try code(added, scale: 1)))
+    print("code on Still's day dim: \(ours) pixels show in its ink, \(light) in light added")
     #expect(ours > 1500 && light * 10 < ours)
     let words = Text("the boats sat low in the water and the reeds bent over them")
-    try compose(try rain(stillInk, scale: 2), text: words, name: "ambience-rain-still-day.png", look: day, lightApp: true)
-    try compose(try rain(Ambience.Stage(size: screen, box: box, style: night), scale: 2), text: words,
-                name: "ambience-rain-still-night.png", look: night)
+    try compose(try code(stillInk, scale: 2), text: words, name: "ambience-code-still-day.png", look: day, lightApp: true)
+    try compose(try code(Ambience.Stage(size: screen, box: box, style: night), scale: 2), text: words,
+                name: "ambience-code-still-night.png", look: night)
     let clear = [UInt8](repeating: 0, count: 4 * Int(screen.width) * 2 * Int(screen.height) * 2)
     try compose(clear, text: words, name: "idle-still-day.png", look: day, lightApp: true)
     try compose(clear, text: words, name: "idle-still-night.png", look: night)
@@ -682,8 +767,8 @@ private func typing(_ typed: [Character], _ mode: Mode, rate: Double, after: Dou
 }
 
 /// Still water (pass 24) on Still's day and night washes, as Core Animation lays the ambience's layer over the shade:
-/// the drop at the show 1.2 s on, two drops whose rings cross to its left (0.9 and 0.6 s old) and one more to its right
-/// (1.0 s). Counted, as `rainShowsOnStillsDayDim` counts them, are the pixels that differ from the wash alone by 8
+/// the drop at the show 1.2 s on, two drops whose rings cross to its left (0.9 and 0.6 s old) and a word's to its right
+/// (1.0 s; pass 25: its last key o, one row under the number row, so high up and right of the middle). Counted, as `codeShowsOnStillsDayDim` counts them, are the pixels that differ from the wash alone by 8
 /// or more of 255 in a channel by day (laid over, over a white app) and by 4 or more by night (added, over a dark one).
 /// Written as app/renders/ambience-water-day.png and ambience-water-night.png.
 @Test(.enabled(if: Ambience.Renderer.available)) func stillWaterShowsOnStillsDayAndNightDim() throws {
@@ -695,12 +780,12 @@ private func typing(_ typed: [Character], _ mode: Mode, rate: Double, after: Dou
     func water(_ look: Style, scale: CGFloat) throws -> [UInt8] {
         let stage = Ambience.Stage(size: screen, box: shown, inset: 1, corner: 16, style: look)
         var w = Water(stage: stage, glyphs: renderer.glyphs, seed: 4), out: [Sprite] = []
+        let word: [Event] = [.typed(slot: renderer.glyphs.slot("o"), at: key("o")), .space(key(" "))]
         for f in 0..<36 {  // 1.2 s at 30 Hz
             if f == 9 { w.drop(x: 470, y: 760) }
             if f == 18 { w.drop(x: 500, y: 748) }
-            if f == 6 { w.drop(x: 1130, y: 610) }
             out.removeAll()
-            w.step(dt: 1.0 / 30, events: [], rate: 0, into: &out)
+            w.step(dt: 1.0 / 30, events: f == 6 ? word : [], rate: 0, into: &out)
         }
         return try #require(renderer.offscreen(out, size: screen, scale: scale, alpha: stage.ink.alpha,
                                                blend: stage.ink.blend))

@@ -1,4 +1,4 @@
-// The ambience (DESIGN.md A1): a scene that plays on the dim around the box from the show to the close (Rain since
+// The ambience (DESIGN.md A1): a scene that plays on the dim around the box from the show to the close (Code since
 // pass 19b, Still water since pass 24; until pass 24 the other modes played while you typed and died out within
 // seconds of silence), one mode at a time from Session › Ambience ▸, Off at first. Here, free of AppKit and Metal: the
 // choice, every magnitude (`Ambience.Tuning`), what the line sends (`Key`), what a scene is told (`Event`), where it
@@ -15,21 +15,22 @@ public struct Ambience: Equatable {
         /// M2 of `docs/design-panel-lemna-ambience.html` and, since pass 24, AM1 of
         /// `docs/design-panel-lemna-themes.html`, in the submenu's order. M8 Burn was not picked; pass 18 removed M4
         /// Beams, M6 Fireworks and M7 Swarm, pass 24 (RM1) M1 Drift, M3 Rings and M5 Grid: a kept `ambience` naming one
-        /// of them is Off.
-        case rain, water
+        /// of them is Off. M2 is Code since pass 25 (the films' effect is known as digital rain or code rain), Rain
+        /// before, a name that clashed with the Rain bed and with the water's drops.
+        case code, water
 
         public var title: String {
             switch self {
-            case .rain: "Rain"
+            case .code: "Code"
             case .water: "Still water"
             }
         }
 
-        /// Plays on every screen's dim, not only on the box's: Rain falls over the whole dim. Still water stays on the
+        /// Plays on every screen's dim, not only on the box's: Code falls over the whole dim. Still water stays on the
         /// box's screen.
-        public var everyScreen: Bool { self == .rain }
+        public var everyScreen: Bool { self == .code }
 
-        /// Plays from the show until the close, keys or none (pass 19b, I1): Rain, and Still water (pass 24). The modes
+        /// Plays from the show until the close, keys or none (pass 19b, I1): Code, and Still water (pass 24). The modes
         /// pass 24 removed started at the first key and were gone `Tuning.linger` after the last; `Run` and `Lifecycle`
         /// still have that path, which no mode takes now.
         public var ambient: Bool { true }
@@ -39,8 +40,9 @@ public struct Ambience: Equatable {
 
     public init(_ mode: Mode? = nil) { self.mode = mode }
 
-    /// As kept across launches (`kept`); none, Off or a mode since removed is Off.
-    public init(kept: String?) { mode = kept.flatMap(Mode.init(rawValue:)) }
+    /// As kept across launches (`kept`); none, Off or a mode since removed is Off; `rain`, Code's name until pass 25,
+    /// is Code.
+    public init(kept: String?) { mode = kept.flatMap { Mode(rawValue: $0 == "rain" ? "code" : $0) } }
 
     /// For UserDefaults (`ambience`): the mode's raw value, or "off".
     public var kept: String { mode?.rawValue ?? "off" }
@@ -59,16 +61,16 @@ extension Ambience {
     /// Every magnitude of the ambience in one place (A1, I1: fixed per mode). Pass 16 (the user, having tried pass
     /// 15: "The ambience effects are way too subtle") made every mode plain from its first frame. Times in seconds,
     /// lengths in points, alphas over the dim (times the ink's `alpha`). The colours are the theme's ink (`Stage.ink`;
-    /// Lemna's the box's text and accent, C1): Rain's heads in the text colour and its trails in the accent (C2, pass
+    /// Lemna's the box's text and accent, C1): Code's heads in the text colour and its trails in the accent (C2, pass
     /// 19b); Still water's rings in the text colour.
     public enum Tuning {
         /// Every mode: at most this many sprites a frame (the panel's 2,000 particles), stepped and drawn at 60 Hz
-        /// (Rain at rest at `rainIdleRate`, Still water at `waterFrameRate`).
+        /// (Code at rest at `codeIdleRate`, Still water at `waterFrameRate`).
         public static let cap = 2000, frameRate = 60.0
         /// Nothing new after the last key, and the scene is gone `linger` after it, fading out evenly over the last
         /// `fadeOut` (a decay nobody triggered, kept off the curve, so the scene does not drop half of itself in the
         /// first tenth of a second at a moment the writer did not choose; pass 18); then the display link pauses. Not
-        /// for an ambient mode (Rain), which plays until the close.
+        /// for an ambient mode (Code, Still water), which plays until the close.
         public static let linger = 4.0, fadeOut = 1.0
         /// At the box's close the scene fades out over the dim's wait and fade less `closeAhead`, so its cleared frames
         /// are out and the link pauses while the dim is still on screen (a window gone gets no more frames).
@@ -76,57 +78,71 @@ extension Ambience {
         /// The typing rate is the keys of the last `rateWindow` (pass 24 removed `fastRate`, Drift's top).
         public static let rateWindow = 2.0
 
-        /// Where a key is (pass 16, `Keyboard`): across the screen, Rain's columns from the left to the right end of
-        /// `screenSpan`; down the keyboard, Rain's start from the top of `rainRows` (the number row) to its bottom (the
-        /// space bar's), a share of the screen's height. A key with no position (an arrow, the accent menu's pick)
-        /// takes the caret's x. (Rings' `boxSpan` went with them in pass 24.)
-        public static let screenSpan = 0.1...0.9, rainRows = 0.55...0.95
+        /// Where a key is (pass 16, `Keyboard`): across the screen, Code's columns and Still water's word drops from
+        /// the left to the right end of `screenSpan`; down the keyboard, Code's start from the top of `codeRows` (the
+        /// number row) to its bottom (the space bar's), a share of the screen's height. A key with no position (an
+        /// arrow, the accent menu's pick) takes the caret's x. (Rings' `boxSpan` went with them in pass 24.)
+        public static let screenSpan = 0.1...0.9, codeRows = 0.55...0.95
 
-        /// M2 Rain (pass 19b; G1 I1 T1 C2 K1 W1 of `docs/design-panel-lemna-rain.html`, matrix §6.2): glyphs at
-        /// `rainScale` of the line's size in a fixed grid of square cells, `rainPitch` of the glyph's cell height on a
-        /// side (14 pt glyphs on 18.5 pt at Menlo 28: 81 × 54 cells on 1512 × 982 pt), each cell holding one glyph of
-        /// `Glyphs.rainSet`. A head steps down its column a cell at a time and lights the cell it enters; the cell then
-        /// dims in place, linearly from the trail's top alpha to nothing over the head's trail (in cells, so the fade
-        /// takes the trail ÷ the column's speed). A column's speed is its own share of `rainSpeed`; it holds at most
-        /// two heads, starts the next at the top after a random pause (when its last head's trail is `rainGap` cells
-        /// down) so that about `rainActive` of the columns show one, and a head ends below the bottom. Every lit glyph
-        /// changes in place `rainChange` times a second. Each pair is (idle, typing): one intensity, 0 at rest, 1 at
-        /// `rainFast` keys a second (the keys of the last `rateWindow`), sets every magnitude between them, linearly;
-        /// it rises with τ `rainRise` and falls with τ `rainSettle` from `rainHold` after the last key (so the pauses
+        /// M2 Code (Rain until pass 25; pass 19b's G1 I1 T1 C2 K1 W1 of `docs/design-panel-lemna-rain.html`, matrix
+        /// §6.2): glyphs at `codeScale` of the line's size in a fixed grid of square cells, `codePitch` of the glyph's
+        /// cell height on a side (14 pt glyphs on 18.5 pt at Menlo 28: 81 × 54 cells on 1512 × 982 pt), each cell
+        /// holding one glyph of `Glyphs.codeSet`. A head steps down its column a cell at a time and lights the cell it
+        /// enters; the cell then dims in place, linearly from the trail's top alpha to nothing over the head's trail
+        /// (in cells, so the fade takes the trail ÷ the column's speed). A column's speed is drawn once at the birth
+        /// from `codeSpeed`, in rows a second, and kept whatever the intensity (pass 25; the user, 2026-11-01: "I don't
+        /// think the matrix code animation gets faster in the movie, it just gets more intense"; matrix §2: constant
+        /// within a column, about 2:1 between columns): 8–16 rows (148–296 pt) a second, about the geometric middle of
+        /// pass 19b's 5–10 at rest and 15–30 typing, between Rezmason's twilight (5–10) and classic (15–30), so it
+        /// neither crawls at rest nor rushes while typing; a column crosses a laptop's 54 rows in 3.4–6.8 s. A column
+        /// holds at most two heads, all at its speed, so they keep their distance; it starts the next at the top after
+        /// a random pause (when its last head's trail is `codeGap` cells down) so that about `codeActive` of the
+        /// columns show one, and a head ends below the bottom. Every lit glyph changes in place `codeChange` times a
+        /// second. Each pair is (idle, typing): one intensity, 0 at rest, 1 at `codeFast` keys a second (the keys of
+        /// the last `rateWindow`), sets every magnitude between them, linearly: the films' "more intense", more columns
+        /// falling, longer and brighter trails, brighter heads, glyphs changing more often, never faster columns; it
+        /// rises with τ `codeRise` and falls with τ `codeSettle` from `codeHold` after the last key (so the pauses
         /// between words do not make it pulse; back near rest about 4 s after the last key). A trail is a head's from
-        /// its start; a column's speed follows the intensity, all its heads together, so they keep their distance. The
-        /// head in the text colour, the trail in the accent (C2). Each glyph key also starts a head in its column where
-        /// the key is (`screenSpan`, `rainRows`), the typed glyph at it at `rainKeyHead`, its trail from
-        /// `rainKeyTrailTop` over `rainKeyTrail` cells; Space and Return none. From the show to the close
-        /// (`Mode.ambient`), stepped `rainAhead` ahead at its birth so the summon finds it falling; at `rainIdleRate`
-        /// frames a second while the intensity is at most `rainCalm` and no key came in the last `rainHold`. A cell is
-        /// drawn above `rainShown`. Pass 16's drops (until pass 19b): the typed glyph in the accent at 0.8 over 4–8
-        /// trail glyphs in the text colour sliding with it, from 0.55 by 0.75, 3 s a drop, at the line's size; nothing
-        /// without keys.
-        public static let rainScale = 0.5, rainPitch = 1.0, rainActive = (idle: 0.3, typing: 0.7)
-        public static let rainSpeed = (idle: 5.0...10.0, typing: 15.0...30.0)
-        public static let rainTrail = (idle: 6.0...18.0, typing: 10.0...30.0), rainGap = (idle: 3.0, typing: 2.0)
-        public static let rainHead = (idle: 0.35, typing: 0.85), rainTrailTop = (idle: 0.2, typing: 0.5)
-        public static let rainChange = (idle: 0.3, typing: 1.5)
-        public static let rainKeyHead = 0.95, rainKeyTrailTop = 0.55, rainKeyTrail = 8.0...20.0
-        public static let rainFast = 6.0, rainRise = 0.25, rainSettle = 1.2, rainHold = 0.8
-        public static let rainAhead = 20.0, rainIdleRate = 30.0, rainCalm = 0.05, rainShown = 0.02
+        /// its start. The head in the text colour, the trail in the accent (C2). Each glyph key also starts a head in
+        /// its column where the key is (`screenSpan`, `codeRows`), the typed glyph at it at `codeKeyHead`, its trail
+        /// from `codeKeyTrailTop` over `codeKeyTrail` cells; Space and Return none. From the show to the close
+        /// (`Mode.ambient`), stepped `codeAhead` ahead at its birth so the summon finds it falling; at `codeIdleRate`
+        /// frames a second while the intensity is at most `codeCalm` and no key came in the last `codeHold`. A cell is
+        /// drawn above `codeShown`. Until pass 25 the speed was a pair as well, 5–10 rows a second at rest and 15–30
+        /// typing, each column its own share of it. Pass 16's drops (until pass 19b): the typed glyph in the accent at
+        /// 0.8 over 4–8 trail glyphs in the text colour sliding with it, from 0.55 by 0.75, 3 s a drop, at the line's
+        /// size; nothing without keys.
+        public static let codeScale = 0.5, codePitch = 1.0, codeActive = (idle: 0.3, typing: 0.7)
+        public static let codeSpeed = 8.0...16.0
+        public static let codeTrail = (idle: 6.0...18.0, typing: 10.0...30.0), codeGap = (idle: 3.0, typing: 2.0)
+        public static let codeHead = (idle: 0.35, typing: 0.85), codeTrailTop = (idle: 0.2, typing: 0.5)
+        public static let codeChange = (idle: 0.3, typing: 1.5)
+        public static let codeKeyHead = 0.95, codeKeyTrailTop = 0.55, codeKeyTrail = 8.0...20.0
+        public static let codeFast = 6.0, codeRise = 0.25, codeSettle = 1.2, codeHold = 0.8
+        public static let codeAhead = 20.0, codeIdleRate = 30.0, codeCalm = 0.05, codeShown = 0.02
 
-        /// Still water (pass 24; AM1 of `docs/design-panel-lemna-themes.html` with drops at rest only, the user's pick;
+        /// Still water (pass 24; AM1 of `docs/design-panel-lemna-themes.html`, per word and at rest since pass 25;
         /// `research_notes/Lemna themes/look.md` §5.3's Ripples): drops land at random on the dim at least `waterClear`
         /// from the box, Poisson at `waterRate` a second on a 1512 × 982 pt screen, scaled to the stage's area, and one
-        /// at the show `waterSummon` above the middle of the box's top edge; none for a key, and typing changes
-        /// nothing. A drop is `waterCrests` rings that leave together at `waterSpeed`, each further one `waterSpread`
-        /// slower than the one outside it (±`waterJitter` of that), so the calm centre follows the lead at about 0.7 of
-        /// its speed and the crests stand about 9 pt apart at 1.7 s; each a Gaussian across it `waterWidth` wide, its
-        /// start within ±`waterStart` of the drop's, with a fainter trough ring `waterTrough` inside it at
-        /// `waterTroughShare` of its alpha. A ring's alpha rises over `waterOnset` on the curve to the peak, laid over on
-        /// a light wash and added on a dark one (`waterPeak`; times Still's ink alpha, 0.6 by day and 0.5 by night: 0.36
-        /// laid over by day and 0.2 added by night on screen; look §5.3's 0.16 and 0.07, one drop every 8 s, were not to
-        /// be seen on a real screen, the user 2026-11-01: "it's showing nothing"), then falls as e^(−age / `waterDecay`) · √(`waterNear` / r); under `waterShown` it is not drawn, and a
-        /// drop is gone at `waterLife`. Rings that cross add. At most `waterDrops` alive, at `waterFrameRate` frames a
-        /// second (36 pt/s is 1.2 pt a frame).
+        /// at the show `waterSummon` above the middle of the box's top edge. While you write (pass 25; the user,
+        /// 2026-11-01: "the rain drops should probably also be increasing when typing as well"), one more for each word
+        /// at its end (a Space or a Return after a glyph key), at least `waterWordGap` after the last word's, where the
+        /// word's last key is across the screen (`screenSpan`) and higher the higher the key's row: from `waterTop`
+        /// under the screen's top edge for the number row to `waterClear` above the box for the space bar's (a key
+        /// without a position: at the caret's x there), as the panel's canvas drops it (look §3.4, §5.3); none for a
+        /// key, and the rest rate unchanged. A drop is `waterCrests` rings that leave together at `waterSpeed`, each
+        /// further one `waterSpread` slower than the one outside it (±`waterJitter` of that), so the calm centre
+        /// follows the lead at about 0.7 of its speed and the crests stand about 9 pt apart at 1.7 s; each a Gaussian
+        /// across it `waterWidth` wide, its start within ±`waterStart` of the drop's, with a fainter trough ring
+        /// `waterTrough` inside it at `waterTroughShare` of its alpha. A ring's alpha rises over `waterOnset` on the
+        /// curve to the peak, laid over on a light wash and added on a dark one (`waterPeak`; times Still's ink alpha,
+        /// 0.6 by day and 0.5 by night: 0.36 laid over by day and 0.2 added by night on screen; look §5.3's 0.16 and
+        /// 0.07, one drop every 8 s, were not to be seen on a real screen, the user 2026-11-01: "it's showing
+        /// nothing"), then falls as e^(−age / `waterDecay`) · √(`waterNear` / r); under `waterShown` it is not drawn,
+        /// and a drop is gone at `waterLife`. Rings that cross add. At most `waterDrops` alive, at `waterFrameRate`
+        /// frames a second (36 pt/s is 1.2 pt a frame).
         public static let waterRate = 0.5, waterClear = 48.0, waterSummon = 48.0, waterDrops = 32
+        public static let waterWordGap = 0.8, waterTop = 40.0
         public static let waterCrests = 3, waterSpeed = 36.0, waterSpread = 0.15, waterJitter = 0.15
         public static let waterWidth = 2.0...3.5, waterStart = 0.04, waterTrough = 3.0, waterTroughShare = 0.4
         public static let waterOnset = 0.18, waterPeak = (over: 0.6, add: 0.4), waterDecay = 2.0, waterNear = 12.0
@@ -261,9 +277,9 @@ extension Ambience {
         public let ids: [CGGlyph]
         /// One cell in the atlas's pixels, and where a glyph's baseline-left sits in it, in points from its bottom-left.
         public let pixels: (w: Int, h: Int), origin: CGPoint
-        /// The slots of a to z; and of Rain's glyphs (K1, pass 19b): the films' set as far as ASCII has it, digits
+        /// The slots of a to z; and of Code's glyphs (K1, pass 19b): the films' set as far as ASCII has it, digits
         /// without 6, Z z : . " = * + - < > | _, not mirrored.
-        public let letters: [Int], rainSet: [Int]
+        public let letters: [Int], codeSet: [Int]
         private let byCharacter: [Character: Int]
 
         public init(font: CTFont) {
@@ -286,7 +302,7 @@ extension Ambience {
             origin = CGPoint(x: p - left, y: p - ink.minY)
             (self.ids, self.byCharacter) = (ids, byCharacter)
             letters = "abcdefghijklmnopqrstuvwxyz".compactMap { byCharacter[$0] }
-            rainSet = "012345789Zz:.\"=*+-<>|_".compactMap { byCharacter[$0] }
+            codeSet = "012345789Zz:.\"=*+-<>|_".compactMap { byCharacter[$0] }
         }
 
         /// A cell in points.
@@ -295,7 +311,7 @@ extension Ambience {
         /// The atlas's size in pixels.
         public var atlas: (w: Int, h: Int) { (Self.columns * pixels.w, rows * pixels.h) }
 
-        /// The atlas's font for a line in `font`: the same when it is monospaced, else Menlo at its size, so Rain's grid
+        /// The atlas's font for a line in `font`: the same when it is monospaced, else Menlo at its size, so Code's grid
         /// keeps a monospaced face whatever the theme's line uses (TY1; architecture §6).
         public static func atlasFont(for font: CTFont) -> CTFont {
             CTFontGetSymbolicTraits(font).contains(.traitMonoSpace) ? font
@@ -324,14 +340,14 @@ extension Ambience {
         mutating func step(dt: Double, events: [Event], rate: Double, into out: inout [Sprite])
         /// The most sprites it draws now, which never passes `Tuning.cap`: a scene spawns nothing that would.
         var count: Int { get }
-        /// The frames a second it wants now: `Tuning.frameRate`, Rain at rest and Still water fewer.
+        /// The frames a second it wants now: `Tuning.frameRate`, Code at rest and Still water fewer.
         var frameRate: Double { get }
     }
 
     /// The scene of `mode`.
     public static func scene(_ mode: Mode, stage: Stage, glyphs: Glyphs, seed: UInt64) -> any Scene {
         switch mode {
-        case .rain: Rain(stage: stage, glyphs: glyphs, seed: seed)
+        case .code: Code(stage: stage, glyphs: glyphs, seed: seed)
         case .water: Water(stage: stage, glyphs: glyphs, seed: seed)
         }
     }
@@ -451,7 +467,7 @@ extension Ambience {
     /// be called when using CAMetalDisplayLink"), which pass 15 called to clear the layer at a scene's end and so died
     /// at Esc. The layer is hidden at a close (its opacity fades with the dim, on the main thread) and shown again only
     /// after a cleared frame is on screen, so the last frame of a scene cut short never shows at the next summon. An
-    /// ambient mode's scene (Rain) is made at the show's first frame, keys or none, and plays until the close; the
+    /// ambient mode's scene (Code, Still water) is made at the show's first frame, keys or none, and plays until the close; the
     /// link's frame rate follows what the scene wants (`Step.rate`). Free of Metal: the tests drive whole sequences.
     public struct Lifecycle {
         public enum Phase: Equatable {

@@ -3,7 +3,7 @@
 // CAMetalDisplayLink drives ("-nextDrawable should not be called when using CAMetalDisplayLink."): the exception
 // crossed the link's callback and Lemna died at Esc, and 4 s after the last key, whenever a scene played. Here: that
 // refusal on a real layer and link, and the lifecycle that replaces it, driven through Esc, the close's fade, the
-// dim's, a hand-off, a close at once, a new show and Off; and since pass 19b an ambient mode's (Rain's, and since pass
+// dim's, a hand-off, a close at once, a new show and Off; and since pass 19b an ambient mode's (Code's, and since pass
 // 24 Still water's: every mode left), born at the show without a key, playing until the close at the frame rate it
 // asks for. (Pass 24 removed the modes that started at a key and ended 4 s after the last, and their sequences.) No
 // Foundation here.
@@ -100,7 +100,7 @@ private func lawful(_ steps: [(t: Double, step: Life.Step)]) -> Bool {
     var life = Life()
     // Typing at 6 keys a second for a second, Esc at 1.05: the dim fades over 0.2 s and goes at 1.25; the scene's
     // close ends `closeAhead` before (as `Ambient.close` hands it on).
-    let steps = drive(&life, plan(.rain, turn: 1), from: 0, to: 2, keys: (0...6).map { Double($0) / 6 },
+    let steps = drive(&life, plan(.code, turn: 1), from: 0, to: 2, keys: (0...6).map { Double($0) / 6 },
                       close: (1.05, 0.2 - Ambience.Tuning.closeAhead), stop: 1.25, frames: 1.25)
     #expect(lawful(steps))
     #expect(steps[0].step.alpha == nil && steps[0].step.resize == pixels)  // a cleared frame first, at the screen's size
@@ -113,7 +113,7 @@ private func lawful(_ steps: [(t: Double, step: Life.Step)]) -> Bool {
 }
 
 @Test(.enabled(if: Ambience.Renderer.available)) func theEscSequenceRunsOnARealLayerAndLinkWithoutAnException() throws {
-    // The same Esc as above, every step done to a real layer and link: the size between frames, the frame rate (Rain,
+    // The same Esc as above, every step done to a real layer and link: the size between frames, the frame rate (Code,
     // pass 19b: 30 Hz at rest, 60 from its first key; Still water 30 throughout; set while the link runs), the pause,
     // and each frame drawn by the renderer into a texture standing in for the link's drawable.
     let renderer = try #require(Ambience.Renderer(font: menlo))
@@ -159,7 +159,7 @@ private func lawful(_ steps: [(t: Double, step: Life.Step)]) -> Bool {
         }, &message, 256)
         #expect(threw == 0, "\(mode) \(String(cString: message))")
         #expect(life.phase == .idle && layer.drawableSize == Life.parked && link.isPaused, "\(mode)")
-        #expect(rates == (mode == .rain ? [30, 60] : [30]), "\(mode)")  // Rain at rest, then from its first key
+        #expect(rates == (mode == .code ? [30, 60] : [30]), "\(mode)")  // Code at rest, then from its first key
     }
     link.invalidate()
 }
@@ -197,12 +197,12 @@ private func lawful(_ steps: [(t: Double, step: Life.Step)]) -> Bool {
     }
 }
 
-@Test func rainIsBornAtTheShowAndPlaysUntilTheClose() {
+@Test func codeIsBornAtTheShowAndPlaysUntilTheClose() {
     // Pass 19b (I1): no key needed; a cleared frame first, then the layer shown and the rain drawn at alpha 1 for as
     // long as the box is up (10 s of silence and more), the link never paused; 30 Hz at rest, 60 from a key, 30 again
     // once it has settled; Esc fades it with the dim, parks and pauses before the dim is gone.
     var life = Life()
-    let steps = drive(&life, plan(.rain, turn: 1), from: 0, to: 16, keys: [10, 10.2, 10.4],
+    let steps = drive(&life, plan(.code, turn: 1), from: 0, to: 16, keys: [10, 10.2, 10.4],
                       close: (15, 0.2 - Ambience.Tuning.closeAhead), stop: 15.2, frames: 15.2)
     #expect(lawful(steps) && life.phase == .idle && life.run == nil)
     #expect(steps[0].step.alpha == nil && steps[0].step.resize == pixels && steps[0].step.rate == 30)
@@ -222,7 +222,7 @@ private func lawful(_ steps: [(t: Double, step: Life.Step)]) -> Bool {
 @Test func aNewShowAfterACloseStartsTheSceneAgainWithACleanFrame() {
     // Esc at once (Pop off) at 2 s and a hand-off's close at 5 s, each window gone before the scene could clear itself;
     // each next show starts the scene without a key, with a cleared frame before the layer shows; Off after it clears,
-    // parks and pauses. Rain and Still water alike (pass 24; the old sequence's Rings with keys went with them).
+    // parks and pauses. Code and Still water alike (pass 24; the old sequence's Rings with keys went with them).
     for mode in Ambience.Mode.allCases { newShows(mode) }
 }
 

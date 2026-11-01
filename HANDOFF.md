@@ -2,7 +2,47 @@
 
 `DESIGN.md` holds the decisions and the plan. This file says what is done and what is next.
 
-## State (2026-10-31)
+## State (2026-11-01)
+
+- App and site, pass 25, Code rain intensifies without speeding up, its name, and a drop per word on the water
+  (2026-11-01; DESIGN.md A1 amended; the user, after trying passes 19–24: "I don't think the matrix code animation gets
+  faster in the movie, it just gets more intense. That should be reflected in that animation. Also it's odd that it's
+  called rain when we actually have a rain animation as well. Also the rain drops should probably also be increasing
+  when typing as well."). **Code** (was Rain): each column draws its speed once from 8–16 rows a second and keeps it;
+  typing no longer speeds anything up, it raises the share of columns falling, the trails' length, the heads' and
+  trails' brightness and the glyph changes, as before, and each key still starts a head where the key is. The extra
+  columns start at the top at their own pace, so the density builds over a few seconds; the brightness and the keys'
+  heads answer at once. **The name:** Session › Ambience ▸ Code, Still water, Off; a kept `rain` reads as Code (written
+  back as `code`); Sound › Rain bed keeps its name. **Still water:** besides the rest drops, one drop per word at its
+  Space or Return, at least 0.8 s after the last word's, where the panel's canvas drops it (across the screen where
+  the word's last key is, higher the higher the key's row, between 40 pt under the top edge and 48 pt above the box);
+  none per key; the rest rate as since 70c0b67 (one drop every 2 s on a laptop screen, not pass 24's every 8 s).
+  **Site:** the Ambience block is two live tiles, Code (speed per column, the burst raising density and brightness
+  only) and Still water (rest drops and one per word of the burst, in Lemna's ink), with a still of each in
+  `<noscript>` (`site/assets/img/ambience-code.png`, `ambience-water.png`, headless screenshots of the tiles);
+  Drift, Rings, Grid and their stills are gone; the caption reads "Optional, on the dim while you write: Code, Still
+  water, or off."; the hero demo is unchanged. Checked: `node --check`, tags balanced, every id and local file the page
+  names exists, no URL outside github.com/glia-org/lemna and freesound.org, no console error or exception in headless
+  Chrome, a screenshot of the block in motion and under reduced motion looked at. The page republishes on push (not
+  pushed). Tests: 126, all passing (124 before; new: a column keeps its speed whatever the intensity, Still water's
+  rest rate holding while writing; replaced: "Still water takes no keys" by one drop per word and none per key; changed:
+  the ramp's test without speed and with more columns, the key head's travel at its column's speed, the cap at 10
+  words a second on 2560 × 1440, the water render with a word's drop). Renders `ambience-code.png`,
+  `ambience-code-idle.png`, `ambience-code-still-day.png`, `ambience-code-still-night.png` (were `ambience-rain*`),
+  `ambience-water-day.png`, `ambience-water-night.png`. `LEMNA_VERSION=0.1.2 make-app.sh` built, signed with "Lemna
+  Dev" (`Authority=Lemna Dev`) and verified; the executable is 1,223,088 bytes, no home folder in its symbols. Not
+  tried: nothing was launched. **Asks the user:** the brief also named "the hand-off's end of text" as a word's end;
+  not built: ⌘⏎ is a menu chord the line never hands to the ambience, and a drop at the hand-off would show only under
+  the close's 150 ms fade (Copy, Save…) or beside MO1's ring, which already is the text's drop into the water. If
+  wanted anyway: an end event sent before each hand-off's close in `Box` (about 15 lines). Try, after quitting the
+  running Lemna and `open app/build/Lemna.app`:
+  - Ambience ▸ lists Code, Still water, Off; if Rain was ticked before, Code is ticked now.
+  - Code at rest, then type fast for ten seconds: the columns fall at the same pace as at rest, more of them, longer
+    and brighter; the typed glyphs light where their keys are. Stop: back to the low-key rain within about 4 s.
+  - Still water (Theme ▸ Still, or Ambience ▸ Still water): type a few sentences at your pace: a drop for each word,
+    above the box, right for words ending on the right of the keyboard, higher for a last key in a higher row; none
+    for single keys; drops at rest go on in pauses.
+  - Sound ▸ still says Rain bed.
 
 - App, pass 24, Still water and the removals (2026-10-31; DESIGN.md A1 and F1 amended; the user's picks AM1 with drops
   at rest only, MO1 and RM1 of `docs/design-panel-lemna-themes.html`; on the other modes: "I like the rain animation

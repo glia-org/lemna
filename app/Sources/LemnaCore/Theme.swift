@@ -33,8 +33,8 @@ public struct Theme: Equatable {
         }
     }
 
-    /// The ambience's colours on the dim (A1's C1): `text` for the glyphs, the rings and the grid's lines (Rain's
-    /// heads), `accent` for the lit cells (Rain's trails); `blend`, how the sprites combine in the ambience's layer:
+    /// The ambience's colours on the dim (A1's C1): `text` for the glyphs, the rings and the grid's lines (Code's
+    /// heads), `accent` for the lit cells (Code's trails); `blend`, how the sprites combine in the ambience's layer:
     /// added, light spilling onto a dark dim, or laid over, ink on a light one, where added light shows nothing
     /// (`research_notes/Lemna themes/architecture.md` §7); `alpha` scales every sprite's.
     public struct Ink: Equatable {

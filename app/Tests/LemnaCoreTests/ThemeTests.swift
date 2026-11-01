@@ -1,8 +1,8 @@
 // The themes (DESIGN.md TH1, DC1's tests): Lemna is today's look exactly, every theme names a pack and a mode that exist
-// and reaches its contrast in each appearance, the appearance picks the palette, the font resolves (and Rain's atlas
+// and reaches its contrast in each appearance, the appearance picks the palette, the font resolves (and Code's atlas
 // stays monospaced), the preset leaves the sound's on or off alone, and Still opens and hands off by fades; since pass
 // 22 Still's bundled face, its caret's rounded ends, the line clearing the bottom edge's note and the shaped tail in
-// every theme's face, and Still in the window (editing-still-day.png, editing-still-night.png). Rain on Still's day dim
+// every theme's face, and Still in the window (editing-still-day.png, editing-still-night.png). Code on Still's day dim
 // and the box at rest by day and night are in AmbienceTests. No Foundation here (see RenderTests.swift).
 import CoreGraphics
 import CoreText
@@ -110,7 +110,7 @@ var stillFont: CTFont? {
     #expect(Theme.lemna.night.ink.blend == .add)
 }
 
-@Test func eachThemesFontResolvesAndRainsAtlasStaysMonospaced() throws {
+@Test func eachThemesFontResolvesAndCodesAtlasStaysMonospaced() throws {
     let font = try #require(stillFont)  // Literata, bundled (TY1)
     #expect(CTFontCopyFamilyName(font) as String == "Literata" && CTFontGetSize(font) == 30)
     // A face the Mac lacks is not taken for the one Core Text gives instead (Helvetica): the fallback is, Still's
@@ -119,7 +119,7 @@ var stillFont: CTFont? {
     #expect(Theme.Typeface(face: missing, bundled: false, fallback: nil).font == nil)
     let charter = try #require(Theme.Typeface(face: missing, bundled: true, fallback: Theme.still.type.fallback).font)
     #expect(CTFontCopyFamilyName(charter) as String == "Charter" && CTFontGetSize(charter) == 31)
-    // Rain's grid in a monospaced face: Menlo at the line's size under a proportional line, the line's own else.
+    // Code's grid in a monospaced face: Menlo at the line's size under a proportional line, the line's own else.
     let atlas = Ambience.Glyphs.atlasFont(for: font)
     #expect(CTFontCopyFamilyName(atlas) as String == "Menlo" && CTFontGetSize(atlas) == CTFontGetSize(font))
     #expect(CFEqual(Ambience.Glyphs.atlasFont(for: menlo), menlo))

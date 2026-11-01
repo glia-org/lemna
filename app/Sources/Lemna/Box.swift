@@ -627,7 +627,7 @@ final class Box {
     }
 
     /// The ambience on the dims (A1): this show's mode, none under Reduce Motion, on the box's screen, and on the other
-    /// screens for the mode that plays on every one (Rain); each dim's layer gets its screen's stage, the box and
+    /// screens for the mode that plays on every one (Code); each dim's layer gets its screen's stage, the box and
     /// its line where they are on it, in the theme's ink and the atlas's font for its line (`Glyphs.atlasFont`). A dim
     /// gets its layer the first time a mode plays on it.
     private func stageAmbience(on boxScreen: NSScreen?) {

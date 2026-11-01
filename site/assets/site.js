@@ -1,6 +1,6 @@
 /* Lemna's website: the demo. An app window, then the use case as a loop: ⌃⌥Space, the dim and the box open, a
    sentence types itself on the gliding line, ⌘⏎, the hand-off, the sentence lands in the app. The reader can click
-   into the box and write instead. The dim is plain there; Ambience ▸ Rain runs in its own smaller piece below. Every duration and curve is the app's (DESIGN.md F1, A1;
+   into the box and write instead. The dim is plain there; Ambience ▸ Code and Still water run in their own smaller pieces below. Every duration and curve is the app's (DESIGN.md F1, A1;
    app/Sources/LemnaCore/Effects.swift, Line.swift, Glide.swift, Handoff.swift, Scenes.swift). The page is complete
    without this file: it shows a still of the app instead. */
 (function(){
@@ -36,15 +36,16 @@ var fits=Array.prototype.slice.call(document.querySelectorAll('.fit'));
 function scale(){fits.forEach(function(f){var st=f.querySelector('.stage'),s=Math.min(1,f.clientWidth/SW);st.style.transform=s<1?'scale('+s+')':''})}
 scale();addEventListener('resize',scale);
 
-/* ---------- the Ambience piece's rain on its dim: Ambience ▸ Rain (A1, pass 19b). Glyphs fixed in a grid of 18.5 px cells, lit by
-   heads that step down a column a cell at a time, each cell dimming in place; born 20 s ahead at each show, falling
-   until the close. One intensity, 0 at rest to 1 at 6 keys a second (keys of the last 2 s), rising with τ 0.25 s,
-   settling with τ 1.2 s from 0.8 s after the last key. At rest / typing: 30 % / 70 % of the columns, 5–10 / 15–30 rows
-   a second, trails 6–18 / 10–30 cells, head α 0.35 / 0.85 in the text colour, trail from 0.20 / 0.50 in the accent,
-   0.3 / 1.5 glyph changes a second; 30 Hz at rest, 60 typing. A glyph key starts a head where its key is on the
-   keyboard (an ANSI layout), the typed glyph at it at 0.95. */
-var Rain=(function(){
-  var cv=tileCanvas('rain'),ctx=cv&&cv.getContext&&cv.getContext('2d');
+/* ---------- the Ambience piece's code rain on its dim: Ambience ▸ Code (A1, pass 19b; Rain until pass 25). Glyphs
+   fixed in a grid of 18.5 px cells, lit by heads that step down a column a cell at a time, each cell dimming in place;
+   born 20 s ahead at each show, falling until the close. Each column falls at its own speed, 8–16 rows a second, drawn
+   once and kept whatever the intensity (pass 25: the films' rain does not speed up, it grows more intense). One
+   intensity, 0 at rest to 1 at 6 keys a second (keys of the last 2 s), rising with τ 0.25 s, settling with τ 1.2 s from
+   0.8 s after the last key. At rest / typing: 30 % / 70 % of the columns, trails 6–18 / 10–30 cells, head α 0.35 /
+   0.85 in the text colour, trail from 0.20 / 0.50 in the accent, 0.3 / 1.5 glyph changes a second; 30 Hz at rest, 60
+   typing. A glyph key starts a head where its key is on the keyboard (an ANSI layout), the typed glyph at it at 0.95. */
+var Code=(function(){
+  var cv=tileCanvas('code'),ctx=cv&&cv.getContext&&cv.getContext('2d');
   var none={start:function(){},stop:function(){},see:function(){},key:function(){},pulse:function(){}};
   if(!ctx)return none;
   var P=18.5,SET='012345789Zz:."=*+-<>|_',TEXT='#d8dce3',ACC='#7aa7f0';
@@ -52,23 +53,23 @@ var Rain=(function(){
   var N=Math.ceil(SW/P),R=Math.ceil(SH/P),n=N*R,D=Math.min(window.devicePixelRatio||1,2);
   cv.width=SW*D;cv.height=SH*D;ctx.setTransform(D,0,0,D,0,0);
   ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='14px '+getComputedStyle(body).fontFamily;
-  var G=new Uint8Array(n),T0=new Float64Array(n),F=new Float32Array(n),TOP=new Float32Array(n),HD=new Uint8Array(n),u=[],drops=[];
+  var G=new Uint8Array(n),T0=new Float64Array(n),F=new Float32Array(n),TOP=new Float32Array(n),HD=new Uint8Array(n),V=[],drops=[];
   var I=0,C=0,now=0,last=-1e9,keys=[],raf=0,prev=0,on=false,seen=true;
-  function light(c,r,d){if(r>=0&&r<R){var i=r*N+c;T0[i]=C;F[i]=d.L/(30*u[c]);TOP[i]=d.top}}
+  function light(c,r,d){if(r>=0&&r<R){var i=r*N+c;T0[i]=C;F[i]=d.L/V[c];TOP[i]=d.top}}
   function spawn(c,y,L,g,top){var d={y:y,L:L,g:g,top:top};drops[c].push(d);light(c,Math.floor(y),d)}
   function step(dt){
     now+=dt;
     while(keys.length&&now-keys[0]>=2)keys.shift();
     var tgt=Math.min(keys.length/2/6,1);
     if(tgt>I)I+=(tgt-I)*(1-Math.exp(-dt/.25));else if(now-last>=.8)I+=(tgt-I)*(1-Math.exp(-dt/1.2));
-    var s=1/3+2/3*I,dc=dt*s,act=lerp(.3,.7,I),lo=lerp(6,10,I),hi=lerp(18,30,I),gap=I<.5?3:2,c,k,j,i;
-    C+=dc;
-    var lam=act*N*22.5*s/(R+(hi-lo)/Math.log(hi/lo));  // new heads a second: active × columns × speed ÷ (rows + trail)
+    var act=lerp(.3,.7,I),lo=lerp(6,10,I),hi=lerp(18,30,I),gap=I<.5?3:2,c,k,j,i;
+    C+=dt;
+    var lam=act*N*12/(R+(hi-lo)/Math.log(hi/lo));  // new heads a second: active × columns × mean speed ÷ (rows + trail)
     for(var q=lam*dt;rnd()<q;q--)for(var t=0;t<4;t++){c=rnd()*N|0;var ok=true;
       for(j=0;j<drops[c].length;j++)if(drops[c][j].y-drops[c][j].L<gap){ok=false;break}
       if(ok){spawn(c,0,logu(lo,hi),null,0);break}}
-    for(c=0;c<N;c++){var v=30*u[c],keep=[];
-      for(k=0;k<drops[c].length;k++){var d=drops[c][k],r0=Math.floor(d.y);d.y+=v*dc;
+    for(c=0;c<N;c++){var v=V[c],keep=[];
+      for(k=0;k<drops[c].length;k++){var d=drops[c][k],r0=Math.floor(d.y);d.y+=v*dt;
         for(var r=r0+1;r<=Math.floor(d.y);r++)light(c,r,d);
         if(d.y-d.L<R)keep.push(d)}
       drops[c]=keep}
@@ -90,8 +91,8 @@ var Rain=(function(){
   }
   function birth(){
     for(var i=0;i<n;i++)G[i]=rnd()*SET.length|0;
-    T0.fill(-1e9);F.fill(1);TOP.fill(0);u=[];drops=[];
-    for(var c=0;c<N;c++){u.push(.5+.5*rnd());drops.push([])}
+    T0.fill(-1e9);F.fill(1);TOP.fill(0);V=[];drops=[];
+    for(var c=0;c<N;c++){V.push(lerp(8,16,rnd()));drops.push([])}  // rows a second, the column's own
     I=0;C=0;now=0;last=-1e9;keys=[];
     for(var k=0;k<600;k++)step(1/30);  // 20 s ahead, undrawn: the box finds it falling
   }
@@ -329,149 +330,80 @@ function begin(){if(started)return;started=true;reduced?still():loop()}
 if('IntersectionObserver' in window)new IntersectionObserver(function(es){if(es[0].isIntersecting)begin()}).observe(fit);
 else begin();
 
-/* ---------- the Ambience tiles' other three modes, ported from app/Sources/LemnaCore/Scenes.swift with Ambience.Tuning's
-   values, on the stage's points (y down here, up in the app). Each plays from the first key and is gone 4 s after the
-   last, its last second fading evenly (Tuning.linger, fadeOut); 60 Hz while it plays. */
-var B={x:96,y:357,w:907,h:112},CARET=B.x+1+.6*(B.w-2),MID=B.y+B.h/2,TEXT='#d8dce3',ACC='#7aa7f0';
-var FONT=getComputedStyle(body).fontFamily;
-var ADV=(function(){var c=document.createElement('canvas').getContext('2d');if(!c)return 16.86;c.font='28px '+FONT;return c.measureText('MMMMMMMMMM').width/10})();
-/* where a key is on a MacBook's main block (Keyboard.swift, ANSI): its row (0 the number row, 4 the space bar's), the
-   middle of its column in key units (0 to 15), its width */
+/* ---------- the Ambience piece's still water: Ambience ▸ Still water (A1, passes 24 and 25), on the same stage in
+   Lemna's ink (the text colour, added, as the app draws it under Lemna's theme), ported from Scenes.swift's Water with
+   Ambience.Tuning's values, on the stage's points (y down here, up in the app). Drops land at random at least 48 px
+   from the box, at 0.5 a second on a 1512 × 982 pt screen scaled to this piece's area, and one for each word (its
+   Space or Return after a glyph key), at least 0.8 s after the last word's, where the word's last key is across the
+   stage (a tenth to nine tenths) and higher the higher its row, from 40 px under the top edge to 48 px above the box.
+   A drop is three rings that leave together at 36 px/s, each further one 15 % (±15 % of that) slower, each a Gaussian
+   2–3.5 px wide starting within ±40 ms, with a trough 3 px inside it at 0.4 of its alpha; a ring's alpha rises over
+   180 ms on the curve to 0.4, then falls as e^(−t / 2 s) · √(12 px / r), under 0.01 not drawn; a drop is gone at 6 s,
+   at most 32 alive; rings that cross add. 30 Hz. */
+var B={x:96,y:357,w:907,h:112},CARET=B.x+1+.6*(B.w-2);
+/* where a key is on a MacBook's main block (Keyboard.swift, ANSI): its row (0 the number row, 4 the space bar's) and
+   the middle of its column in key units (0 to 15) */
 var KEYPOS=(function(){var t={};
-  function row(r,keys,first){keys.split('').forEach(function(c,i){t[c]={row:r,column:first+i,width:1}})}
-  row(0,'1234567890',1.5);row(1,'qwertyuiop',2);row(2,'asdfghjkl',2.25);row(3,'zxcvbnm,.',2.75);
-  t[' ']={row:4,column:6.75,width:5};t['\b']={row:0,column:14,width:2};return t})();
-function span(lo,hi,end){var a=Math.min(Math.max(Math.ceil(lo),0),end);return [a,Math.min(Math.max(Math.ceil(hi),a),end)]}
-
-/* M1 Drift: a glyph of the line that leaves the box's left edge fades in to 0.7 over 0.3 s, holds 1.5 s and is gone at
-   4 s; it leaves at the line's speed (its advance times the key rate) and slows over 1 s onto a current of 8–40 pt/s
-   set by the rate (eased over 0.6 s), rising at its own pace (-6 to 18 pt/s, more often up), wandering ±6 pt/s and
-   turning 0.05–0.2 rad/s */
-function Drift(){
-  var leaves=[],current=8;
-  return {
-    reset:function(){leaves=[];current=8},
-    step:function(dt,ev,rate){
-      current+=(lerp(8,40,Math.min(rate/10,1))-current)*(1-Math.exp(-dt/.6));
-      var carry=1-Math.exp(-dt/1);
-      ev.forEach(function(e){if(e.leaving)leaves.push({x:B.x,y:MID,vx:Math.max(ADV*rate,current),age:0,rot:0,ch:e.leaving,
-        rise:lerp(-6,18,rnd()),turn:lerp(.05,.2,rnd())*(rnd()<.5?-1:1),phase:rnd()*2*Math.PI})});
-      leaves.forEach(function(l){l.age+=dt;l.vx+=(current-l.vx)*carry;l.x-=l.vx*dt;
-        l.y-=(l.rise+6*Math.sin(l.phase+.8*l.age))*dt;l.rot+=l.turn*dt});
-      leaves=leaves.filter(function(l){return l.age<4&&l.x>-100});
-    },
-    draw:function(ctx,run){
-      ctx.font='28px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=TEXT;
-      leaves.forEach(function(l){var a=.7*Math.min(l.age/.3,1)*Math.min((4-l.age)/2.2,1)*run;if(a<=0)return;
-        ctx.globalAlpha=a;ctx.save();ctx.translate(l.x,l.y);ctx.rotate(-l.rot);ctx.fillText(l.ch,0,0);ctx.restore()});
-    }
-  };
-}
-/* M3 Rings: each key sends one 2 pt circle out from the box's top edge at the key's place along the box (5 % to 95 %
-   of its width), to the stage's farthest corner on the curve over 2 s, its alpha from 0.6 to nothing; ⌫ sends one in
-   from 240 pt */
-function Rings(){
-  var rings=[];
-  return {
-    reset:function(){rings=[]},
-    step:function(dt,ev){
-      ev.forEach(function(e){if(!e.key)return;
-        var x=e.pos?B.x+B.w*lerp(.05,.95,e.pos.column/15):CARET,y=B.y;
-        var reach=Math.max(Math.hypot(x,y),Math.hypot(SW-x,y),Math.hypot(x,SH-y),Math.hypot(SW-x,SH-y));
-        rings.push({age:0,inward:e.back,x:x,y:y,reach:reach})});
-      rings.forEach(function(r){r.age+=dt});rings=rings.filter(function(r){return r.age<2});
-    },
-    draw:function(ctx,run){
-      ctx.strokeStyle=TEXT;ctx.lineWidth=2;
-      rings.forEach(function(r){var u=r.age/2,e=ease(u),rad=r.inward?240*(1-e):r.reach*e;if(rad<=.5)return;
-        ctx.globalAlpha=.6*(1-u)*run;ctx.beginPath();ctx.arc(r.x,r.y,rad,0,2*Math.PI);ctx.stroke()});
-    }
-  };
-}
-/* M5 Grid: 32 pt cells aligned to the box, the lines at 0.12 fading in over 0.3 s at the first key; each key lights its
-   own cells in a keyboard of 5 × 15 cells one cell under the box, or over it where there is no room (as here), in the
-   accent at 0.6, gone by 0.9 s */
-function Grid(){
-  var C=32,yb=B.y+B.h,shown=null,lit={};
-  var below=yb+6*C<=SH,over=yb-Math.ceil(B.h/C)*C,left=B.x+Math.round((B.w/2-7.5*C)/C)*C;
-  function top(r){return below?yb+(1+r)*C:over-(6-r)*C}
-  return {
-    reset:function(){shown=null;lit={}},
-    step:function(dt,ev){
-      ev.forEach(function(e){if(!e.key||!e.pos)return;if(shown===null)shown=0;
-        var rs=span(e.pos.row-.5,e.pos.row+.5,5),cs=span(e.pos.column-e.pos.width/2-.5,e.pos.column+e.pos.width/2-.5,15);
-        for(var r=rs[0];r<rs[1];r++)for(var c=cs[0];c<cs[1];c++)lit[r*15+c]=0});
-      if(shown===null)return;shown+=dt;
-      Object.keys(lit).forEach(function(k){lit[k]+=dt;if(lit[k]>=.9)delete lit[k]});
-    },
-    draw:function(ctx,run){
-      if(shown===null)return;
-      ctx.globalAlpha=.12*Math.min(shown/.3,1)*run;ctx.fillStyle=TEXT;
-      for(var x=B.x-Math.floor(B.x/C)*C;x<=SW;x+=C)ctx.fillRect(x-.5,0,1,SH);
-      for(var y=yb-Math.floor(yb/C)*C;y<=SH;y+=C)ctx.fillRect(0,y-.5,SW,1);
-      ctx.fillStyle=ACC;
-      Object.keys(lit).forEach(function(k){var age=lit[k],r=Math.floor(k/15),c=k%15;
-        ctx.globalAlpha=.6*Math.min(age/.05,1)*(1-age/.9)*run;
-        ctx.fillRect(left+c*C+1,top(r)+1,C-1,C-1)});
-    }
-  };
-}
-/* a tile's runner: steps its scene, draws it while it is in view and plays */
-function Runner(cv,scene){
-  var ctx=cv&&cv.getContext&&cv.getContext('2d');if(!ctx)return null;
+  function row(r,keys,first){keys.split('').forEach(function(c,i){t[c]={row:r,column:first+i}})}
+  row(0,'1234567890',1.5);row(1,'qwertyuiop',2);row(2,'asdfghjkl',2.25);row(3,'zxcvbnm,.',2.75);return t})();
+var Water=(function(){
+  var cv=tileCanvas('water'),ctx=cv&&cv.getContext&&cv.getContext('2d');
+  var none={start:function(){},see:function(){},key:function(){}};
+  if(!ctx)return none;
   var D=Math.min(window.devicePixelRatio||1,2);cv.width=SW*D;cv.height=SH*D;ctx.setTransform(D,0,0,D,0,0);
-  var now=0,last=-1e9,keys=[],queue=[],raf=0,prev=0,seen=false,live=false;
-  function tick(dt){
-    now+=dt;while(keys.length&&now-keys[0]>=2)keys.shift();
-    var since=now-last;ctx.clearRect(0,0,SW,SH);
-    if(since>=4){scene.reset();live=false;return}
-    // the key rate: the keys of the last 2 s over the time they span (a key's worth at least), so a burst of keys
-    // reads at its own pace from its first key, as steady typing does in the app's 2 s window
-    var rate=keys.length?keys.length/Math.min(2,Math.max(now-keys[0],0)+1/6):0;
-    scene.step(dt,queue,rate);queue=[];
-    scene.draw(ctx,Math.min(1,4-since));ctx.globalAlpha=1;
+  var REST=.5*SW*SH/(1512*982),drops=[],t=0,lastWord=-1e9,inWord=false,lastKey=null,raf=0,prev=0,on=false,seen=false;
+  function drop(x,y){if(drops.length>=32)return;
+    drops.push({x:x,y:y,t0:t,c:[0,1,2].map(function(k){return {v:36*(1-.15*k*(1+(2*rnd()-1)*.15)),w:2+1.5*rnd(),s:(2*rnd()-1)*.04}})})}
+  function restDrop(){for(var i=0;i<20;i++){var x=rnd()*SW,y=rnd()*SH;
+    if(x>B.x-48&&x<B.x+B.w+48&&y>B.y-48&&y<B.y+B.h+48)continue;drop(x,y);return}}
+  function wordDrop(k){var low=B.y-48,high=40;
+    if(k)drop(SW*(.1+.8*k.column/15),high+k.row/4*(low-high));else drop(CARET,low)}
+  function ring(x,y,r,w,A){  // a Gaussian across the circle, e^(−2) one width out, nothing beyond two (the shader's)
+    var r0=Math.max(0,r-2*w),r1=r+2*w,g=ctx.createRadialGradient(x,y,r0,x,y,r1),span=r1-r0;
+    [[-2,0],[-1,.135],[-.5,.61],[0,1],[.5,.61],[1,.135],[2,0]].forEach(function(s){var p=(r+s[0]*w-r0)/span;
+      if(p>=0&&p<=1)g.addColorStop(p,'rgba(216,220,227,'+(A*s[1]).toFixed(4)+')')});
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r1,0,2*Math.PI);if(r0>0)ctx.arc(x,y,r0,0,2*Math.PI,true);ctx.fill('evenodd');
   }
-  function frame(t){if(!seen||!live){raf=0;return}raf=requestAnimationFrame(frame);
-    var dt=prev?Math.min((t-prev)/1000,.1):1/60;prev=t;tick(dt)}
-  function go(){if(seen&&live&&!reduced&&!raf){prev=0;raf=requestAnimationFrame(frame)}}
+  function step(dt){t+=dt;if(rnd()<REST*dt)restDrop();
+    for(var i=drops.length-1;i>=0;i--)if(t-drops[i].t0>=6)drops.splice(i,1)}
+  function draw(){
+    ctx.clearRect(0,0,SW,SH);ctx.globalCompositeOperation='lighter';
+    drops.forEach(function(d){var age=t-d.t0;d.c.forEach(function(c){var a=age-c.s;if(a<=0)return;var r=c.v*a;
+      var A=.4*ease(a/.18)*Math.exp(-age/2)*Math.sqrt(12/Math.max(r,12));if(A<.01)return;
+      ring(d.x,d.y,r,c.w,A);if(r>3&&A*.4>=.01)ring(d.x,d.y,r-3,c.w,A*.4)})});
+    ctx.globalCompositeOperation='source-over';
+  }
+  function frame(ts){if(!on||!seen){raf=0;return}raf=requestAnimationFrame(frame);
+    if(prev&&ts-prev<1000/30-4)return;var dt=prev?Math.min((ts-prev)/1000,.1):1/30;prev=ts;step(dt);draw()}
+  function go(){if(on&&seen&&!reduced&&!raf){prev=0;raf=requestAnimationFrame(frame)}}
   return {
-    key:function(evs){keys.push(now);last=now;queue=queue.concat(evs);live=true;go()},
+    start:function(){
+      for(var i=0;i<180;i++)step(1/30);  // 6 s ahead, undrawn: it opens with rings on the water
+      if(reduced){drop(300,170);drop(780,240);drops[drops.length-1].t0=t-.7;drops[drops.length-2].t0=t-1.4}  // one still frame
+      draw();on=true;go()},
     see:function(v){seen=v;go()},
-    /* reduced motion: one still frame, the keys played through on the scene's own clock */
-    still:function(seq,gaps){var t=0;seq.forEach(function(evs,i){t+=gaps[i];while(now<t)tick(1/60);keys.push(now);last=now;queue=queue.concat(evs);live=true});
-      var end=now+.6;while(now<end)tick(1/60)}
+    key:function(ch){
+      if(ch===' '||ch==='\n'){if(inWord&&t-lastWord>=.8){wordDrop(lastKey);lastWord=t}inWord=false}
+      else if(ch!=='\b'){inWord=true;lastKey=KEYPOS[ch.toLowerCase()]||null}
+    }
   };
-}
+})();
 
-/* ---------- the burst: every 7 s ten keys at about 6 a second go to all four tiles, a quarter of the interval apart
-   (Drift, Rain, Rings, Grid), so they do not fire at once. They continue the box's sentence, a typo and its fix
-   included; Drift gets the glyph each key would push past the box's left edge. */
+/* ---------- the burst: every 7 s ten keys at about 6 a second go to both tiles, half the interval apart (Code, Still
+   water), so they do not fire at once. They continue the box's sentence, a typo and its fix included. */
 (function(){
   var CONT=' first, tehn\b\b\bhen the agenda and the notes.',at=0,started=false;
   function chunk(){var keys=[],gaps=[];for(var i=0;i<10;i++){keys.push(CONT[at]);at=(at+1)%CONT.length;gaps.push(.14+rnd()*.06)}return {keys:keys,gaps:gaps}}
-  function events(ch){return [{key:true,ch:ch,pos:KEYPOS[ch.toLowerCase()],back:ch==='\b'}]}
-  var drift=Runner(tileCanvas('drift'),Drift()),rings=Runner(tileCanvas('rings'),Rings()),grid=Runner(tileCanvas('grid'),Grid());
-  var line=Array.from(document.querySelector('.tile .ll-b>span')?document.querySelector('.tile .ll-b>span').textContent:''),
-      reach=Math.floor((CARET-B.x)/ADV);  // the glyphs between the box's left edge and the caret
-  function driftEvents(ch){  // the line as it would be typed: a glyph key pushes the one at the left edge out
-    var ev=events(ch);
-    if(ch==='\b'){line.pop();return ev}
-    line.push(ch);var out=line[line.length-1-reach];
-    if(out&&out!==' ')ev.push({leaving:out});
-    return ev;
-  }
   var tiles=[
-    {feed:function(ch){if(drift)drift.key(driftEvents(ch))},see:function(v){if(drift)drift.see(v)},offset:0},
-    {feed:function(ch){if(ch===' '||ch==='\b')Rain.pulse();else Rain.key(ch)},see:function(v){Rain.see(v)},offset:1750},
-    {feed:function(ch){if(rings)rings.key(events(ch))},see:function(v){if(rings)rings.see(v)},offset:3500},
-    {feed:function(ch){if(grid)grid.key(events(ch))},see:function(v){if(grid)grid.see(v)},offset:5250}];
-  var els=Array.prototype.slice.call(document.querySelectorAll('.tile'));  // in the page's order: Drift, Rain, Rings, Grid
-  var seen=[false,false,false,false];
+    {feed:function(ch){if(ch===' '||ch==='\b')Code.pulse();else Code.key(ch)},see:function(v){Code.see(v)},offset:0},
+    {feed:function(ch){Water.key(ch)},see:function(v){Water.see(v)},offset:3500}];
+  var els=Array.prototype.slice.call(document.querySelectorAll('.tile'));  // in the page's order: Code, Still water
+  var seen=[false,false];
   function burst(){if(document.hidden)return;var c=chunk();
     tiles.forEach(function(tile,i){if(!seen[i])return;var t=tile.offset;
       c.keys.forEach(function(ch,k){t+=c.gaps[k]*1000;setTimeout(function(){tile.feed(ch)},t)})})}
-  function begin(){if(started)return;started=true;Rain.start();
-    if(reduced){var c=chunk();[drift,rings,grid].forEach(function(r,i){if(r)r.still(c.keys.map(i===0?driftEvents:events),c.gaps)});return}
+  function begin(){if(started)return;started=true;Code.start();Water.start();
+    if(reduced)return;
     setTimeout(burst,1500);setInterval(burst,7000)}
   els.forEach(function(el,i){
     function view(v){seen[i]=v;tiles[i].see(v);if(v)begin()}
