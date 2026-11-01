@@ -121,15 +121,16 @@ extension Ambience {
         /// its speed and the crests stand about 9 pt apart at 1.7 s; each a Gaussian across it `waterWidth` wide, its
         /// start within ±`waterStart` of the drop's, with a fainter trough ring `waterTrough` inside it at
         /// `waterTroughShare` of its alpha. A ring's alpha rises over `waterOnset` on the curve to the peak, laid over on
-        /// a light wash and added on a dark one (`waterPeak`; times Still's ink alpha, 0.6 by day and 0.5 by night, look
-        /// §5.3's 0.16 laid over by day and 0.07 added by night on screen), then falls as e^(−age / `waterDecay`) · √(`waterNear` / r); under `waterShown` it is not drawn, and a
+        /// a light wash and added on a dark one (`waterPeak`; times Still's ink alpha, 0.6 by day and 0.5 by night: 0.36
+        /// laid over by day and 0.2 added by night on screen; look §5.3's 0.16 and 0.07, one drop every 8 s, were not to
+        /// be seen on a real screen, the user 2026-11-01: "it's showing nothing"), then falls as e^(−age / `waterDecay`) · √(`waterNear` / r); under `waterShown` it is not drawn, and a
         /// drop is gone at `waterLife`. Rings that cross add. At most `waterDrops` alive, at `waterFrameRate` frames a
         /// second (36 pt/s is 1.2 pt a frame).
-        public static let waterRate = 0.12, waterClear = 48.0, waterSummon = 48.0, waterDrops = 24
+        public static let waterRate = 0.5, waterClear = 48.0, waterSummon = 48.0, waterDrops = 32
         public static let waterCrests = 3, waterSpeed = 36.0, waterSpread = 0.15, waterJitter = 0.15
-        public static let waterWidth = 1.2...2.0, waterStart = 0.04, waterTrough = 3.0, waterTroughShare = 0.4
-        public static let waterOnset = 0.18, waterPeak = (over: 0.27, add: 0.14), waterDecay = 1.4, waterNear = 12.0
-        public static let waterShown = 0.01, waterLife = 4.5, waterFrameRate = 30.0
+        public static let waterWidth = 2.0...3.5, waterStart = 0.04, waterTrough = 3.0, waterTroughShare = 0.4
+        public static let waterOnset = 0.18, waterPeak = (over: 0.6, add: 0.4), waterDecay = 2.0, waterNear = 12.0
+        public static let waterShown = 0.01, waterLife = 6.0, waterFrameRate = 30.0
     }
 }
 

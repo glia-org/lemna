@@ -92,15 +92,15 @@ private func near(_ a: Double, _ b: Double, _ tolerance: Double) -> Bool { abs(a
     #expect(T.rainHead == (0.35, 0.85) && T.rainTrailTop == (0.2, 0.5) && T.rainChange == (0.3, 1.5))
     #expect(T.rainKeyHead == 0.95 && T.rainKeyTrailTop == 0.55 && T.rainKeyTrail == 8...20)
     #expect(T.rainFast == 6 && T.rainRise == 0.25 && T.rainSettle == 1.2 && T.rainHold == 0.8 && T.rainIdleRate == 30)
-    // Still water (pass 24), look §5.3's Ripples: 0.12 drops a second a screen, 48 pt clear of the box, one at the
+    // Still water (pass 24), look §5.3's Ripples raised 2026-11-01 ("it's showing nothing"): 0.5 drops a second a screen, 48 pt clear of the box, one at the
     // show; 3 crests from 36 pt/s, the calm centre at 0.7 of it; 1.2–2 pt, ±40 ms; troughs 3 pt in at 0.4; up over
-    // 180 ms, e^(−t/1.4 s) · √(12 pt / r), under 0.01 not drawn, 4.5 s a drop; 24 drops; 30 Hz.
-    #expect(T.waterRate == 0.12 && T.waterClear == 48 && T.waterSummon == 48 && T.waterDrops == 24)
+    // 180 ms, e^(−t/2 s) · √(12 pt / r), under 0.01 not drawn, 6 s a drop; 32 drops; 30 Hz.
+    #expect(T.waterRate == 0.5 && T.waterClear == 48 && T.waterSummon == 48 && T.waterDrops == 32)
     #expect(T.waterCrests == 3 && T.waterSpeed == 36 && T.waterSpread == 0.15 && T.waterJitter == 0.15)
-    #expect(T.waterWidth == 1.2...2 && T.waterStart == 0.04 && T.waterTrough == 3 && T.waterTroughShare == 0.4)
-    #expect(T.waterOnset == 0.18 && T.waterDecay == 1.4 && T.waterNear == 12 && T.waterShown == 0.01)
-    #expect(T.waterPeak == (0.27, 0.14))  // times Still's ink alphas 0.6 and 0.5: look §5.3's 0.16 and 0.07 on screen
-    #expect(T.waterLife == 4.5 && T.waterFrameRate == 30 && near(1 - T.waterSpread * 2, 0.7, 1e-12))
+    #expect(T.waterWidth == 2...3.5 && T.waterStart == 0.04 && T.waterTrough == 3 && T.waterTroughShare == 0.4)
+    #expect(T.waterOnset == 0.18 && T.waterDecay == 2 && T.waterNear == 12 && T.waterShown == 0.01)
+    #expect(T.waterPeak == (0.6, 0.4))  // times Still's ink alphas 0.6 and 0.5: 0.36 and 0.2 on screen (raised 2026-11-01)
+    #expect(T.waterLife == 6 && T.waterFrameRate == 30 && near(1 - T.waterSpread * 2, 0.7, 1e-12))
     // C1: Lemna's ink is the box's text and accent, added (Rain's C2 the same two, the other way round); every stage
     // carries its theme's (TH1).
     let lemna = Theme.lemna.night
@@ -401,10 +401,10 @@ private func pond(_ w: inout Water, for seconds: Double, events: [Event] = [], r
 }
 
 @Test func stillWaterDropsAtRestAtItsRateScaledToTheScreen() {
-    // Look §5.3: 0.12 a second on a 1512 × 982 pt screen (a mean of 8 s apart), by the area on another; one at the
+    // waterRate a second on a 1512 × 982 pt screen (0.5: a mean of 2 s apart), by the area on another; one at the
     // show above the middle of the box's top edge; every one at least 48 pt clear of the box; 30 Hz.
     let large = CGSize(width: 2560, height: 1440)
-    for (size, rate) in [(screen, 0.12), (large, 0.12 * 2560 * 1440 / (1512 * 982))] {
+    for (size, rate) in [(screen, T.waterRate), (large, T.waterRate * 2560 * 1440 / (1512 * 982))] {
         let b = BoxFrame.line(in: CGRect(x: 0, y: 80, width: size.width, height: size.height - 114), height: 112)
         var w = Water(stage: Ambience.Stage(size: size, box: b, style: style), glyphs: glyphs, seed: 21)
         #expect(w.landed == 1 && w.drops[0].x == Double(b.midX) && w.drops[0].y == Double(b.maxY) + 48)  // the show's
@@ -471,13 +471,13 @@ private func pond(_ w: inout Water, for seconds: Double, events: [Event] = [], r
     #expect(near(crests[0].r, 36, 2) && near(crests[2].r / crests[0].r, 0.7, 0.1))
     // With the radius: the outer crest, at the same age, lower by √(r_inner / r_outer) (their onsets long over).
     #expect(near(crests[0].a / crests[2].a, (crests[2].r / crests[0].r).squareRoot(), 0.02))
-    // With time: the lead crest's alpha falls frame on frame, as e^(−t/1.4 s) · √(12 / r).
+    // With time: the lead crest's alpha falls frame on frame, as e^(−t/waterDecay) · √(12 / r).
     var lead: [Double] = [one.first!.a]
     for s in [1.5, 2, 2.5, 3] { lead += at(s).prefix(1).map(\.a) }
     #expect(lead.count >= 4 && zip(lead, lead.dropFirst()).allSatisfy { $0 > $1 }, "\(lead)")
-    #expect(near(lead[0], peak * exp(-1 / 1.4) * (12 / one[0].r).squareRoot(), 2e-3))
+    #expect(near(lead[0], peak * exp(-1 / T.waterDecay) * (12 / one[0].r).squareRoot(), 2e-3))
     // Gone by 4.5 s, its rings under 0.01 long before.
-    #expect(at(4.6).isEmpty && !w.drops.contains { $0.x == 700 && $0.y == 500 })
+    #expect(at(T.waterLife + 0.1).isEmpty && !w.drops.contains { $0.x == 700 && $0.y == 500 })
 }
 
 @Test func stillWaterStaysUnderTheCapOnALargeScreen() {
