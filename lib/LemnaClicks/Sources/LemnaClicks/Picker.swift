@@ -21,7 +21,12 @@ struct Picker {
         }
         self.first = first
         self.count = counts
-        self.spread = counts.indices.map { KeyKind(rawValue: $0).map(pitched.contains) == true ? 0 : Self.rateSpread }
+        // Spelt out: `.map(pitched.contains)` crashed the release build at launch (a specialised `Set.contains` on a
+        // null self, 2026-11-01), while the debug tests passed.
+        self.spread = counts.indices.map { i in
+            if let kind = KeyKind(rawValue: i), pitched.contains(kind) { return 0 }
+            return Self.rateSpread
+        }
         self.last = Array(repeating: -1, count: counts.count)
         self.rng = SplitMix64(state: seed)
     }
