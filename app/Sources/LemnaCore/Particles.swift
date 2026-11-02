@@ -1,7 +1,9 @@
 // The ambience's drawing (DESIGN.md A1, R1): one Metal pipeline that draws a frame's sprites as instanced quads (one
 // for each blend of the theme's ink since pass 21, TH1), glyphs from an atlas of the line's font (a monospaced one,
-// `Glyphs.atlasFont`) drawn once with Core Text, and since pass 24 Still water's soft rings as a shape in the fragment
-// shader (the rings' arcs and the grid's lines and cells went with their modes). The shader is Metal source compiled at runtime once per device (`makeLibrary(source:)`): the
+// `Glyphs.atlasFont`, and since pass 27 Code's katakana from its fallback) drawn once with Core Text, and since pass 24
+// Still water's soft rings as a shape in the fragment shader, which since pass 27 also draws Code's halos (a ring of
+// radius 0) and its glyphs mirrored and softened (the rings' arcs and the grid's lines and cells went with their
+// modes). The shader is Metal source compiled at runtime once per device (`makeLibrary(source:)`): the
 // Command Line Tools have no Metal compiler, and the system compiles it in a few milliseconds. The app draws into a
 // CAMetalLayer's drawable on the scene's thread; the tests draw into an offscreen texture.
 import CoreGraphics
@@ -142,8 +144,9 @@ extension Ambience {
         }
 
         /// The atlas: every glyph of `glyphs` drawn once in white on black with Core Text at `Glyphs.scale`, one cell
-        /// each, rows from the top, into an 8-bit texture with two mipmap levels below it (a 1× screen draws the glyphs
-        /// at half the atlas's size).
+        /// each, rows from the top, in its own face (the katakana in the fallback's, pass 27) and moved right by its
+        /// shift, into an 8-bit texture with two mipmap levels below it (a 1× screen draws the glyphs at half the
+        /// atlas's size; Code's near sheet samples them softer, `Glyphs.sprite(blur:)`).
         private static func atlas(_ glyphs: Glyphs, device: MTLDevice, queue: MTLCommandQueue) -> MTLTexture? {
             let (w, h) = glyphs.atlas, (cw, ch) = glyphs.pixels, s = Glyphs.scale
             guard w > 0, h > 0, let c = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w,
@@ -153,12 +156,12 @@ extension Ambience {
             c.fill(CGRect(x: 0, y: 0, width: w, height: h))
             c.setFillColor(gray: 1, alpha: 1)
             c.setShouldSmoothFonts(false)
-            let font = CTFontCreateCopyWithAttributes(glyphs.font, CTFontGetSize(glyphs.font) * s, nil, nil)
+            let fonts = glyphs.faces.map { CTFontCreateCopyWithAttributes($0, CTFontGetSize($0) * s, nil, nil) }
             for (slot, id) in glyphs.ids.enumerated() {
                 let col = slot % Glyphs.columns, row = slot / Glyphs.columns
-                var g = id, p = CGPoint(x: CGFloat(col * cw) + glyphs.origin.x * s,
+                var g = id, p = CGPoint(x: CGFloat(col * cw) + (glyphs.origin.x + glyphs.shift[slot]) * s,
                                         y: CGFloat((glyphs.rows - 1 - row) * ch) + glyphs.origin.y * s)
-                CTFontDrawGlyphs(font, &g, &p, 1, c)
+                CTFontDrawGlyphs(fonts[glyphs.face[slot]], &g, &p, 1, c)
             }
             let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r8Unorm, width: w, height: h, mipmapped: true)
             d.mipmapLevelCount = 3
@@ -179,8 +182,9 @@ extension Ambience {
         }
 
         /// The vertex shader places each sprite's quad (a triangle strip of four corners, turned about its centre;
-        /// shapes a pixel larger for their soft edge); the fragment shader covers it by its kind and writes the colour
-        /// premultiplied.
+        /// shapes a pixel larger for their soft edge; a glyph's negative width runs its corners, and so its atlas cell,
+        /// the other way: mirrored, pass 27); the fragment shader covers it by its kind (a glyph sampled as many mipmap
+        /// levels softer as its blur says, pass 27) and writes the colour premultiplied.
         static let shader = """
         #include <metal_stdlib>
         using namespace metal;
@@ -212,7 +216,8 @@ extension Ambience {
             o.colour = float4(unpack_unorm4x8_to_float(s.colour).rgb, s.alpha * f.alpha);
             o.kind = kind;
             o.parameter = float(parameter);
-            float2 cell = float2(float(parameter % f.columns), float(parameter / f.columns));
+            uint slot = parameter & 0xfffu;  // a glyph's slot; its blur above it
+            float2 cell = float2(float(slot % f.columns), float(slot / f.columns));
             o.uv = (cell + float2(corner.x * 0.5 + 0.5, 0.5 - corner.y * 0.5)) * f.cell;
             return o;
         }
@@ -223,8 +228,8 @@ extension Ambience {
             float3 rgb = q.colour.rgb;
             float2 p = q.local;
             switch (q.kind) {
-            case 0u:  // a glyph
-                cover = atlas.sample(smp, q.uv).r;
+            case 0u:  // a glyph, its blur in quarter mipmap levels
+                cover = atlas.sample(smp, q.uv, bias(float(uint(q.parameter) >> 12) * 0.25)).r;
                 break;
             case 1u: {  // a soft ring about the quad's middle: a Gaussian across the circle, e^(-2) at its width
                 uint k = uint(q.parameter);

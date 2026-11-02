@@ -4,6 +4,49 @@
 
 ## State (2026-11-02)
 
+- App, pass 27, Code as the film's title sequence (2026-11-02; DESIGN.md A1 amended; the user, after trying Code, with
+  two frames of the titles: "Regarding the rain animation, in the movie it looks more like this: [two frames]. Revise
+  the animation (but do not use these colors)."). **At rest Code is now the frame's structure** in the theme's ink
+  (Lemna's blue-grey, Still's grey-green; nothing green, no new colour): a dim curtain of glyphs over nearly the whole
+  screen (70–80 % of the cells lit, about 3,500 sprites on a laptop's screen, was about 200), brighter streams falling
+  through it, long trails (30–150 cells) that linger after their head has run out at the bottom, about 0.8 heads a
+  column, some starting lower down, two in a column now and then; each stream its own brightness and each glyph its
+  own within it, flickering as glyphs change; the head near-white with a soft halo (only where light adds: not on
+  Still's day wash) and the two glyphs behind it still pale; a nearer sheet of a few larger, softer, brighter streams
+  over it (1.6× the pitch, sampled 1.5 mipmap levels softer). **Glyphs:** 46 half-width katakana join the 22 digits and
+  symbols, drawn into the atlas from Core Text's fallback for Menlo (Hiragino Sans W6), every code glyph mirrored by a
+  negative sprite width (free in the vertex shader); the typed glyph at a key's head stays as typed; the glyphs a fifth
+  larger (16.8 pt) on the same 18.5 pt grid. **Typing** as pass 25: never faster; more heads (1.4 a column), longer
+  and brighter trails, brighter heads and halos, glyph changes 0.5 → 2 a second, a head at each glyph key. Every value
+  is in `Ambience.Tuning.code*`, each with its pass 25 value in its comment; the iterations are in DESIGN A1 and
+  app/README. **Cost:** the sprite cap 16,000 (2,000; the instance buffers 512 KB each); sprites at most 3,570 at rest
+  and 4,640 at 6 keys/s on 1512 × 982, 9,110 and 11,780 on 2560 × 1440, 12,380 and 15,450 on 3008 × 1692 (a 6K
+  display), so nothing is thinned on any of them; a larger stage drops its dimmest cells first. A step in release
+  0.02 ms at rest on 1512 × 982, 0.06 ms typing on 2560 × 1440 (debug 0.8 and 2.2 ms); the birth, 20 s stepped ahead,
+  0.6 and 1.3 ms on the scene thread (was 0.3–0.5). Tests: 134, all passing (127 before), in debug and in release;
+  new: the curtain at rest (cells and columns lit, most of them dim), several heads a column starting at various
+  heights, a stream's glyphs each their own brightness, the nearer sheet (larger, softer, brighter, a minority), a halo
+  under every head (and none on Still's day wash), a stage beyond the cap losing its dimmest cells and not its right
+  edge, the shader drawing a glyph mirrored, softened and in katakana; the step's time now in the cap test (the
+  thread's CPU time, the best of 14 batches). Renders `ambience-code-idle.png` (rest), `ambience-code.png` (typing),
+  `ambience-code-still-day.png`, `ambience-code-still-night.png`, 1512 × 982 at 2× as before, looked at against the
+  frame. `LEMNA_VERSION=0.1.2 make-app.sh` built, signed with "Lemna Dev" (`Authority=Lemna Dev`) and verified; the
+  executable is 1,251,680 bytes, no home folder in its symbols. Not tried: nothing was launched. **Open:** whether the
+  rest state is too busy beside the box (the user asked for the frame; the quickest knobs are `codeTrailTop.idle` 0.55
+  and `codeActive.idle` 0.8); the films' green haze over the whole screen (a bloom pass) is not built; the site's live
+  Code tile (`site/assets/site.js`) and its still still draw pass 25's sparse rain; the power at rest is still not
+  measured (now 3,500 sprites at 30 Hz: `sudo powermetrics --samplers gpu_power,cpu_power -i 1000`, Ambience Off
+  against Code at rest). Try, after quitting the running Lemna and `open app/build/Lemna.app`, Session › Ambience ▸
+  Code:
+  - Summon over a dark app and wait: the dim is a curtain of faint, mirrored glyphs top to bottom, katakana among the
+    digits, with a few brighter streams falling through it at their own pace, white heads with a soft glow, now and
+    then a stream starting halfway down, two or three larger, softer ones nearer.
+  - Type fast for ten seconds: the same speeds, more and brighter streams; the typed letters light where their keys
+    are, as typed (not mirrored). Stop: back to the curtain within about 4 s.
+  - Theme ▸ Still by day: the curtain in grey-green ink on the wash, no halos; by night (Dark appearance) the halos
+    are back.
+  - On a large external display: as dense as on the laptop, the same glyph size.
+
 - App, pass 26, the box when another app takes the keys (2026-11-02; DESIGN.md W2 amended; the user: "While typing the
   app lost focus because another app was relaunched. I copied the text to the clipboard, which did not work and now
   the app is soft-locked in a state where I cannot type, copy or paste and likely my text is gone."). **The cause:** the

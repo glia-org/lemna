@@ -3,8 +3,10 @@
 // once a frame by `Ambience.Run` on the scene's thread. Pass 18 removed M4 Beams, M6 Fireworks and M7 Swarm, pass 24
 // (RM1) M1 Drift, M3 Rings and M5 Grid. Code, since pass 19b (G1 I1 T1 C2 K1 W1 of docs/design-panel-lemna-rain.html),
 // is the films' code rain as research_notes/Lemna rain/matrix.md §6 sets it: a fixed grid of glyphs lit by heads that
-// step down it, its cells in flat arrays, falling from the show to the close, each column at its own speed, made more
-// intense by typing and fed by where each key is on the keyboard (`Keyboard`, pass 16). Still water is
+// step down it, falling from the show to the close, each column at its own speed, made more intense by typing and fed by
+// where each key is on the keyboard (`Keyboard`, pass 16); since pass 27 the film's title sequence, a dim curtain over
+// nearly the whole screen with brighter streams through it and a nearer sheet of a few larger, softer ones, its cells
+// in one array a sheet. Still water is
 // research_notes/Lemna themes/look.md §5.3's Ripples: soft rings on the dim from the show to the close, from drops at
 // rest and, since pass 25, a drop for each word written. Every magnitude is `Ambience.Tuning`'s; a scene draws no more
 // than `Tuning.cap` sprites.
@@ -26,65 +28,246 @@ private func between(_ p: (idle: ClosedRange<Double>, typing: ClosedRange<Double
 }
 
 /// The films' code rain over the dim (pass 19b; G1 I1 T1 C2 K1 W1 of docs/design-panel-lemna-rain.html; Rain until pass
-/// 25): glyphs fixed in a grid of square cells over the whole screen, and heads stepping down the columns a cell at a
-/// time, each lighting the cell it enters in the text colour; behind it the cell dims in place in the accent, linearly,
-/// over the head's trail. A column keeps the speed it drew at the birth, whatever the intensity (pass 25); its heads
-/// (one or two at a time) start at the top after a random pause and end below the bottom; every lit glyph changes now
-/// and then. It falls low-key from the show until the close, and typing raises one intensity that sets how many columns
-/// fall, how long and how bright, and how often the glyphs change, never how fast (the films' "more intense", matrix §2
+/// 25; the film's title sequence since pass 27): glyphs fixed in a grid of square cells over the whole screen, and heads
+/// stepping down the columns a cell at a time, each lighting the cell it enters in the text colour with a soft halo
+/// under it; the cell behind it stays bright, then dims in place in the accent over the head's long trail, each glyph
+/// at its own brightness. A column keeps the speed it drew at the birth, whatever the intensity (pass 25); its heads
+/// (up to `codeMost` at a time, most at the top, some lower down) start after a random pause and end below the bottom,
+/// their trails lingering; every lit glyph changes now and then, and its brightness with it. A second, nearer sheet
+/// (`codeNear`) carries a few larger, softer, brighter streams over it. It falls from the show until the close, a dim
+/// curtain with brighter streams through it, and typing raises one intensity that sets how many heads fall, how long
+/// their trails and how bright, and how often the glyphs change, never how fast (the films' "more intense", matrix §2
 /// and §3); each glyph key also starts a head where the key is across the screen, higher the higher its row, the typed
 /// glyph at it. Every screen.
 struct Code: Ambience.Scene {
     /// A head: its column, its row (0 at the top; between two cells while it steps), its trail in cells, the typed
     /// glyph's slot at it (nil: the cell's own), and whether a key started it.
-    private struct Head { let column: Int; var row: Double; let trail: Double, glyph: Int?, key: Bool }
-    private let stage: Ambience.Stage, glyphs: Ambience.Glyphs
-    /// The grid: `columns` × `rows` cells of `pitch` points, row 0 at the top edge, the columns centred across.
-    let columns: Int, rows: Int, pitch: Double
-    private let left: Double
-    /// Each cell's glyph, its column's travel when a head lit it (−∞: never), the trail it dims over (in cells), its
-    /// trail's top alpha (0: the intensity's), and whether a head is in it (set and cleared as the step draws); a cell
-    /// at column × `rows` + row.
-    private var glyph: [Int], lit: [Double], trail: [Double], top: [Double], under: [Bool]
-    /// Each column's speed in rows a second (drawn once from `codeSpeed`, kept whatever the intensity).
-    private(set) var speed: [Double]
-    /// Each column's cells its heads have stepped in all and in this step, how many of its heads are not a key's, and
-    /// the youngest of those: its start (in travel) and its trail.
-    private var travel: [Double], moved: [Double], falling: [Int]
-    private var youngest: [(at: Double, trail: Double)]
-    private var heads: [Head] = []
-    /// 0 at rest, 1 at `codeFast` keys a second; the time since the last key.
-    private(set) var intensity = 0.0
-    private var sinceKey = Double.infinity
-    /// The sprites the last step would have drawn, before the cap.
-    private(set) var shown = 0
-    private var random: Ambience.Random
+    fileprivate struct Head { let column: Int; var row: Double; let trail: Double, gain: Double, glyph: Int?, key: Bool }
 
-    init(stage: Ambience.Stage, glyphs: Ambience.Glyphs, seed: UInt64) {
-        (self.stage, self.glyphs) = (stage, glyphs)
-        pitch = Double(glyphs.cell.height) * T.codeScale * T.codePitch
-        let (w, h) = (Double(stage.size.width), Double(stage.size.height))
-        (columns, rows) = (max(Int(w / pitch), 1), max(Int((h / pitch).rounded(.up)), 1))
-        left = (w - Double(columns) * pitch) / 2
-        var r = Ambience.Random(seed: seed)
-        let n = columns * rows, set = glyphs.codeSet.isEmpty ? [0] : glyphs.codeSet
-        glyph = (0..<n).map { _ in set.randomElement(using: &r)! }
-        (lit, trail, top, under) = (Array(repeating: -.infinity, count: n), Array(repeating: 1, count: n),
-                                    Array(repeating: 0, count: n), Array(repeating: false, count: n))
-        speed = (0..<columns).map { _ in mix(T.codeSpeed, r.unit()) }
-        (travel, moved, falling) = (Array(repeating: 0, count: columns), Array(repeating: 0, count: columns),
-                                    Array(repeating: 0, count: columns))
-        youngest = Array(repeating: (-.infinity, 0), count: columns)
-        random = r
-        heads.reserveCapacity(limit)
-        // Stepped ahead, undrawn, at rest: the summon finds the rain falling, the slowest column's first head through.
-        for _ in 0..<Int(T.codeAhead * T.codeIdleRate) {
-            advance(dt: 1 / T.codeIdleRate, events: [], rate: 0, changing: false)
+    /// One sheet of the rain (pass 27; the films' depth, Reloaded's "multiple virtual sheets of glass", matrix §1.4):
+    /// a grid of `columns` × `rows` cells of `pitch` points, row 0 at the top edge, the columns centred across, its
+    /// glyphs at `scale` of the atlas's cell, `blur` mipmap levels soft and at `bright` times the alphas, with about
+    /// `active` heads a column.
+    fileprivate struct Sheet {
+        /// A cell: its glyph and its brightness (`codeLevel`, drawn again with each new glyph), its column's travel
+        /// when a head lit it (−∞: never), the trail it dims over (in cells), its trail's top alpha (0: the
+        /// intensity's, times its stream's `gain`), and whether a head is in it (set and cleared as the step draws).
+        struct Cell { var glyph: Int, level: Double, lit: Double, trail: Double, top: Double, gain: Double, under: Bool }
+        let columns: Int, rows: Int, pitch: Double, left: Double, scale: Double, blur: Double, bright: Double
+        let active: (idle: Double, typing: Double)
+        /// Each column's and each row's middle on the stage.
+        let xs: [Float], ys: [Float]
+        /// The cells, column by column: a cell at column × `rows` + row.
+        var cells: [Cell]
+        /// Each column's speed in rows a second (drawn once from `codeSpeed`, kept whatever the intensity), its cells
+        /// stepped in all and in this step, how many of its heads are not a key's, and how far it is through its pause
+        /// before the next head and how long that pause is (in its mean pauses at the intensity, `codeWait`).
+        var speed: [Double], travel: [Double], moved: [Double], falling: [Int], due: [Double], wait: [Double]
+        var heads: [Head] = []
+
+        init(stage: Ambience.Stage, glyphs: Ambience.Glyphs, depth: Double, blur: Double, bright: Double,
+             active: (idle: Double, typing: Double), random r: inout Ambience.Random) {
+            pitch = Double(glyphs.cell.height) * T.codePitch * depth
+            let (w, h) = (Double(stage.size.width), Double(stage.size.height))
+            (columns, rows) = (max(Int(w / pitch), 1), max(Int((h / pitch).rounded(.up)), 1))
+            left = (w - Double(columns) * pitch) / 2
+            (scale, self.blur, self.bright, self.active) = (T.codeScale * depth, blur, bright, active)
+            let (left, pitch) = (left, pitch)
+            xs = (0..<columns).map { Float(left + (Double($0) + 0.5) * pitch) }
+            ys = (0..<rows).map { Float(h - (Double($0) + 0.5) * pitch) }
+            let set = glyphs.codeSet.isEmpty ? [0] : glyphs.codeSet
+            cells = (0..<columns * rows).map { _ in
+                Cell(glyph: set.randomElement(using: &r)!, level: Code.level(&r), lit: -.infinity, trail: 1, top: 0, gain: 1,
+                     under: false)
+            }
+            speed = (0..<columns).map { _ in mix(T.codeSpeed, r.unit()) }
+            (travel, moved, falling) = (Array(repeating: 0, count: columns), Array(repeating: 0, count: columns),
+                                        Array(repeating: 0, count: columns))
+            wait = (0..<columns).map { _ in mix(T.codeWait, r.unit()) }
+            due = wait.map { $0 * r.unit() }  // each column somewhere in its first pause
+            heads.reserveCapacity(limit)
+        }
+
+        /// The most heads in a column at once, `codeMost` for each `codeHeight` of its height (no fewer); and in the
+        /// sheet, one more a column from keys.
+        var most: Int { max(T.codeMost, Int((Double(T.codeMost) * Double(rows) * pitch / T.codeHeight).rounded())) }
+        var limit: Int { (most + 1) * columns }
+
+        /// A head lights cell `r` of column `c`: it dims from now over `t` cells of the column's travel, from `a` (0: the
+        /// intensity's trail top times `g`).
+        mutating func light(_ c: Int, _ r: Int, trail t: Double, top a: Double, gain g: Double = 1) {
+            let x = c * rows + r
+            (cells[x].lit, cells[x].trail, cells[x].top, cells[x].gain) = (travel[c], t, a, g)
+        }
+
+        /// One sheet's sprites at `look` in `ink`, written at `sp` from `k` on, at most `room` in all (`shown` counts
+        /// them all): its heads first, each with its halo under it where light adds (a key's before the others), so
+        /// the cap takes trail cells, not heads; then every lit cell, its glyph first changed to another of `set` at
+        /// odds `p` (`codeChange` a second, its brightness with it), the ones right behind a head in the text colour,
+        /// the rest in the accent at its own brightness along the trail's fade, unless under `cut`. Thousands a frame:
+        /// one pass over the cells, which it reads and writes the sprites through pointers, their fields as the shader
+        /// reads them; the lit cells passed between two changes drawn at once (geometric: the odds of a draw a cell
+        /// for a draw a change).
+        mutating func draw(_ look: (head: Double, top: Double, halo: Double), cut: Double, ink: Theme.Ink,
+                           glyphs: Ambience.Glyphs, change p: Double, random: inout Ambience.Random,
+                           into sp: UnsafeMutablePointer<Sprite>, count k: inout Int, room: Int, shown: inout Int) {
+            let (text, accent) = (Sprite.packed(ink.text), Sprite.packed(ink.accent))
+            let glow = ink.blend == .add  // light spills from a head; ink laid over a light wash does not glow
+            let (rows, columns, bright) = (rows, columns, bright)
+            func put(_ s: Sprite) {
+                shown += 1
+                if k < room { (sp[k], k) = (s, k + 1) }
+            }
+            for pass in 0..<2 {
+                let key = pass == 0
+                for h in heads where h.key == key {
+                    let r = Int(h.row), x = h.column * rows + r
+                    guard !cells[x].under else { continue }
+                    cells[x].under = true
+                    let at = CGPoint(x: Double(xs[h.column]), y: Double(ys[r]))
+                    if glow {
+                        put(Sprite.halo(x: at.x, y: at.y, width: T.codeHaloWidth * pitch, alpha: look.halo * bright,
+                                        colour: ink.text))
+                    }
+                    put(glyphs.sprite(h.glyph ?? cells[x].glyph, centre: at, scale: scale,
+                                      alpha: (key ? T.codeKeyHead : look.head) * bright, colour: ink.text,
+                                      mirrored: h.glyph == nil, blur: blur))
+                }
+            }
+            let w = -Float(Double(glyphs.cell.width) * scale), h = Float(Double(glyphs.cell.height) * scale)  // mirrored
+            let soft = UInt32(min(max((blur * 4).rounded(), 0), 15)) << 20  // the blur above the slot, both above the kind
+            let (keyHead, neck, necks, fade) = (T.codeKeyHead, T.codeNeck, Double(T.codeNeckCells + 1), T.codeFade)
+            var (n, j) = (shown, k)
+            let set = glyphs.codeSet, odds = log(1 - min(max(p, 1e-9), 0.5))
+            var skip = Int(log(1 - random.unit()) / odds)
+            ys.withUnsafeBufferPointer { ys in cells.withUnsafeMutableBufferPointer { buffer in
+                let cells = buffer.baseAddress!, ys = ys.baseAddress!  // a pointer's subscript inlines even in debug
+                for c in 0..<columns {
+                    let now = travel[c], cx = xs[c]
+                    for r in 0..<rows {
+                        let x = c * rows + r
+                        var cell = cells[x]
+                        let age = now - cell.lit, t = cell.trail
+                        guard age < t else { continue }
+                        if skip > 0 {
+                            skip -= 1
+                        } else if !set.isEmpty {
+                            (cell.glyph, cell.level) = (set[Int(random.next() % UInt64(set.count))], Code.level(&random))
+                            (cells[x].glyph, cells[x].level) = (cell.glyph, cell.level)
+                            skip = Int(log(1 - random.unit()) / odds)
+                        }
+                        if cell.under {
+                            cells[x].under = false
+                            continue
+                        }
+                        var a: Double, colour = text
+                        if age < necks {  // right behind a head: bright, in the head's colour
+                            a = (cell.top > 0 ? keyHead : look.head) * pow(neck, age.rounded(.down)) * bright
+                        } else {
+                            let f = 1 - age / t, top = cell.top > 0 ? cell.top : look.top * cell.gain
+                            a = top * cell.level * (fade == 1 ? f : pow(f, fade)) * bright
+                            guard a > cut else { continue }
+                            colour = accent
+                        }
+                        n += 1
+                        guard j < room else { continue }
+                        sp[j] = Sprite(x: cx, y: ys[r], w: w, h: h, alpha: Float(min(a, 1)), packed: colour,
+                                       shape: UInt32(cell.glyph) << 8 | soft)
+                        j += 1
+                    }
+                }
+            } }
+            (shown, k) = (n, j)
+        }
+
+        /// The sheet moved on by `dt` at intensity `i`: every head a step down its column at the column's speed,
+        /// lighting the cells it enters, those below the bottom gone, and new heads.
+        mutating func advance(dt: Double, intensity i: Double, random: inout Ambience.Random) {
+            for c in 0..<columns {
+                moved[c] = speed[c] * dt
+                travel[c] += moved[c]
+            }
+            var k = 0
+            while k < heads.count {
+                var h = heads[k]
+                let from = Int(h.row)
+                h.row += moved[h.column]
+                let to = Int(h.row)
+                if to > from, from + 1 < rows {
+                    for r in (from + 1)...min(to, rows - 1) {
+                        light(h.column, r, trail: h.trail, top: h.key ? T.codeKeyTrailTop : 0, gain: h.gain)
+                    }
+                }
+                if to >= rows {  // below the bottom: it ends, its trail lingering in the cells
+                    if !h.key { falling[h.column] -= 1 }
+                    heads.swapAt(k, heads.count - 1)
+                    heads.removeLast()
+                    continue
+                }
+                heads[k] = h
+                k += 1
+            }
+            // New heads after a random pause, `codeWait` of the mean pause that keeps about `active` heads in a column
+            // for each `codeHeight` of its height (each falls the rows below its start at the column's speed; the
+            // pause runs at the intensity's rate, so typing shortens the one under way), at least `codeGap` rows from
+            // every other in the column: at the top, or (`codeHigh` of them) at a row in `codeHighRows` of the height.
+            // A pause far narrower than a Poisson one's keeps a column from standing empty (about one in eight of them
+            // did, pass 27's first try); heads by the height keep a tall screen as dense as a laptop's.
+            let trails = between(T.codeTrail, i), gap = between(T.codeGap, i)
+            let active = between(self.active, i) * Double(rows) * pitch / T.codeHeight
+            let fall = Double(rows) * (1 - T.codeHigh * (T.codeHighRows.lowerBound + T.codeHighRows.upperBound) / 2)
+            for c in 0..<columns {
+                due[c] += active * speed[c] / fall * dt
+                guard due[c] >= wait[c], falling[c] < most, heads.count < limit else { continue }
+                let row = random.unit() < T.codeHigh ? Int(mix(T.codeHighRows, random.unit()) * Double(rows)) : 0
+                guard !heads.contains(where: { $0.column == c && abs($0.row - Double(row)) < gap }) else { continue }
+                let (t, g) = (Code.logUniform(trails, &random), Code.logUniform(T.codeGain, &random))
+                (due[c], wait[c]) = (0, mix(T.codeWait, random.unit()))
+                falling[c] += 1
+                heads.append(Head(column: c, row: Double(row), trail: t, gain: g, glyph: nil, key: false))
+                light(c, row, trail: t, top: 0, gain: g)
+            }
         }
     }
 
-    /// The most heads at once: two a column of its own and as many again from keys.
-    private var limit: Int { 4 * columns }
+    private let stage: Ambience.Stage, glyphs: Ambience.Glyphs
+    /// The sheets: the rain's own grid, and the nearer one over it.
+    private var main: Sheet, near: Sheet
+    /// The main sheet's grid (the keys' heads fall in it).
+    var columns: Int { main.columns }
+    var rows: Int { main.rows }
+    var pitch: Double { main.pitch }
+    /// Each column's speed in rows a second, the main sheet's.
+    var speed: [Double] { main.speed }
+    /// The nearer sheet's pitch and columns, for the tests.
+    var nearPitch: Double { near.pitch }
+    var nearColumns: Int { near.columns }
+    /// The heads falling now, for the tests: the main sheet's (column, row, whether a key's), the nearer sheet's count.
+    var falling: [(column: Int, row: Double, key: Bool)] { main.heads.map { ($0.column, $0.row, $0.key) } }
+    var nearFalling: Int { near.heads.count }
+    /// 0 at rest, 1 at `codeFast` keys a second; the time since the last key.
+    private(set) var intensity = 0.0
+    private var sinceKey = Double.infinity
+    /// The sprites the last step would have drawn, before the cap; the alpha under which a trail cell is not drawn,
+    /// `codeShown` unless a stage too large for the cap raised it (the dimmest go first).
+    private(set) var shown = 0
+    private(set) var cut = T.codeShown
+    private var random: Ambience.Random
+    /// Room for a frame's sprites, written through a pointer and then appended to the frame's at once.
+    private var scratch = [Sprite](repeating: Sprite(x: 0, y: 0, w: 0, h: 0, alpha: 0, packed: 0, shape: 0), count: T.cap)
+
+    init(stage: Ambience.Stage, glyphs: Ambience.Glyphs, seed: UInt64) {
+        (self.stage, self.glyphs) = (stage, glyphs)
+        var r = Ambience.Random(seed: seed)
+        main = Sheet(stage: stage, glyphs: glyphs, depth: 1, blur: 0, bright: 1, active: T.codeActive, random: &r)
+        near = Sheet(stage: stage, glyphs: glyphs, depth: T.codeNear, blur: T.codeNearBlur, bright: T.codeNearBright,
+                     active: T.codeNearActive, random: &r)
+        random = r
+        // Stepped ahead, undrawn, at rest: the summon finds the rain falling, the slowest column's first head through.
+        for _ in 0..<Int(T.codeAhead * T.codeIdleRate) {
+            advance(dt: 1 / T.codeIdleRate, events: [], rate: 0)
+        }
+    }
 
     var count: Int { min(shown, T.cap) }
 
@@ -92,46 +275,32 @@ struct Code: Ambience.Scene {
     var frameRate: Double { intensity > T.codeCalm || sinceKey < T.codeHold ? T.frameRate : T.codeIdleRate }
 
     mutating func step(dt: Double, events: [Ambience.Event], rate: Double, into out: inout [Sprite]) {
-        advance(dt: dt, events: events, rate: rate, changing: true)
-        let head = between(T.codeHead, intensity), trailTop = between(T.codeTrailTop, intensity)
+        advance(dt: dt, events: events, rate: rate)
+        let i = intensity, change = between(T.codeChange, i) * dt
+        let look = (head: between(T.codeHead, i), top: between(T.codeTrailTop, i), halo: between(T.codeHalo, i))
         shown = 0
-        for pass in 0..<2 {  // first, so the cap takes trail cells, not heads; one a cell, a key's before the others
-            let key = pass == 0
-            for h in heads where h.key == key {
-                let r = Int(h.row), x = h.column * rows + r
-                guard !under[x] else { continue }
-                under[x] = true
-                add(h.glyph ?? glyph[x], h.column, r, alpha: key ? T.codeKeyHead : head, colour: stage.ink.text,
-                    into: &out)
-            }
+        var (buffer, k, room) = ([Sprite](), 0, max(T.cap - out.count, 0))
+        swap(&buffer, &scratch)  // out of the scene, so the sheets can draw into it
+        buffer.withUnsafeMutableBufferPointer { b in
+            main.draw(look, cut: cut, ink: stage.ink, glyphs: glyphs, change: change, random: &random,
+                      into: b.baseAddress!, count: &k, room: room, shown: &shown)
+            near.draw(look, cut: cut, ink: stage.ink, glyphs: glyphs, change: change, random: &random,
+                      into: b.baseAddress!, count: &k, room: room, shown: &shown)
         }
-        for c in 0..<columns {
-            let now = travel[c]
-            for x in c * rows..<(c + 1) * rows {
-                if under[x] {
-                    under[x] = false
-                    continue
-                }
-                let age = now - lit[x]
-                guard age < trail[x] else { continue }
-                let a = (top[x] > 0 ? top[x] : trailTop) * (1 - age / trail[x])
-                if a > T.codeShown { add(glyph[x], c, x - c * rows, alpha: a, colour: stage.ink.accent, into: &out) }
-            }
+        out.append(contentsOf: buffer[0..<k])
+        swap(&buffer, &scratch)
+        // A stage with more lit cells than the cap: the dimmest trail cells go first, from the next frame on.
+        if shown > T.cap {
+            cut = min(cut * 1.25, 0.25)
+        } else if shown < T.cap * 3 / 4 {
+            cut = max(cut / 1.05, T.codeShown)
         }
     }
 
-    /// One cell's glyph sprite, unless the cap is reached.
-    private mutating func add(_ slot: Int, _ c: Int, _ r: Int, alpha: Double, colour: UInt32, into out: inout [Sprite]) {
-        shown += 1
-        guard out.count < T.cap else { return }
-        let centre = CGPoint(x: left + (Double(c) + 0.5) * pitch, y: Double(stage.size.height) - (Double(r) + 0.5) * pitch)
-        out.append(glyphs.sprite(slot, centre: centre, scale: T.codeScale, alpha: alpha, colour: colour))
-    }
-
-    /// The scene moved on by `dt`: the keys' heads, the intensity, every head a step down its column at the column's
-    /// speed lighting the cells it enters, those below the bottom gone, new heads at the top, and (`changing`) the lit
-    /// glyphs changed.
-    private mutating func advance(dt: Double, events: [Ambience.Event], rate: Double, changing: Bool) {
+    /// The scene moved on by `dt`: the keys' heads, the intensity, and every head of each sheet a step down its column
+    /// at the column's speed lighting the cells it enters, those below the bottom gone, and new heads (a step's draw
+    /// changes the lit glyphs).
+    private mutating func advance(dt: Double, events: [Ambience.Event], rate: Double) {
         for e in events {
             sinceKey = 0
             if case .typed(let slot, let key) = e { startHead(slot: slot, at: key) }
@@ -143,81 +312,36 @@ struct Code: Ambience.Scene {
             intensity += (target - intensity) * (1 - exp(-dt / T.codeSettle))
         }
         sinceKey += dt
-        let i = intensity
-        for c in 0..<columns {
-            moved[c] = speed[c] * dt
-            travel[c] += moved[c]
-        }
-        var k = 0
-        while k < heads.count {
-            var h = heads[k]
-            let from = Int(h.row)
-            h.row += moved[h.column]
-            let to = Int(h.row)
-            if to > from, from + 1 < rows {
-                for r in (from + 1)...min(to, rows - 1) {
-                    light(h.column, r, trail: h.trail, top: h.key ? T.codeKeyTrailTop : 0)
-                }
-            }
-            if to >= rows {  // below the bottom: it ends
-                if !h.key { falling[h.column] -= 1 }
-                heads.swapAt(k, heads.count - 1)
-                heads.removeLast()
-                continue
-            }
-            heads[k] = h
-            k += 1
-        }
-        // A new head at the top after a random pause, at the rate that keeps `codeActive` of the columns showing one
-        // (each shows for its crossing: the rows and its trail at the column's speed), and only `codeGap` cells behind
-        // the last one's trail.
-        let trails = between(T.codeTrail, i), gap = between(T.codeGap, i), active = between(T.codeActive, i)
-        let crossing = Double(rows) + (trails.upperBound - trails.lowerBound) / log(trails.upperBound / trails.lowerBound)
-        for c in 0..<columns where falling[c] < 2 && travel[c] - youngest[c].at >= youngest[c].trail + gap {
-            guard random.unit() < active * speed[c] / crossing * dt, heads.count < limit else { continue }
-            let t = logUniform(trails)
-            youngest[c] = (travel[c], t)
-            falling[c] += 1
-            heads.append(Head(column: c, row: 0, trail: t, glyph: nil, key: false))
-            light(c, 0, trail: t, top: 0)
-        }
-        guard changing else { return }
-        let change = between(T.codeChange, i) * dt
-        for c in 0..<columns {
-            let now = travel[c]
-            for x in c * rows..<(c + 1) * rows where now - lit[x] < trail[x] && random.unit() < change {
-                glyph[x] = glyphs.codeSet.randomElement(using: &random) ?? glyph[x]
-            }
-        }
+        main.advance(dt: dt, intensity: intensity, random: &random)
+        near.advance(dt: dt, intensity: intensity, random: &random)
     }
 
-    /// A glyph key's head: in the column where the key is across the screen (anywhere within its width, so a key typed
-    /// again does not stack its heads in one column; without a position the caret's x on the box's screen, anywhere on
-    /// another), higher the higher its row, the typed glyph at it.
+    /// A glyph's brightness along its trail (pass 27): from `codeLevel`'s lower bound to 1, more dim than bright
+    /// (`codeLevelSkew`), so a bright glyph sits among dimmer ones.
+    fileprivate static func level(_ r: inout Ambience.Random) -> Double {
+        mix(T.codeLevel, pow(r.unit(), T.codeLevelSkew))
+    }
+
+    /// A glyph key's head: in the main sheet's column where the key is across the screen (anywhere within its width, so
+    /// a key typed again does not stack its heads in one column; without a position the caret's x on the box's screen,
+    /// anywhere on another), higher the higher its row, the typed glyph at it.
     private mutating func startHead(slot: Int?, at key: Keyboard.Position?) {
-        guard heads.count < limit else { return }
+        guard main.heads.count < main.limit else { return }
         let (w, h) = (Double(stage.size.width), Double(stage.size.height))
         let width = w * (T.screenSpan.upperBound - T.screenSpan.lowerBound) / Keyboard.columns * (key?.width ?? 0)
         let spread = random.pick(-0.4...0.4) * width
         let along = stage.screenX(key).map { $0 + spread } ?? (stage.box != nil ? Double(stage.caret) : random.pick(0...w))
         let height = key.map { mix(T.codeRows, 1 - $0.down) } ?? random.pick(T.codeRows)
-        let c = min(max(Int((along - left) / pitch), 0), columns - 1)
-        let r = min(max(Int((1 - height + random.pick(-0.03...0.03)) * h / pitch), 0), rows - 1)
-        let t = logUniform(T.codeKeyTrail)
-        heads.append(Head(column: c, row: Double(r), trail: t, glyph: slot, key: true))
-        light(c, r, trail: t, top: T.codeKeyTrailTop)
-    }
-
-    /// A head lights cell `r` of column `c`: it dims from now over `t` cells of the column's travel, from `a` (0: the
-    /// intensity's trail top).
-    private mutating func light(_ c: Int, _ r: Int, trail t: Double, top a: Double) {
-        let x = c * rows + r
-        (lit[x], trail[x], top[x]) = (travel[c], t, a)
+        let c = min(max(Int((along - main.left) / main.pitch), 0), main.columns - 1)
+        let r = min(max(Int((1 - height + random.pick(-0.03...0.03)) * h / main.pitch), 0), main.rows - 1)
+        let t = Code.logUniform(T.codeKeyTrail, &random)
+        main.heads.append(Head(column: c, row: Double(r), trail: t, gain: 1, glyph: slot, key: true))
+        main.light(c, r, trail: t, top: T.codeKeyTrailTop)
     }
 
     /// A trail length, log-uniform in `range`: more short than long.
-    private mutating func logUniform(_ range: ClosedRange<Double>) -> Double {
-        range.lowerBound * pow(range.upperBound / range.lowerBound, random.unit())
+    fileprivate static func logUniform(_ range: ClosedRange<Double>, _ r: inout Ambience.Random) -> Double {
+        range.lowerBound * pow(range.upperBound / range.lowerBound, r.unit())
     }
 }
 

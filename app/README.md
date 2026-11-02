@@ -1060,8 +1060,71 @@ soft-locked in a state where I cannot type, copy or paste and likely my text is 
 - Build: `LEMNA_VERSION=0.1.2 make-app.sh`; the executable is 1,224,080 bytes, no home folder in its symbols; signed
   with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
 
+Pass 27, Code as the film's title sequence (DESIGN.md A1 amended; 2026-11-02; the user, after trying Code, with two
+frames of the film's titles: "Regarding the rain animation, in the movie it looks more like this: [two frames]. Revise
+the animation (but do not use these colors)."):
+
+- `Code` (`Scenes.swift`): two `Sheet`s, the main grid and a nearer one (`codeNear` 1.6 times the pitch and the
+  glyphs, `codeNearBright`, `codeNearBlur`, `codeNearActive`), each with its cells in one array of `Cell` (glyph, level,
+  lit, trail, top, gain, under), its columns' speeds, travel, heads and pauses (`due`, `wait`) and its column and row
+  centres. A head carries its stream's gain (log-uniform in `codeGain`) into each cell it lights. A column's pause runs
+  at `active · rows · pitch / codeHeight · speed / fall` a second and starts a head once it passes `wait` (drawn from
+  `codeWait`): at most `most` (`codeMost` for each `codeHeight`) in the column, `codeGap` rows from its others, at the
+  top or (`codeHigh`) at a row in `codeHighRows`. `Sheet.draw`: the heads first, each its halo (`Sprite.halo`, only for
+  added ink) and its glyph; then one pass over the cells that changes a lit glyph and its level at `codeChange`
+  (geometric skips between changes, one draw a change) and writes the cells right behind a head in the text colour at
+  `codeHead · codeNeck^k` for `codeNeckCells`, the others in the accent at top · gain · level · (1 − age ÷
+  trail)^`codeFade` above `cut`, through pointers into a scratch buffer of `cap` sprites, appended to the frame's in
+  one call (a debug build's Array subscript, Sprite init and append cost about 100 ns each). `cut` rises 1.25 times a
+  frame while more than `cap` would show and falls back 1.05 times under three quarters of it. For the tests:
+  `falling`, `nearFalling`, `nearPitch`, `nearColumns`, `cut`.
+- `Sprite`: a glyph's parameter is its slot in the low 12 bits and its blur in quarter mipmap levels in the 4 above
+  (`Glyphs.sprite(mirrored:blur:)`; a negative width mirrors it); `Sprite.halo`, the ring of radius 0; an internal init
+  from the shader's fields (`packed:shape:`).
+- `Glyphs`: `kana` (U+FF66, U+FF71–U+FF9D) joins `characters`; the ones the line's font lacks come from
+  `CTFontCreateForString`'s fallback in its bold (`CTFontCreateCopyWithSymbolicTraits`, `.traitBold`; LastResort
+  refused), moved right by half the difference of the advances and kept only when their ink lies inside the cell the
+  line's glyphs make (computed from those alone, so the cell is as before); `faces`, `face`, `shift`; `codeSet` the 22
+  and the 46. `Renderer.atlas` draws each slot in its face, shifted. The shader takes a glyph's slot from the
+  parameter's low 12 bits and samples it with `bias(blur ÷ 4)`.
+- `Tuning`: `cap` 16,000 (2,000); Code's constants as DESIGN A1 gives them, each with its pass 25 value in its
+  comment. New: `codeHeight`, `codeMost`, `codeWait`, `codeHigh`, `codeHighRows`, `codeNeck`, `codeNeckCells`,
+  `codeGain`, `codeLevel`, `codeLevelSkew`, `codeFade`, `codeHalo`, `codeHaloWidth`, `codeNear`, `codeNearActive`,
+  `codeNearBright`, `codeNearBlur`. Changed: `codeScale` 0.6, `codePitch` 0.5 (now the grid's own, apart from the
+  glyphs' size), `codeActive` (heads a column for each `codeHeight`, was a share of the columns), `codeTrail`,
+  `codeGap` (rows between two heads), `codeHead`, `codeTrailTop`, `codeChange`, `codeKeyTrailTop`, `codeKeyTrail`.
+- The tuning, iterated against the frame on the renders, each step's renders looked at and the share of cells lit
+  above the background by 15, 60 and 120 of 255 counted (the frame: 66, 42 and 22 %): 1, the first draft (0.8 heads a
+  column, trails 24–120, the trail's top 0.3 times a level of 0.2–1, a fade to the power 1.5, head 0.6): a faint
+  scatter, 46 / 10 / 7 %; 2, the top 0.45, levels 0.3–1, a linear fade, head 0.8, 1 head a column, trails 30–150: a
+  curtain without streams, 78 / 27 / 9 %; 3, a gain a stream (0.35–1.6), glyphs at 0.6 on the same grid, the near
+  sheet 1.6 times as bright: streams through the curtain, 76 / 29 / 13 %; 4, the top 0.55, two pale cells behind a head,
+  the halo 0.22 and only where light adds, a key's trail from 0.8: 80 / 37 / 15 %; 5, a column's pause from 0.5–1.5 of
+  its mean, not Poisson (13 of 81 columns had stood empty): 90 / 41 / 15 %, too even; 6, 0.8 heads a column and gains
+  of 0.3–2: more contrast, 86 / 41 / 14 %; 7, heads by the column's height (2560 × 1440 had lit 64 % of its cells, the
+  laptop 80 %): 85 / 37 / 11 % at rest, 95 / 74 / 42 % typing. Between 4 and 7 the debug step went from 7.8 ms to
+  0.8 ms (the cells in one array read through a pointer, the glyph changes in the draw's one pass, the sprites written
+  through a pointer); in release 0.02 ms.
+- Tests: 134 (127 before), passing in debug and in release. New: `codeAtRestIsADimCurtainOverTheWholeScreen`,
+  `severalHeadsFallInAColumnStartingAtVariousHeights`, `aStreamsGlyphsEachHaveTheirOwnBrightness`,
+  `aFewNearerStreamsAreLargerSofterAndBrighter`, `aHaloLiesUnderEveryHead`,
+  `aStageBeyondTheCapLosesItsDimmestCellsNotItsEdge`, `codesGlyphsDrawMirroredSoftAndInKatakana`. Changed: the tuning
+  record; the stage test's code set and the katakana's face; the grid test (the main sheet, mirrored, pale heads and
+  the cells behind them, trails up to the top times the largest gain); the key's head (as typed, the cells behind it,
+  its trail dimming an equal step a frame between glyph changes); glyph changes counted on trail cells seen in two
+  frames running (a level drawn anew can brighten a cell, so a falling alpha no longer marks one); Space, Return and ⌫
+  leave the frames as no key would; the ramp's brighter heads and trails and more heads; the cap test over seven
+  screens and rates, with the step's CPU time (this thread's, the best of 14 batches).
+- Build: `LEMNA_VERSION=0.1.2 make-app.sh`; the executable is 1,251,680 bytes, no home folder in its symbols; signed
+  with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
+
 ## Known gaps
 
+- Pass 27 is not tried: nothing was launched. Untried: the look on a real dim at 30 Hz (the renders are single
+  frames), whether the rest state is too busy beside the box, whether the halo reads as a glow, whether the near
+  sheet's mipmap blur looks soft or blocky on a 1× screen (the atlas has two levels below its own), the mirrored
+  katakana (Hiragino Sans W6) beside Menlo's digits, a 6K display's 15,000 sprites at 60 Hz. Not built: the films' green
+  haze (a bloom over the whole screen). The site's Code tile still draws pass 25's rain.
 - Pass 26 is not tried: nothing was launched, and the cause is read from the code and AppKit's header, not from a log.
   Untried: the relaunch itself, ⌘Tab and the Dock with the box up; whether the Accessibility prompt's process comes to
   the front (then the box goes once the app behind is back after it) or takes the keys without (then the box stays

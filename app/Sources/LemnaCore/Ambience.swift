@@ -64,9 +64,11 @@ extension Ambience {
     /// Lemna's the box's text and accent, C1): Code's heads in the text colour and its trails in the accent (C2, pass
     /// 19b); Still water's rings in the text colour.
     public enum Tuning {
-        /// Every mode: at most this many sprites a frame (the panel's 2,000 particles), stepped and drawn at 60 Hz
-        /// (Code at rest at `codeIdleRate`, Still water at `waterFrameRate`).
-        public static let cap = 2000, frameRate = 60.0
+        /// Every mode: at most this many sprites a frame, stepped and drawn at 60 Hz (Code at rest at `codeIdleRate`,
+        /// Still water at `waterFrameRate`). 16,000 since pass 27 (the panel's 2,000 particles before): Code draws
+        /// every lit cell, about 3,500 at rest on a laptop's screen and 15,500 at most typing on a 6K display's
+        /// 3008 × 1692 pt; the instance buffers are 512 KB each, the GPU's work bound by the screen's area.
+        public static let cap = 16_000, frameRate = 60.0
         /// Nothing new after the last key, and the scene is gone `linger` after it, fading out evenly over the last
         /// `fadeOut` (a decay nobody triggered, kept off the curve, so the scene does not drop half of itself in the
         /// first tenth of a second at a moment the writer did not choose; pass 18); then the display link pauses. Not
@@ -85,40 +87,73 @@ extension Ambience {
         public static let screenSpan = 0.1...0.9, codeRows = 0.55...0.95
 
         /// M2 Code (Rain until pass 25; pass 19b's G1 I1 T1 C2 K1 W1 of `docs/design-panel-lemna-rain.html`, matrix
-        /// §6.2): glyphs at `codeScale` of the line's size in a fixed grid of square cells, `codePitch` of the glyph's
-        /// cell height on a side (14 pt glyphs on 18.5 pt at Menlo 28: 81 × 54 cells on 1512 × 982 pt), each cell
-        /// holding one glyph of `Glyphs.codeSet`. A head steps down its column a cell at a time and lights the cell it
-        /// enters; the cell then dims in place, linearly from the trail's top alpha to nothing over the head's trail
-        /// (in cells, so the fade takes the trail ÷ the column's speed). A column's speed is drawn once at the birth
-        /// from `codeSpeed`, in rows a second, and kept whatever the intensity (pass 25; the user, 2026-11-01: "I don't
-        /// think the matrix code animation gets faster in the movie, it just gets more intense"; matrix §2: constant
-        /// within a column, about 2:1 between columns): 8–16 rows (148–296 pt) a second, about the geometric middle of
-        /// pass 19b's 5–10 at rest and 15–30 typing, between Rezmason's twilight (5–10) and classic (15–30), so it
-        /// neither crawls at rest nor rushes while typing; a column crosses a laptop's 54 rows in 3.4–6.8 s. A column
-        /// holds at most two heads, all at its speed, so they keep their distance; it starts the next at the top after
-        /// a random pause (when its last head's trail is `codeGap` cells down) so that about `codeActive` of the
-        /// columns show one, and a head ends below the bottom. Every lit glyph changes in place `codeChange` times a
-        /// second. Each pair is (idle, typing): one intensity, 0 at rest, 1 at `codeFast` keys a second (the keys of
-        /// the last `rateWindow`), sets every magnitude between them, linearly: the films' "more intense", more columns
-        /// falling, longer and brighter trails, brighter heads, glyphs changing more often, never faster columns; it
+        /// §6.2), since pass 27 the film's title sequence (the user, 2026-11-02, of two of its frames: "in the movie it
+        /// looks more like this ... Revise the animation (but do not use these colors)"): a dim curtain of glyphs over
+        /// nearly the whole screen with brighter streams falling through it, a few nearer ones larger and softer. Glyphs
+        /// of `Glyphs.codeSet` (digits, a few symbols, katakana), mirrored, fixed in a grid of square cells; heads step
+        /// down the columns a cell at a time, each cell they enter lit and then dimming in place over the head's trail.
+        /// Each pair is (idle, typing): one intensity, 0 at rest, 1 at `codeFast` keys a second (the keys of the last
+        /// `rateWindow`), sets every magnitude between them, linearly: the films' "more intense", more heads, longer
+        /// and brighter trails, brighter heads and halos, glyphs changing more often, never faster columns (pass 25); it
         /// rises with τ `codeRise` and falls with τ `codeSettle` from `codeHold` after the last key (so the pauses
-        /// between words do not make it pulse; back near rest about 4 s after the last key). A trail is a head's from
-        /// its start. The head in the text colour, the trail in the accent (C2). Each glyph key also starts a head in
-        /// its column where the key is (`screenSpan`, `codeRows`), the typed glyph at it at `codeKeyHead`, its trail
-        /// from `codeKeyTrailTop` over `codeKeyTrail` cells; Space and Return none. From the show to the close
+        /// between words do not make it pulse; back near rest about 4 s after the last key). The head and the cells
+        /// right behind it in the text colour, the trail in the accent (C2). From the show to the close
         /// (`Mode.ambient`), stepped `codeAhead` ahead at its birth so the summon finds it falling; at `codeIdleRate`
-        /// frames a second while the intensity is at most `codeCalm` and no key came in the last `codeHold`. A cell is
-        /// drawn above `codeShown`. Until pass 25 the speed was a pair as well, 5–10 rows a second at rest and 15–30
-        /// typing, each column its own share of it. Pass 16's drops (until pass 19b): the typed glyph in the accent at
-        /// 0.8 over 4–8 trail glyphs in the text colour sliding with it, from 0.55 by 0.75, 3 s a drop, at the line's
-        /// size; nothing without keys.
-        public static let codeScale = 0.5, codePitch = 1.0, codeActive = (idle: 0.3, typing: 0.7)
+        /// frames a second while the intensity is at most `codeCalm` and no key came in the last `codeHold`. Pass 25's
+        /// values, before the film's frame, in brackets.
+        ///
+        /// The grid: glyphs at `codeScale` of the line's size (16.8 pt at Menlo 28 [0.5, 14 pt]) on cells `codePitch`
+        /// of the glyph cell's height at the line's size on a side (18.5 pt: 81 × 54 cells on 1512 × 982 pt, as
+        /// before: the film's frame has about 82 columns across).
+        public static let codeScale = 0.6, codePitch = 0.5
+        /// A column's speed in rows a second, drawn once at the birth and kept whatever the intensity (pass 25; the
+        /// user, 2026-11-01: "I don't think the matrix code animation gets faster in the movie, it just gets more
+        /// intense"; matrix §2: constant within a column, about 2:1 between columns): 8–16 rows (148–296 pt) a second,
+        /// about the geometric middle of pass 19b's 5–10 at rest and 15–30 typing, between Rezmason's twilight (5–10)
+        /// and classic (15–30), so it neither crawls at rest nor rushes while typing; a laptop's 54 rows in 3.4–6.8 s.
         public static let codeSpeed = 8.0...16.0
-        public static let codeTrail = (idle: 6.0...18.0, typing: 10.0...30.0), codeGap = (idle: 3.0, typing: 2.0)
-        public static let codeHead = (idle: 0.35, typing: 0.85), codeTrailTop = (idle: 0.2, typing: 0.5)
-        public static let codeChange = (idle: 0.3, typing: 1.5)
-        public static let codeKeyHead = 0.95, codeKeyTrailTop = 0.55, codeKeyTrail = 8.0...20.0
+        /// Heads: about `codeActive` in a column for each `codeHeight` of its height (a taller screen as dense as a
+        /// laptop's; [a share of the columns falling, 0.3 / 0.7]), at most `codeMost` for each `codeHeight`, each at
+        /// least `codeGap` rows from the others in its column [one trail and 3 / 2 cells behind the last], so a column
+        /// often holds two at different heights and they never collide (one speed a column); a column's next head comes
+        /// after a pause of `codeWait` of its mean (narrower than a Poisson pause's, which left one column in eight
+        /// empty), the pause running at the intensity's rate so typing shortens the one under way; `codeHigh` of them
+        /// start lower than the top edge, at a row within `codeHighRows` of the height, the rest at the top.
+        public static let codeActive = (idle: 0.8, typing: 1.4), codeHeight = 1000.0, codeMost = 3
+        public static let codeGap = (idle: 8.0, typing: 5.0), codeWait = 0.5...1.5
+        public static let codeHigh = 0.3, codeHighRows = 0.05...0.6
+        /// A head's trail in cells, log-uniform (more short than long), so most reach far up the screen and a head's
+        /// trail lingers in the cells for seconds after it ran out at the bottom [6–18 / 10–30]; the cells dim in place
+        /// to nothing over it, as (1 − age ÷ trail)^`codeFade` (linear, so a glyph dims an equal step a frame).
+        public static let codeTrail = (idle: 30.0...150.0, typing: 40.0...200.0), codeFade = 1.0
+        /// The head's alpha [0.35 / 0.85], and the `codeNeckCells` cells right behind it, still in the text colour, at
+        /// `codeNeck` of it and then its square (the films' bright glyph or two under a head).
+        public static let codeHead = (idle: 0.8, typing: 1.0), codeNeck = 0.7, codeNeckCells = 2
+        /// The trail's top alpha [0.2 / 0.5], times its stream's gain, drawn once a head from `codeGain` (log-uniform:
+        /// most streams dim, a few bright, which makes the curtain and the brighter streams through it), times the
+        /// glyph's own brightness, drawn from `codeLevel` with each new glyph (u^`codeLevelSkew` across it: more dim
+        /// than bright), so a bright glyph sits beside dim ones and flickers as it changes.
+        public static let codeTrailTop = (idle: 0.55, typing: 0.85), codeGain = 0.3...2.0
+        public static let codeLevel = 0.3...1.0, codeLevelSkew = 1.5
+        /// The halo under a head where light adds (Lemna, Still by night; ink laid over Still's day wash does not
+        /// glow): a soft disc in the text colour (`Sprite.halo`), at `codeHalo` in its middle, falling to e^(−2) of it
+        /// `codeHaloWidth` of the pitch out and to nothing at twice that (the films' bloom, the cheapest kind).
+        public static let codeHalo = (idle: 0.22, typing: 0.35), codeHaloWidth = 0.8
+        /// Every lit glyph changes in place this often a second [0.3 / 1.5], its brightness with it.
+        public static let codeChange = (idle: 0.5, typing: 2.0)
+        /// Depth: a nearer sheet over the grid, `codeNear` times its pitch and glyphs (its own columns, 51 on a laptop),
+        /// with about `codeNearActive` heads a column for each `codeHeight` (two to four streams on a laptop at rest),
+        /// `codeNearBright` times the alphas and sampled `codeNearBlur` mipmap levels softer: a few streams larger,
+        /// softer and brighter, falling as many rows a second as the far ones and so faster across the screen.
+        public static let codeNear = 1.6, codeNearActive = (idle: 0.06, typing: 0.12), codeNearBright = 1.6
+        public static let codeNearBlur = 1.5
+        /// Each glyph key also starts a head in its column where the key is (`screenSpan`, `codeRows`), the typed glyph
+        /// at it, not mirrored, at `codeKeyHead`, its trail from `codeKeyTrailTop` [0.55] at each glyph's own
+        /// brightness over `codeKeyTrail` cells [8–20]; Space and Return none.
+        public static let codeKeyHead = 0.95, codeKeyTrailTop = 0.8, codeKeyTrail = 12.0...40.0
         public static let codeFast = 6.0, codeRise = 0.25, codeSettle = 1.2, codeHold = 0.8
+        /// A trail cell is drawn above `codeShown` (raised frame by frame on a stage with more lit cells than `cap`, so
+        /// the dimmest go and not the columns on the right).
         public static let codeAhead = 20.0, codeIdleRate = 30.0, codeCalm = 0.05, codeShown = 0.02
 
         /// Still water (pass 24; AM1 of `docs/design-panel-lemna-themes.html`, per word and at rest since pass 25;
@@ -212,15 +247,18 @@ func mix(_ r: ClosedRange<Double>, _ u: Double) -> Double { r.lowerBound + (r.up
 
 // MARK: What a scene draws
 
-/// One sprite: a quad centred at (x, y), w × h points, turned by `rotation` radians about its centre, at `alpha` (times
-/// the run's), in `colour` (0xRRGGBB packed as the shader unpacks it). `shape`: the kind in its low byte and a
-/// parameter above it (a glyph's atlas slot; a ring's radius and width). 32 bytes, the layout the shader reads.
+/// One sprite: a quad centred at (x, y), w × h points (a glyph's w negative: mirrored, pass 27), turned by `rotation`
+/// radians about its centre, at `alpha` (times the run's), in `colour` (0xRRGGBB packed as the shader unpacks it).
+/// `shape`: the kind in its low byte and a parameter above it (a glyph's atlas slot in its low 12 bits and its blur in
+/// quarter mipmap levels in the 4 above, `Glyphs.sprite`; a ring's radius and width). 32 bytes, the layout the shader
+/// reads.
 public struct Sprite: Equatable {
     public var x: Float, y: Float, w: Float, h: Float, rotation: Float, alpha: Float, colour: UInt32, shape: UInt32
 
     public enum Kind: UInt32 {
         /// A glyph from the atlas; a soft ring (pass 24, Still water: a circle about the quad's middle, its coverage a
-        /// Gaussian across the circle, `Sprite.ring`; the quad is the circle's square with the falloff). Pass 18 took
+        /// Gaussian across the circle, `Sprite.ring`; the quad is the circle's square with the falloff; of radius 0 a
+        /// soft disc, a Gaussian about the middle, Code's halo under a head since pass 27, `Sprite.halo`). Pass 18 took
         /// out the disc, the small circle's stroke and the beam, pass 24 the filled rectangle and the large circle's
         /// stroke (`bend`), which only the removed modes drew.
         case glyph, ring
@@ -232,6 +270,12 @@ public struct Sprite: Equatable {
         (self.rotation, self.alpha) = (Float(rotation), Float(min(max(alpha, 0), 1)))
         self.colour = Self.packed(colour)
         shape = kind.rawValue | parameter << 8
+    }
+
+    /// A sprite from its fields as the shader reads them, `colour` packed and `shape` the kind with its parameter:
+    /// for Code's thousands a frame (pass 27), without the conversions of the init above; `alpha` within 0...1.
+    init(x: Float, y: Float, w: Float, h: Float, alpha: Float, packed colour: UInt32, shape: UInt32) {
+        (self.x, self.y, self.w, self.h, rotation, self.alpha, self.colour, self.shape) = (x, y, w, h, 0, alpha, colour, shape)
     }
 
     public var kind: Kind { Kind(rawValue: shape & 0xff) ?? .glyph }
@@ -255,39 +299,60 @@ public struct Sprite: Equatable {
         return Sprite(x: x, y: y, w: side, h: side, alpha: alpha, colour: colour, kind: .ring,
                       parameter: ring(radius: r, width: w))
     }
+
+    /// A soft disc about (x, y), the ring of radius 0 (pass 27, Code's halo, the cheapest bloom): `alpha` at its
+    /// middle, falling as a Gaussian to e^(−2) of it `width` out and to nothing at twice that.
+    static func halo(x: Double, y: Double, width w: Double, alpha: Double, colour: UInt32) -> Sprite {
+        ring(x: x, y: y, radius: 0, width: w, alpha: alpha, colour: colour)
+    }
 }
 
 // MARK: The atlas's index
 
 extension Ambience {
-    /// Which glyphs of the line's font the atlas holds, in which cell, and a cell's size. The renderer draws them once
-    /// with Core Text (Particles.swift); the scenes place glyph sprites by it. ASCII, Latin-1's letters and the common
-    /// punctuation of German and English text; a character outside it does not rain.
+    /// Which glyphs the atlas holds, in which cell, and a cell's size. The renderer draws them once with Core Text
+    /// (Particles.swift); the scenes place glyph sprites by it. ASCII, Latin-1's letters and the common punctuation of
+    /// German and English text in the line's font, and since pass 27 Code's katakana (`kana`) from the font Core Text
+    /// falls back on for them (Hiragino Sans, its bold); a character outside it does not rain.
     public struct Glyphs {
         public static let characters: [Character] = {
             var cs = (33...126).map { Character(Unicode.Scalar(UInt8($0))) }
             cs += (0xC0...0xFF).filter { $0 != 0xD7 && $0 != 0xF7 }.map { Character(Unicode.Scalar(UInt8($0))) }
-            return cs + Array("–—…„“”‚‘’«»·§€¶")
+            return cs + Array("–—…„“”‚‘’«»·§€¶") + kana
         }()
+        /// Code's katakana (pass 27; matrix §1.2: the films' glyphs are mostly mirrored half-width katakana): ｦ and ｱ to
+        /// ﾝ (U+FF66, U+FF71–U+FF9D), 46 of them, without the small ones (ｧ to ｯ, too small beside the digits) and the
+        /// prolonged sound mark (the set has its dashes). No font of the line has them: Core Text's fallback for the
+        /// line's font does (`CTFontCreateForString`, Hiragino Sans W3 for Menlo), taken in its bold (W6, Menlo's
+        /// weight) and centred on the cell's advance; one that would not fit the cell the line's own glyphs make is
+        /// left out, so the cell, and Code's grid, are as before.
+        public static let kana: [Character] = ([0xFF66] + Array(0xFF71...0xFF9D)).map { Character(Unicode.Scalar($0)!) }
         /// The atlas is drawn at 2× (a 1× screen samples it down) with `pad` points around each glyph, 16 cells a row.
         public static let scale: CGFloat = 2, pad: CGFloat = 2, columns = 16
 
         public let font: CTFont
-        /// Each slot's glyph.
-        public let ids: [CGGlyph]
+        /// Each slot's glyph, the font it is drawn in (an index into `faces`: 0 the line's font, 1 the fallback's) and
+        /// how far right of the cell's origin (in points), so a narrower fallback glyph sits in the middle.
+        public let ids: [CGGlyph], face: [Int], shift: [CGFloat]
+        /// The line's font, then the fallback's for the katakana if one had them.
+        public let faces: [CTFont]
         /// One cell in the atlas's pixels, and where a glyph's baseline-left sits in it, in points from its bottom-left.
         public let pixels: (w: Int, h: Int), origin: CGPoint
-        /// The slots of a to z; and of Code's glyphs (K1, pass 19b): the films' set as far as ASCII has it, digits
-        /// without 6, Z z : . " = * + - < > | _, not mirrored.
+        /// The slots of a to z; and of Code's glyphs (K1, pass 19b; pass 27): the films' set as far as the atlas has it,
+        /// digits without 6, Z z : . " = * + - < > | _ and the katakana, drawn mirrored (`sprite(mirrored:)`).
         public let letters: [Int], codeSet: [Int]
         private let byCharacter: [Character: Int]
 
         public init(font: CTFont) {
             self.font = font
             var ids: [CGGlyph] = [], byCharacter: [Character: Int] = [:], byGlyph: [CGGlyph: Int] = [:]
+            var missing: [Character] = []
             for c in Self.characters {
                 var units = Array(String(c).utf16), g = [CGGlyph](repeating: 0, count: units.count)
-                guard units.count == 1, CTFontGetGlyphsForCharacters(font, &units, &g, 1), g[0] != 0 else { continue }
+                guard units.count == 1, CTFontGetGlyphsForCharacters(font, &units, &g, 1), g[0] != 0 else {
+                    if units.count == 1 { missing.append(c) }
+                    continue
+                }
                 if let slot = byGlyph[g[0]] { byCharacter[c] = slot; continue }
                 byCharacter[c] = ids.count
                 byGlyph[g[0]] = ids.count
@@ -296,13 +361,36 @@ extension Ambience {
             var advances = [CGSize](repeating: .zero, count: ids.count)
             CTFontGetAdvancesForGlyphs(font, .horizontal, ids, &advances, ids.count)
             let ink = CTFontGetBoundingRectsForGlyphs(font, .horizontal, ids, nil, ids.count)
-            let left = min(ink.minX, 0), right = max(ink.maxX, advances.map(\.width).max() ?? 0)
+            let advance = advances.map(\.width).max() ?? 0
+            let left = min(ink.minX, 0), right = max(ink.maxX, advance)
             let p = Self.pad, s = Self.scale
             pixels = (Int(((right - left + 2 * p) * s).rounded(.up)), Int(((ink.maxY - ink.minY + 2 * p) * s).rounded(.up)))
             origin = CGPoint(x: p - left, y: p - ink.minY)
-            (self.ids, self.byCharacter) = (ids, byCharacter)
+            var face = [Int](repeating: 0, count: ids.count), shift = [CGFloat](repeating: 0, count: ids.count)
+            var faces = [font]
+            // The katakana from the fallback, in its bold, each centred on the advance and kept only within the cell.
+            if let first = missing.first(where: Self.kana.contains) {
+                let found = CTFontCreateForString(font, String(first) as CFString, CFRange(location: 0, length: 1))
+                let fallback = CTFontCreateCopyWithSymbolicTraits(found, 0, nil, .traitBold, .traitBold) ?? found
+                if CTFontCopyPostScriptName(fallback) as String != "LastResort" {
+                    for c in missing where Self.kana.contains(c) {
+                        var units = Array(String(c).utf16), g: [CGGlyph] = [0], a = CGSize.zero
+                        guard CTFontGetGlyphsForCharacters(fallback, &units, &g, 1), g[0] != 0 else { continue }
+                        CTFontGetAdvancesForGlyphs(fallback, .horizontal, g, &a, 1)
+                        let dx = (advance - a.width) / 2
+                        let r = CTFontGetBoundingRectsForGlyphs(fallback, .horizontal, g, nil, 1).offsetBy(dx: dx, dy: 0)
+                        guard r.minX >= left, r.maxX <= right, r.minY >= ink.minY, r.maxY <= ink.maxY else { continue }
+                        byCharacter[c] = ids.count
+                        ids.append(g[0])
+                        face.append(1)
+                        shift.append(dx)
+                    }
+                    if face.contains(1) { faces.append(fallback) }
+                }
+            }
+            (self.ids, self.face, self.shift, self.faces, self.byCharacter) = (ids, face, shift, faces, byCharacter)
             letters = "abcdefghijklmnopqrstuvwxyz".compactMap { byCharacter[$0] }
-            codeSet = "012345789Zz:.\"=*+-<>|_".compactMap { byCharacter[$0] }
+            codeSet = ("012345789Zz:.\"=*+-<>|_" + String(Self.kana)).compactMap { byCharacter[$0] }
         }
 
         /// A cell in points.
@@ -320,11 +408,15 @@ extension Ambience {
 
         public func slot(_ c: Character) -> Int? { byCharacter[c] }
 
-        /// A glyph sprite with its cell's middle at `centre`.
+        /// A glyph sprite with its cell's middle at `centre`; `mirrored` left to right (pass 27, the films' code: a
+        /// negative width, which the vertex shader turns into the quad's corners and the atlas cell's run the other
+        /// way), and `blur` in mipmap levels the shader adds to its sample's (in quarters, to 3.75; the atlas has two
+        /// levels below its own, so 2 is as soft as it gets).
         public func sprite(_ slot: Int, centre: CGPoint, scale: Double = 1, rotation: Double = 0, alpha: Double,
-                           colour: UInt32) -> Sprite {
-            Sprite(x: centre.x, y: centre.y, w: cell.width * scale, h: cell.height * scale, rotation: rotation,
-                   alpha: alpha, colour: colour, kind: .glyph, parameter: UInt32(slot))
+                           colour: UInt32, mirrored: Bool = false, blur: Double = 0) -> Sprite {
+            Sprite(x: centre.x, y: centre.y, w: cell.width * scale * (mirrored ? -1 : 1), h: cell.height * scale,
+                   rotation: rotation, alpha: alpha, colour: colour, kind: .glyph,
+                   parameter: UInt32(slot) | UInt32(min(max((blur * 4).rounded(), 0), 15)) << 12)
         }
     }
 }
