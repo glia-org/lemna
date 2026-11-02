@@ -92,7 +92,8 @@ git-ignored.
   `Mechanical.swift`
   the deterministic pass R1, `Session.swift` the end of a session as a state machine, `Summoning.swift` the menu-bar
   mark, when the Bluetooth notice shows and since pass 20 Start at Login's title and tick (`LoginItem`), `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`), since pass 23 its beds and when the bed plays (`BedChoice`), `Theme.swift` (pass 21) the themes, one literal each (`Theme`: palettes for day and night, type, box, motion, the preset's defaults; `Theme.all`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
-  holds the line (`Surface`) and when a click outside hides the box (`ClickOutside`), `Paste.swift` the paste's
+  holds the line (`Surface`) and when a click outside or, since pass 26, another app in front hides the box
+  (`ClickOutside`), `Paste.swift` the paste's
   decision table, and since pass 17a its steps in order (`Paste.acts`) and the wait for Return to come up
   (`ReturnUp`), `Handoff.swift` (pass 17b) the hand-off's motion: the line cut into its glyphs, when each sets off
   and where it is, the box's collapse, the dim's lift, and when it plays.
@@ -1023,8 +1024,53 @@ well."):
 - Build: `LEMNA_VERSION=0.1.2 make-app.sh`; the executable is 1,223,088 bytes, no home folder in its symbols; signed
   with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
 
+Pass 26, the box when another app takes the keys (DESIGN.md W2 amended; 2026-11-02; the user: "While typing the app
+lost focus because another app was relaunched. I copied the text to the clipboard, which did not work and now the app is
+soft-locked in a state where I cannot type, copy or paste and likely my text is gone."):
+
+- The cause, as the code had it: the box's one way out when the keys went elsewhere was pass 7b's
+  `NSWindow.didResignKeyNotification` for the panel (`boxLostKeys`). AppKit resigns a window "when deactivating or
+  when another window has become key" (`resignKeyWindow`, NSWindow.h); an app that activates itself as it launches or
+  relaunches does neither to Lemna, which never activated for the box. So the box stayed over the dim with its caret,
+  counted key by AppKit, while the window server gave the keys to that app: the line took none, ⌘⏎ and ⌘⇧⏎ (the main
+  menu's key equivalents, which `BoxPanel.sendEvent` sees only among the panel's own events) went to the other app, and
+  a click into a panel AppKit counts key asks for nothing. The journal had every key (E2); the menu-bar item's Copy,
+  which needs no keys, worked throughout, and by the code so did ⌃⌥Space twice (the first hid a box it read as key,
+  the second brought it back with the keys).
+- Another app in front: `NSWorkspace.didActivateApplicationNotification` for any app but Lemna (the window and a
+  question activate it) and but the app a paste brought forward (`bringing`, set in `bringForward`, cleared when its
+  activation is seen: it may come after Secure Input's note brought the box back) runs the click outside's rule with
+  `lemnaHasKeys` false, whatever AppKit says of the panel (`appActivated`); the panel's resign runs it as before. When
+  it holds, the box goes as with Esc (P1's fade, the dim lifting, the journal flushed, the session kept); the next
+  summon shows the text and records the app then in front as the target (a relaunched app is a new process: the old
+  target would have copied instead with `Copied · no app to paste into`).
+- The rule (`ClickOutside.hides`, two inputs more): the box on screen, the session writing (not during a hand-off: the
+  wait for Return to come up, the save panel), no question, no sheet on the box, no window of Lemna's with the keys,
+  and `promptGrace` (2 s) or more since ⌘⏎ asked for macOS's Accessibility prompt (`asked`): the prompt takes the keys
+  as it shows, and the box keeps its note (`Copied · allow Lemna …`) beside it; it goes when an app comes to the front
+  after that, the app behind included.
+- The hotkey: the box counts as having the keys while the panel is key, or a sheet on it is and Lemna is active (a
+  sheet takes the keys only in the active app), so after another app came to the front ⌃⌥Space brings the box back
+  rather than hiding it; a sheet on it (Save…, a question) then gets Lemna activated for it (`activateLemna`), as when
+  it opened. A click into a box left up without the keys makes it key as before (AppKit's mouse-down, no activation
+  for a non-activating panel).
+- Tests: 127 (126 before). `clickOutsideHidesOnlyAnUnguardedBox` covers all 64 combinations of the six inputs; new,
+  `anotherAppInFrontHidesTheBoxUnlessLemnaHoldsIt`: writing in the box hides; not on screen, Save…, a question,
+  Return's wait and the prompt's 2 s keep it; the grace's end hides.
+- Build: `LEMNA_VERSION=0.1.2 make-app.sh`; the executable is 1,224,080 bytes, no home folder in its symbols; signed
+  with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
+
 ## Known gaps
 
+- Pass 26 is not tried: nothing was launched, and the cause is read from the code and AppKit's header, not from a log.
+  Untried: the relaunch itself, ⌘Tab and the Dock with the box up; whether the Accessibility prompt's process comes to
+  the front (then the box goes once the app behind is back after it) or takes the keys without (then the box stays
+  with its note until a click into it and Esc, or ⌃⌥Space); ⌃⌥Space bringing the save panel back with its keys after
+  another app came to the front; whether something that should leave the box alone activates an app (an input method's
+  or the emoji picker's window, a launcher: none is known to); a Space switched by gesture now hides the box, as its
+  app comes to the front. macOS shows the Accessibility prompt once, and the grace cannot tell whether it did: for 2 s
+  after a ⌘⏎ that copied for want of the permission, a click outside leaves the box up without the keys (⌃⌥Space or a
+  click into it takes them back).
 - Pass 25 is not tried: nothing was launched. Untried: whether 8–16 rows a second reads right at rest and while
   typing, and whether the density building over a few seconds (new heads start at the top) feels like "more intense"
   or slow; whether a drop per word on the water feels calm or busy at a fast pace (at most one every 0.8 s), and where

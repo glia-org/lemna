@@ -2,7 +2,45 @@
 
 `DESIGN.md` holds the decisions and the plan. This file says what is done and what is next.
 
-## State (2026-11-01)
+## State (2026-11-02)
+
+- App, pass 26, the box when another app takes the keys (2026-11-02; DESIGN.md W2 amended; the user: "While typing the
+  app lost focus because another app was relaunched. I copied the text to the clipboard, which did not work and now
+  the app is soft-locked in a state where I cannot type, copy or paste and likely my text is gone."). **The cause:** the
+  box went away when the keys went elsewhere only on the panel's resign (pass 7b's click outside), and AppKit resigns
+  a window only when its app deactivates or another of its windows becomes key: when an app activates itself as it
+  launches or relaunches, neither happens to Lemna, which never activated for the box. The box stayed over the dim,
+  counted key by AppKit, while the keys went to that app: the line took none, ⌘⏎ and ⌘⇧⏎ went to the other app (the
+  box sees the menu's chords only among its own key events), a click into it asked for nothing. The text was safe in
+  the journal; the menu-bar item's Copy worked throughout, and by the code ⌃⌥Space twice. **Now:** another app coming
+  to the front (`NSWorkspace.didActivateApplicationNotification`; not Lemna itself, not the app a paste brings
+  forward) hides the box as Esc does, under the click outside's guard, whatever AppKit says of the panel; the session
+  stays, the next summon brings the text back over the app then in front, which becomes the paste's target. The box
+  stays only while Lemna holds it: a hand-off under way (the wait for Return, the save panel), a question or sheet on
+  it, and for 2 s after ⌘⏎ asks for the Accessibility prompt (the prompt takes the keys; the box keeps its note).
+  ⌃⌥Space counts a sheet on the box as having the keys only while Lemna is active, and brings Lemna forward for it.
+  Option (b), the box kept up without the keys until a click or the hotkey, was not taken: that state is the lock, and
+  Esc then goes to the other app. Tests: 127, all passing (126 before; the click-outside table over all 64
+  combinations of its six inputs, and new: another app in front hides the box unless Lemna holds it, with the Save…,
+  question, Return-wait and prompt cases). `LEMNA_VERSION=0.1.2 make-app.sh` built, signed with "Lemna Dev"
+  (`Authority=Lemna Dev`) and verified; the executable is 1,224,080 bytes, no home folder in its symbols. Not tried:
+  nothing was launched; the cause is read from the code and AppKit's header. **The text in the Lemna now running:**
+  the menu-bar item › Copy puts it on the clipboard; or the menu-bar item › Quit Lemna (the session is kept) and open
+  the new build, which restores it on the line. Try, after quitting the running Lemna and `open app/build/Lemna.app`,
+  over TextEdit:
+  - Summon, type a sentence, then bring another app to the front without touching the box: its Dock icon, ⌘Tab, or a
+    launch, as on 2026-11-02 (Calculator quit, in Terminal `sleep 8; open -a Calculator`, then summon over TextEdit and
+    type until it opens). The box and the dim fade out as with Esc and that app has the keys. ⌃⌥Space: the box is back with the sentence and the
+    caret where it was, over the app in front; ⌘⏎ pastes into that app, not TextEdit.
+  - The same with a click into another app's window or on the dim: as before, the box goes; summon: the text is there.
+  - ⌘S, then click another app: the box and the save panel stay. ⌃⌥Space, or a click on the panel: the save panel has
+    the keys again; Save writes the file and the box rises away; Cancel, then type: writing goes on.
+  - The Accessibility prompt, only if you want to re-grant (`tccutil reset Accessibility dev.lemna.app`, then
+    relaunch): ⌘⏎ shows macOS's prompt and the box stays with `Copied · allow Lemna …` beside it; answer the prompt:
+    the box goes once the app behind is back in front, or, if it stays, a click into it takes the keys back (then
+    Esc).
+  - A click into the box while another app is in front: the box is gone by then, except where Lemna holds it (after
+    the prompt, above), and there the click gives it the keys: typing goes on.
 
 - App and site, pass 25, Code rain intensifies without speeding up, its name, and a drop per word on the water
   (2026-11-01; DESIGN.md A1 amended; the user, after trying passes 19–24: "I don't think the matrix code animation gets

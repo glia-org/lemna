@@ -20,6 +20,10 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     private var surface = Surface()
     /// The app in front when the box was last summoned from it: where Paste goes (O3).
     private var target: NSRunningApplication?
+    /// The app a paste brought forward (`bringForward`), until it is seen in front: its coming is Lemna's own doing.
+    private var bringing: NSRunningApplication?
+    /// When ⌘⏎ last asked for macOS's Accessibility prompt (`CACurrentMediaTime`), for `ClickOutside`'s grace.
+    private var asked = -Double.infinity
     private let keeper = Keeper()
     private var session = Session()
     private var asking = false  // a question is up: Discard
@@ -83,6 +87,10 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         statusItem = makeStatusItem(target: self)
         NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification, object: box.panel,
                                                queue: .main) { [unowned self] _ in self.boxLostKeys() }
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification,
+                                                          object: nil, queue: .main) { [unowned self] n in
+            self.appActivated(n.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)
+        }
     }
 
     // MARK: Clicks (K1)
@@ -329,7 +337,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     private func hotkeyPressed() {
         let focused: Bool
         switch surface.onScreen {
-        case .box?: focused = box.panel.isKeyWindow || hasKeys(box.panel)  // key without Lemna being active
+        // Key without Lemna being active; a sheet on it has the keys only while Lemna is (a question, the save panel).
+        case .box?: focused = box.panel.isKeyWindow || NSApp.isActive && hasKeys(box.panel)
         case .window?: focused = NSApp.isActive && hasKeys(window)
         case nil: focused = false
         }
@@ -369,13 +378,31 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     private func boxLostKeys() {
         DispatchQueue.main.async { [self] in
             guard !box.panel.isKeyWindow else { return }  // it has them back already
-            guard ClickOutside.hides(boxOnScreen: surface.onScreen == .box, asking: asking,
-                                     sheet: box.panel.attachedSheet != nil, lemnaHasKeys: NSApp.keyWindow != nil)
-            else { return }
-            surface.hide()
-            apply()
-            handBack()
+            hideIfKeysGone(lemnaHasKeys: NSApp.keyWindow != nil)
         }
+    }
+
+    /// Another app came to the front (pass 26): it has the keys, so the box goes as Esc does, under the same guard. The
+    /// panel's resign alone can miss this: AppKit resigns a window "when deactivating or when another window has become
+    /// key" (NSWindow.h), and an app that activates itself as it launches or relaunches does neither to Lemna, which
+    /// never activated for the box. The box then stayed over the dim taking nothing (2026-11-02): ⌘⏎ and ⌘⇧⏎ went to
+    /// the other app, and a click into a box AppKit still counts key asks for nothing. Lemna's own coming to the front
+    /// (the window, a question) and the paste's bringing its app forward are not another app's.
+    private func appActivated(_ app: NSRunningApplication?) {
+        guard let app, app != NSRunningApplication.current else { return }
+        if app == bringing { return bringing = nil }
+        hideIfKeysGone(lemnaHasKeys: false)
+    }
+
+    /// The box hides as Esc does unless `ClickOutside` holds it.
+    private func hideIfKeysGone(lemnaHasKeys: Bool) {
+        guard ClickOutside.hides(boxOnScreen: surface.onScreen == .box, writing: session.phase == .writing,
+                                 asking: asking, sheet: box.panel.attachedSheet != nil, lemnaHasKeys: lemnaHasKeys,
+                                 sincePrompt: CACurrentMediaTime() - asked)
+        else { return }
+        surface.hide()
+        apply()
+        handBack()
     }
 
     /// Open Window (⌃⌘F, also from the box) and back: the line moves to the other container. Only while writing, so
@@ -426,6 +453,9 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             }
             if NSApp.isHidden { NSApp.unhideWithoutActivation() }
             box.show(view)
+            // A sheet on the box (Save…, a question) takes the keys only in the active app: the hotkey brings it back
+            // with them after another app came to the front.
+            if box.panel.attachedSheet != nil { activateLemna() }
         case .window?:
             if NSApp.isHidden { NSApp.unhide(nil) }
             if window.isMiniaturized { window.deminiaturize(nil) }
@@ -600,7 +630,10 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             if box.handOff(.rise, stays: true) { timing.mark("motion started") }
             // macOS's Accessibility prompt, once (seen 2026-10-28: CGRequestPostEventAccess brought none, this does; the
             // Accessibility grant covers posting events too)
-            if ask { _ = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary) }
+            if ask {
+                asked = CACurrentMediaTime()  // the prompt takes the keys as it shows: the box stays with its note
+                _ = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary)
+            }
             copyOut(text, note: note)
         case .paste:
             clicks?.play(.send)  // before the motion's first frame is built, as a key's click comes before its glide
@@ -717,6 +750,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// does not allow that request, a plain one (`activateIgnoringOtherApps` has no effect since macOS 14).
     private func bringForward(_ app: NSRunningApplication) {
         guard NSWorkspace.shared.frontmostApplication != app else { return }
+        bringing = app  // its activation may come after Secure Input's note brought the box back: not another app's
         NSApp.yieldActivation(to: app)
         if !app.activate(from: NSRunningApplication.current, options: []) { app.activate(options: []) }
     }

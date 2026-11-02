@@ -47,13 +47,22 @@ public struct Surface: Equatable {
     public mutating func use(_ c: Container) { (mode, shown) = (c, true) }
 }
 
-/// A click outside the box (into another app, also through the dim) takes the keys from it, and then the box goes, as
-/// with Esc; the session stays. But the box loses the keys for other reasons too, so this guards the hide: when it is
-/// already going or not on screen (Esc, the hotkey, a paste, window mode), when a question of Lemna's is up or a sheet
-/// hangs on it (Discard…, Save…, the journal's alert: the sheet took the keys), and when another window of Lemna's has
-/// the keys.
+/// A click outside the box (into another app, also through the dim) takes the keys from it, and so does another app
+/// coming to the front (pass 26: one that activates itself as it launches or relaunches, ⌘Tab, the Dock), whether or
+/// not AppKit tells the panel; then the box goes, as with Esc; the session stays, and the next summon brings it back
+/// with the text. But the box loses the keys for other reasons too, so this guards the hide: when it is already going
+/// or not on screen (Esc, the hotkey, a paste, window mode), while a hand-off is under way (the wait for Return to come
+/// up, the save panel: the hand-off ends the box itself), when a question of Lemna's is up or a sheet hangs on it
+/// (Discard…, Save…, the journal's alert: the sheet took the keys), when another window of Lemna's has the keys, and
+/// within `promptGrace` of asking for macOS's Accessibility prompt (it takes the keys as it shows, while the box says
+/// beside it why ⌘⏎ copied).
 public enum ClickOutside {
-    public static func hides(boxOnScreen: Bool, asking: Bool, sheet: Bool, lemnaHasKeys: Bool) -> Bool {
-        boxOnScreen && !asking && !sheet && !lemnaHasKeys
+    /// Seconds from asking for the Accessibility prompt in which the keys going elsewhere are taken as the prompt's.
+    public static let promptGrace = 2.0
+
+    /// `writing`: the session's phase is `.writing`; `sincePrompt`: seconds since the prompt was last asked for.
+    public static func hides(boxOnScreen: Bool, writing: Bool, asking: Bool, sheet: Bool, lemnaHasKeys: Bool,
+                             sincePrompt: Double) -> Bool {
+        boxOnScreen && writing && !asking && !sheet && !lemnaHasKeys && sincePrompt >= promptGrace
     }
 }

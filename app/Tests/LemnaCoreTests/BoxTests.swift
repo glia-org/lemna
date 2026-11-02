@@ -1,5 +1,6 @@
 // The box (W2) and paste at Done (O3): the box's frame on a screen and its clamps, which container is on screen, the
-// paste's decision table, when the old clipboard comes back, and when a click outside hides the box.
+// paste's decision table, when the old clipboard comes back, and when a click outside or another app in front hides
+// the box.
 import CoreGraphics
 import Testing
 @testable import LemnaCore
@@ -72,15 +73,45 @@ private let laptop = CGRect(x: 0, y: 80, width: 1512, height: 868)
 }
 
 @Test func clickOutsideHidesOnlyAnUnguardedBox() {
-    // Every combination: only a box on screen with no question, no sheet, and the keys gone to another app.
-    for bits in 0..<16 {
-        let (onScreen, asking, sheet, lemna) = (bits & 1 != 0, bits & 2 != 0, bits & 4 != 0, bits & 8 != 0)
-        let hides = ClickOutside.hides(boxOnScreen: onScreen, asking: asking, sheet: sheet, lemnaHasKeys: lemna)
-        #expect(hides == (bits == 1), "\(bits)")
+    // Every combination: only a box on screen while writing, with no question, no sheet, the keys gone to another app
+    // and the Accessibility prompt not just asked for.
+    for bits in 0..<64 {
+        let (onScreen, writing, asking) = (bits & 1 != 0, bits & 2 != 0, bits & 4 != 0)
+        let (sheet, lemna, prompt) = (bits & 8 != 0, bits & 16 != 0, bits & 32 != 0)
+        let hides = ClickOutside.hides(boxOnScreen: onScreen, writing: writing, asking: asking, sheet: sheet,
+                                       lemnaHasKeys: lemna, sincePrompt: prompt ? 0.5 : .infinity)
+        #expect(hides == (bits == 3), "\(bits)")
     }
-    #expect(ClickOutside.hides(boxOnScreen: true, asking: false, sheet: false, lemnaHasKeys: false))
+    #expect(ClickOutside.hides(boxOnScreen: true, writing: true, asking: false, sheet: false, lemnaHasKeys: false,
+                               sincePrompt: .infinity))
     // The save panel or a question opened on the box: its sheet has the keys.
-    #expect(!ClickOutside.hides(boxOnScreen: true, asking: false, sheet: true, lemnaHasKeys: true))
+    #expect(!ClickOutside.hides(boxOnScreen: true, writing: false, asking: false, sheet: true, lemnaHasKeys: true,
+                                sincePrompt: .infinity))
     // Esc, the hotkey, a paste, Open Window: the box is already going.
-    #expect(!ClickOutside.hides(boxOnScreen: false, asking: false, sheet: false, lemnaHasKeys: false))
+    #expect(!ClickOutside.hides(boxOnScreen: false, writing: true, asking: false, sheet: false, lemnaHasKeys: false,
+                                sincePrompt: .infinity))
+}
+
+@Test func anotherAppInFrontHidesTheBoxUnlessLemnaHoldsIt() {
+    // Pass 26: another app comes to the front while the box is up (it relaunched and activated itself, ⌘Tab, the
+    // Dock), so the keys are that app's whatever AppKit says of the panel: Lemna has none.
+    func hides(onScreen: Bool = true, writing: Bool = true, asking: Bool = false, sheet: Bool = false,
+               sincePrompt: Double = .infinity) -> Bool {
+        ClickOutside.hides(boxOnScreen: onScreen, writing: writing, asking: asking, sheet: sheet, lemnaHasKeys: false,
+                           sincePrompt: sincePrompt)
+    }
+    #expect(hides())  // writing in the box: it goes as with Esc, the session stays for the next summon
+    #expect(!hides(onScreen: false))  // hidden already, or the line is in the window
+    // Save…: the hand-off is under way and its sheet hangs on the box, also once another app is in front.
+    #expect(!hides(writing: false, sheet: true))
+    // Discard… or the journal's alert: a question with its sheet.
+    #expect(!hides(asking: true, sheet: true))
+    // ⌘⏎ or ⌘⇧⏎ waiting for Return to come up: the hand-off takes the box away itself.
+    #expect(!hides(writing: false))
+    // macOS's Accessibility prompt after a ⌘⏎ without the permission: the box stays with its note while the prompt
+    // takes the keys, and goes as usual once the grace is over.
+    #expect(!hides(sincePrompt: 0))
+    #expect(!hides(sincePrompt: ClickOutside.promptGrace - 0.01))
+    #expect(hides(sincePrompt: ClickOutside.promptGrace))
+    #expect(ClickOutside.promptGrace == 2)
 }
