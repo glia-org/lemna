@@ -1,5 +1,6 @@
 // The Sound submenu (K1): the packs, the default, a choice, and ⌘K; since pass 23 the bed (BD1): kept, chosen, and when
-// it plays.
+// it plays; since pass 28 five beds.
+import Darwin
 import Testing
 @testable import LemnaCore
 
@@ -29,7 +30,7 @@ import Testing
 }
 
 @Test func theBedIsNoneUnlessOneWasKept() {
-    #expect(BedChoice.beds.map(\.title) == ["Rain bed"] && BedChoice.beds.map(\.folder) == ["Rain"])
+    #expect(BedChoice.beds.map(\.folder) == ["Rain", "Ship", "Lab", "Space", "Synth"])
     let first = BedChoice(kept: nil)  // a first launch, or a build before the beds
     #expect(first.folder == nil && first.index == nil)
     let kept = BedChoice(kept: "Rain")
@@ -42,6 +43,28 @@ import Testing
     #expect(b == kept)
     b.choose("NoSuchBed")
     #expect(b == kept)
+}
+
+/// Pass 28's beds after the rain in Sound ▸, each item "<Name> bed" as the rain's, before No bed; each kept under `bed`
+/// across launches and chosen as the rain is; each a folder with its bed.json and its loop in the library.
+@Test func theFourNewBedsFollowTheRainAndAreKeptAsItIs() {
+    #expect(BedChoice.beds.map(\.title) == ["Rain bed", "Ship bed", "Lab bed", "Space bed", "Synth bed"])
+    let beds = String(renders.dropLast("/app/renders".count)) + "/lib/LemnaClicks/Sources/LemnaClicks/Beds/"
+    for (i, bed) in BedChoice.beds.enumerated() {
+        let kept = BedChoice(kept: bed.folder)  // read back at the next launch
+        #expect(kept.folder == bed.folder && kept.index == i, "\(bed.folder)")
+        var b = BedChoice(kept: nil)
+        b.choose(bed.folder)
+        #expect(b == kept, "\(bed.folder)")
+        b.choose("NoSuchBed")
+        #expect(b == kept, "\(bed.folder)")
+        b.choose(nil)
+        #expect(b.folder == nil && b.index == nil, "\(bed.folder)")
+        #expect(access(beds + bed.folder + "/bed.json", F_OK) == 0, "\(bed.folder)")
+        #expect(access(beds + bed.folder + "/" + bed.folder.lowercased() + ".caf", F_OK) == 0, "\(bed.folder)")
+    }
+    // A theme names its bed in its item; only Still's preset turns one on, the rain (pass 23), as before.
+    #expect(Theme.all.map(\.menuTitle) == ["Lemna", "Still (rain bed)"])
 }
 
 @Test func theBedPlaysOnlyWhileWritingInAContainerOnScreenWithTheSoundOn() {

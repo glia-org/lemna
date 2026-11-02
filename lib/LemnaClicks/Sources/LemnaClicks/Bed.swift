@@ -45,7 +45,8 @@ public struct Bed: Sendable, Equatable {
         lufs = manifest.lufs
     }
 
-    /// A bed an app carries in `Contents/Resources/Beds/<name>`: `Rain` (see THIRD_PARTY.md).
+    /// A bed an app carries in `Contents/Resources/Beds/<name>`: `Rain`, `Ship`, `Lab`, `Space`, `Synth` (see
+    /// THIRD_PARTY.md).
     public static func bundled(_ name: String) throws -> Bed {
         guard let url = Bundle.main.resourceURL?.appendingPathComponent("Beds/\(name)"),
               FileManager.default.fileExists(atPath: url.path) else {

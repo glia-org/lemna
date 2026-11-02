@@ -4,6 +4,46 @@
 
 ## State (2026-11-02)
 
+- App, pass 28, four beds beside the rain (2026-11-02; DESIGN.md K1's BD1 amended, TH1 noted; the user, of
+  `docs/design-panel-lemna-future-bed.html`'s eight Freesound loops: "FB8, FB7, FB6 (cut the low low end a bit)", then
+  "And FB2 (cut low low end again)"). **The beds**, in Session › Sound ▸ after Rain bed and before No bed, in the
+  panel's order: **Ship bed** (FB2, jaava73 45347, CC0, a spaceship's even hull hum, `ship.caf` 1,251,047 bytes),
+  **Lab bed** (FB6, qubodup 212025, CC BY, a sci-fi lab's rumble, air ducts and blips, `lab.caf` 1,473,969),
+  **Space bed** (FB7, Sonicfreak 174450, CC0, a slowed breath that swells, `space.caf` 1,433,729), **Synth bed** (FB8,
+  PhonZz 242773, CC0, a pad's slow chords over a drone, `synth.caf` 1,446,331): each 90 s exactly (4,320,000 frames),
+  seamless, levelled to the rain's −26 LUFS (`lufs` −26.0, −26.0, −26.0, −26.1), so each plays at −43 LUFS as the rain
+  does; made by `lib/LemnaClicks/tools/build_beds.sh` (two runs, the same bytes; Space and Synth are the panel's FB7
+  and FB8 byte for byte). Names: the panel's card titles cut to one plain word, "Synth" rather than "Pad" (a
+  musician's word). **The low cut**, Ship and Lab only: a second 12 dB/octave high-pass at 120 Hz after the 80 Hz one
+  every bed has, before the loop and the levelling. Lab's 57 Hz rumble went from 62.5 % of its energy to 11.2 %;
+  Ship has nothing under 80 Hz, so its "low low end" is its hum's partials at 100 and 117 Hz, now 8.5 and 4.5 dB under
+  its 147 Hz one (5.2 and 2.9; a 100 Hz corner would have changed next to nothing). Loudness lost under 200 Hz (a 4th-
+  order high-pass standing in for laptop speakers): Lab 7.8 → 4.7 dB, Ship 3.2 → 2.2 dB. Levelled again after the
+  cut, Lab's blips stand 3.5 dB nearer the clicks than on the panel (its 1–4 kHz margin 39.5 → 36.1 dB). **The
+  steadiness rule** (sound.md §1.5): Lab (132 blips a minute), Space (a 4.9 LU range) and Synth (a chord progression)
+  fail it; the user picked them knowing it, recorded so in DESIGN. **Lab's credit:** the page's licence field says CC
+  BY 4.0, the author's text CC BY 3.0 with a credit form of its own; the line names 4.0 (the field) and 3.0, each with
+  its link, in the author's words ("Sci-fi Laboratory Ambience by Iwan ‘qubodup’ Gabovitch … with sounds by wolick,
+  swiftoid, Diboz"), and what was changed; in `Beds/Lab/bed.json`, `lib/LemnaClicks/THIRD_PARTY.md` and the site's
+  footer (with the three CC0 beds), the site's facts line now naming five beds. The author asks software for "a
+  credits screen with working weblinks": THIRD_PARTY open item 5, before Lemna goes to others. **Load:** as the rain,
+  only the chosen bed is read and decoded, off the main thread (30–38 ms, 34.6 MB), so four more cost a launch nothing
+  but 5.6 MB of bundle. ⌘K, `bed`'s key (an unknown value none), Still's preset (the rain) and Lemna's (none)
+  unchanged. Tests: app 139 (138; new `theFourNewBedsFollowTheRainAndAreKeptAsItIs`), debug and release; LemnaClicks
+  26 (25; new `theFutureBedsNameTheirLoopsAndTheirCredit`; the rain's loop and level tests now run over all five
+  beds), 24 run here in debug and release, the two audible engine tests skipped. The wrap's level test changed: pass
+  23a's "within 1 dB" failed Ship (1.29 dB) and the panel's FB2 already had 1.15 dB there, the take's own change (a
+  half second of Ship's hum differs from the next by 0.8 dB in the median, 2.0 in one of ten); now the wrap may differ
+  no more than nine in ten of the loop's own adjacent half seconds. `LEMNA_VERSION=0.1.2 make-app.sh` built build 83,
+  signed with "Lemna Dev" (`Authority=Lemna Dev`) and verified; `Contents/Resources/Beds` holds Rain, Ship, Lab, Space
+  and Synth; the executable 1,252,656 bytes, no home folder in it. Not tried: nothing was launched or played. Try,
+  after quitting the running Lemna and `open app/build/Lemna.app`, Session › Sound ▸:
+  - Each of Ship, Lab, Space and Synth bed while typing in the box for a minute: the bed fades in at the summon and out
+    at Esc as the rain; the clicks stay clear over it; no seam each 90 s (Synth wraps from one chord to another).
+  - Ship and Lab on the laptop's speakers and on headphones: is the low end cut "a bit", too much or too little? (The
+    knob is the second `highpass=f=120` in `build_beds.sh`.) Are Lab's blips now too near the clicks?
+  - ⌘K with a new bed on, then back; quit and relaunch: the bed chosen is ticked again.
+
 - App, pass 27c, the crash as typing began (2026-11-02; the user, running build 81: "We again have a bug that the app
   crashes when I start typing."). **The cause** was no index out of its grid but two threads: on macOS 26 Core
   Animation calls the ambience's display link from the main thread as well as from the scene thread. AppKit's update

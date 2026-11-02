@@ -2,8 +2,8 @@
 
 The key click player of Lemna (DESIGN.md K1): a click on key-down in the app's own window, from preloaded
 samples, varied per key, through one audio stream that stays open. Five packs: the default (a Keychron K10),
-Typewriter, Soft, Electric and Stone; and an ambient bed, light rain, on the same stream. A SwiftPM library,
-macOS 14, no dependencies.
+Typewriter, Soft, Electric and Stone; and five ambient beds, one at a time on the same stream: light rain, and since
+pass 28 a ship's hum, a sci-fi lab, deep space and a synth pad. A SwiftPM library, macOS 14, no dependencies.
 
 ## API
 
@@ -66,7 +66,11 @@ node or pre-pitched copies of every sample.
 
 A bed is a loop of steady sound under the clicks (sound.md: light rain; no voices, birds or chimes, no events
 that would be recognised on every pass). `bed` puts it on the engine as a second `AVAudioSourceNode`, stereo,
-at the loop's own rate (the main mixer converts it to the device's); the clicks' node is untouched.
+at the loop's own rate (the main mixer converts it to the device's); the clicks' node is untouched. Five are in
+`Sources/LemnaClicks/Beds`: `Rain` (pass 23a) and pass 28's `Ship` (a spaceship's hull hum), `Lab` (a sci-fi lab: a
+rumble, air ducts, blips), `Space` (a slowed breath, swelling) and `Synth` (a pad's slow chords over a drone), the
+user's picks of `docs/design-panel-lemna-future-bed.html`; Lab's blips, Space's swells and Synth's chords break the
+steadiness rule, which the user knew when picking them (DESIGN.md K1). The engine holds one at a time.
 
 - **Memory:** only the chosen bed. Setting `bed` decodes the whole loop on a background queue (90 s of AAC,
   some 40 ms) into floats, 35 MB, and attaches the node on the main queue; `nil` or another bed detaches it.
@@ -157,7 +161,10 @@ seamless and the render a plain wrap-around. `tools/loop_points.py match` lists 
 whose last 2 s and first 2 s (as played) match best in their band spectra (standard library; ffmpeg filters the
 bands). `tools/build_packs.sh` holds the rain's commands: the decode through an 80 Hz high-pass, the search, the
 crossfade (ffmpeg), the AAC (`afconvert`, macOS) and the loudness for `lufs` (ffmpeg's ebur128 over the loop as
-Core Audio decodes it). Record the source, its licence and the loop points in `THIRD_PARTY.md`.
+Core Audio decodes it). `tools/build_beds.sh` holds pass 28's four: the same steps from Freesound previews, a second
+high-pass at 120 Hz for Ship and Lab (the low cut the user asked for), and the levelling to the rain's -26 LUFS
+before the AAC. Record the source, its licence (a CC BY bed's credit line in `bed.json`'s `attribution`) and the
+loop points in `THIRD_PARTY.md`.
 
 ## A theme's pack and bed
 

@@ -41,11 +41,16 @@ public struct SoundChoice: Equatable {
     public mutating func toggle() { on.toggle() }
 }
 
-/// The bed chosen in Session › Sound (BD1): a loop of steady sound under the clicks, or none, the default. Kept apart
-/// from the pack, so a theme's preset and the submenu set each alone; ⌘K silences both.
+/// The bed chosen in Session › Sound (BD1): a loop under the clicks, or none, the default; steady sound (sound.md), but
+/// for three of pass 28's, which the user picked knowing they are not. Kept apart from the pack, so a theme's preset and
+/// the submenu set each alone; ⌘K silences both.
 public struct BedChoice: Equatable {
-    /// The submenu's beds in its order: the item's title and the bed's folder in the app's Contents/Resources/Beds.
-    public static let beds: [(title: String, folder: String)] = [("Rain bed", "Rain")]
+    /// The submenu's beds in its order: the item's title and the bed's folder in the app's Contents/Resources/Beds. The
+    /// rain (pass 23), then the user's picks of pass 28 (FB2, FB6, FB7, FB8 of docs/design-panel-lemna-future-bed.html):
+    /// a spaceship's hull, a sci-fi lab, deep space, a synth pad.
+    public static let beds: [(title: String, folder: String)] = [
+        ("Rain bed", "Rain"), ("Ship bed", "Ship"), ("Lab bed", "Lab"), ("Space bed", "Space"), ("Synth bed", "Synth"),
+    ]
 
     /// The chosen bed's folder; nil: none.
     public private(set) var folder: String?

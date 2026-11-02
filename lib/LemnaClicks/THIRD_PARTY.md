@@ -469,6 +469,125 @@ felix.blume on Freesound.org, CC0.
     clicks' -34.2 LUFS at 5 keys a second as one channel are -31.2 over the two: the bed stands 12 LU under them in
     both measures, as sound.md §2.3 set it.
 
+## The beds of pass 28 (`Sources/LemnaClicks/Beds/Ship/`, `Lab/`, `Space/`, `Synth/`)
+
+Four beds beside the rain, FB2, FB6, FB7 and FB8 of `docs/design-panel-lemna-future-bed.html` (the user, 2026-11-02:
+"FB8, FB7, FB6 (cut the low low end a bit)", then "And FB2 (cut low low end again)"; the search, the measures and the
+candidates not taken are in `research_notes/Lemna future bed/candidates.md`). Lab, Space and Synth fail the steadiness
+rule the rain was chosen by (sound.md §1.5: blips, swells, a chord progression); the user picked them knowing it. Each
+is 90 s of one recording, looped, made by `tools/build_beds.sh`.
+
+| Bed | Recording | Page | Made into |
+|---|---|---|---|
+| Ship (FB2) | inside spaceship.wav (#45347), jaava73 | https://freesound.org/people/jaava73/sounds/45347/ | `ship.caf` |
+| Lab (FB6) | Sci-fi Laboratory Ambience (#212025), qubodup | https://freesound.org/people/qubodup/sounds/212025/ | `lab.caf` |
+| Space (FB7) | Space Ambience.wav (#174450), Sonicfreak | https://freesound.org/people/Sonicfreak/sounds/174450/ | `space.caf` |
+| Synth (FB8) | Angelic Pad Loop.wav (#242773), PhonZz | https://freesound.org/people/PhonZz/sounds/242773/ | `synth.caf` |
+
+### Licences
+
+Checked on 2026-11-02 on each page.
+
+- **Ship, Space, Synth: CC0 1.0** (public domain dedication): "Creative Commons 0", linked to
+  http://creativecommons.org/publicdomain/zero/1.0/, with the statement quoted for the default pack. No credit is asked
+  (Sonicfreak's page: "Feel free to use this with or without giving credit to me"). Credit, none owed: inside
+  spaceship.wav by jaava73, Space Ambience.wav by Sonicfreak and Angelic Pad Loop.wav by PhonZz, on Freesound.org, CC0.
+- **Lab: CC BY** (attribution required). The page's licence field says "Attribution 4.0", linked to
+  https://creativecommons.org/licenses/by/4.0/; the author's description still says "This sound is licensed under CC
+  Attribution 3.0 License" and asks for attribution "in the form of: Sci-fi Laboratory Ambience by Iwan Gabovitch under
+  CC-BY 3.0 License with sounds by wolick, swiftoid, Diboz", in plain text with links: "Sci-fi Laboratory Ambience
+  http://freesound.org/people/qubodup/sounds/212025 by Iwan ‘qubodup’ Gabovitch http://freesound.org/people/qubodup
+  under CC-BY 3.0 License http://creativecommons.org/licenses/by/3.0/legalcode with sounds by wolick, swiftoid, Diboz".
+  It adds, as its reading of the licence: "sound boards, games and software must include a credits screen with working
+  weblinks" (open item 5). **The credit line names CC BY 4.0**, the page's licence field, Freesound's record of the
+  licence the sound is offered under (and the Electric pack's, so the credits keep one form), **and names 3.0 with its
+  link too**, so it meets both: CC BY 4.0 §3(a) asks for the creator as they ask to be named, a link to the material,
+  the licence with its link and a note of what was changed; CC BY 3.0 §4(a) and (b) the licence's URI with every copy,
+  the author's name, the title, the link the author gives and, for an adaptation, what was done. It keeps the author's
+  own words (the title, "Iwan ‘qubodup’ Gabovitch" as in their plain-text form, "with sounds by wolick, swiftoid,
+  Diboz"). Word for word as in `Beds/Lab/bed.json` (`attribution`), which ships with the loop in the app's
+  `Contents/Resources/Beds/Lab`, and in short in the site's footer:
+
+  > Sci-fi Laboratory Ambience (https://freesound.org/people/qubodup/sounds/212025/) by Iwan ‘qubodup’ Gabovitch
+  > (https://freesound.org/people/qubodup/) with sounds by wolick, swiftoid, Diboz, licensed under CC BY 4.0
+  > (https://creativecommons.org/licenses/by/4.0/); the author's description gives CC BY 3.0
+  > (https://creativecommons.org/licenses/by/3.0/legalcode). Changed for Lemna: 90 s of it cut and looped, its end
+  > crossfaded over its head, high-pass filtered at 80 and 120 Hz, lowered in level. No warranties are given.
+
+  The three sounds it mixes are CC0 (the description: "Sounds under CC0": wolick's "Kaiju Lab Interior Ambience
+  #1.wav", swiftoid's "Cinematic Deep Rumble", Diboz's "control_room.wav", #211683).
+
+### What was taken and what was done to it
+
+- **Source files:** the HQ previews (Ogg Vorbis), from `https://cdn.freesound.org/previews/<id ÷ 1000>/<id>_<uploader
+  id>-hq.ogg`, each in a folder of its own; two are long, and only their first 8 MiB were fetched (`curl -r
+  0-8388607`), the loops lying within them. SHA-256:
+  `43c4e77e877640985403d68a93ac78619c4cb7279ad131c8aadf638a409b1e63` 45347-hq.ogg (45347_359482, whole, 2,173,534 bytes;
+  the original a 44.1 kHz 16-bit stereo WAV of 2:11.3, uploaded 2007-12-26, its source not named),
+  `bd6280156f0771478fd31b136177b5fb6e9968883d6f7b0329f3f2d26b4ffc8d` 212025-hq.ogg (212025_71257, the first 8 MiB, 374 s
+  of 10:00; Ogg Vorbis at the source too, uploaded 2013-12-28),
+  `4105b1883743fcdc826dc71b988ae3fda8aadcda25c8f210e5c3a0a8433e9eb9` 174450-hq.ogg (174450_746632, whole, 3,139,751
+  bytes; a 48 kHz 16-bit stereo WAV of 2:31.4, uploaded 2013-01-16, "created by blowing into a microphone while slowly
+  changing pitches", then slowed down and pitched lower),
+  `a1a93bfdc893d1f18c7b6c2a4a580355f38845159e7ec129db121ca37713f362` 242773-hq.ogg (242773_3946286, the first 8 MiB,
+  420 s of 18:08; a 44.1 kHz 16-bit stereo WAV, uploaded 2014-07-18, "a basic chord progression with a drone note",
+  F♯, 120 bpm).
+- **Decoded** to 48 kHz stereo float through the rain's two-pole high-pass, `highpass=f=80:p=2` (12 dB/octave, -3 dB
+  at 80 Hz). **The low cut**, Ship and Lab only: a second two-pole high-pass after it, `highpass=f=120:p=2`
+  (Butterworth, -3 dB at 120 Hz; together -24 dB/octave far below). Lab's low end is a 57 Hz rumble (swiftoid's),
+  62.5 % of its energy after the first filter; Ship's lowest content is its hum's two lowest partials at 100 and 117 Hz,
+  under its strongest at 147 Hz, nothing under 80 Hz to speak of (0.3 %). 120 Hz rather than a lower corner: at 100 Hz
+  Ship's share under 150 Hz would go only from 55 to 48 % and its laptop loss (below) from 3.2 to 2.6 dB, next to
+  nothing; at 120 Hz Lab's rumble falls 13 dB more and Ship's 100 Hz partial 5 dB, while the hum's body, Lab's 120–200
+  Hz and Ship's 147 Hz and 300–500 Hz, loses at most 3 dB at 120 Hz and 1.6 dB at 147 Hz before the levelling, which
+  gives it back (it puts the rest 1.2 dB higher than on the panel in Ship, 3.5 dB in Lab). Space and Synth: no low
+  cut.
+- **Loop points by spectral match,** as the rain's (`tools/loop_points.py match <id>.wav 0 <last>` on the decoded
+  file; for Ship and Lab after the low cut, which left their first starts first):
+
+  | Bed | Starts tried | Taken (the first) | Next four | Worst | The loop in the recording |
+  |---|---|---|---|---|---|
+  | Ship | 381 (0–38 s) | 5.3 s, 0.10 dB | 14.1, 16.0, 16.3, 16.9 s; 0.11–0.14 dB | 1.71 dB at 36.2 s | 0:05.3–1:35.3 |
+  | Lab | 2,801 (0–280 s) | 48.7 s, 0.32 dB | 279.4, 279.8, 279.3, 242.6 s; 0.44–0.51 dB | 13.38 dB at 218.3 s | 0:48.7–2:18.7 |
+  | Space | 581 (0–58 s) | 4.3 s, 0.47 dB | 4.4, 4.1, 4.5, 4.6 s; 0.50–0.57 dB | 19.14 dB at 58.0 s | 0:04.3–1:34.3 |
+  | Synth | 3,261 (0–326 s) | 90.8 s, 0.25 dB | 90.7, 90.5, 90.6, 322.6 s; 0.26–0.30 dB | 5.83 dB at 183.9 s | 1:30.8–3:00.8 |
+
+  Each loop's head crossfaded with the 3 s after its end, as the rain's (quarter sines, sample-exact): 4,320,000 frames.
+- **Levelled** to -26 LUFS over both channels (the rain's loudness; or lower if the sample peak passed -1 dBFS, which
+  none did), with ffmpeg's `volume`: Ship -0.1 dB (it measured -25.9 LUFS after the low cut; -24.7 without it), Lab -3.5
+  dB (-22.5; -19.0 without), Space -2.3 dB (-23.7), Synth -7.8 dB (-18.2). **Encoded** to AAC by Core Audio as the
+  rain, `afconvert -f caff -d aac -b 128000 -q 127`:
+
+  | File | Bytes | SHA-256 | `lufs` as decoded | Sample peak |
+  |---|---|---|---|---|
+  | `ship.caf` | 1,251,047 | `caefae306d879181037d1e1e527d8b149ee262f5c05b05f2554618d914870798` | -26.0 | -12.0 dBFS |
+  | `lab.caf` | 1,473,969 | `fd0c140cb600fc35496f3f94e825492073fe73bc764916e94c4b2ae7c1dab39e` | -26.0 | -13.8 dBFS |
+  | `space.caf` | 1,433,729 | `bff3f0ebd356b8a9a55f0abeaff14ce709d208186703bd74d75e52cf056e04c3` | -26.0 | -13.0 dBFS |
+  | `synth.caf` | 1,446,331 | `5c82cc1d769bee000eddfdc3b6a18f0dd0a846e57f5674b3ca33107aa741d1d2` | -26.1 | -13.0 dBFS |
+
+  Space and Synth are the panel's FB7 and FB8 byte for byte; two runs of `build_beds.sh`, the second from an empty work
+  folder, made these bytes. AVAudioFile reads exactly 4,320,000 frames from each (the tests).
+- **Measured** on each loop as Core Audio decodes it, with the code bed's `analyze.py` and the future bed's `extra.py`
+  (`research_notes/Lemna future bed/candidates.md` §3 and §9, its columns; ffmpeg's ebur128 for the range):
+
+  | Bed | 3 s SD LU | Range LU | Under 150 Hz | Laptop loss | Onsets/min | Tonal | Clicks over it: broadband / 1–4 kHz / body |
+  |---|---|---|---|---|---|---|---|
+  | Rain | 0.49 | 1.1 | 0.2 % | 0.0 dB | 3 | 1 | 21.3 / 20.1 / 6.0 dB |
+  | Ship | 0.35 | 1.0 | 40.5 % (52.4 without the cut) | 2.2 dB (3.2) | 0 | 2 | 20.8 / 47.9 / 6.8 dB |
+  | Lab | 0.27 | 1.0 | 38.1 % (80.0) | 4.7 dB (7.8) | 133 | 14 | 19.6 / 36.1 / 6.6 dB |
+  | Space | 1.73 | 4.9 | 42.8 % | 3.6 dB | 7 | 3 | 18.9 / 40.6 / 3.3 dB |
+  | Synth | 1.02 | 3.0 | 5.5 % | 0.8 dB | 0 | 27 | 17.8 / 28.0 / -0.8 dB |
+
+  The laptop loss is the loudness a 4th-order 200 Hz high-pass takes away, a stand-in for a laptop's speakers. Lab's
+  57 Hz rumble is now 11.2 % of its energy (62.5 % without the cut), 2.3 dB under its strongest hum partial (9.6 dB
+  over it); as the levelling brought the rest up by 3.5 dB, its blips (Diboz's, 133 a minute) stand 3.5 dB higher
+  against the clicks than on the panel (above 5 kHz 3.1 % of its energy, 0.8 % before). Ship's 100 and 117 Hz partials
+  are 8.5 and 4.5 dB under its 147 Hz one (5.2 and 2.9 dB before). Synth's pad sits on the clicks' body (200 Hz–1 kHz,
+  -0.8 dB) and its chords change every few bars; the loop is 45 of the progression's bars, so it wraps from one place
+  in it to another (the spectra 0.25 dB apart).
+- **Played** as the rain: `Bed.gain` puts each at -43 LUFS over the two channels at a `bedVolume` of 0.6, 12 LU under
+  the clicks.
+
 ## Open items
 
 1. Swap in the lossless originals of all four packs (a Freesound login downloads them) and rerun the commands
@@ -480,11 +599,16 @@ felix.blume on Freesound.org, CC0.
    No backspace recording of either typewriter exists.
 4. The Soft pack's Enter and Delete come from another keyboard (a FUJITSU membrane board) than its letters and space
    bar (a MacBook Air): whether they belong together is for the ear.
-5. Before Lemna goes to others (DESIGN.md X1): the Electric pack's credit line also in the app's About panel or a
-   credits file in the bundle, where a user sees it.
+5. Before Lemna goes to others (DESIGN.md X1): the Electric pack's and the Lab bed's credit lines also in the app's
+   About panel or a credits file in the bundle, where a user sees it; the Lab's author asks software for "a credits
+   screen with working weblinks" (pass 28).
 6. Nothing in the three new packs was listened to; every choice above (the filters, the spans, the levels) is by
    measurement. A pack that sounds wrong is fixed by changing a command above and running it again.
 7. Stone and the rain (pass 23a) were not listened to either: the space's rates (0.8, 0.75) and level, the Return's
    two strengths, the chime's 900 ms and the bed's -43 LUFS (sound.md: "set every level by ear against the clicks
    on the built-in speakers and on headphones") are for the ear. The originals of worthahep88's takes and of
    585845 (a login) would replace the previews.
+8. The beds of pass 28 were not listened to in the app either (the user heard the panel's previews, the same loops
+   but for Ship's and Lab's low cut): the 120 Hz corner, Lab's blips 3.5 dB nearer the clicks after the levelling, and
+   the four at -43 LUFS against the clicks are for the ear. The originals (a login) of the four would replace the
+   previews.

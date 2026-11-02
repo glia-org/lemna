@@ -1168,8 +1168,37 @@ that it is whole, `Sheet.draw` that its arrays are the grid's size. New test
 `typingEveryKeyFromTheSummonKeepsCodeOnItsGrid`; 138 tests, debug and release; the executable 1,252,656 bytes, signed
 with "Lemna Dev" and verified.
 
+Pass 28, four beds beside the rain (DESIGN.md K1's BD1 amended; 2026-11-02; the user, of the eight Freesound loops of
+`docs/design-panel-lemna-future-bed.html`: "FB8, FB7, FB6 (cut the low low end a bit)", then "And FB2 (cut low low end
+again)"):
+
+- The library (`lib/LemnaClicks`, its README and `THIRD_PARTY.md`): `Beds/Ship` (FB2, a spaceship's hull hum, CC0),
+  `Beds/Lab` (FB6, a sci-fi lab with blips, CC BY 4.0, its credit line in `bed.json`'s `attribution`), `Beds/Space`
+  (FB7, a slowed breath, CC0) and `Beds/Synth` (FB8, a synth pad's chords, CC0), each a `bed.json` and a 90 s CAF at
+  −26 LUFS, made by `tools/build_beds.sh`; Ship and Lab through a second high-pass at 120 Hz (the low cut). No code
+  changed there (`Bed.bundled`'s comment names the five).
+- The beds (`Sound.swift`): `BedChoice.beds` is ("Rain bed", "Rain"), ("Ship bed", "Ship"), ("Lab bed", "Lab"),
+  ("Space bed", "Space"), ("Synth bed", "Synth"). `soundMenu` lists them in that order before No bed, `chooseBed` takes
+  the item's tag as before, `bed` keeps the folder, an unknown one reads as none; nothing else in `main.swift`
+  changed. Only the chosen bed is loaded (`loadBed`, `ClickPlayer.bed`), decoded off the main thread in 30–38 ms into
+  34.6 MB, so the four add nothing to the launch; the bundle grows by 5.6 MB.
+- Themes unchanged: Still's preset writes Rain (its item "Still (rain bed)"), Lemna's no bed.
+- The site (`site/index.html`): the facts line names five beds; the footer credits the Lab bed (CC BY 4.0, the
+  author's CC BY 3.0 named too) and the three CC0 beds. The root README: the Lab bed beside the Electric pack as CC BY.
+- Tests: 139 (138 before; new `theFourNewBedsFollowTheRainAndAreKeptAsItIs`: the titles and order, each folder kept
+  and chosen, each `bed.json` and loop in the library, the themes' items; changed `theBedIsNoneUnlessOneWasKept`'s
+  list), debug and release. LemnaClicks: 26 (25; new `theFutureBedsNameTheirLoopsAndTheirCredit`; the rain's two
+  file tests now `everyBedIsANinetySecondStereoLoopWithoutASeam` and `everyBedPlaysAtTheBedLevel` over the five, the
+  wrap's level held to the loop's own half-second changes instead of 1 dB), 24 run here, debug and release.
+- Build: `LEMNA_VERSION=0.1.2 make-app.sh`, build 83; `Contents/Resources/Beds` holds the five; the executable
+  1,252,656 bytes, no home folder in its symbols; signed with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
+
 ## Known gaps
 
+- Pass 28 is not tried: nothing was launched or played. Untried: each new bed under the clicks while typing, on the
+  built-in speakers and on headphones; whether the 120 Hz low cut is "a bit" on Ship and Lab; Lab's blips, 3.5 dB
+  nearer the clicks after the levelling; Space's swells and Synth's chords against writing (they fail sound.md's
+  steadiness rule, the user's pick); Synth's wrap from one chord to another every 90 s.
 - Pass 27c is not tried: nothing was launched, and the main thread's frames are read from the crash report and
   QuartzCore's disassembly, not seen. Untried: typing for minutes with Code without a crash; that the rain does not
   stutter while typing (frames handed to the scene thread); whether a handed-over frame also comes on the scene

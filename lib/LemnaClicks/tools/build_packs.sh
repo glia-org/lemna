@@ -124,3 +124,4 @@ afconvert -f caff -d aac -b 128000 -q 127 $W/rain-loop.wav "$P/Beds/Rain/rain.ca
 # bed.json's lufs: the integrated loudness of the loop as Core Audio decodes it.
 afconvert -f WAVE -d LEF32 "$P/Beds/Rain/rain.caf" $W/rain-decoded.wav
 $F -hide_banner -nostats -i $W/rain-decoded.wav -af ebur128 -f null - 2>&1 | grep -A1 "Integrated loudness" | tail -1
+# The beds of pass 28 (Ship, Lab, Space, Synth) are made by build_beds.sh.

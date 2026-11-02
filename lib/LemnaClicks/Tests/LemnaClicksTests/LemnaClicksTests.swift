@@ -14,11 +14,14 @@ private func pack(_ folder: String) throws -> SoundPack {
 
 private func defaultPack() throws -> SoundPack { try pack("DefaultPack") }
 
-private func rain() throws -> Bed {
+/// A bed from the source tree, as a pack: `Bed.bundled` reads an app's Contents/Resources/Beds.
+private func bed(_ folder: String) throws -> Bed {
     let package = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         .deletingLastPathComponent()
-    return try Bed(folder: package.appendingPathComponent("Sources/LemnaClicks/Beds/Rain"))
+    return try Bed(folder: package.appendingPathComponent("Sources/LemnaClicks/Beds/\(folder)"))
 }
+
+private func rain() throws -> Bed { try bed("Rain") }
 
 /// A file's channels as floats, as AVAudioFile decodes them.
 private func channels(_ url: URL) throws -> [[Float]] {
@@ -342,10 +345,38 @@ private func render(_ mixer: Mixer, _ frames: Int) -> (sounded: Bool, out: [Floa
     #expect(try Bed(folder: folder).lufs == -30)
 }
 
-/// The rain as it ships: 90 s of 48 kHz stereo AAC, exact to the frame (the seam is in the samples, so a frame of
-/// padding would put a gap in it), about 1.5 MB, and no step at the wrap bigger than the loop's own sample steps.
-@Test func theRainIsANinetySecondStereoLoopWithoutASeam() throws {
-    let url = try rain().file
+/// The four beds of pass 28, the user's picks FB2, FB6, FB7 and FB8 of docs/design-panel-lemna-future-bed.html: each
+/// names its loop and its page; the one under CC BY carries its credit line (THIRD_PARTY.md), the CC0 ones none.
+@Test func theFutureBedsNameTheirLoopsAndTheirCredit() throws {
+    for (folder, file, page) in [("Ship", "ship.caf", "jaava73/sounds/45347"),
+                                 ("Lab", "lab.caf", "qubodup/sounds/212025"),
+                                 ("Space", "space.caf", "Sonicfreak/sounds/174450"),
+                                 ("Synth", "synth.caf", "PhonZz/sounds/242773")] {
+        let b = try bed(folder)
+        #expect(b.file.lastPathComponent == file && b.source == "https://freesound.org/people/\(page)/", "\(folder)")
+        #expect(b.licence == (folder == "Lab" ? "CC-BY-4.0" : "CC0-1.0"), "\(folder)")
+        #expect((b.attribution == nil) == (folder != "Lab"), "\(folder)")  // CC0: no credit owed
+    }
+    // The author's own form (title, name, "with sounds by"), the page's licence field (4.0) and the description's
+    // (3.0), each with its link, and what was changed (CC BY 4.0 §3(a), 3.0 §4(a) and (b)).
+    let credit = try bed("Lab").attribution ?? ""
+    #expect(credit.contains("Sci-fi Laboratory Ambience (https://freesound.org/people/qubodup/sounds/212025/)"))
+    #expect(credit.contains("by Iwan ‘qubodup’ Gabovitch (https://freesound.org/people/qubodup/)"))
+    #expect(credit.contains("with sounds by wolick, swiftoid, Diboz"))
+    #expect(credit.contains("CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)"))
+    #expect(credit.contains("CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/legalcode)"))
+    #expect(credit.contains("high-pass filtered at 80 and 120 Hz"))
+}
+
+/// Every bed as it ships: 90 s of 48 kHz stereo AAC, exact to the frame (the seam is in the samples, so a frame of
+/// padding would put a gap in it), about 1.5 MB, and no step at the wrap bigger than the loop's own: in its samples,
+/// and in its level, the half second either side of the wrap differing no more than nine in ten of the loop's own
+/// adjacent half seconds do. Pass 23a held the level to 1 dB; a half second of Ship's hum or the Synth's pad differs
+/// from the next by 0.6–0.8 dB in the median and 1.3–2.0 dB in one of ten, so 1 dB failed Ship's wrap (1.29 dB, at
+/// its 74th percentile: no seam, the take's own change). The rain's wrap is 0.15–0.20 dB, at its 10th–14th.
+@Test(arguments: ["Rain", "Ship", "Lab", "Space", "Synth"])
+func everyBedIsANinetySecondStereoLoopWithoutASeam(_ folder: String) throws {
+    let url = try bed(folder).file
     let file = try AVAudioFile(forReading: url)
     #expect(file.fileFormat.sampleRate == 48_000 && file.fileFormat.channelCount == 2)
     #expect(file.length == 90 * 48_000)
@@ -354,20 +385,27 @@ private func render(_ mixer: Mixer, _ frames: Int) -> (sounded: Bool, out: [Floa
         let wrap = abs(x[0] - x[x.count - 1])
         var larger = 0
         for i in 1..<x.count where abs(x[i] - x[i - 1]) > wrap { larger += 1 }
-        #expect(larger > x.count / 1000, "the wrap's step \(wrap) is in the loop's largest 0.1 %")
-        func rms(_ s: ArraySlice<Float>) -> Double { 10 * log10(s.reduce(0.0) { $0 + Double($1 * $1) } / Double(s.count)) }
+        #expect(larger > x.count / 1000, "\(folder): the wrap's step \(wrap) is in the loop's largest 0.1 %")
         let half = 24_000
-        #expect(abs(rms(x[(x.count - half)...]) - rms(x[..<half])) < 1, "level either side of the wrap")
+        var sums = [0.0]
+        sums.reserveCapacity(x.count + 1)
+        for v in x { sums.append(sums[sums.count - 1] + Double(v) * Double(v)) }
+        func level(_ from: Int, _ to: Int) -> Double { 10 * log10((sums[to] - sums[from]) / Double(to - from)) }
+        let atWrap = abs(level(x.count - half, x.count) - level(0, half))
+        let steps = stride(from: half, through: x.count - half, by: 4_800)
+            .map { abs(level($0 - half, $0) - level($0, $0 + half)) }.sorted()
+        #expect(atWrap <= steps[steps.count * 9 / 10], "\(folder): level either side of the wrap \(atWrap) dB")
     }
 }
 
-/// bed.json's lufs is the loop's loudness, and the gain from it puts the rain at `Bed.level` under a bedVolume of 0.6.
-@Test func theRainPlaysAtTheBedLevel() throws {
-    let bed = try rain()
-    let measured = try loudness(bed.file)
-    #expect(abs(measured - bed.lufs) < 0.3, "the loop measures \(measured) LUFS")
+/// bed.json's lufs is the loop's loudness, and the gain from it puts every bed at `Bed.level` under a bedVolume of 0.6.
+@Test(arguments: ["Rain", "Ship", "Lab", "Space", "Synth"])
+func everyBedPlaysAtTheBedLevel(_ folder: String) throws {
+    let b = try bed(folder)
+    let measured = try loudness(b.file)
+    #expect(abs(measured - b.lufs) < 0.3, "\(folder): the loop measures \(measured) LUFS")
     #expect(Bed.level == -43)
-    #expect(abs(measured + 20 * log10(Double(bed.gain) * 0.6) - Bed.level) < 0.3)
+    #expect(abs(measured + 20 * log10(Double(b.gain) * 0.6) - Bed.level) < 0.3)
 }
 
 private func loopBuffer(_ left: [Float], _ right: [Float]) -> AVAudioPCMBuffer {
