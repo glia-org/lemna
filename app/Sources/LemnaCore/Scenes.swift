@@ -154,6 +154,7 @@ struct Code: Ambience.Scene {
             var (n, j) = (shown, k)
             let set = glyphs.codeSet, odds = log(1 - min(max(p, 1e-9), 0.5))
             var skip = Int(log(1 - random.unit()) / odds)
+            assert(cells.count == columns * rows && ys.count == rows && xs.count == columns)  // what the pointers read
             ys.withUnsafeBufferPointer { ys in cells.withUnsafeMutableBufferPointer { buffer in
                 let cells = buffer.baseAddress!, ys = ys.baseAddress!  // a pointer's subscript inlines even in debug
                 for c in 0..<columns {
@@ -314,8 +315,12 @@ struct Code: Ambience.Scene {
         let i = intensity, change = between(T.codeChange, i) * dt, veil = self.veil
         let look = (head: between(T.codeHead, i), top: between(T.codeTrailTop, i), halo: between(T.codeHalo, i))
         shown = 0
-        var (buffer, k, room) = ([Sprite](), 0, max(T.cap - out.count, 0))
+        var (buffer, k) = ([Sprite](), 0)
         swap(&buffer, &scratch)  // out of the scene, so the sheets can draw into it
+        // Never more than it holds, through the pointer (pass 27c: two threads stepping this scene at once left it
+        // empty, and the sprites went over the runtime's globals, among them the hook every allocation calls).
+        assert(buffer.count == T.cap, "Code's room for its sprites is gone: is it stepped on two threads at once?")
+        let room = min(max(T.cap - out.count, 0), buffer.count)
         buffer.withUnsafeMutableBufferPointer { b in
             main.draw(look, veil: veil, cut: cut, ink: stage.ink, glyphs: glyphs, change: change, random: &random,
                       into: b.baseAddress!, count: &k, room: room, shown: &shown)

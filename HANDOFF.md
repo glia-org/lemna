@@ -4,6 +4,44 @@
 
 ## State (2026-11-02)
 
+- App, pass 27c, the crash as typing began (2026-11-02; the user, running build 81: "We again have a bug that the app
+  crashes when I start typing."). **The cause** was no index out of its grid but two threads: on macOS 26 Core
+  Animation calls the ambience's display link from the main thread as well as from the scene thread. AppKit's update
+  cycle, at its transaction flush, dispatches every display link with a frame deferred, whatever run loop it was added
+  to (`CA::Display::DisplayLink::dispatch_deferred_display_links`, read from QuartzCore's disassembly), and that cycle
+  runs each frame on the main thread while the line's own display link glides, that is while typing. The crash report
+  has both threads in `Ambient.frame` of one screen at once: the main thread drawing in `Code.step`, the scene thread at
+  `keys.removeAll(keepingCapacity:)` with its buffer held by the other. Two steps of one scene at once had swapped pass
+  27's `scratch` (the room the sheets write their sprites into through a pointer) out and an empty array in, and the
+  sprites went through the empty array's storage over the Swift runtime's globals, among them `_swift_allocObject`, the
+  hook every allocation calls, 1,680 bytes on: the scene thread's next allocation jumped to 0x3dd6349700000000, sprite
+  51's rotation (0) and alpha (0.105) read as an address. Every build since the scene thread (pass 15) could race on
+  macOS 26 while typing; pass 27's pointers made the race all but certain to kill. **The fix:**
+  `Ambient.metalDisplayLink` hands a frame that comes on any thread but the scene thread over to it
+  (`SceneThread.perform`), so every frame runs there, one after the other; handed over, not dropped, because Core
+  Animation's per-item rate check skips a second dispatch of the same frame, so a frame the main thread took would be
+  lost. Also `Code.step` writes no more sprites than its room holds, and a debug build asserts that the room is whole
+  and that each sheet's cells, rows and columns are the sizes its pointers walk. **Evidence:** a temporary probe (not
+  in the repo) stepping one `Ambience.Run` from two threads died in 6 of 6 runs within a second, twice at the new
+  assertion, four times on the heap ("pointer being freed was not allocated", in `Code.Sheet.advance`). The new test,
+  every key the keyboard knows typed from the summon at 2–8 keys a second for 20 s at 60 Hz on 1512 × 982, 2560 ×
+  1440 and 3008 × 1692, in Lemna's and Still's looks, on ANSI and ISO, passed before the fix and after: no index leaves
+  its grid on one thread. Address Sanitizer does not run on this Mac: the test runner refuses the Command Line Tools'
+  runtime ("Sanitizer load violates platform policy"), and in a binary of our own the runtime deadlocks in its own
+  start on macOS 26.5; hence the debug assertions. Checked and found right: the key heads' column and row (clamped to
+  the main sheet's grid), the trail cells they light (within the rows), the veil (alpha only, no index), the near
+  sheet (its own grid throughout), the sprites written (under `room`), and the copy into the instance buffer
+  (`min(count, cap)` sprites into a buffer of `cap`). Tests: 138 (137 before; new
+  `typingEveryKeyFromTheSummonKeepsCodeOnItsGrid`), passing in debug and in release; the step in release 0.02 ms at
+  rest on 1512 × 982 and 0.08 ms typing on 2560 × 1440, as before. `LEMNA_VERSION=0.1.2 make-app.sh` built build 82,
+  signed with "Lemna Dev" (`Authority=Lemna Dev`) and verified; the executable is 1,252,656 bytes, no home folder in
+  it. Not tried: nothing was launched. **Open:** whether a frame handed over also comes on the scene thread itself
+  (then it is drawn twice, the second with no time passed; harmless, not measured). Try, after quitting the running
+  Lemna and `open app/build/Lemna.app`, Session › Ambience ▸ Code:
+  - Summon and type at once, then on for a minute, fast and slow: no crash, and the rain keeps falling evenly while
+    typing (a stutter would mean frames lost on their way to the scene thread).
+  - Esc, summon again and type during the build-in; the same in Theme ▸ Still and with Still water.
+
 - Code bed, not taken (2026-11-02): the user asked for the films' code sound as a second bed beside the rain bed;
   four candidates (two Freesound recordings, a synthesised render, a mix over the rain) went on
   `docs/design-panel-lemna-code-bed.html` with the evidence in `research_notes/Lemna code bed/` (the render tool

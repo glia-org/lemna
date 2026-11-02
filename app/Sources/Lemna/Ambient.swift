@@ -200,7 +200,14 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
 
     /// One frame of the link, its body guarded: an Objective-C exception must not cross Core Animation's callback (it
     /// aborts the app, as pass 15's did); if one comes, the ambience shuts down for this launch and Lemna goes on.
+    /// Every frame runs on the scene thread (pass 27c): macOS 26 also calls this from the main thread, whose update
+    /// cycle dispatches every display link with a frame deferred whatever run loop it was added to
+    /// (`CA::Display::DisplayLink::dispatch_deferred_display_links`, at AppKit's transaction flush), and two threads
+    /// stepping one scene at once broke the heap (build 81 died as typing began); such a frame is handed over, in turn.
     func metalDisplayLink(_ link: CAMetalDisplayLink, needsUpdate update: CAMetalDisplayLink.Update) {
+        guard Thread.current === SceneThread.shared else {
+            return SceneThread.shared.perform { [self] in metalDisplayLink(link, needsUpdate: update) }
+        }
         guard link === self.link else { return }  // a link invalidated after an exception: nothing more from it
         if LemnaCatch({ self.frame(link, update) }, &message, UInt(Self.messageSize)) == 1 {
             shutDown(String(cString: message))

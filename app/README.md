@@ -1158,8 +1158,23 @@ just a bit more. The other thing is, that it should build in, not start the anim
 - Build: `LEMNA_VERSION=0.1.2 make-app.sh`; the executable is 1,252,400 bytes, no home folder in its symbols; signed
   with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
 
+Pass 27c, the crash as typing began (2026-11-02; the user, of build 81: "We again have a bug that the app crashes when
+I start typing."): on macOS 26 the main thread's update cycle also dispatches the ambience's display link
+(`CA::Display::DisplayLink::dispatch_deferred_display_links`, every link with a frame deferred, whatever its run
+loop), so two threads stepped one scene at once; pass 27's `scratch` came back empty and the sprites went through the
+empty array's storage over the Swift runtime's allocation hook. `Ambient.metalDisplayLink` now hands a frame that
+comes on another thread over to the scene thread; `Code.step` writes no more than its room holds and asserts in debug
+that it is whole, `Sheet.draw` that its arrays are the grid's size. New test
+`typingEveryKeyFromTheSummonKeepsCodeOnItsGrid`; 138 tests, debug and release; the executable 1,252,656 bytes, signed
+with "Lemna Dev" and verified.
+
 ## Known gaps
 
+- Pass 27c is not tried: nothing was launched, and the main thread's frames are read from the crash report and
+  QuartzCore's disassembly, not seen. Untried: typing for minutes with Code without a crash; that the rain does not
+  stutter while typing (frames handed to the scene thread); whether a handed-over frame also comes on the scene
+  thread (then drawn twice, harmless). Address Sanitizer does not run here (refused by the test runner, deadlocking
+  in an own binary on macOS 26.5), so the pointer paths are checked by debug assertions only.
 - Pass 27b is not tried: nothing was launched. Untried: whether 4 s of build-in reads as arriving or as slow, and
   the build-in at 30 Hz on a real dim (the renders are single frames); whether the lift is "just a bit more" or now
   too much; the lift's onset, set mostly by the typing rate's 2 s window (a 1 s window would bring it in about twice

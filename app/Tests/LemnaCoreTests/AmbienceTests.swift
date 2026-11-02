@@ -732,6 +732,75 @@ private func sprites(on size: CGSize, keys: Double) -> (most: Int, mean: Int, dr
     #expect(out.count <= T.cap && run.count <= T.cap && out.contains { $0.kind == .glyph && slot($0) == m })
 }
 
+/// Every physical key the keyboard knows, as the line hands it on (pass 27c): a glyph key as a letter or digit, Space,
+/// Return and ⌫ as what they are; then a key without a code (the accent menu's pick), one off the block (an arrow) and
+/// a glyph the atlas lacks. ANSI's and ISO's codes together.
+private let everyKey: [(kind: Ambience.Key.Kind, code: UInt16?)] = {
+    let typed = Array("abcdefghijklmnopqrstuvwxyz0123456789")
+    let codes = Set(Keyboard.ansi.keys).union(Keyboard.iso.keys).sorted()
+    return codes.enumerated().map { i, code -> (kind: Ambience.Key.Kind, code: UInt16?) in
+        switch code {
+        case 0x31: (.space, code)
+        case 0x24: (.paragraph, code)
+        case 0x33, 0x75: (.backspace, code)
+        default: (.glyph(typed[i % typed.count]), code)
+        }
+    } + [(.glyph("é"), nil), (.glyph("x"), 0x7B), (.glyph("😀"), 0x00)]
+}()
+
+@Test func typingEveryKeyFromTheSummonKeepsCodeOnItsGrid() throws {
+    // Pass 27c (the user, 2026-11-02, of build 81: "the app crashes when I start typing"): Code run as the app runs it
+    // (`Ambience.Run`: the keys' codes found on the keyboard, the typing rate), born at the show, typed into from its
+    // first second, through the build-in and 20 s on, at 2 to 8 keys a second (a new rate each second), every key the
+    // keyboard knows in turn, at 60 Hz; on a laptop's screen, a large one and a 6K display's, in Lemna's look (added
+    // light, halos) and Still's by day (ink laid over, none), on ANSI and on ISO. Every head on its sheet's grid, every
+    // sprite on the stage with a glyph the atlas has, never more than the cap; in a debug build the scene's pointer
+    // paths assert the sizes they read and write within (`assert`), which these steps run through. (Build 81's crash
+    // was not here but two threads stepping one scene, `Ambient.metalDisplayLink`; this holds the one-thread paths.)
+    let sizes = [CGSize(width: 1512, height: 982), CGSize(width: 2560, height: 1440), CGSize(width: 3008, height: 1692)]
+    for (n, size) in sizes.enumerated() {
+        for look in [Style(font: menlo), Style(.still, dark: false, font: menlo)] {
+            let b = BoxFrame.line(in: CGRect(x: 0, y: 80, width: size.width, height: size.height - 114), height: 112)
+            let st = Ambience.Stage(size: size, box: b, keyboard: n == 1 ? .iso : .ansi, style: look)
+            var run = Ambience.Run(mode: .code, stage: st, glyphs: glyphs, seed: 27 + UInt64(n))
+            var random = Ambience.Random(seed: 3 + UInt64(n)), out: [Sprite] = []
+            var (next, typed, rate, most, wrong) = (1.0, 0, 2.0, 0, [String]())
+            out.reserveCapacity(T.cap)
+            for f in 1...Int((1 + 20) * 60) {
+                let t = Double(f) / 60
+                if f % 60 == 0 { rate = Double.random(in: 2...8, using: &random) }
+                var keys: [Ambience.Key] = []
+                while next <= t {
+                    let k = everyKey[typed % everyKey.count]
+                    keys.append(Ambience.Key(t: next, kind: k.kind, code: k.code))
+                    (typed, next) = (typed + 1, next + 1 / rate)
+                }
+                run.take(keys)
+                let alpha = run.frame(at: t, dt: 1.0 / 60, into: &out)
+                most = max(most, out.count)
+                if alpha == nil || out.count > T.cap {
+                    wrong.append("\(t) s: \(out.count) sprites, alpha \(String(describing: alpha))")
+                }
+                for s in out where !(s.x >= 0 && Double(s.x) <= Double(size.width) && Double(s.y) >= -19 * T.codeNear
+                                     && Double(s.y) <= Double(size.height) && s.alpha >= 0 && s.alpha <= 1
+                                     && (s.kind == .ring || slot(s) < glyphs.ids.count)) {
+                    wrong.append("\(t) s: \(s)")
+                }
+                if f % 15 == 0 {
+                    let code = try #require(run.scene as? Code)
+                    for h in code.falling
+                    where !(h.row >= 0 && Int(h.row) < code.rows && h.column >= 0 && h.column < code.columns) {
+                        wrong.append("\(t) s: a head at column \(h.column), row \(h.row) of \(code.columns) × \(code.rows)")
+                    }
+                }
+            }
+            print("code typed \(typed) keys on \(Int(size.width)) × \(Int(size.height)) in \(look.theme.id): most \(most)")
+            #expect(wrong.isEmpty, "\(Int(size.width)) × \(Int(size.height)) \(look.theme.id): \(wrong.prefix(5))")
+            #expect(typed > 20 * 2 && most > 0)
+        }
+    }
+}
+
 // MARK: Still water (pass 24)
 
 /// Still water stepped `seconds` at 30 Hz, `events(frame)` and `rate` in each step; the most drops and sprites alive at
