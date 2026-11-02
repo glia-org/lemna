@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lemna Code bed design options</title>
+<style>
+/* Two decisions on a second sound bed for Lemna, Code. Same language as design-panel-lemna-themes.html: one mono font,
+   1 px lines, glyph + colour. Readable without scripts; the players, the typing field and the pick line run where
+   scripts run. */
+:root{
+  color-scheme:dark;
+  --bg:#0e1013; --surface:#14171b; --raise:#1b1f25; --line:#262b32; --line-2:#3a414c;
+  --fg:#d9dde3; --muted:#8d95a0; --faint:#5c646f;
+  --accent:#7aa7f0; --accent-soft:rgba(122,167,240,.13); --on-accent:#0e1013;
+  --work:#e2a03a; --need:#f06a43; --done:#52b87c;
+  --ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"CaskaydiaCove Nerd Font Mono","Cascadia Code","Cascadia Mono","Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--ui);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin-inline:auto;padding:32px clamp(16px,4vw,32px) 120px;display:flex;flex-direction:column;gap:52px}
+h1,h2,h3,p,ul,figure{margin:0}
+ul{padding:0;list-style:none}
+code{font:12.5px/1 var(--mono);white-space:nowrap}
+.eyebrow{font:500 12px/1 var(--mono);color:var(--muted)}
+h1{font:600 clamp(24px,4vw,34px)/1.15 var(--mono);letter-spacing:-.02em}
+.lede{max-width:80ch;color:var(--muted);font-size:15px}
+.lede b{color:var(--fg);font-weight:600}
+.top{display:flex;flex-direction:column;gap:14px}
+.bundle{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.bundle-l{font:500 12px/1 var(--mono);color:var(--muted);margin-right:4px}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:5px 9px;border-radius:6px;background:var(--accent-soft);text-decoration:none;font-size:13px;white-space:nowrap;color:inherit}
+.chip b{font:600 12px/1 var(--mono);color:var(--accent)}
+.sec{display:flex;flex-direction:column;gap:18px}
+.sec-h{display:flex;gap:14px;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:12px}
+.num{font:600 28px/1 var(--mono);color:var(--accent)}
+.sec-h h2{font:600 19px/1.2 var(--mono)}
+.sec-h p{color:var(--muted);margin-top:3px;max-width:84ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:16px;align-items:start}
+.grid.two{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+.card{min-width:0;display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.card:has(.pick input:checked){border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.card-h{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.oid{font:600 13px/1 var(--mono);padding:5px 7px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.card-h h3{font:600 16px/1.2 var(--ui)}
+.tag{font:500 11px/1 var(--mono);padding:4px 6px;border-radius:4px;border:1px solid var(--line-2);color:var(--muted);white-space:nowrap}
+.tag.rec{border-color:var(--done);color:var(--done)}
+.tag.ask{border-color:var(--work);color:var(--work)}
+.tag.no{border-color:var(--need);color:var(--need)}
+.pick{margin-left:auto;display:inline-flex;gap:6px;align-items:center;font:500 12px/1 var(--mono);color:var(--muted);cursor:pointer;padding:5px 8px;border:1px solid var(--line);border-radius:6px}
+.pick input{accent-color:var(--accent);margin:0}
+.pick:has(input:checked){color:var(--fg);border-color:var(--accent)}
+.pitch{font-size:15px;max-width:76ch}
+.how{display:flex;flex-direction:column;gap:5px;color:var(--muted)}
+.how li{padding-left:14px;position:relative;max-width:80ch}
+.how li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--faint)}
+.how b{color:var(--fg);font-weight:600}
+.src{font:12px/1.5 var(--mono);color:var(--muted)}
+.src b{color:var(--fg);font-weight:500}
+.risk{font-size:13px;color:var(--muted);border-left:2px solid var(--line-2);padding-left:10px;max-width:80ch}
+.risk b{color:var(--fg)}
+.risk.ask{border-left-color:var(--work)} .risk.ask b{color:var(--work)}
+.risk.no{border-left-color:var(--need)} .risk.no b{color:var(--need)}
+.ledger{display:grid;grid-template-columns:1fr;gap:6px}
+.ledger div{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13px;color:var(--muted)}
+.ledger b{color:var(--fg);font-weight:600}
+.ledger b:first-child{display:inline;margin-right:8px;font:600 12px/1.6 var(--mono)}
+.ledger .ok b:first-child{color:var(--done)}
+.finding{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
+.finding div{padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13.5px;color:var(--muted)}
+.finding b{color:var(--fg);display:block;margin-bottom:4px;font-weight:600}
+table.keys{border-collapse:collapse;font-size:13px;color:var(--muted)}
+table.keys td,table.keys th{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+table.keys th{font:500 12px/1.3 var(--mono);color:var(--fg)}
+table.keys td:first-child{color:var(--fg)}
+table.keys td.n,table.keys th.n{text-align:right;font-family:var(--mono);font-size:12.5px}
+table.keys tr.rec td{color:var(--fg)}
+table.keys td.bad{color:var(--need)}
+.mock{overflow-x:auto}
+.mock table.keys{width:100%;min-width:860px}
+.note{font-size:13px;color:var(--muted);max-width:86ch}
+.note b{color:var(--fg);font-weight:600}
+.picks{position:sticky;bottom:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-inline:calc(-1 * clamp(8px,2vw,16px));padding:10px clamp(8px,2vw,16px);background:var(--surface);border:1px solid var(--line-2);border-radius:10px}
+.picks-l{font:500 12px/1 var(--mono);color:var(--muted)}
+.picks code{font:600 14px/1.3 var(--mono);color:var(--fg);user-select:all;white-space:normal}
+.picks button{margin-left:auto;font:600 13px/1 var(--ui);padding:8px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);cursor:pointer}
+.wrap a:not(.chip){color:var(--accent);text-decoration:none}
+.wrap a:not(.chip):hover{text-decoration:underline}
+/* this panel: the players, the spectrograms, the typing field, the menus */
+.au{display:flex;flex-direction:column;gap:8px}
+.au audio{width:100%;height:32px}
+.au.ref{padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.au.ref b{font:600 13px/1.3 var(--mono)}
+.au.ref p{font-size:12.5px;color:var(--muted)}
+.spec{display:block;width:100%;height:auto;border:1px solid var(--line-2);border-radius:4px;background:#000;aspect-ratio:880/180}
+.speccap{font:11.5px/1.4 var(--mono);color:var(--faint)}
+.typer{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--accent);border-radius:8px;background:var(--surface)}
+.typer b{font:600 13px/1.3 var(--mono)}
+.typer textarea{width:100%;min-height:58px;resize:vertical;font:15px/1.4 var(--mono);color:var(--fg);background:var(--bg);border:1px solid var(--line-2);border-radius:6px;padding:8px 10px}
+.typer textarea:focus{outline:none;border-color:var(--accent)}
+.typer p{font-size:12.5px;color:var(--muted)}
+.menus{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.menu{min-width:190px;border:1px solid var(--line-2);border-radius:8px;background:var(--raise);padding:6px 0;font:12.5px/1.75 var(--mono);color:var(--fg)}
+.menu .t{display:block;padding:0 12px 4px;color:var(--muted);border-bottom:1px solid var(--line);margin-bottom:4px}
+.menu span{display:flex;justify-content:space-between;gap:18px;padding:0 12px 0 26px;position:relative}
+.menu span.on::before{content:"✓";position:absolute;left:10px}
+.menu span.w{color:var(--accent)}
+.menu span kbd{font:inherit;color:var(--muted)}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+<p class="eyebrow">Design panel · Lemna</p>
+<h1>Lemna Code bed design options</h1>
+<p class="lede">The user, 2026-11-02: "Also add the matrix rain sounds from the movie as ambient noise additionally to the real rain/storm sounds."</p>
+<p class="lede">Two decisions: <b>CB</b>, which sound becomes the Code bed, beside the Rain bed in Session › Sound ▸ (1); and <b>D</b>, whether a theme turns it on (2). The films' own sound cannot be used (copyright), so every candidate either names its own sources or was synthesised for Lemna from what the films' sound designer said about how he made it. Everything comes from two notes in <a href="../research_notes/Lemna%20code%20bed/">research_notes/Lemna code bed/</a>: <a href="../research_notes/Lemna%20code%20bed/film.md">film.md</a> and <a href="../research_notes/Lemna%20code%20bed/candidates.md">candidates.md</a>, cited as film and candidates with their sections; sound is <code>research_notes/Lemna themes/sound.md</code>. <b>recommended</b> is the proposed pick, <b>ask</b> a pick that amends a DESIGN decision, <b>no</b> advised against by the evidence.</p>
+<p class="lede">Each player starts at Lemna's level for a bed, −43 LUFS, 12 LU under the clicks; its slider can raise it. Type into the field in section 1 to hear the Keychron clicks over whichever bed plays. <b>Nothing here was listened to while it was made:</b> the numbers say steady or not, the ear says code or not.</p>
+<div class="bundle"><span class="bundle-l">Recommended</span><a class="chip" href="#opt-CB3"><b>CB3</b> synthesised code</a><a class="chip" href="#opt-D2"><b>D2</b> only the menu item</a></div>
+</header>
+
+<section class="sec" aria-labelledby="s0h">
+<header class="sec-h"><span class="num">0</span><div><h2 id="s0h">What the films' code sounds like, and what may be used</h2><p>From interviews with Dane A. Davis, the films' supervising sound editor and sound designer, and a review of the program he named (film §1). No source gives a tempo or a register (film §3).</p></div></header>
+<div class="finding">
+<div><b>"Electrical and wet at the same time."</b>The directors' brief for the code, as Davis told it; elsewhere relayed as electric and at once biological, "like a living organism" (film takeaway 1; the Academy page itself refused to load).</div>
+<div><b>About 70 % MetaSynth.</b>The code was mostly made in MetaSynth 1.0, for its "sweet, natural rendering"; its image synth plays a picture as oscillators, height = pitch, brightness = level, colour = pan: clean tones at scattered pitches (film takeaway 2, 4).</div>
+<div><b>Water dripping into a barrel.</b>Synthetic sounds layered with drips, then edited to remove obvious frequencies: the wet half, and no pitch that stands out (film takeaway 3).</div>
+<div><b>Dense, not sparse.</b>Sparse separate tones are the changing-state sound that adds 4–7 points of serial-recall errors whatever the level (sound §1.4). The sketch's "sparse glass ticks" fail the rain's steadiness test; heard in CB3's card (film §4).</div>
+<div><b>Not the films' audio, not their name.</b>No rip, no resynthesis of one; Freesound uploads titled after the film were not used. The bed is "Code bed", as the ambience is Code (DESIGN A1, pass 25).</div>
+<div><b>No CC0 "digital rain" that is also steady.</b>21 Freesound sounds measured: the on-topic ones are bursty, clicky, pulsed or mostly hiss; two came close enough to show (candidates §4).</div>
+</div>
+<div class="ledger">
+<div class="ok"><b>Kept, under every pick.</b>The Rain bed and Still's preset; BD1's rules for any bed: −43 LUFS (<code>Bed.level</code>), in over 1.5 s and out over 0.6 s, only while a container is up and writing goes on, silenced by ⌘K, only the chosen bed in memory (90 s is 35 MB as floats), off on a first launch (DESIGN K1, BD1; LemnaClicks README).</div>
+<div><b>What any CB adds.</b>A second entry in <code>BedChoice.beds</code>, ("Code bed", "Code"); a folder <code>Beds/Code</code> with its CAF and <code>bed.json</code> (<code>lufs</code> as candidates §1); its lines in <code>THIRD_PARTY.md</code> and <code>build_packs.sh</code>; CB3 or CB4 bring <code>synth_code.py</code> into <code>lib/LemnaClicks/tools</code>. About 1–1.5 MB in the app.</div>
+<div><b>Amended by these picks.</b>D1 amends TH1's Lemna preset ("the Keychron pack, no bed, Ambience Off, the first launch's"). CB1 adds a CC BY credit line, as the Electric pack has.</div>
+<div><b>Not on this panel, for later.</b>A bed that follows the ambience (Ambience ▸ Code switching the bed): a new coupling nobody asked for; two beds layered at run time (the engine plays one; CB4 is pre-mixed instead); a bed level control (sound §2.3).</div>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s1h">
+<header class="sec-h"><span class="num">1</span><div><h2 id="s1h">CB: the Code bed's sound</h2><p>Each a seamless loop, 48 kHz stereo, AAC 128 kbit/s in CAF like the Rain bed, at −26 LUFS in the file and −43 when played. The spectrograms show 20 s, 100 Hz at the bottom to 16 kHz at the top on a log scale, brighter louder. Play one, then type below.</p></div></header>
+<div class="grid two">
+<div class="au ref"><b>For comparison: the Rain bed today · felix.blume 585845, CC0</b><audio controls loop preload="none" data-vol="0.146" src="design-panel-lemna-code-bed_files/rain.m4a"></audio><img class="spec" src="design-panel-lemna-code-bed_files/rain-spec.jpg" alt="Spectrogram of the Rain bed: broadband and even, most energy 200 Hz to 5 kHz" loading="lazy"><p>90 s of night rain in a forest, BD1's pick (sound §3.1). The bar every Code bed is measured against.</p></div>
+<div class="typer"><b>Type here: the Keychron clicks at volume 0.6</b><textarea id="typer" spellcheck="false" placeholder="type while a bed plays…" aria-label="Typing field that plays the Keychron clicks"></textarea><p id="typer-st">Letters, Space, Return and Delete play the default pack's samples with its ±3 % rate, as the app does; the bed and the clicks then stand as they would in Lemna, 12 LU apart.</p></div>
+</div>
+<div class="grid">
+
+<article class="card" id="opt-CB1"><div class="card-h"><span class="oid">CB1</span><h3>MetaSynth trill</h3><label class="pick"><input type="radio" name="CB" value="CB1"> pick</label></div>
+<p class="pitch">A dense trill of synthesised chirps between 2 and 8 kHz, made in MetaSynth, the program most of the films' code came from.</p>
+<div class="au"><audio controls loop preload="none" data-vol="0.141" src="design-panel-lemna-code-bed_files/cb1.m4a"></audio><img class="spec" src="design-panel-lemna-code-bed_files/cb1-spec.jpg" alt="Spectrogram of CB1: a band of dense sparkle from about 1.8 to 8 kHz, nothing below" loading="lazy"></div>
+<p class="src"><b>Fishdog, "metasynth bugnite.aif", <a href="https://freesound.org/people/Fishdog/sounds/41497/">Freesound 41497</a>, CC BY 3.0</b> · 2007 · a recorded voice turned into "a swampy backdrop" by MetaSynth · 70 s from 3.6 s, wrap matched to 0.19 dB (candidates §1)</p>
+<ul class="how">
+<li><b>The films' own tool:</b> tiny clean tones, rendered as MetaSynth renders a picture (film takeaway 2).</li>
+<li><b>The steadiest measured:</b> 3 s loudness SD 0.34 LU (rain 0.49), no bursts, no onsets; the clicks stand 22.1 dB over it, 19.1 dB in 1–4 kHz (rain 21.3, 20.1) (candidates §3).</li>
+<li><b>Nothing under 1.8 kHz,</b> so no body, and mono: it sits in the middle of the head.</li>
+</ul>
+<p class="risk"><b>Risk.</b> A faint swell every 0.6–0.7 s (autocorrelation 0.20; the rain's 0.05), a lilt an ear can lock onto; it reads as insects at night as much as code (its author: "birds? frogs? bugs?"); its source voice is not named; a credit line in THIRD_PARTY and on the site.</p></article>
+
+<article class="card" id="opt-CB2"><div class="card-h"><span class="oid">CB2</span><h3>Granular sand and rain</h3><label class="pick"><input type="radio" name="CB" value="CB2"> pick</label></div>
+<p class="pitch">"Rain and sand hitting a metallic plate", made from vinyl crackle, modulated noise and bit reduction.</p>
+<div class="au"><audio controls loop preload="none" data-vol="0.146" src="design-panel-lemna-code-bed_files/cb2.m4a"></audio><img class="spec" src="design-panel-lemna-code-bed_files/cb2-spec.jpg" alt="Spectrogram of CB2: broadband, with swells and dips in the low mids" loading="lazy"></div>
+<p class="src"><b>bassimat, "Sand and Rain Texture from Granular Synthesis", <a href="https://freesound.org/people/bassimat/sounds/838983/">Freesound 838983</a>, CC0</b> · 2025 · sources named as the author's own · 63 s from 1.7 s, wrap 0.41 dB (candidates §1)</p>
+<ul class="how">
+<li><b>CC0, wide,</b> and the clicks stand out most over it: 23.1 dB, 24.8 in 1–4 kHz.</li>
+<li><b>Bit-reduced and rain-like:</b> digital and wet, in one recording.</li>
+</ul>
+<p class="risk no"><b>No: the least steady.</b> 3 s loudness SD 1.13 LU and loudness range 3.3 LU, twice the rain's; it swells and nearly drops out in 200–800 Hz over seconds, and with a 63 s loop a swell comes back every minute; 15 crackles a minute (candidates §3).</p></article>
+
+<article class="card" id="opt-CB3"><div class="card-h"><span class="oid">CB3</span><h3>Synthesised code</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="CB" value="CB3" checked> pick</label></div>
+<p class="pitch">Clean tone grains that rise like drops, in a short hollow room, over a faint electrical hum: the films' recipe, dense enough to fuse into a trickle.</p>
+<div class="au"><audio controls loop preload="none" data-vol="0.143" src="design-panel-lemna-code-bed_files/cb3.m4a"></audio><img class="spec" src="design-panel-lemna-code-bed_files/cb3-spec.jpg" alt="Spectrogram of CB3: scattered grains from 2 to 7 kHz, a low hum band under 400 Hz, a gap between" loading="lazy"></div>
+<p class="src"><b>Synthesised for Lemna, <code>synth_code.py</code>, seed 1999</b> · no third-party material · 90 s, periodic by construction (candidates §2)</p>
+<ul class="how">
+<li><b>Each layer from the makers' account</b> (film §2): MetaSynth's pixels → 60 sine grains a second, 2.2–6.5 kHz, at random pans; water into a barrel → each grain rising 5–25 % as a drop does, a 0.7 s room; electricity → a 55 Hz hum 17 dB down; obvious frequencies removed → no pitch held.</li>
+<li><b>As steady as the rain:</b> 3 s loudness SD 0.50 LU, no bursts, no onsets, no period (0.04); the clicks stand 23.0 dB over it, 20.3 in 1–4 kHz, and it leaves 0.7–2 kHz empty, where the clicks' body is (candidates §3).</li>
+<li><b>No seam, no licence question, tunable:</b> every grain, the room's tail and the noise are wrapped round exactly 90 s; density, pitch range, hum and seed are parameters, so a second round after listening costs a re-render.</li>
+</ul>
+<p class="risk"><b>Risk.</b> Never heard: synthetic grains can sound plasticky and a hum like a fault (it can go). Dense grains fuse; sparse ones are the changing-state sound. The sketch's sparse ticks, 6 a second, for comparison: 190 separately heard grains a minute, bursts 4.6 %, 3 s loudness SD 1.83 LU.</p>
+<div class="au"><audio controls loop preload="none" data-vol="0.143" src="design-panel-lemna-code-bed_files/cb3-sparse.m4a" aria-label="CB3 sparse, for comparison"></audio><img class="spec" src="design-panel-lemna-code-bed_files/cb3-sparse-spec.jpg" alt="Spectrogram of the sparse variant: separate grains with gaps between them" loading="lazy"><p class="speccap">CB3 sparse, not an option: what the brief's sparse ticks would be.</p></div></article>
+
+<article class="card" id="opt-CB4"><div class="card-h"><span class="oid">CB4</span><h3>Rain under the code</h3><label class="pick"><input type="radio" name="CB" value="CB4"> pick</label></div>
+<p class="pitch">The Rain bed with CB3's grains over it at the same loudness: synthetic sound laid over water, as the films' code was made.</p>
+<div class="au"><audio controls loop preload="none" data-vol="0.143" src="design-panel-lemna-code-bed_files/cb4.m4a"></audio><img class="spec" src="design-panel-lemna-code-bed_files/cb4-spec.jpg" alt="Spectrogram of CB4: the rain's broadband body with grains above 2 kHz" loading="lazy"></div>
+<p class="src"><b>felix.blume 585845 (CC0, the Rain bed's loop) + <code>synth_code.py</code></b> · both on the same 90 s circle (candidates §1)</p>
+<ul class="how">
+<li><b>The most literal "electrical and wet":</b> Davis's layering of synthetic sound over drips (film takeaway 3).</li>
+<li><b>The steadiest of all:</b> 3 s loudness SD 0.35 LU, fluctuation as the rain's, nothing tonal; the clicks stand 21.8 dB over it, 20.2 in 1–4 kHz.</li>
+</ul>
+<p class="risk"><b>Risk.</b> Two of the three choices in Sound ▸ would be rain, where the ask is the films' sound "additionally to the real rain"; a second 1.5 MB file of mostly the same rain. The fallback if CB3 alone sounds too synthetic.</p></article>
+
+<article class="card" id="opt-CB0"><div class="card-h"><span class="oid">CB0</span><h3>None</h3><label class="pick"><input type="radio" name="CB" value="CB0"> pick</label></div>
+<p class="pitch">No Code bed; the Rain bed stays the only one.</p>
+<p class="risk"><b>Risk.</b> The ask is a second bed. Choose it if none of these sounds like code to you, and a second round of CB3 is not worth it.</p></article>
+</div>
+
+<div class="mock"><table class="keys">
+<thead><tr><th>Bed (candidates §3)</th><th class="n">3 s SD, LU</th><th class="n">range, LU</th><th class="n">bursts</th><th class="n">&lt;150 Hz</th><th class="n">&gt;5 kHz</th><th class="n">centroid</th><th class="n">onsets/min</th><th class="n">pulse</th><th class="n">clicks over it, dB</th><th class="n">1–4 kHz, dB</th></tr></thead>
+<tbody>
+<tr><td>Rain bed (today)</td><td class="n">0.49</td><td class="n">1.1</td><td class="n">0 %</td><td class="n">0.2 %</td><td class="n">10.6 %</td><td class="n">2.1 kHz</td><td class="n">3</td><td class="n">0.05</td><td class="n">21.3</td><td class="n">20.1</td></tr>
+<tr><td>CB1 MetaSynth trill</td><td class="n">0.34</td><td class="n">1.0</td><td class="n">0 %</td><td class="n">0.0 %</td><td class="n">20.3 %</td><td class="n">3.5 kHz</td><td class="n">0</td><td class="n bad">0.20</td><td class="n">22.1</td><td class="n">19.1</td></tr>
+<tr><td>CB2 sand and rain</td><td class="n bad">1.13</td><td class="n bad">3.3</td><td class="n">0 %</td><td class="n">3.9 %</td><td class="n">31.5 %</td><td class="n">3.8 kHz</td><td class="n">15</td><td class="n">0.14</td><td class="n">23.1</td><td class="n">24.8</td></tr>
+<tr class="rec"><td>CB3 synthesised</td><td class="n">0.50</td><td class="n">1.6</td><td class="n">0 %</td><td class="n">0.1 %</td><td class="n">15.6 %</td><td class="n">3.6 kHz</td><td class="n">0</td><td class="n">0.04</td><td class="n">23.0</td><td class="n">20.3</td></tr>
+<tr><td>CB4 rain under the code</td><td class="n">0.35</td><td class="n">1.0</td><td class="n">0 %</td><td class="n">0.1 %</td><td class="n">13.1 %</td><td class="n">2.7 kHz</td><td class="n">1</td><td class="n">0.04</td><td class="n">21.8</td><td class="n">20.2</td></tr>
+<tr><td>CB3 sparse (not an option)</td><td class="n bad">1.83</td><td class="n bad">5.8</td><td class="n bad">4.6 %</td><td class="n">0.1 %</td><td class="n">10.3 %</td><td class="n">3.3 kHz</td><td class="n bad">190</td><td class="n">0.17</td><td class="n">28.2</td><td class="n">27.3</td></tr>
+</tbody></table></div>
+<p class="note"><b>How to read it.</b> The bar is the rain's (sound §1.5): 3 s loudness SD at most about 1 LU, no bursts (400 ms windows 6 LU over the median), little under 150 Hz, no period (pulse: the envelope's autocorrelation at 0.15–4 s, 0 none, 1 strict). "Clicks over it": the loudest tenth of a 60 s Keychron typing stream at 5 keys a second over the bed at −43 LUFS, median, broadband and in the clicks' 1–4 kHz. Red marks a miss. Previews: the same loops as m4a; the browser's loop may leave a short gap at the wrap that the app's sample-exact wrap does not have.</p>
+</section>
+
+<section class="sec" aria-labelledby="s2h">
+<header class="sec-h"><span class="num">2</span><div><h2 id="s2h">D: where the Code bed sits</h2><p>Session › Sound ▸ lists the packs, then the beds, then Off (⌘K); Session › Theme ▸ names a bed its preset turns on, so a bed never comes unasked (TH1, pass 23).</p></div></header>
+<div class="grid two">
+<article class="card" id="opt-D1"><div class="card-h"><span class="oid">D1</span><h3>A second bed, and Lemna's default</h3><span class="tag ask">ask: amends TH1's Lemna preset</span><label class="pick"><input type="radio" name="D" value="D1"> pick</label></div>
+<div class="menus" aria-hidden="true">
+<div class="menu"><span class="t">Sound</span><span class="on">Keychron</span><span>Typewriter</span><span>Soft</span><span>Electric</span><span>Stone</span><hr><span>Rain bed</span><span class="on w">Code bed</span><span>No bed</span><hr><span>Off<kbd>⌘K</kbd></span></div>
+<div class="menu"><span class="t">Theme</span><span class="on w">Lemna (code bed)</span><span>Still (rain bed)</span></div>
+</div>
+<p class="pitch">The Code bed in Sound ▸, and choosing Theme ▸ Lemna turns it on.</p>
+<ul class="how">
+<li><b>Pairs the sound with the picture</b> for whoever chooses Lemna, as Still pairs rain with still water.</li>
+<li><b>A first launch is unchanged:</b> a preset is written only when the theme is chosen (<code>chooseTheme</code>), so BD1's "off by default" holds.</li>
+</ul>
+<p class="risk ask"><b>Ask: against TH1 as it stands.</b> Lemna's preset is "the Keychron pack, no bed, Ambience Off, the first launch's" (<code>Theme.swift</code>). Its ambience is Off, so "the bed when Code is the ambience" has nothing to attach to: D1 turns the bed on alone, or must also set Ambience ▸ Code, which changes what choosing Lemna does to the picture. And the default is where the evidence matters: the Code bed is the less proven sound (synthetic tones, no study), sound §1.5's rule for a bed is "opt-in and off by default".</p></article>
+<article class="card" id="opt-D2"><div class="card-h"><span class="oid">D2</span><h3>Only the menu item</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="D" value="D2" checked> pick</label></div>
+<div class="menus" aria-hidden="true">
+<div class="menu"><span class="t">Sound</span><span class="on">Keychron</span><span>Typewriter</span><span>Soft</span><span>Electric</span><span>Stone</span><hr><span>Rain bed</span><span class="w">Code bed</span><span class="on">No bed</span><hr><span>Off<kbd>⌘K</kbd></span></div>
+<div class="menu"><span class="t">Theme</span><span class="on">Lemna</span><span>Still (rain bed)</span></div>
+</div>
+<p class="pitch">Sound ▸ Rain bed / Code bed / No bed; no theme turns it on.</p>
+<ul class="how">
+<li><b>What was asked:</b> the films' sound "additionally to the real rain", a second bed to choose.</li>
+<li><b>Nothing else moves:</b> TH1, Lemna's preset and BD1 stay; the Code bed is one menu item away, kept across launches under <code>bed</code> like the rain.</li>
+<li><b>D1 later is one line:</b> once the bed has been lived with, Lemna's preset can name it.</li>
+</ul>
+<p class="risk"><b>Risk.</b> Whoever chooses Lemna does not hear the Code bed unless they look in Sound ▸.</p></article>
+</div>
+</section>
+
+<div class="picks"><span class="picks-l">Pick: CB1 / CB2 / CB3 / CB4 or CB0 (none), and D1 or D2</span><code id="picks">CB3 D2</code><button type="button" id="copy" hidden>Copy picks</button></div>
+</div>
+<script>
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+/* the pick line */
+function picks(){const v=n=>(document.querySelector(`input[name="${n}"]:checked`)||{}).value||'—';$('picks').textContent=`${v('CB')} ${v('D')}`}
+document.querySelectorAll('input[type=radio]').forEach(i=>i.addEventListener('change',picks));picks();
+const cp=$('copy');if(navigator.clipboard){cp.hidden=false;cp.addEventListener('click',()=>navigator.clipboard.writeText($('picks').textContent).then(()=>{cp.textContent='Copied';setTimeout(()=>cp.textContent='Copy picks',1200)}))}
+/* the players at the bed's level (−43 LUFS from a −26 LUFS file), one at a time */
+document.querySelectorAll('audio[data-vol]').forEach(a=>{a.volume=+a.dataset.vol;a.addEventListener('play',()=>document.querySelectorAll('audio').forEach(b=>{if(b!==a)b.pause()}))});
+/* the typing field: the Keychron pack at volume 0.6, a random sample of its kind never the one before, rate ±3 % */
+const dir='design-panel-lemna-code-bed_files/keychron/';
+const K={letter:[1,2,3,4,5,6].map(i=>'letter-'+i),space:['space-1','space-2'],paragraph:['paragraph-1'],backspace:['backspace-1']};
+let ac=null,buf=null,last={},failed=false;
+async function load(){
+  const C=window.AudioContext||window.webkitAudioContext;if(!C)throw new Error('no Web Audio');ac=new C();const o={};
+  for(const k in K)o[k]=await Promise.all(K[k].map(async f=>{const r=await fetch(dir+f+'.wav');if(!r.ok)throw new Error(f);return ac.decodeAudioData(await r.arrayBuffer())}));
+  buf=o;
+}
+function play(kind){
+  if(!buf)return;if(ac.state==='suspended')ac.resume();
+  const l=buf[kind];let i=Math.floor(Math.random()*l.length);if(l.length>1&&i===last[kind])i=(i+1)%l.length;last[kind]=i;
+  const s=ac.createBufferSource();s.buffer=l[i];s.playbackRate.value=1+(Math.random()*2-1)*0.03;
+  const g=ac.createGain();g.gain.value=0.6;s.connect(g).connect(ac.destination);s.start();
+}
+const t=$('typer');
+t.addEventListener('keydown',async e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey||e.repeat)return;
+  if(!buf&&!failed){try{await load()}catch(err){failed=true;$('typer-st').textContent='The click samples did not load here (a file:// page blocks them): open the page over http.';return}}
+  const kind=e.key===' '?'space':e.key==='Enter'?'paragraph':e.key==='Backspace'?'backspace':e.key.length===1?'letter':null;
+  if(kind)play(kind);
+});
+})();
+</script>
+</body>
+</html>

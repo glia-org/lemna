@@ -4,6 +4,12 @@
 
 ## State (2026-11-02)
 
+- Code bed, not taken (2026-11-02): the user asked for the films' code sound as a second bed beside the rain bed;
+  four candidates (two Freesound recordings, a synthesised render, a mix over the rain) went on
+  `docs/design-panel-lemna-code-bed.html` with the evidence in `research_notes/Lemna code bed/` (the render tool
+  `tools/synth_code.py` reproduces them). The user: "Do not apply the new sounds, I don't like them." Nothing was
+  built; the preview files stay out of the repo. Do not propose it again without new evidence.
+
 - App, pass 27b, Code builds in and lifts a little more while typing (2026-11-02; DESIGN.md A1 amended; the user,
   after trying pass 27: "Love this, this is much better. Two things, it is way less reactive (which is okay, but it
   could be just a bit more. The other thing is, that it should build in, not start the animation so in your face.").
