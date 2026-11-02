@@ -35,14 +35,18 @@ private func between(_ p: (idle: ClosedRange<Double>, typing: ClosedRange<Double
 /// (up to `codeMost` at a time, most at the top, some lower down) start after a random pause and end below the bottom,
 /// their trails lingering; every lit glyph changes now and then, and its brightness with it. A second, nearer sheet
 /// (`codeNear`) carries a few larger, softer, brighter streams over it. It falls from the show until the close, a dim
-/// curtain with brighter streams through it, and typing raises one intensity that sets how many heads fall, how long
-/// their trails and how bright, and how often the glyphs change, never how fast (the films' "more intense", matrix §2
-/// and §3); each glyph key also starts a head where the key is across the screen, higher the higher its row, the typed
-/// glyph at it. Every screen.
+/// curtain with brighter streams through it that builds in over its first `codeBuildIn` while new streams fall in
+/// (pass 27b), and typing raises one intensity that sets how many heads fall, how long their trails and how bright,
+/// and how often the glyphs change, never how fast (the films' "more intense", matrix §2 and §3); each glyph key also
+/// starts a head where the key is across the screen, higher the higher its row, the typed glyph at it, brighter than
+/// the curtain's. Every screen.
 struct Code: Ambience.Scene {
     /// A head: its column, its row (0 at the top; between two cells while it steps), its trail in cells, the typed
-    /// glyph's slot at it (nil: the cell's own), and whether a key started it.
-    fileprivate struct Head { let column: Int; var row: Double; let trail: Double, gain: Double, glyph: Int?, key: Bool }
+    /// glyph's slot at it (nil: the cell's own), whether a key started it, and whether it fell before the show (pass
+    /// 27b: veiled, it and the cells it lights build in with the curtain).
+    fileprivate struct Head {
+        let column: Int; var row: Double; let trail: Double, gain: Double, glyph: Int?, key: Bool, veiled: Bool
+    }
 
     /// One sheet of the rain (pass 27; the films' depth, Reloaded's "multiple virtual sheets of glass", matrix §1.4):
     /// a grid of `columns` × `rows` cells of `pitch` points, row 0 at the top edge, the columns centred across, its
@@ -51,8 +55,12 @@ struct Code: Ambience.Scene {
     fileprivate struct Sheet {
         /// A cell: its glyph and its brightness (`codeLevel`, drawn again with each new glyph), its column's travel
         /// when a head lit it (−∞: never), the trail it dims over (in cells), its trail's top alpha (0: the
-        /// intensity's, times its stream's `gain`), and whether a head is in it (set and cleared as the step draws).
-        struct Cell { var glyph: Int, level: Double, lit: Double, trail: Double, top: Double, gain: Double, under: Bool }
+        /// intensity's, times its stream's `gain`), whether a head is in it (set and cleared as the step draws), and
+        /// whether a veiled head lit it (pass 27b: lit before the show, it builds in with the curtain).
+        struct Cell {
+            var glyph: Int, level: Double, lit: Double, trail: Double, top: Double, gain: Double
+            var under: Bool, veiled: Bool
+        }
         let columns: Int, rows: Int, pitch: Double, left: Double, scale: Double, blur: Double, bright: Double
         let active: (idle: Double, typing: Double)
         /// Each column's and each row's middle on the stage.
@@ -64,6 +72,8 @@ struct Code: Ambience.Scene {
         /// before the next head and how long that pause is (in its mean pauses at the intensity, `codeWait`).
         var speed: [Double], travel: [Double], moved: [Double], falling: [Int], due: [Double], wait: [Double]
         var heads: [Head] = []
+        /// While the scene is stepped ahead at its birth: the heads it starts then are veiled (pass 27b).
+        var veiling = true
 
         init(stage: Ambience.Stage, glyphs: Ambience.Glyphs, depth: Double, blur: Double, bright: Double,
              active: (idle: Double, typing: Double), random r: inout Ambience.Random) {
@@ -78,7 +88,7 @@ struct Code: Ambience.Scene {
             let set = glyphs.codeSet.isEmpty ? [0] : glyphs.codeSet
             cells = (0..<columns * rows).map { _ in
                 Cell(glyph: set.randomElement(using: &r)!, level: Code.level(&r), lit: -.infinity, trail: 1, top: 0, gain: 1,
-                     under: false)
+                     under: false, veiled: false)
             }
             speed = (0..<columns).map { _ in mix(T.codeSpeed, r.unit()) }
             (travel, moved, falling) = (Array(repeating: 0, count: columns), Array(repeating: 0, count: columns),
@@ -94,21 +104,23 @@ struct Code: Ambience.Scene {
         var limit: Int { (most + 1) * columns }
 
         /// A head lights cell `r` of column `c`: it dims from now over `t` cells of the column's travel, from `a` (0: the
-        /// intensity's trail top times `g`).
-        mutating func light(_ c: Int, _ r: Int, trail t: Double, top a: Double, gain g: Double = 1) {
+        /// intensity's trail top times `g`), veiled if the head is.
+        mutating func light(_ c: Int, _ r: Int, trail t: Double, top a: Double, gain g: Double = 1,
+                            veiled v: Bool = false) {
             let x = c * rows + r
-            (cells[x].lit, cells[x].trail, cells[x].top, cells[x].gain) = (travel[c], t, a, g)
+            (cells[x].lit, cells[x].trail, cells[x].top, cells[x].gain, cells[x].veiled) = (travel[c], t, a, g, v)
         }
 
         /// One sheet's sprites at `look` in `ink`, written at `sp` from `k` on, at most `room` in all (`shown` counts
-        /// them all): its heads first, each with its halo under it where light adds (a key's before the others), so
-        /// the cap takes trail cells, not heads; then every lit cell, its glyph first changed to another of `set` at
-        /// odds `p` (`codeChange` a second, its brightness with it), the ones right behind a head in the text colour,
-        /// the rest in the accent at its own brightness along the trail's fade, unless under `cut`. Thousands a frame:
-        /// one pass over the cells, which it reads and writes the sprites through pointers, their fields as the shader
-        /// reads them; the lit cells passed between two changes drawn at once (geometric: the odds of a draw a cell
-        /// for a draw a change).
-        mutating func draw(_ look: (head: Double, top: Double, halo: Double), cut: Double, ink: Theme.Ink,
+        /// them all): its heads first, each with its halo under it where light adds (a key's before the others, at
+        /// `codeKeyHead` and `codeKeyHalo`), so the cap takes trail cells, not heads; then every lit cell, its glyph
+        /// first changed to another of `set` at odds `p` (`codeChange` a second, its brightness with it), the ones
+        /// right behind a head in the text colour, the rest in the accent at its own brightness along the trail's fade,
+        /// unless under `cut`; a veiled head and a veiled cell at `veil` of their alpha (the build-in, pass 27b), under
+        /// `cut` not drawn. Thousands a frame: one pass over the cells, which it reads and writes the sprites through
+        /// pointers, their fields as the shader reads them; the lit cells passed between two changes drawn at once
+        /// (geometric: the odds of a draw a cell for a draw a change).
+        mutating func draw(_ look: (head: Double, top: Double, halo: Double), veil: Double, cut: Double, ink: Theme.Ink,
                            glyphs: Ambience.Glyphs, change p: Double, random: inout Ambience.Random,
                            into sp: UnsafeMutablePointer<Sprite>, count k: inout Int, room: Int, shown: inout Int) {
             let (text, accent) = (Sprite.packed(ink.text), Sprite.packed(ink.accent))
@@ -124,13 +136,15 @@ struct Code: Ambience.Scene {
                     let r = Int(h.row), x = h.column * rows + r
                     guard !cells[x].under else { continue }
                     cells[x].under = true
+                    let v = h.veiled ? veil : 1
+                    guard v > cut else { continue }  // fell before the show, and the curtain not yet built in
                     let at = CGPoint(x: Double(xs[h.column]), y: Double(ys[r]))
                     if glow {
-                        put(Sprite.halo(x: at.x, y: at.y, width: T.codeHaloWidth * pitch, alpha: look.halo * bright,
-                                        colour: ink.text))
+                        put(Sprite.halo(x: at.x, y: at.y, width: T.codeHaloWidth * pitch,
+                                        alpha: (key ? T.codeKeyHalo : look.halo) * bright * v, colour: ink.text))
                     }
                     put(glyphs.sprite(h.glyph ?? cells[x].glyph, centre: at, scale: scale,
-                                      alpha: (key ? T.codeKeyHead : look.head) * bright, colour: ink.text,
+                                      alpha: (key ? T.codeKeyHead : look.head) * bright * v, colour: ink.text,
                                       mirrored: h.glyph == nil, blur: blur))
                 }
             }
@@ -169,6 +183,10 @@ struct Code: Ambience.Scene {
                             guard a > cut else { continue }
                             colour = accent
                         }
+                        if cell.veiled {  // lit before the show: building in
+                            a *= veil
+                            guard a > cut else { continue }
+                        }
                         n += 1
                         guard j < room else { continue }
                         sp[j] = Sprite(x: cx, y: ys[r], w: w, h: h, alpha: Float(min(a, 1)), packed: colour,
@@ -195,7 +213,8 @@ struct Code: Ambience.Scene {
                 let to = Int(h.row)
                 if to > from, from + 1 < rows {
                     for r in (from + 1)...min(to, rows - 1) {
-                        light(h.column, r, trail: h.trail, top: h.key ? T.codeKeyTrailTop : 0, gain: h.gain)
+                        light(h.column, r, trail: h.trail, top: h.key ? T.codeKeyTrailTop : 0, gain: h.gain,
+                              veiled: h.veiled)
                     }
                 }
                 if to >= rows {  // below the bottom: it ends, its trail lingering in the cells
@@ -224,8 +243,9 @@ struct Code: Ambience.Scene {
                 let (t, g) = (Code.logUniform(trails, &random), Code.logUniform(T.codeGain, &random))
                 (due[c], wait[c]) = (0, mix(T.codeWait, random.unit()))
                 falling[c] += 1
-                heads.append(Head(column: c, row: Double(row), trail: t, gain: g, glyph: nil, key: false))
-                light(c, row, trail: t, top: 0, gain: g)
+                heads.append(Head(column: c, row: Double(row), trail: t, gain: g, glyph: nil, key: false,
+                                  veiled: veiling))
+                light(c, row, trail: t, top: 0, gain: g, veiled: veiling)
             }
         }
     }
@@ -248,6 +268,10 @@ struct Code: Ambience.Scene {
     /// 0 at rest, 1 at `codeFast` keys a second; the time since the last key.
     private(set) var intensity = 0.0
     private var sinceKey = Double.infinity
+    /// The time since the birth, and the curtain's share of its alpha then (pass 27b): 0 at the birth, 1 from
+    /// `codeBuildIn` on.
+    private(set) var age = 0.0
+    var veil: Double { Code.veil(at: age) }
     /// The sprites the last step would have drawn, before the cap; the alpha under which a trail cell is not drawn,
     /// `codeShown` unless a stage too large for the cap raised it (the dimmest go first).
     private(set) var shown = 0
@@ -263,10 +287,20 @@ struct Code: Ambience.Scene {
         near = Sheet(stage: stage, glyphs: glyphs, depth: T.codeNear, blur: T.codeNearBlur, bright: T.codeNearBright,
                      active: T.codeNearActive, random: &r)
         random = r
-        // Stepped ahead, undrawn, at rest: the summon finds the rain falling, the slowest column's first head through.
+        // Stepped ahead, undrawn, at rest: the rain is falling at the summon, the slowest column's first head through;
+        // but veiled, every head of it and every cell it lit, so the curtain builds in over `codeBuildIn` while the
+        // heads that start from the show on fall in at once, one by one, as do the keys' (pass 27b).
         for _ in 0..<Int(T.codeAhead * T.codeIdleRate) {
             advance(dt: 1 / T.codeIdleRate, events: [], rate: 0)
         }
+        (main.veiling, near.veiling) = (false, false)
+    }
+
+    /// The curtain's share at `age` after the birth (pass 27b): smoothstep over `codeBuildIn`, so it opens from
+    /// nothing and reaches the rest's look without a kink at either end.
+    static func veil(at age: Double) -> Double {
+        let u = min(max(age / T.codeBuildIn, 0), 1)
+        return u * u * (3 - 2 * u)
     }
 
     var count: Int { min(shown, T.cap) }
@@ -276,15 +310,16 @@ struct Code: Ambience.Scene {
 
     mutating func step(dt: Double, events: [Ambience.Event], rate: Double, into out: inout [Sprite]) {
         advance(dt: dt, events: events, rate: rate)
-        let i = intensity, change = between(T.codeChange, i) * dt
+        age += dt
+        let i = intensity, change = between(T.codeChange, i) * dt, veil = self.veil
         let look = (head: between(T.codeHead, i), top: between(T.codeTrailTop, i), halo: between(T.codeHalo, i))
         shown = 0
         var (buffer, k, room) = ([Sprite](), 0, max(T.cap - out.count, 0))
         swap(&buffer, &scratch)  // out of the scene, so the sheets can draw into it
         buffer.withUnsafeMutableBufferPointer { b in
-            main.draw(look, cut: cut, ink: stage.ink, glyphs: glyphs, change: change, random: &random,
+            main.draw(look, veil: veil, cut: cut, ink: stage.ink, glyphs: glyphs, change: change, random: &random,
                       into: b.baseAddress!, count: &k, room: room, shown: &shown)
-            near.draw(look, cut: cut, ink: stage.ink, glyphs: glyphs, change: change, random: &random,
+            near.draw(look, veil: veil, cut: cut, ink: stage.ink, glyphs: glyphs, change: change, random: &random,
                       into: b.baseAddress!, count: &k, room: room, shown: &shown)
         }
         out.append(contentsOf: buffer[0..<k])
@@ -335,7 +370,7 @@ struct Code: Ambience.Scene {
         let c = min(max(Int((along - main.left) / main.pitch), 0), main.columns - 1)
         let r = min(max(Int((1 - height + random.pick(-0.03...0.03)) * h / main.pitch), 0), main.rows - 1)
         let t = Code.logUniform(T.codeKeyTrail, &random)
-        main.heads.append(Head(column: c, row: Double(r), trail: t, gain: 1, glyph: slot, key: true))
+        main.heads.append(Head(column: c, row: Double(r), trail: t, gain: 1, glyph: slot, key: true, veiled: false))
         main.light(c, r, trail: t, top: T.codeKeyTrailTop)
     }
 

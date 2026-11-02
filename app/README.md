@@ -68,7 +68,9 @@ drawn by the Metal pipeline over a dimmed dark app with the box; skipped without
 `ambience-grid-keyboard.png` ("the quick brown fox" at 20 keys/s, the keys lit as a keyboard), and since pass 17b
 `handoff-send-60ms.png`, `handoff-send-120ms.png`, `handoff-send-200ms.png` and `handoff-rise-120ms.png` (the box over
 a light app 60, 120 and 200 ms after ⌘⏎, and 120 ms after ⌘⇧⏎; composed as Core Animation composes the app's layers),
-and since pass 19b `ambience-code-idle.png` (Code at rest, 3 s after the summon; `ambience-code.png` is Code typing),
+and since pass 19b `ambience-code-idle.png` (Code at rest, 3 s after the summon, since pass 27b 3 s after its
+build-in; `ambience-code.png` is Code typing), and since pass 27b `ambience-code-build-500ms.png` and
+`ambience-code-build-2000ms.png` (Code building in, 0.5 s after the summon and at half its build-in),
 and since pass 21 `ambience-code-still-day.png` (Code at rest on Still's day wash over a light app),
 `ambience-code-still-night.png` (on its night wash over a dark app), `idle-still-day.png` and `idle-still-night.png`
 (the four `ambience-code*` named `ambience-rain*` until pass 25), and since pass 24 `ambience-water-day.png` and
@@ -1118,8 +1120,50 @@ the animation (but do not use these colors)."):
 - Build: `LEMNA_VERSION=0.1.2 make-app.sh`; the executable is 1,251,680 bytes, no home folder in its symbols; signed
   with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
 
+Pass 27b, Code builds in and lifts a little more while typing (DESIGN.md A1 amended; 2026-11-02; the user, after
+trying pass 27: "Love this, this is much better. Two things, it is way less reactive (which is okay, but it could be
+just a bit more. The other thing is, that it should build in, not start the animation so in your face."):
+
+- `Code` (`Scenes.swift`): a `Head` and a `Cell` carry `veiled`; a sheet's `veiling` is true while the birth steps
+  the scene ahead (`codeAhead`), so every head of then is veiled and `light` passes a head's veil into the cells it
+  lights; `veiling` goes false after it. `Code.age` counts the time since the birth and `Code.veil(at:)` is the
+  smoothstep of `age ÷ codeBuildIn`; `Sheet.draw(_:veil:...)` multiplies a veiled head's and halo's alpha and a
+  veiled cell's by it and drops what falls under `cut` (a veiled head still marks its cell `under`). The heads born
+  after the show and the keys' are never veiled. The key's halo is `codeKeyHalo`, no longer the intensity's.
+- The mechanism, chosen against the code: the rest's look is the state 20 s of stepping make, with trails that
+  linger 2–19 s; a cold start reaches its coverage in 4 s only with more and younger trails than it holds (brighter,
+  then settling for seconds), and a fade of the whole frame brings in no streams. Veiling the stepped-ahead state and
+  letting the natural births (about 16 a second on 1512 × 982 at rest) fall in at full gives streams arriving at once
+  and exactly the rest's state at the end; it costs one flag a cell and a multiply while the veil is under 1.
+- `Tuning`: new `codeBuildIn` 4 and `codeKeyHalo` 0.7; changed `cap` 20,000 (16,000), `codeActive` (0.8, 1.6)
+  [(0.8, 1.4)], `codeTrailTop` (0.5, 0.9) [(0.55, 0.85)], `codeHalo` (0.22, 0.4) [(0.22, 0.35)], `codeChange`
+  (0.5, 3) [(0.5, 2)], `codeNearActive` (0.06, 0.15) [(0.06, 0.12)], `codeKeyHead` 1 [0.95], `codeKeyTrailTop` 1
+  [0.8], `codeKeyTrail` 20–60 [12–40], `codeRise` 0.15 [0.25], `codeSettle` 1.5 [1.2]; each comment gives pass 27's.
+- The tuning, iterated on the renders and on the lift (the main sheet's light and its cells above 0.3, typing at 6
+  keys a second against at rest, over four seeds; pass 27: 2.16 and 2.67 times): 1, the typing side raised further
+  (heads 1.8, the trail's top 1.0, halo 0.45, nearer heads 0.18, the key's halo 0.5): typing's light 3 times the
+  rest's and a near wall on the render, the keys' halos (0.5) hardly brighter than the others' at full intensity
+  (0.45), and the 6K display's typing peak 16,010; 2, heads 1.6, the top 0.9, halo 0.4, nearer 0.15, the key's halo 0.7: 2.70 and
+  3.62 times, the typed glyphs standing out, kept. The rest's light 618 against pass 27's 667.
+- Measured, the build-in on 1512 × 982 over four seeds (cells drawn, light): the first frame 0 %, 0–1; 0.5 s 5–6 %,
+  12–23 with 5–10 heads at full; 2 s 66–75 %, 333–407; 4 s 71–78 %, 599–672 against the rest's 72–77 %, 594–662.
+  The onset of the lift: at 5 keys a second the intensity 0.39 after 1 s and 0.80 after 2 s (0.35, 0.77 before):
+  mostly the 2 s of `rateWindow`.
+- Tests: 137 (134 before), passing in debug and in release. New: `codeBuildsInAtTheSummon`, `aKeyDuringTheBuildInStartsItsHeadAtOnce`,
+  `typingLiftsTheCurtainMoreThanInPass27`. Changed: the tuning record; the rest-state tests (grid, curtain,
+  brightness, nearer sheet, halos, glyph changes, the cap's 7 s window, the stage beyond the cap, Code on Still's day
+  dim) look past the build-in; the ramp's τs and hold read from `Tuning`; Code's first frame with no key no longer
+  needs 100 sprites, its frame at `codeBuildIn` does. The step in release 0.02 ms at rest on 1512 × 982 and 0.09 ms
+  typing on 2560 × 1440 (0.02 and 0.06 in pass 27), 0.11 ms typing on 3008 × 1692.
+- Build: `LEMNA_VERSION=0.1.2 make-app.sh`; the executable is 1,252,400 bytes, no home folder in its symbols; signed
+  with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
+
 ## Known gaps
 
+- Pass 27b is not tried: nothing was launched. Untried: whether 4 s of build-in reads as arriving or as slow, and
+  the build-in at 30 Hz on a real dim (the renders are single frames); whether the lift is "just a bit more" or now
+  too much; the lift's onset, set mostly by the typing rate's 2 s window (a 1 s window would bring it in about twice
+  as fast; not built). The site's Code tile still draws pass 25's rain.
 - Pass 27 is not tried: nothing was launched. Untried: the look on a real dim at 30 Hz (the renders are single
   frames), whether the rest state is too busy beside the box, whether the halo reads as a glow, whether the near
   sheet's mipmap blur looks soft or blocky on a 1× screen (the atlas has two levels below its own), the mirrored

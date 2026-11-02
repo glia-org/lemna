@@ -65,10 +65,11 @@ extension Ambience {
     /// 19b); Still water's rings in the text colour.
     public enum Tuning {
         /// Every mode: at most this many sprites a frame, stepped and drawn at 60 Hz (Code at rest at `codeIdleRate`,
-        /// Still water at `waterFrameRate`). 16,000 since pass 27 (the panel's 2,000 particles before): Code draws
-        /// every lit cell, about 3,500 at rest on a laptop's screen and 15,500 at most typing on a 6K display's
-        /// 3008 × 1692 pt; the instance buffers are 512 KB each, the GPU's work bound by the screen's area.
-        public static let cap = 16_000, frameRate = 60.0
+        /// Still water at `waterFrameRate`). 20,000 since pass 27b [16,000 in pass 27, the panel's 2,000 particles
+        /// before]: Code draws every lit cell, about 3,500 at rest on a laptop's screen and 16,000 at most typing on a
+        /// 6K display's 3008 × 1692 pt (15,450 in pass 27), so a quarter of room; the instance buffers are 640 KB
+        /// each, the GPU's work bound by the screen's area.
+        public static let cap = 20_000, frameRate = 60.0
         /// Nothing new after the last key, and the scene is gone `linger` after it, fading out evenly over the last
         /// `fadeOut` (a decay nobody triggered, kept off the curve, so the scene does not drop half of itself in the
         /// first tenth of a second at a moment the writer did not choose; pass 18); then the display link pauses. Not
@@ -96,11 +97,13 @@ extension Ambience {
         /// `rateWindow`), sets every magnitude between them, linearly: the films' "more intense", more heads, longer
         /// and brighter trails, brighter heads and halos, glyphs changing more often, never faster columns (pass 25); it
         /// rises with τ `codeRise` and falls with τ `codeSettle` from `codeHold` after the last key (so the pauses
-        /// between words do not make it pulse; back near rest about 4 s after the last key). The head and the cells
-        /// right behind it in the text colour, the trail in the accent (C2). From the show to the close
-        /// (`Mode.ambient`), stepped `codeAhead` ahead at its birth so the summon finds it falling; at `codeIdleRate`
-        /// frames a second while the intensity is at most `codeCalm` and no key came in the last `codeHold`. Pass 25's
-        /// values, before the film's frame, in brackets.
+        /// between words do not make it pulse; back near rest about 5 s after the last key, 4 s in pass 27). The head
+        /// and the cells right behind it in the text colour, the trail in the accent (C2). From the show to the close
+        /// (`Mode.ambient`), stepped `codeAhead` ahead at its birth so it is falling at the summon, and that curtain
+        /// veiled and built in over `codeBuildIn` (pass 27b); at `codeIdleRate` frames a second while the intensity is
+        /// at most `codeCalm` and no key came in the last `codeHold`. Pass 25's values, before the film's frame, in
+        /// brackets, and pass 27's where pass 27b changed them (the user, 2026-11-02, of pass 27: "it is way less
+        /// reactive (which is okay, but it could be just a bit more").
         ///
         /// The grid: glyphs at `codeScale` of the line's size (16.8 pt at Menlo 28 [0.5, 14 pt]) on cells `codePitch`
         /// of the glyph cell's height at the line's size on a side (18.5 pt: 81 × 54 cells on 1512 × 982 pt, as
@@ -113,13 +116,14 @@ extension Ambience {
         /// and classic (15–30), so it neither crawls at rest nor rushes while typing; a laptop's 54 rows in 3.4–6.8 s.
         public static let codeSpeed = 8.0...16.0
         /// Heads: about `codeActive` in a column for each `codeHeight` of its height (a taller screen as dense as a
-        /// laptop's; [a share of the columns falling, 0.3 / 0.7]), at most `codeMost` for each `codeHeight`, each at
-        /// least `codeGap` rows from the others in its column [one trail and 3 / 2 cells behind the last], so a column
-        /// often holds two at different heights and they never collide (one speed a column); a column's next head comes
-        /// after a pause of `codeWait` of its mean (narrower than a Poisson pause's, which left one column in eight
-        /// empty), the pause running at the intensity's rate so typing shortens the one under way; `codeHigh` of them
-        /// start lower than the top edge, at a row within `codeHighRows` of the height, the rest at the top.
-        public static let codeActive = (idle: 0.8, typing: 1.4), codeHeight = 1000.0, codeMost = 3
+        /// laptop's; [a share of the columns falling, 0.3 / 0.7; 0.8 / 1.4 in pass 27]), at most `codeMost` for each
+        /// `codeHeight`, each at least `codeGap` rows from the others in its column [one trail and 3 / 2 cells behind
+        /// the last], so a column often holds two at different heights and they never collide (one speed a column); a
+        /// column's next head comes after a pause of `codeWait` of its mean (narrower than a Poisson pause's, which
+        /// left one column in eight empty), the pause running at the intensity's rate so typing shortens the one under
+        /// way; `codeHigh` of them start lower than the top edge, at a row within `codeHighRows` of the height, the
+        /// rest at the top.
+        public static let codeActive = (idle: 0.8, typing: 1.6), codeHeight = 1000.0, codeMost = 3
         public static let codeGap = (idle: 8.0, typing: 5.0), codeWait = 0.5...1.5
         public static let codeHigh = 0.3, codeHighRows = 0.05...0.6
         /// A head's trail in cells, log-uniform (more short than long), so most reach far up the screen and a head's
@@ -129,32 +133,49 @@ extension Ambience {
         /// The head's alpha [0.35 / 0.85], and the `codeNeckCells` cells right behind it, still in the text colour, at
         /// `codeNeck` of it and then its square (the films' bright glyph or two under a head).
         public static let codeHead = (idle: 0.8, typing: 1.0), codeNeck = 0.7, codeNeckCells = 2
-        /// The trail's top alpha [0.2 / 0.5], times its stream's gain, drawn once a head from `codeGain` (log-uniform:
-        /// most streams dim, a few bright, which makes the curtain and the brighter streams through it), times the
-        /// glyph's own brightness, drawn from `codeLevel` with each new glyph (u^`codeLevelSkew` across it: more dim
-        /// than bright), so a bright glyph sits beside dim ones and flickers as it changes.
-        public static let codeTrailTop = (idle: 0.55, typing: 0.85), codeGain = 0.3...2.0
+        /// The trail's top alpha [0.2 / 0.5; 0.55 / 0.85 in pass 27: a lower rest and a higher top so typing shows],
+        /// times its stream's gain, drawn once a head from `codeGain` (log-uniform: most streams dim, a few bright,
+        /// which makes the curtain and the brighter streams through it), times the glyph's own brightness, drawn from
+        /// `codeLevel` with each new glyph (u^`codeLevelSkew` across it: more dim than bright), so a bright glyph sits
+        /// beside dim ones and flickers as it changes.
+        public static let codeTrailTop = (idle: 0.5, typing: 0.9), codeGain = 0.3...2.0
         public static let codeLevel = 0.3...1.0, codeLevelSkew = 1.5
         /// The halo under a head where light adds (Lemna, Still by night; ink laid over Still's day wash does not
-        /// glow): a soft disc in the text colour (`Sprite.halo`), at `codeHalo` in its middle, falling to e^(−2) of it
-        /// `codeHaloWidth` of the pitch out and to nothing at twice that (the films' bloom, the cheapest kind).
-        public static let codeHalo = (idle: 0.22, typing: 0.35), codeHaloWidth = 0.8
-        /// Every lit glyph changes in place this often a second [0.3 / 1.5], its brightness with it.
-        public static let codeChange = (idle: 0.5, typing: 2.0)
+        /// glow): a soft disc in the text colour (`Sprite.halo`), at `codeHalo` in its middle [0.22 / 0.35 in pass
+        /// 27], falling to e^(−2) of it `codeHaloWidth` of the pitch out and to nothing at twice that (the films'
+        /// bloom, the cheapest kind).
+        public static let codeHalo = (idle: 0.22, typing: 0.4), codeHaloWidth = 0.8
+        /// Every lit glyph changes in place this often a second [0.3 / 1.5; 0.5 / 2 in pass 27], its brightness with
+        /// it.
+        public static let codeChange = (idle: 0.5, typing: 3.0)
         /// Depth: a nearer sheet over the grid, `codeNear` times its pitch and glyphs (its own columns, 51 on a laptop),
-        /// with about `codeNearActive` heads a column for each `codeHeight` (two to four streams on a laptop at rest),
-        /// `codeNearBright` times the alphas and sampled `codeNearBlur` mipmap levels softer: a few streams larger,
-        /// softer and brighter, falling as many rows a second as the far ones and so faster across the screen.
-        public static let codeNear = 1.6, codeNearActive = (idle: 0.06, typing: 0.12), codeNearBright = 1.6
+        /// with about `codeNearActive` heads a column for each `codeHeight` (two to four streams on a laptop at rest;
+        /// [0.06 / 0.12 in pass 27]), `codeNearBright` times the alphas and sampled `codeNearBlur` mipmap levels
+        /// softer: a few streams larger, softer and brighter, falling as many rows a second as the far ones and so
+        /// faster across the screen.
+        public static let codeNear = 1.6, codeNearActive = (idle: 0.06, typing: 0.15), codeNearBright = 1.6
         public static let codeNearBlur = 1.5
         /// Each glyph key also starts a head in its column where the key is (`screenSpan`, `codeRows`), the typed glyph
-        /// at it, not mirrored, at `codeKeyHead`, its trail from `codeKeyTrailTop` [0.55] at each glyph's own
-        /// brightness over `codeKeyTrail` cells [8–20]; Space and Return none.
-        public static let codeKeyHead = 0.95, codeKeyTrailTop = 0.8, codeKeyTrail = 12.0...40.0
-        public static let codeFast = 6.0, codeRise = 0.25, codeSettle = 1.2, codeHold = 0.8
+        /// at it, not mirrored, at `codeKeyHead` [0.95] over a halo at `codeKeyHalo` [the intensity's `codeHalo`], so
+        /// a key's head stands out of the curtain while typing, its trail from `codeKeyTrailTop` [0.55; 0.8 in pass
+        /// 27] at each glyph's own brightness over `codeKeyTrail` cells [8–20; 12–40 in pass 27]; Space and Return
+        /// none.
+        public static let codeKeyHead = 1.0, codeKeyHalo = 0.7, codeKeyTrailTop = 1.0, codeKeyTrail = 20.0...60.0
+        /// The intensity's τ up, `codeRise` [0.25 in pass 27; the typing rate's `rateWindow` of 2 s sets most of the
+        /// rise], and down, `codeSettle` [1.2 in pass 27], after `codeHold` without a key.
+        public static let codeFast = 6.0, codeRise = 0.15, codeSettle = 1.5, codeHold = 0.8
         /// A trail cell is drawn above `codeShown` (raised frame by frame on a stage with more lit cells than `cap`, so
         /// the dimmest go and not the columns on the right).
         public static let codeAhead = 20.0, codeIdleRate = 30.0, codeCalm = 0.05, codeShown = 0.02
+        /// The build-in at the summon (pass 27b; the user, 2026-11-02: "it should build in, not start the animation so
+        /// in your face"; pass 27 showed the whole curtain in the first frame): what the birth stepped ahead
+        /// (`codeAhead`), every head and lit cell of it, is veiled, drawn at a share of its alpha rising from 0 to 1
+        /// over `codeBuildIn` on a smoothstep, while the heads that start from the show on (about 16 a second on a
+        /// laptop's screen at rest) and the keys' fall in at their full alpha: a few streams in the first half
+        /// second, the curtain half built at 2 s, the rest's own look from 4 s on. 4 s, about the time a stream
+        /// takes down a laptop's screen (54 rows at 8–16 rows a second, 3.4–6.8 s), so the curtain is whole as the
+        /// first arrivals reach the bottom.
+        public static let codeBuildIn = 4.0
 
         /// Still water (pass 24; AM1 of `docs/design-panel-lemna-themes.html`, per word and at rest since pass 25;
         /// `research_notes/Lemna themes/look.md` §5.3's Ripples): drops land at random on the dim at least `waterClear`

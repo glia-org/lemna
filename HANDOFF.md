@@ -4,6 +4,47 @@
 
 ## State (2026-11-02)
 
+- App, pass 27b, Code builds in and lifts a little more while typing (2026-11-02; DESIGN.md A1 amended; the user,
+  after trying pass 27: "Love this, this is much better. Two things, it is way less reactive (which is okay, but it
+  could be just a bit more. The other thing is, that it should build in, not start the animation so in your face.").
+  **The build-in:** the scene is still stepped 20 s ahead at its birth, but all of that is veiled, every head and lit
+  cell of it drawn at a share of its alpha that rises from 0 to 1 over 4 s (`Tuning.codeBuildIn`, a smoothstep),
+  while the heads that start from the show on (about 16 a second on a laptop's screen) and the keys' fall in at full.
+  The dim opens nearly empty, a few streams arrive in the first half second (5–10 heads), the curtain is about half
+  built at 2 s and is the rest's own from 4 s on (no trace of the veil after). 4 s is about the time a stream takes
+  down a laptop's screen. Not taken: a cold start with the pauses shortened (reaches the coverage only with more,
+  younger, brighter streams than the rest has, so it overshoots), a fade of the whole frame (nothing arrives). The
+  box, its pop and the dim's fade, Still water and Reduce Motion (no ambience) unchanged. **The lift:** heads typing
+  1.6 a column (1.4), the trail's top 0.5 / 0.9 (0.55 / 0.85), halo typing 0.4 (0.35), glyph changes typing 3 a
+  second (2), nearer heads typing 0.15 (0.12); a key's head 1 (0.95) over its own halo 0.7 (the intensity's) with a
+  trail from 1 (0.8) over 20–60 cells (12–40), so the typed glyphs stand out; the intensity's τ up 0.15 s (0.25) and
+  down 1.5 s (1.2), back near rest about 5 s after the last key. Speeds unchanged. Measured on 1512 × 982 over four
+  seeds: typing's light 2.70 times the rest's (pass 27: 2.16), cells above 0.3 alpha 3.62 times (2.67), 2.21 times at
+  4 keys a second (1.80); the rest's light 7 % below pass 27's. **Cost:** the cap 20,000 sprites (16,000; the
+  instance buffers 640 KB each), since the 6K display's typing peak is now 16,170 (15,450); at most 3,550 at rest
+  and 4,980 typing on 1512 × 982; the step in release 0.02 ms at rest, 0.09 ms typing on 2560 × 1440 (0.06), in
+  debug 0.87 and 2.6 ms. Tests: 137, all passing in debug and in release (134 before; new: the build-in from the first frame to the rest, a key's head at full during the
+  build-in, typing's lift against pass 27's measured one with the rest kept within a tenth of it; the rest-state tests
+  now look 3–4 s after the build-in, the tuning record and the ramp's times read `Tuning`). Renders
+  `ambience-code-build-500ms.png` and `ambience-code-build-2000ms.png` (new), `ambience-code-idle.png` (now 3 s after
+  the build-in), `ambience-code.png`, `ambience-code-still-day.png`, `ambience-code-still-night.png`, looked at
+  against pass 27's. `LEMNA_VERSION=0.1.2 make-app.sh` built, signed with "Lemna Dev" (`Authority=Lemna Dev`) and
+  verified; the executable is 1,252,400 bytes, no home folder in its symbols. Not tried: nothing was launched. **Open:**
+  whether 4 s reads as building in or as slow (`codeBuildIn` is the one knob; 3 s is the low end of the brief);
+  whether the lift is "just a bit more" or now too much (the quickest knobs: `codeTrailTop.typing` 0.9 and
+  `codeActive.typing` 1.6); the lift's onset is set mostly by the typing rate's 2 s window (`Tuning.rateWindow`, used
+  only by Code), not by `codeRise`: at 5 keys a second the intensity is 0.39 after 1 s and 0.80 after 2 s; a 1 s
+  window would bring the lift in about twice as fast (not built: the user's call); the power at rest is still not
+  measured. Try, after quitting the running Lemna and `open app/build/Lemna.app`,
+  Session › Ambience ▸ Code:
+  - Summon over a dark app and watch the first seconds: the dim opens almost empty, a few streams fall in from the
+    top and from midway in the first half second, the dim curtain grows in under them, whole after about 4 s.
+  - Summon and type at once: each typed glyph lights at its key's place at full from the first key, brighter than the
+    curtain's heads, with a glow of its own.
+  - Type fast for ten seconds: more and brighter streams than pass 27, glyphs flickering faster, the same speeds;
+    stop: back to the curtain within about 5 s. Is it "a bit more", or too much?
+  - Esc and summon again: it builds in again each time.
+
 - App, pass 27, Code as the film's title sequence (2026-11-02; DESIGN.md A1 amended; the user, after trying Code, with
   two frames of the titles: "Regarding the rain animation, in the movie it looks more like this: [two frames]. Revise
   the animation (but do not use these colors)."). **At rest Code is now the frame's structure** in the theme's ink
