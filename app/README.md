@@ -81,9 +81,9 @@ git-ignored.
 
 ## Layout
 
-- `Sources/LemnaCore` (no AppKit): `Text.swift` the model (one string with `"\n"` between paragraphs and a caret in
-  Characters; each key's edits and motion as a `Change`; a journal edit applied, the replay; the line's two parts
-  around the caret with ` ¶ `), `Line.swift` the geometry and drawing (Core Text shaping around the caret, the two
+- `Sources/LemnaCore` (no AppKit): `Text.swift` the model (one string with `"\n"` between paragraphs, U+2028 for a
+  line break inside one, and a caret in Characters; each key's edits and motion as a `Change`; a journal edit applied,
+  the replay; the line's two parts around the caret with ` ¶ ` and ` ↵ `), `Line.swift` the geometry and drawing (Core Text shaping around the caret, the two
   fades, the clips at the caret, caret, the band, the newest glyphs' look, the colours), `Glide.swift` the glide, the curve
   (`Curve.easeOutQuint`) and the newest glyphs' entrance (`Entrance`), `Effects.swift` the Effects submenu's choice and
   every effect's magnitude (`Effects.Tuning`), `Ambience.swift` the Ambience submenu's choice, every magnitude of the
@@ -1226,8 +1226,46 @@ newline character much better."):
 - Build: `LEMNA_VERSION=0.1.2 make-app.sh`, build 84; the executable 1,273,056 bytes, no home folder in its symbols;
   signed with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
 
+Pass 29b, the line break (DESIGN.md B4 and R1 amended; 2026-11-03; the user, after seeing a Return come out as a
+blank line in the pasted text: "a enter does not put a newline but rather two. Is that intended?", then "newline.",
+then: "Wait, make shift+enter newline and keep enter the old behaviour."):
+
+- The model (`Text.swift`): Return still inserts "\n", a paragraph end; ⇧⏎ inserts `Text.lineBreak`, U+2028 LINE
+  SEPARATOR, a Character of its own inside the paragraph, which only "\n" ends (`paragraphs`, ⌘←/→ and the line split
+  there alone). `insert` keeps a U+2028 as it is and still makes any other newline a paragraph end. ← → ⌫ ⌦ take it as
+  one Character; the word moves and word deletes take it as white space (it is, to `Character.isWhitespace`); a
+  selection runs across it; `selectedText` (⌘C, ⌘X) gives it as "\n". The journal stores it in the existing
+  `insert(at:)`; the replay is unchanged.
+- The line (`Line.swift`): `Line.lineBreak`, ` ↵ ` (U+21B5, which Menlo has, one cell as ¶), muted, the arrow in
+  `markFont` and the spaces in the line's face, as the ` ¶ `; `Text.runs` (now internal) makes both marks, and
+  `Line.width` and `Line.shown` (an entrance's units) go through it; `attributed` puts the mark face on the one
+  Character of a mark run that is no space.
+- The keys (`LineView.swift`): AppKit sends `insertNewline:` for ⇧⏎ as for Return (StandardKeyBinding.dict has ⌃⏎ →
+  `insertLineBreak:`, ⌥⏎ and ⇧⌥⏎ → `insertNewlineIgnoringFieldEditor:`, no ⇧⏎; seen by sending the key events through
+  `interpretKeyEvents` in a probe that showed no window), so `doCommand(by:)` takes `insertNewline:` with ⇧ in
+  `NSApp.currentEvent`'s flags, `insertLineBreak:` and `insertNewlineIgnoringFieldEditor:` as a line break, with
+  Return's click and the ambience's `.paragraph`; ⌃O (`insertNewlineIgnoringFieldEditor:` then `moveBackward:`) opens
+  a line. `entering` gives a line break the paragraph fade, as Return's ` ¶ `.
+- R1 (`Mechanical.swift`): paragraphs split at "\n" only (was `\.isNewline`, which a U+2028 matches); each paragraph's
+  lines (at U+2028) lose their trailing spaces, are joined by "\n" and then go through the rules as one paragraph, so
+  a line break is white space to the lone `i` and no sentence end or paragraph start to the capitals (a period's word
+  starts after it); two line breaks a blank line. The output holds no U+2028. Not idempotent on a text with a line
+  break (its "\n" would come back as a paragraph end); nothing reads R1's output back.
+- Not changed: the format-1 journal upgrade (`V1Edit.upgrade`) still splits on any newline, as format 1 meant; the
+  site's typable demo, where Enter hands off and no ` ¶ ` shows.
+- Tests: 161 (153 before; 8 new: three in EditingTests, one each in CoreTests, MechanicalTests, ThemeTests,
+  RenderTests and JournalReplayTests; `paragraphsAndPlainText` types U+2029 for "any newline" and keeps a U+2028),
+  debug and release. Renders: `line-break.png`, `line-break-still-day.png`, their `-as-paragraph` twins (the same line
+  with a ` ¶ ` in place of the ` ↵ `), `line-break-fade-25ms.png` and `line-break-25ms.png`; the 35 earlier renders of
+  the line, the ambience and the hand-off byte for byte as pass 29's (rendered again at its commit and compared).
+- Build: `LEMNA_VERSION=0.1.2 make-app.sh`, build 85; the executable 1,274,112 bytes, no home folder in its symbols;
+  signed with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
+
 ## Known gaps
 
+- Pass 29b is not tried: nothing was launched. Untried: ⇧⏎, ⌃⏎ and ⌥⏎ in the box and the window (that the panel's key
+  event carries ⇧ to `doCommand`), the ` ↵ `'s look by day and night, a paste of a line break into other apps. Open: a
+  saved Markdown file shows a lone "\n" as a space in a Markdown viewer; no hard break was added.
 - Pass 29 is not tried: nothing was launched. Untried: ⌘A, ⌘C and ⌘X reaching the line in the box while Lemna is not
   the active app (the Edit menu's actions through the responder chain of the non-activating panel; the box's
   `sendEvent` hands ⌘ keys to the menu as for ⌘⏎), and in the window; the band on real screens by day and night and

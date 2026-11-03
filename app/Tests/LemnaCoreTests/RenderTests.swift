@@ -164,3 +164,49 @@ func near(_ p: [Int], _ q: [Int]) -> Bool { zip(p, q).allSatisfy { abs($0 - $1) 
                                                                                   style: style) == paper, "\(name)")
     }
 }
+
+/// The line break (pass 29b) on the line: a ` ↵ ` just after the caret and a ` ¶ ` before it, in Lemna's look
+/// (line-break.png) and on Still's day paper (line-break-still-day.png); and ⇧⏎'s ` ↵ ` 25 ms into its fade, as
+/// Return's ` ¶ ` (line-break-fade-25ms.png). The arrow's ink is the muted grey's, never the text's: no pixel of its
+/// cells lies further from the surface than the muted grey does.
+@Test func lineBreakRenders() throws {
+    let words = "The reeds bent.\nThe boats,\u{2028}the water"  // the caret after "boats,": ¶ before it, ↵ after it
+    let text = Text(words, caret: 26), font = try #require(stillFont)
+    for (style, name) in [(Style(font: menlo), "line-break.png"), (Style(.still, dark: false, font: font),
+                                                                    "line-break-still-day.png")] {
+        let frame = render(text, offset: 0, style: style, name: name)
+        #expect(frame != render(Text(words.replacingLineBreak(), caret: 26), offset: 0, style: style,
+                                name: String(name.dropLast(4)) + "-as-paragraph.png"), "\(name)")  // ↵ is not ¶
+        let size = CGSize(width: 1200, height: 700), band = Line.band(in: size, style: style)
+        let bar = Line.caretRect(in: band, style: style), line = Line.shape(text, marked: "", font: style.font)
+        let arrow = try #require(line.glyphs.first { $0.index == line.split + 1 })  // " ↵ "'s middle, after the caret
+        #expect(arrow.muted && arrow.after && CTFontCopyPostScriptName(arrow.font) as String == "Menlo-Regular")
+        let p = style.palette, left = bar.maxX - line.caret + arrow.x
+        let (x0, x1) = (Int(2 * left), Int(2 * (left + arrow.advance)))
+        func distance(_ c: UInt32, _ b: Int, _ g: Int, _ r: Int) -> Int {
+            abs(Int(c & 255) - b) + abs(Int(c >> 8 & 255) - g) + abs(Int(c >> 16 & 255) - r)
+        }
+        var most = 0
+        for y in Int(2 * (size.height - band.maxY))..<Int(2 * (size.height - band.minY)) {
+            for x in x0..<x1 {
+                let k = 4 * (y * 2400 + x)
+                most = max(most, distance(p.surface, Int(frame[k]), Int(frame[k + 1]), Int(frame[k + 2])))
+            }
+        }
+        let muted = distance(p.surface, Int(p.muted & 255), Int(p.muted >> 8 & 255), Int(p.muted >> 16 & 255))
+        #expect(most > muted / 2 && most <= muted + 6, "\(name): \(most) of \(muted)")  // inked, and muted
+        #expect(inkedColumns(frame).upperBound < 2 * 1140, "\(name)")  // inside the fade after the caret
+    }
+    var typed = Text("The reeds bent.\nThe boats,")
+    typed.insert(String(Text.lineBreak))
+    var g = Glide()
+    g.add(Double(Line.width("\u{2028}", font: menlo)), at: 0, reduceMotion: false)
+    let fading = render(typed, offset: CGFloat(g.offset(at: 0.025)),
+                        newest: Entrance.paragraph(units: 3, at: 0).newest(at: 0.025), name: "line-break-fade-25ms.png")
+    #expect(fading != render(typed, offset: CGFloat(g.offset(at: 0.025)), name: "line-break-25ms.png"))
+}
+
+extension String {
+    /// The text with each line break a paragraph end: the same line with ` ¶ ` where ` ↵ ` stood.
+    func replacingLineBreak() -> String { String(map { $0 == Text.lineBreak ? "\n" : $0 }) }
+}

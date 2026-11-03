@@ -1,7 +1,8 @@
 // Editing anywhere on the line (DESIGN.md B4): the caret's moves, the deletes, the word rules, Characters as the one
 // unit, and the edits each key hands the journal; since pass 29 the selection: every move with ⇧, ⌘A, the collapse of
-// a plain move, typing and pending text over a selection, the four deletes of one, and what ⌘C and ⌘X take. No
-// Foundation here (see RenderTests.swift).
+// a plain move, typing and pending text over a selection, the four deletes of one, and what ⌘C and ⌘X take; since
+// pass 29b the line break (⇧⏎), one Character inside its paragraph for every key. No Foundation here (see
+// RenderTests.swift).
 import LemnaJournal
 import Testing
 @testable import LemnaCore
@@ -304,4 +305,76 @@ func selecting(_ t: Text) -> String {
     t = Text("one two", caret: 7)
     t.moveWordLeft(extending: true)
     #expect(t.selectedText == "two" && t.utf16Selection == 4..<7)  // the caret at the start: the same text
+}
+
+// MARK: The line break (pass 29b)
+
+/// ⇧⏎'s line break, U+2028 in the text.
+let br = String(Text.lineBreak)
+
+/// A line break (B4, pass 29b; the user, 2026-11-03: "make shift+enter newline and keep enter the old behaviour"): one
+/// Character inside its paragraph, so ← and → step over it, ⌫ and ⌦ take it alone, and it is journaled as typed.
+@Test func aLineBreakIsOneCharacterInsideItsParagraph() {
+    var t = Text("first line")
+    #expect(t.insert(br) == Change(edits: [.insert(at: 10, br)], motion: .before(added: br, removed: "")))
+    t.insert("second")
+    #expect(t.paragraphs == ["first line\u{2028}second"] && t.count == 17 && t.utf16Caret == 17)
+    for _ in 0 ..< 6 { t.moveLeft() }
+    #expect(t.moveLeft() == Change(motion: .caret(passed: br, leftward: true)))  // ← past the ↵ lands before it
+    #expect(marked(t) == "first line|\u{2028}second" && t.utf16Caret == 10)
+    #expect(t.moveRight() == Change(motion: .caret(passed: br, leftward: false)))
+    #expect(t.deleteBackward() == Change(edits: [.delete(at: 10, count: 1)], motion: .before(added: "", removed: br)))
+    #expect(marked(t) == "first line|second")
+    t.insert(br)
+    t.moveLeft()
+    #expect(t.deleteForward() == Change(edits: [.delete(at: 10, count: 1)], motion: .after(removed: br)))
+    #expect(t.paragraphs == ["first linesecond"])
+    t = Text("one")
+    t.insert(br)
+    t.insert(br)  // ⇧⏎ twice: two line breaks, kept as typed
+    t.insert("two")
+    t.insert("\n")  // and Return still ends the paragraph
+    #expect(t.paragraphs == ["one\u{2028}\u{2028}two", ""] && t.count == 9)
+}
+
+/// ⌥← and ⌥→ take a line break as white space, a word's end; ⌘← and ⌘→ go to the paragraph's ends past it; ⌥⌫ takes
+/// what ⌥← passes.
+@Test func wordMovesStopAtALineBreakAndParagraphMovesPassIt() {
+    var t = Text("zero\nthe reeds\u{2028}the boats\nend", caret: 24)  // after "boats"
+    t.moveWordLeft()
+    #expect(marked(t) == "zero\nthe reeds\u{2028}the |boats\nend")
+    t.moveWordLeft()
+    #expect(marked(t) == "zero\nthe reeds\u{2028}|the boats\nend")
+    #expect(t.moveWordLeft() == Change(motion: .caret(passed: "reeds\u{2028}", leftward: true)))
+    t.moveWordRight()
+    #expect(marked(t) == "zero\nthe reeds|\u{2028}the boats\nend")
+    #expect(t.moveWordRight() == Change(motion: .caret(passed: "\u{2028}the", leftward: false)))
+    #expect(t.moveToParagraphStart() == Change(motion: .caret(passed: "the reeds\u{2028}the", leftward: true)))
+    #expect(marked(t) == "zero\n|the reeds\u{2028}the boats\nend")
+    #expect(t.moveToParagraphEnd() == Change(motion: .caret(passed: "the reeds\u{2028}the boats", leftward: false)))
+    #expect(marked(t) == "zero\nthe reeds\u{2028}the boats|\nend")
+    t = Text("one\u{2028}two", caret: 4)
+    #expect(t.deleteWordBackward() == Change(edits: [.delete(at: 0, count: 4)],
+                                             motion: .before(added: "", removed: "one\u{2028}")))
+    t = Text("one\u{2028}two", caret: 3)
+    #expect(t.deleteWordForward() == Change(edits: [.delete(at: 3, count: 4)], motion: .after(removed: "\u{2028}two")))
+}
+
+/// A selection runs across a line break as across any Character: ⇧← and ⇧⌥→ take it, ⇧⌘← goes past it to the
+/// paragraph's start; ⌘C and ⌘X copy it as "\n", as the output has it; typing replaces it, ⌫ takes it.
+@Test func aSelectionRunsAcrossALineBreak() {
+    var t = Text("ab\u{2028}cd", caret: 3)  // just after the line break
+    #expect(t.moveLeft(extending: true) == Change(motion: .caret(passed: br, leftward: true)))
+    #expect(selecting(t) == "ab|\u{2028}^cd" && t.selection == 2..<3 && t.selectedText == "\n")
+    t.moveWordRight(extending: true)  // turned round: from the anchor on to the end of "cd"
+    #expect(selecting(t) == "ab\u{2028}^cd|" && t.selectedText == "cd")
+    t.moveToParagraphStart(extending: true)  // ⇧⌘←: past the line break to the paragraph's start
+    #expect(selecting(t) == "|ab\u{2028}^cd" && t.selectedText == "ab\n" && t.utf16Selection == 0..<3)
+    #expect(t.insert("x") == Change(edits: [.delete(at: 0, count: 3), .insert(at: 0, "x")],
+                                    motion: .before(added: "x", removed: "")))  // the caret at its start, as ⌦'s cut
+    #expect(selecting(t) == "x|cd")
+    t = Text("one\u{2028}two\nthree")
+    t.selectAll()
+    #expect(t.selectedText == "one\ntwo\nthree")  // a line break and a paragraph end alike: "\n" for ⌘C
+    #expect(t.deleteBackward().edits == [.delete(at: 0, count: 13)] && t.plainText == "")
 }

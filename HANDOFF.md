@@ -4,6 +4,38 @@
 
 ## State (2026-11-03)
 
+- App, pass 29b, the line break (2026-11-03; DESIGN.md B4 and R1 amended; the user, after seeing a Return come out as
+  a blank line in the pasted text: "a enter does not put a newline but rather two. Is that intended?", then
+  "newline.", then: "Wait, make shift+enter newline and keep enter the old behaviour."). **Return is unchanged:** a
+  paragraph end, ` ¶ `, a blank line in the output. **⇧⏎** inserts a line break inside the paragraph: U+2028 in `Text`
+  (`Text.lineBreak`), one Character, so ← → ⌫ ⌦ take it as one, ⌥←/→ stop at it as at white space, ⌘←/→ go past it to
+  the paragraph's ends, a selection runs across it; the journal keeps it in the existing `insert(at:)`, the replay is
+  unchanged. **On the line** ` ↵ ` (U+21B5), muted, its arrow in Menlo (`Line.markFont`) under every theme and its
+  spaces in the line's face, so it takes the ` ¶ `'s room; the paragraph fade, Return's click and the ambience's
+  Return. **The keys:** ⇧⏎ sends Return's own `insertNewline:` (StandardKeyBinding.dict has no ⇧⏎ entry; checked by
+  sending the key events through `interpretKeyEvents`), so `LineView` tells them apart by the key's ⇧; ⌃⏎
+  (`insertLineBreak:`) and ⌥⏎ / ⇧⌥⏎ (`insertNewlineIgnoringFieldEditor:`) are line breaks too, and ⌃O (that command,
+  then `moveBackward:`) now opens a line after the caret. **R1** (`Mechanical`) parts paragraphs at "\n" only (was any
+  newline) and puts one "\n" for a line break: no capital after it, two of them a blank line as typed, a line's
+  trailing spaces stripped as a paragraph's are; ⌘C and ⌘X copy a line break as "\n" too, so no U+2028 leaves Lemna.
+  The format-1 journal upgrade (lib/LemnaJournal) still splits on any newline: that is format 1's meaning, and its app
+  never typed a U+2028 as a line break. Tests: 161 (153 before; new in EditingTests
+  `aLineBreakIsOneCharacterInsideItsParagraph`, `wordMovesStopAtALineBreakAndParagraphMovesPassIt`,
+  `aSelectionRunsAcrossALineBreak`; CoreTests `lineBreaksShowAsAMutedReturnArrow`; MechanicalTests
+  `aLineBreakComesOutAsOneNewline`; ThemeTests `theLineBreaksArrowIsMenloInEveryTheme`; RenderTests
+  `lineBreakRenders`; JournalReplayTests `lineBreaksReplayThroughTheJournal`; CoreTests `paragraphsAndPlainText` now
+  types U+2029 for "any newline" and keeps U+2028), debug and release. Renders (app/renders): `line-break.png`,
+  `line-break-still-day.png` (a ` ¶ ` before the caret, a ` ↵ ` after it), `line-break-fade-25ms.png`.
+  `LEMNA_VERSION=0.1.2 make-app.sh` built build 85, signed with "Lemna Dev" (`Authority=Lemna Dev`) and verified; the
+  executable 1,274,112 bytes, no home folder in it. Not tried: nothing was launched. Try, after quitting the running
+  Lemna and `open app/build/Lemna.app`:
+  - In the box, a sentence, ⇧⏎, another, Return, a third: ` ↵ ` fades in with Return's click where the ⇧⏎ went, ` ¶ `
+    for the Return; ←/→ and ⌫ over the ` ↵ `, ⌥← to it, ⌘← past it.
+  - ⌘⏎ into a note or a mail: the ⇧⏎ is one line break, the Return a blank line; no capital after the line break. ⇧⏎
+    twice: a blank line. ⌃⏎ and ⌥⏎ do as ⇧⏎.
+  - Still by day and by night: the ` ↵ ` beside the ` ¶ `, both Menlo's, muted. **Open:** ⌘S's Markdown file shows a
+    lone "\n" as a space in a Markdown viewer (a soft break); a hard break (two trailing spaces or a backslash) was
+    not added. Say if a saved file should carry one.
 - App, pass 29, selection on the line (2026-11-03; DESIGN.md B4 amended, TH1 noted; the user: "I want to be able to
   select characters and words as well using the standard macos shortcuts (cmd+a, cmd+shift+left, shift+alt+left,
   ..."; then, for the same pass: "the newline character, which is rendered, looks weird when having a serif font. I

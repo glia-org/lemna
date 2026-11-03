@@ -2,9 +2,9 @@
 // between them, W2), its layer paints the background, and the line is drawn into the strip across its middle on each
 // key and, while a glide or an entrance runs, on each display refresh. The caret moves through the text and edits
 // anywhere (B4), and with ⇧ selects (pass 29: typing replaces the selection, ⌫ and ⌦ take it, ⌘A, ⌘C and ⌘X); every
-// change to the text leaves as a journal edit (E2) and, ahead of the drawing, as a click (K1). The newest glyph and a
-// Return's ` ¶ ` fade in, in the same frames (F1: K1, E2). After each key's frame the key goes on to the ambience as a
-// value (A1).
+// change to the text leaves as a journal edit (E2) and, ahead of the drawing, as a click (K1). Return ends a paragraph,
+// ⇧⏎ breaks the line inside it (pass 29b). The newest glyph and a Return's ` ¶ ` or a ⇧⏎'s ` ↵ ` fade in, in the same
+// frames (F1: K1, E2). After each key's frame the key goes on to the ambience as a value (A1).
 import AppKit
 import LemnaClicks
 import LemnaCore
@@ -153,13 +153,13 @@ final class LineView: NSView, NSTextInputClient {
         if animating(at: shown) { link?.isPaused = false }
     }
 
-    /// The entrance for what a key added (F1): a Return's ` ¶ ` fades in (E2), and so does anything else typed (K1); none
-    /// while that effect is off.
+    /// The entrance for what a key added (F1): a Return's ` ¶ ` fades in (E2), a ⇧⏎'s ` ↵ ` as it does (pass 29b), and
+    /// so does anything else typed (K1); none while that effect is off.
     private func entering(_ typed: String?, at t: Double, reduceMotion: Bool) -> Entrance {
         guard let typed, !typed.isEmpty else { return Entrance() }
-        let paragraph = typed == "\n"
+        let paragraph = typed == "\n" || typed == String(Text.lineBreak)
         guard effects.plays(paragraph ? .paragraphFade : .glyphFade, reduceMotion: reduceMotion) else { return Entrance() }
-        let units = typed.replacingOccurrences(of: "\n", with: Line.paragraphEnd).utf16.count  // as the line shows it
+        let units = Line.shown(typed).utf16.count  // as the line shows it
         return paragraph ? .paragraph(units: units, at: t) : .glyph(units: units, at: t)
     }
 
@@ -264,22 +264,30 @@ final class LineView: NSView, NSTextInputClient {
         interpretKeyEvents([event])
     }
 
-    /// The keys of B4, by the commands AppKit's key bindings (StandardKeyBinding.dict) send for them: Return; ⌫, ⌥⌫,
-    /// ⌦, ⌥⌦; ←, →, ⌥←, ⌥→; ⌘← and ⌘→, which send moveToLeftEndOfLine: and moveToRightEndOfLine: and go to the
-    /// paragraph's ends (on one line, a paragraph is the only line there is); and Esc (its cancelOperation:, after the
-    /// input method had its say, so an input method's own Esc still cancels its pending text). The other commands
-    /// that mean the same move come along at no cost (⌃B ⌃F, ⌃⌥B ⌃⌥F, ⌃A ⌃E and ⌥↑ ⌥↓; ⌃H and ⌃D already send
-    /// deleteBackward: and deleteForward:). Each move with ⇧ sends its ...AndModifySelection: twin, which selects
-    /// (pass 29): ⇧← ⇧→, ⇧⌥← ⇧⌥→, ⇧⌘← ⇧⌘→ (moveToLeftEndOfLineAndModifySelection:, …RightEnd…), and so ⌃⇧B ⌃⇧F,
-    /// ⌃⌥⇧B ⌃⌥⇧F, ⌃⇧A ⌃⇧E, ⌃⇧← ⌃⇧→, and ⌥⇧↑ ⌥⇧↓ (moveParagraphBackwardAndModifySelection:, as ⌥↑'s two commands
-    /// with ⇧). Every other command (↑, ↓ and ⇧↑, ⇧↓, Tab, Home and End) does nothing.
+    /// The keys of B4, by the commands AppKit's key bindings (StandardKeyBinding.dict) send for them: Return, and ⇧⏎
+    /// (pass 29b), which sends Return's insertNewline: (the dict has no ⇧⏎ of its own), so the key's ⇧ tells them
+    /// apart, a paragraph end for Return and a line break for ⇧⏎; ⌃⏎ (insertLineBreak:) and ⌥⏎ and ⇧⌥⏎
+    /// (insertNewlineIgnoringFieldEditor:, a newline inside a text field elsewhere) a line break too; ⌫, ⌥⌫, ⌦, ⌥⌦; ←,
+    /// →, ⌥←, ⌥→; ⌘← and ⌘→, which send moveToLeftEndOfLine: and moveToRightEndOfLine: and go to the paragraph's ends
+    /// (on one line, a paragraph is the only line there is; a line break does not stop them); and Esc (its
+    /// cancelOperation:, after the input method had its say, so an input method's own Esc still cancels its pending
+    /// text). The other commands that mean the same move come along at no cost (⌃B ⌃F, ⌃⌥B ⌃⌥F, ⌃A ⌃E and ⌥↑ ⌥↓; ⌃H and
+    /// ⌃D already send deleteBackward: and deleteForward:). Each move with ⇧ sends its ...AndModifySelection: twin,
+    /// which selects (pass 29): ⇧← ⇧→, ⇧⌥← ⇧⌥→, ⇧⌘← ⇧⌘→ (moveToLeftEndOfLineAndModifySelection:, …RightEnd…), and so
+    /// ⌃⇧B ⌃⇧F, ⌃⌥⇧B ⌃⌥⇧F, ⌃⇧A ⌃⇧E, ⌃⇧← ⌃⇧→, and ⌥⇧↑ ⌥⇧↓ (moveParagraphBackwardAndModifySelection:, as ⌥↑'s two
+    /// commands with ⇧). Every other command (↑, ↓ and ⇧↑, ⇧↓, Tab, Home and End) does nothing.
     override func doCommand(by selector: Selector) {
         guard accepting else { return }
         typealias K = NSStandardKeyBindingResponding
         switch selector {
-        case #selector(K.insertNewline(_:)):
+        case #selector(K.insertNewline(_:)) where NSApp.currentEvent?.modifierFlags.contains(.shift) != true:
             clicks?.play(.paragraph)
             take(text.insert("\n"))
+            ambient(.paragraph)
+        case #selector(K.insertNewline(_:)), #selector(K.insertLineBreak(_:)),
+             #selector(K.insertNewlineIgnoringFieldEditor(_:)):  // ⇧⏎, ⌃⏎, ⌥⏎: Return's click, the ambience's Return
+            clicks?.play(.paragraph)
+            take(text.insert(String(Text.lineBreak)))
             ambient(.paragraph)
         case #selector(K.deleteBackward(_:)): delete(text.deleteBackward())
         case #selector(K.deleteWordBackward(_:)): delete(text.deleteWordBackward())

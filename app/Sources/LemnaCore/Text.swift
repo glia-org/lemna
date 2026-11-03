@@ -1,12 +1,17 @@
-// The writing as one string, paragraphs apart by "\n", with a caret anywhere in it and a selection from an anchor to
-// the caret (DESIGN.md S1 B4 P0; the selection since pass 29), rebuilt from the journal's edits (E2). One unit
-// everywhere: Characters (the caret, the anchor, the journal's offsets, the line's parts), so a letter with its accent
-// or an emoji is one step of ← and one ⌫.
+// The writing as one string, paragraphs apart by "\n", a line break inside one as U+2028 (pass 29b, ⇧⏎), with a caret
+// anywhere in it and a selection from an anchor to the caret (DESIGN.md S1 B4 P0; the selection since pass 29), rebuilt
+// from the journal's edits (E2). One unit everywhere: Characters (the caret, the anchor, the journal's offsets, the
+// line's parts), so a letter with its accent, an emoji or a line break is one step of ← and one ⌫.
 import LemnaJournal
 import Foundation
 
 public struct Text: Equatable {
-    /// The text, a paragraph end as "\n": for the journal and the output.
+    /// ⇧⏎'s line break (B4, pass 29b): U+2028 LINE SEPARATOR, a Character of its own inside a paragraph, which only
+    /// "\n" ends; white space to the word moves, a Character to ← → ⌫ ⌦, ` ↵ ` on the line (`Line.lineBreak`), "\n" in
+    /// the output (R1, `Mechanical`) and in ⌘C. The journal keeps it as it is.
+    public static let lineBreak: Character = "\u{2028}"
+
+    /// The text, a paragraph end as "\n", a line break as `lineBreak`: for the journal and the output.
     public private(set) var plainText: String
     /// Characters before the caret, 0 … `count`.
     public private(set) var caret: Int
@@ -29,7 +34,7 @@ public struct Text: Equatable {
         a.plainText == b.plainText && a.caret == b.caret && a.anchor == b.anchor
     }
 
-    /// The paragraphs; the last one may be empty.
+    /// The paragraphs, their line breaks in them; the last one may be empty.
     public var paragraphs: [String] { plainText.split(separator: "\n", omittingEmptySubsequences: false).map(String.init) }
 
     /// The caret in UTF-16 units: the text input system indexes the document in these.
@@ -39,8 +44,12 @@ public struct Text: Equatable {
     /// is selected.
     public var selection: Range<Int> { anchor.map { min($0, caret)..<max($0, caret) } ?? caret..<caret }
 
-    /// The selection as text, for ⌘C and ⌘X; "" when nothing is selected.
-    public var selectedText: String { String(plainText[index(selection.lowerBound)..<index(selection.upperBound)]) }
+    /// The selection as text, for ⌘C and ⌘X, a line break in it as "\n" (pass 29b), as a paragraph end; "" when
+    /// nothing is selected.
+    public var selectedText: String {
+        let selected = plainText[index(selection.lowerBound)..<index(selection.upperBound)]
+        return String(selected.map { $0 == Self.lineBreak ? "\n" : $0 })
+    }
 
     /// The selection in UTF-16 units, for the text input system's `selectedRange`.
     public var utf16Selection: Range<Int> {
@@ -51,13 +60,14 @@ public struct Text: Equatable {
 
     // MARK: Keys
 
-    /// Typing at the caret, which ends after `s`; a newline of any kind in it is a paragraph end. `replacing`: first
+    /// Typing at the caret, which ends after `s`; a newline of any kind in it is a paragraph end, but `lineBreak`,
+    /// which stays a line break (⇧⏎ inserts it here, pass 29b). `replacing`: first
     /// take the Characters that hold the last `n` UTF-16 units before the caret (the press-and-hold accent menu
     /// replaces the letter just typed, and names it in the input system's units). A selection is replaced instead
     /// (pass 29): taken first, as ⌫ or ⌦ takes it, then `s` typed where it was; `n` is then not used.
     @discardableResult
     public mutating func insert(_ s: String, replacing n: Int = 0) -> Change {
-        let s = String(s.map { $0.isNewline ? "\n" : $0 })
+        let s = String(s.map { $0 != Self.lineBreak && $0.isNewline ? "\n" : $0 })
         var change = Change(), removed = ""
         if let cut = deleteSelection() {
             if s.isEmpty { return cut }
@@ -103,7 +113,7 @@ public struct Text: Equatable {
     // comes back to the anchor. Without ⇧ a selection collapses as in a Mac text field: the move starts from the
     // selection's end on its side, its start for a leftward one, its end for a rightward one, and ← and → stop there.
 
-    /// ← and →: one Character, a paragraph end included (it shows as ` ¶ `).
+    /// ← and →: one Character, a paragraph end included (it shows as ` ¶ `), a line break too (` ↵ `).
     @discardableResult
     public mutating func moveLeft(extending: Bool = false) -> Change {
         go(leftward: true, extending: extending, stopsAtSelection: true) { t, p in
@@ -117,9 +127,9 @@ public struct Text: Equatable {
         }
     }
 
-    /// ⌥← and ⌥→: words are runs between white space of any kind (⌥Space's no-break space and a paragraph end
-    /// included). ⌥← goes back over white space and then the word before it, to its start; ⌥→ on over white space and
-    /// the next word, to its end, as in a Mac text field.
+    /// ⌥← and ⌥→: words are runs between white space of any kind (⌥Space's no-break space, a paragraph end and a line
+    /// break included). ⌥← goes back over white space and then the word before it, to its start; ⌥→ on over white
+    /// space and the next word, to its end, as in a Mac text field.
     @discardableResult
     public mutating func moveWordLeft(extending: Bool = false) -> Change {
         go(leftward: true, extending: extending) { t, p in t.wordLeft(from: p) }
@@ -130,7 +140,7 @@ public struct Text: Equatable {
     }
 
     /// ⌘← and ⌘→: the paragraph's start (just after the paragraph end before the caret) or its end (just before the
-    /// next one). Already there: nothing.
+    /// next one), past any line break in it. Already there: nothing.
     @discardableResult
     public mutating func moveToParagraphStart(extending: Bool = false) -> Change {
         go(leftward: true, extending: extending) { t, p in
@@ -197,12 +207,13 @@ public struct Text: Equatable {
 
     // MARK: The line
 
-    /// A part of the line: its text, whether it is a paragraph end's ` ¶ ` (muted), whether it is selected.
+    /// A part of the line: its text, whether it is a paragraph end's ` ¶ ` or a line break's ` ↵ ` (muted), whether it
+    /// is selected.
     public typealias Run = (text: String, muted: Bool, selected: Bool)
 
     /// What the line shows around the caret: up to `n` Characters before it and `n` after it, each paragraph end as
-    /// ` ¶ ` (muted), the selection's part of them marked. Only these can be on screen, so the rest is never shaped;
-    /// the anchor may lie beyond them.
+    /// ` ¶ ` and each line break as ` ↵ ` (muted), the selection's part of them marked. Only these can be on screen,
+    /// so the rest is never shaped; the anchor may lie beyond them.
     public func line(around n: Int) -> (before: [Run], after: [Run]) {
         let lo = plainText.index(at, offsetBy: -n, limitedBy: plainText.startIndex) ?? plainText.startIndex
         let hi = plainText.index(at, offsetBy: n, limitedBy: plainText.endIndex) ?? plainText.endIndex
@@ -213,12 +224,15 @@ public struct Text: Equatable {
                 Self.runs(plainText[at..<to], selected: true) + Self.runs(plainText[to..<hi], selected: false))
     }
 
-    private static func runs(_ s: Substring, selected: Bool) -> [Run] {
-        var out: [Run] = []
-        for (k, part) in s.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-            if k > 0 { out.append((Line.paragraphEnd, true, selected)) }
-            if !part.isEmpty { out.append((String(part), false, selected)) }
+    /// `s` as the line shows it: its text in runs, each paragraph end a ` ¶ ` and each line break a ` ↵ ` of its own.
+    static func runs(_ s: Substring, selected: Bool) -> [Run] {
+        var out: [Run] = [], start = s.startIndex
+        for i in s.indices where s[i] == "\n" || s[i] == lineBreak {
+            if start < i { out.append((String(s[start..<i]), false, selected)) }
+            out.append((s[i] == "\n" ? Line.paragraphEnd : Line.lineBreak, true, selected))
+            start = s.index(after: i)
         }
+        if start < s.endIndex { out.append((String(s[start...]), false, selected)) }
         return out
     }
 

@@ -14,6 +14,7 @@ struct Typist {
     mutating func key(_ k: (inout Text) -> Change) { edits += k(&text).edits }
     mutating func type(_ s: String) { key { $0.insert(s) } }
     mutating func returnKey() { key { $0.insert("\n") } }
+    mutating func lineBreak() { key { $0.insert(String(Text.lineBreak)) } }  // ⇧⏎ (pass 29b)
     mutating func pressAndHold(_ s: String, replacing n: Int) { key { $0.insert(s, replacing: n) } }
     mutating func backspace() { key { $0.deleteBackward() } }
 }
@@ -141,6 +142,48 @@ struct Typist {
     let k = try Journal.open(directory: .init(fileURLWithPath: sessions), keyStore: store)
     #expect(k.replay == Array(t.edits[..<start]))
     #expect(Text(replaying: k.replay).paragraphs == ["one 2V", ""])
+    try k.finish()
+    #expect(rmdir(sessions) == 0 && rmdir(root) == 0)
+}
+
+/// ⇧⏎'s line break (pass 29b) is journaled as the Character it is, U+2028, in the existing `insert(at:)`, and deleted
+/// as one by `delete(at:count:)`, so the replay is unchanged: two line breaks, one taken by ⌫ from the middle and typed
+/// again, a Return after them; written through a real journal and read back, then handed off by R1 as a relaunch's
+/// Done would.
+@Test func lineBreaksReplayThroughTheJournal() throws {
+    var t = Typist()
+    t.type("the reeds")
+    t.lineBreak()
+    t.type("the boats")
+    t.lineBreak()
+    t.lineBreak()
+    t.type("so")
+    t.key { $0.moveWordLeft() }
+    t.backspace()  // the second line break, from before "so"
+    t.key { $0.moveToParagraphEnd() }
+    t.returnKey()
+    t.type("the water")
+    t.key { $0.moveToParagraphStart() }
+    t.key { $0.moveLeft() }
+    t.key { $0.moveWordLeft() }
+    t.lineBreak()  // before "so"
+    #expect(t.text.paragraphs == ["the reeds\u{2028}the boats\u{2028}\u{2028}so", "the water"])
+    #expect(t.edits.contains(.insert(at: 9, "\u{2028}")) && t.edits.contains(.delete(at: 20, count: 1)))
+
+    var template = Array((String(cString: getenv("TMPDIR")) + "/lemna-app-test-XXXXXX").utf8CString)
+    let root = template.withUnsafeMutableBufferPointer { String(cString: mkdtemp($0.baseAddress!)) }
+    let sessions = root + "/sessions.noindex", store = MemoryKeyStore()
+    do {
+        let j = try Journal.open(directory: .init(fileURLWithPath: sessions), keyStore: store)
+        for e in t.edits { j.append(e) }
+        j.flush(.full)
+    }
+    usleep(200_000)  // the lock and the batch window pass, as in journalRoundTripThroughTheAppsReplay
+    let k = try Journal.open(directory: .init(fileURLWithPath: sessions), keyStore: store)
+    #expect(k.replay == t.edits)
+    let restored = Text(replaying: k.replay)
+    #expect(restored.plainText == t.text.plainText)
+    #expect(Mechanical.apply(restored.plainText).text == "The reeds\nthe boats\n\nso\n\nThe water")
     try k.finish()
     #expect(rmdir(sessions) == 0 && rmdir(root) == 0)
 }

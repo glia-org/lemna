@@ -5,7 +5,8 @@ import CoreText
 import Foundation
 
 /// A shaped glyph: its font (a fallback one for characters Menlo lacks), id, x in the line, advance, whether it
-/// belongs to a paragraph end, whether it stands after the caret, and where it starts in the line's string (UTF-16).
+/// belongs to a paragraph end or a line break (muted), whether it stands after the caret, and where it starts in the
+/// line's string (UTF-16).
 public struct Glyph {
     public let font: CTFont, id: CGGlyph, x: CGFloat, advance: CGFloat, muted: Bool, after: Bool, index: Int
 }
@@ -31,7 +32,7 @@ public struct Newest: Equatable {
 /// comes on screen.
 public struct Style {
     public var font: CTFont
-    /// The box's surface, the text, the muted grey (the ` ¶ `, the bottom edge) and the caret (the accent).
+    /// The box's surface, the text, the muted grey (the ` ¶ `, the ` ↵ `, the bottom edge) and the caret (the accent).
     public var background: CGColor, text: CGColor, muted: CGColor, caret: CGColor
     /// The box's edge: the accent (B1) or the theme's hairline.
     public var border: CGColor
@@ -64,6 +65,9 @@ public enum Line {
     /// The text after the caret (B4): full strength up to 80 % of the width, nothing from 95 % on.
     public static let afterOpaqueTo: CGFloat = 0.8, afterClearAt: CGFloat = 0.95
     public static let paragraphEnd = " ¶ "
+    /// A line break (⇧⏎, pass 29b; `Text.lineBreak`) as the line shows it: a muted return arrow, U+21B5, drawn as the
+    /// ` ¶ ` is, its arrow in `markFont` and its two spaces in the line's face, so it takes a paragraph end's room.
+    public static let lineBreak = " \u{21B5} "
     /// The selection's band (B4, pass 29): the accent at this alpha behind the selected glyphs. 0.3 reads on each
     /// theme's surface with the text over it: on Lemna's box #0e1013 the band is #2e3d55, 1.74:1 to the box and the
     /// text 8.0:1 on it; on Still's paper #c4cbb7, 1.47:1 (macOS's own light selection on white, 1.5:1) and the text
@@ -89,30 +93,34 @@ public enum Line {
         min(max((afterClearAt * w - x) / ((afterClearAt - afterOpaqueTo) * w), 0), 1)
     }
 
-    /// The width of `s` alone as the line shows it (a paragraph end as ` ¶ `, its pilcrow in `markFont`): how far an
-    /// edit that adds or removes `s` at the caret, or a caret move over it, moves the text. Measured on its own, not as
-    /// the difference of two shaped lines, because their start moves with every key.
+    /// `s` as the line shows it: each paragraph end a ` ¶ `, each line break a ` ↵ ` (an entrance's units).
+    public static func shown(_ s: String) -> String { Text.runs(Substring(s), selected: false).map(\.text).joined() }
+
+    /// The width of `s` alone as the line shows it (a paragraph end as ` ¶ ` and a line break as ` ↵ `, each mark in
+    /// `markFont`): how far an edit that adds or removes `s` at the caret, or a caret move over it, moves the text.
+    /// Measured on its own, not as the difference of two shaped lines, because their start moves with every key.
     public static func width(_ s: String, font: CTFont) -> CGFloat {
         guard !s.isEmpty else { return 0 }
-        let shown = NSMutableAttributedString(), mark = s.contains("\n") ? markFont(for: font) : font
-        for (k, part) in s.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-            if k > 0 { shown.append(attributed(paragraphEnd, font, muted: true, mark: mark)) }
-            if !part.isEmpty { shown.append(attributed(String(part), font, muted: false, mark: mark)) }
+        let shown = NSMutableAttributedString()
+        let mark = s.contains(where: { $0 == "\n" || $0 == Text.lineBreak }) ? markFont(for: font) : font
+        for part in Text.runs(Substring(s), selected: false) {
+            shown.append(attributed(part.text, font, muted: part.muted, mark: mark))
         }
         return CTLineGetTypographicBounds(CTLineCreateWithAttributedString(shown), nil, nil, nil)
     }
 
     /// The face of the ` ¶ `'s pilcrow (pass 29; the user, 2026-11-03: "the newline character, which is rendered,
-    /// looks weird when having a serif font. I like the non-serif newline character much better."): the line's own
-    /// when it is monospaced (Lemna's Menlo), else Menlo at its size, as Code's atlas takes it
-    /// (`Ambience.Glyphs.atlasFont`). Its two spaces stay in the line's face, so the mark keeps the room it had.
+    /// looks weird when having a serif font. I like the non-serif newline character much better.") and of the ` ↵ `'s
+    /// arrow (pass 29b): the line's own when it is monospaced (Lemna's Menlo), else Menlo at its size, as Code's atlas
+    /// takes it (`Ambience.Glyphs.atlasFont`). Their two spaces stay in the line's face, so a mark keeps its room.
     public static func markFont(for font: CTFont) -> CTFont { Ambience.Glyphs.atlasFont(for: font) }
 
-    /// Shapes the line around the caret: the text before it with its paragraph ends, then the marked text (a pending
-    /// dead key, at the caret, in the text colour), then the text after it; once per edit, as one line, so the two
-    /// parts meet where Core Text puts the caret. The text after it is a run of its own, so no ligature (Literata's fi,
-    /// ff, ft, Th) spans the caret, which would draw both letters on one side of it. The selection is no attribute
-    /// (which would split a run at the anchor and move the kerning there), only a range of the line's units.
+    /// Shapes the line around the caret: the text before it with its paragraph ends and line breaks, then the marked
+    /// text (a pending dead key, at the caret, in the text colour), then the text after it; once per edit, as one line,
+    /// so the two parts meet where Core Text puts the caret. The text after it is a run of its own, so no ligature
+    /// (Literata's fi, ff, ft, Th) spans the caret, which would draw both letters on one side of it. The selection is
+    /// no attribute (which would split a run at the anchor and move the kerning there), only a range of the line's
+    /// units.
     public static func shape(_ text: Text, marked: String, font: CTFont) -> Shaped {
         let (before, after) = text.line(around: tail)
         let s = NSMutableAttributedString(), mark = markFont(for: font)
@@ -149,13 +157,15 @@ public enum Line {
         return out
     }
 
-    /// `s` in `font`; a paragraph end's (`muted`) with its pilcrow in `mark` (`markFont`).
+    /// `s` in `font`; a paragraph end's or a line break's (`muted`) with its mark, the one Character in it that is no
+    /// space (the pilcrow, the arrow), in `mark` (`markFont`).
     static func attributed(_ s: String, _ font: CTFont, muted: Bool, mark: CTFont) -> NSAttributedString {
         let face = NSAttributedString.Key(kCTFontAttributeName as String)
         var a: [NSAttributedString.Key: Any] = [face: font]
         if muted { a[mutedKey] = true }
-        let out = NSMutableAttributedString(string: s, attributes: a), pilcrow = (s as NSString).range(of: "¶")
-        if muted, pilcrow.location != NSNotFound { out.addAttribute(face, value: mark, range: pilcrow) }
+        let out = NSMutableAttributedString(string: s, attributes: a)
+        let sign = (s as NSString).rangeOfCharacter(from: CharacterSet(charactersIn: " ").inverted)
+        if muted, sign.location != NSNotFound { out.addAttribute(face, value: mark, range: sign) }
         return out
     }
 

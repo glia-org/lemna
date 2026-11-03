@@ -1,4 +1,5 @@
-// The deterministic pass R1: each rule, what it leaves alone, its counts, and that a second pass changes nothing.
+// The deterministic pass R1: each rule, what it leaves alone, its counts, and that a second pass changes nothing; since
+// pass 29b a line break's one newline.
 import Testing
 @testable import LemnaCore
 
@@ -52,6 +53,22 @@ private func fix(_ s: String) -> String { Mechanical.apply(s).text }
     #expect(fix("One\n\nTwo\n") == "One\n\nTwo")  // Return twice and a last empty paragraph: no empty ones
     #expect(fix("One\n  \nTwo") == "One\n\nTwo")  // nothing but spaces: empty too
     #expect(fix("") == "")
+}
+
+/// ⇧⏎'s line break (pass 29b) comes out as one "\n" inside its paragraph, Return's paragraph end as a blank line: no
+/// capital after a line break (neither a paragraph's start nor a sentence end), two line breaks a blank line as typed,
+/// a line's trailing spaces stripped as a paragraph's are; never a U+2028 in the output.
+@Test func aLineBreakComesOutAsOneNewline() {
+    #expect(fix("the reeds\u{2028}the boats\nthe water") == "The reeds\nthe boats\n\nThe water")
+    #expect(fix("one.\u{2028}two") == "One.\ntwo")  // a sentence end before it: still no capital
+    #expect(fix("a\u{2028}\u{2028}b") == "A\n\nb")  // ⇧⏎ twice: a blank line, kept as typed
+    #expect(fix("one\u{2028} two") == "One\n two")  // a line's leading space stays, as a paragraph's does
+    #expect(fix("so\u{2028}i think") == "So\nI think")  // a lone i after it: white space before it
+    #expect(fix("Dear\u{2028}A. Reed") == "Dear\nA. Reed" && fix("one\u{2028}A. next") == "One\nA. next")  // an initial
+    let r = Mechanical.apply("one  \u{2028}two \nthree")
+    #expect(r.text == "One\ntwo\n\nThree" && r.trailing == 2 && r.spaces == 0)  // a line's end as a paragraph's
+    #expect(fix("one\u{2028}  \u{2028}two") == "One\n\ntwo")  // a line of spaces is empty, the line breaks stay
+    #expect(!fix("a\u{2028}b\u{2028}").contains("\u{2028}") && fix("a\u{2028}b\u{2028}") == "A\nb\n")
 }
 
 @Test func nothingElse() {

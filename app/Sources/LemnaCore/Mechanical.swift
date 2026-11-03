@@ -4,13 +4,13 @@
 
 public enum Mechanical {
     public struct Result: Equatable {
-        /// The paragraphs joined by a blank line (Markdown).
+        /// The paragraphs joined by a blank line (Markdown), a line break inside one as one newline.
         public var text: String
         /// Lowercase letters capitalised at a paragraph's or a sentence's start.
         public var capitals = 0
         /// Runs of spaces collapsed to one.
         public var spaces = 0
-        /// Paragraphs that ended in spaces.
+        /// Paragraphs, and lines before a line break, that ended in spaces.
         public var trailing = 0
         /// Lone `i` made `I`.
         public var lone = 0
@@ -18,18 +18,26 @@ public enum Mechanical {
         public var count: Int { capitals + spaces + trailing + lone }
     }
 
-    /// Applies R1 to plain text (paragraphs split at newlines): per paragraph, strips trailing spaces, collapses runs
+    /// Applies R1 to the text as `Text` holds it (paragraphs apart by "\n", a line break inside one as
+    /// `Text.lineBreak`): per paragraph, strips trailing spaces (at its end and before each line break), collapses runs
     /// of spaces, capitalises the first letter and the letter after a sentence end, and makes a lone `i` `I`; then
-    /// drops empty paragraphs (Markdown has no blank paragraph) and joins the rest by a blank line. Idempotent: its
-    /// own output comes back unchanged with no fixes.
+    /// drops empty paragraphs (Markdown has no blank paragraph) and joins the rest by a blank line. A line break comes
+    /// out as one "\n" (pass 29b): no paragraph's start and no sentence end, so no capital after it, and two of them
+    /// a blank line, as typed. Idempotent on text without line breaks: its own output comes back unchanged with no
+    /// fixes (a line break's "\n" would come back as a paragraph end).
     public static func apply(_ text: String) -> Result {
         var r = Result(text: "")
         var out: [String] = []
-        for line in text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline) {
-            var p = Array(line)
-            if p.last == " " {
-                r.trailing += 1
-                while p.last == " " { p.removeLast() }
+        for paragraph in text.split(separator: "\n", omittingEmptySubsequences: false) {
+            var p: [Character] = []
+            for (k, line) in paragraph.split(separator: Text.lineBreak, omittingEmptySubsequences: false).enumerated() {
+                var l = Array(line)
+                if l.last == " " {
+                    r.trailing += 1
+                    while l.last == " " { l.removeLast() }
+                }
+                if k > 0 { p.append("\n") }
+                p += l
             }
             p = collapse(p, &r)
             guard !p.isEmpty else { continue }
@@ -69,10 +77,11 @@ public enum Mechanical {
 
     /// Whether the `.!?` at `i` ends a sentence. A period does not after a word with another period in it ("e.g.",
     /// "z.B.", an ellipsis), after one letter ("z. B.", an initial) or after digits alone (an ordinal, "am 3. und 4.").
+    /// The word starts after a space or a line break.
     private static func endsSentence(_ p: [Character], _ i: Int) -> Bool {
         guard p[i] == "." else { return true }
         var start = i
-        while start > 0 && p[start - 1] != " " { start -= 1 }
+        while start > 0 && p[start - 1] != " " && p[start - 1] != "\n" { start -= 1 }
         let word = p[start ..< i]
         if word.contains(".") { return false }
         if word.count == 1 && word.first!.isLetter { return false }

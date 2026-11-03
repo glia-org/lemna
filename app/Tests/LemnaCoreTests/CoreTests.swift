@@ -28,10 +28,12 @@ func shown(_ t: Text, around n: Int = 999) -> (before: String, after: String, mu
     #expect(t.plainText == "Hello\nWorld\n\nagain")
     #expect(t.utf16Caret == t.plainText.utf16.count)
     var u = Text()
-    #expect(u.insert("one\r\ntwo\u{2028}") == Change(edits: [.insert(at: 0, "one\ntwo\n")],
+    #expect(u.insert("one\r\ntwo\u{2029}") == Change(edits: [.insert(at: 0, "one\ntwo\n")],
                                                       motion: .before(added: "one\ntwo\n", removed: "")))
     #expect(u.paragraphs == ["one", "two", ""])  // a newline of any kind from the input system ends a paragraph
     #expect(u.insert("") == Change())
+    u.insert("three\u{2028}four")  // but a line separator is ⇧⏎'s line break (pass 29b), inside the paragraph
+    #expect(u.paragraphs == ["one", "two", "three\u{2028}four"])
 }
 
 @Test func pressAndHoldReplacesTheLetterBeforeTheCaret() {
@@ -54,6 +56,23 @@ func shown(_ t: Text, around n: Int = 999) -> (before: String, after: String, mu
     #expect(shown(Text("one\ntwo", caret: 3)) == (before: "one", after: " ¶ two", muted: [" ¶ "]))  // before the ¶
     #expect(shown(Text("one\ntwo", caret: 4)) == (before: "one ¶ ", after: "two", muted: [" ¶ "]))  // after it
     #expect(shown(Text("abcdefgh", caret: 4), around: 2) == (before: "cd", after: "ef", muted: []))
+}
+
+/// ⇧⏎'s line break (pass 29b) shows as a muted ` ↵ `, as a paragraph end shows as ` ¶ `, in the line's parts, in the
+/// shaped line (three muted glyphs, Menlo's three cells) and in the width an edit or a move over it glides by.
+@Test func lineBreaksShowAsAMutedReturnArrow() {
+    #expect(Line.lineBreak == " \u{21B5} ")
+    #expect(shown(Text("one\u{2028}two")) == (before: "one ↵ two", after: "", muted: [" ↵ "]))
+    #expect(shown(Text("a\u{2028}b\nc")) == (before: "a ↵ b ¶ c", after: "", muted: [" ↵ ", " ¶ "]))
+    #expect(shown(Text("a\u{2028}\u{2028}")) == (before: "a ↵  ↵ ", after: "", muted: [" ↵ ", " ↵ "]))  // ⇧⏎ twice
+    #expect(shown(Text("one\u{2028}two", caret: 3)) == (before: "one", after: " ↵ two", muted: [" ↵ "]))
+    #expect(shown(Text("one\u{2028}two", caret: 4)) == (before: "one ↵ ", after: "two", muted: [" ↵ "]))
+    let s = Line.shape(Text("ab\u{2028}c\nd", caret: 4), marked: "", font: menlo)  // "ab ↵ c" | " ¶ d"
+    #expect(s.glyphs.map(\.muted) == [false, false, true, true, true, false, true, true, true, false])
+    #expect(s.glyphs.map(\.after) == [false, false, false, false, false, false, true, true, true, true])
+    #expect(s.split == 6 && abs(s.caret - 6 * advance) < 1e-9 && abs(s.width - 10 * advance) < 1e-9)
+    #expect(abs(Line.width("\u{2028}", font: menlo) - 3 * advance) < 1e-9)  // ⇧⏎ glides as Return does
+    #expect(abs(Line.width("a\u{2028}b\n", font: menlo) - 8 * advance) < 1e-9)
 }
 
 @Test func shapedLineCarriesMutedGlyphsAndMarkedText() {

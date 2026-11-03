@@ -3,8 +3,9 @@
 // stays monospaced), the preset leaves the sound's on or off alone, and Still opens and hands off by fades; since pass
 // 22 Still's bundled face, its caret's rounded ends, the line clearing the bottom edge's note and the shaped tail in
 // every theme's face, and Still in the window (editing-still-day.png, editing-still-night.png); since pass 29 the
-// selection's band in every theme and the ` ¶ `'s Menlo pilcrow (paragraph-still-day.png). Code on Still's day dim and
-// the box at rest by day and night are in AmbienceTests. No Foundation here (see RenderTests.swift).
+// selection's band in every theme and the ` ¶ `'s Menlo pilcrow (paragraph-still-day.png), since pass 29b the ` ↵ `'s
+// Menlo arrow. Code on Still's day dim and the box at rest by day and night are in AmbienceTests. No Foundation here
+// (see RenderTests.swift).
 import CoreGraphics
 import CoreText
 import Darwin
@@ -332,4 +333,23 @@ var stillFont: CTFont? {
     let style = Style(.still, dark: false, font: still)
     let frame = render(Text("the reeds bent over them.\nThe boats"), offset: 0, style: style, name: "paragraph-still-day.png")
     #expect(Array(frame[0..<4]) == [0xe8, 0xf0, 0xf3, 0xff])
+}
+
+/// The ` ↵ ` of ⇧⏎'s line break (pass 29b) as the ` ¶ ` is drawn: its arrow in Menlo at the line's size under every
+/// theme, its two spaces in the line's face, so ⇧⏎ and Return glide by the same room.
+@Test func theLineBreaksArrowIsMenloInEveryTheme() throws {
+    let still = try #require(stillFont)
+    for font in [menlo, still, CTFontCreateWithName("Charter" as CFString, 31, nil)] {
+        let size = CTFontGetSize(font), mono = CTFontCreateWithName("Menlo" as CFString, size, nil)
+        let line = Line.shape(Text("reeds\u{2028}boats"), marked: "", font: font), mark = line.glyphs.filter(\.muted)
+        #expect(mark.count == 3, "\(font)")
+        #expect(CTFontCopyPostScriptName(mark[1].font) as String == "Menlo-Regular" && CTFontGetSize(mark[1].font) == size)
+        for space in [mark[0], mark[2]] {
+            #expect(CTFontCopyPostScriptName(space.font) == CTFontCopyPostScriptName(font), "\(font)")
+        }
+        let room = 2 * Line.width(" ", font: font) + Line.width("\u{21B5}", font: mono)
+        #expect(abs(Line.width("\u{2028}", font: font) - room) < 0.01, "\(font)")
+        #expect(abs(Line.width("\u{2028}", font: font) - Line.width("\n", font: font)) < 0.01, "\(font)")  // as ¶
+        #expect(abs(line.width - Line.width("reeds\u{2028}boats", font: font)) < 0.01, "\(font)")
+    }
 }
