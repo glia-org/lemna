@@ -11,9 +11,10 @@ public struct Glyph {
 }
 
 /// The line laid out around the caret: `caret` is the caret's x in it, where the text before it ends and the text
-/// after it begins, `split` the same place in the line's UTF-16 units. It rests with that x at the caret.
+/// after it begins, `split` the same place in the line's UTF-16 units. It rests with that x at the caret. `selected`:
+/// the selection's part of it in the same units, ending or starting at `split` (empty: nothing selected).
 public struct Shaped {
-    public var glyphs: [Glyph] = [], width: CGFloat = 0, caret: CGFloat = 0, split = 0
+    public var glyphs: [Glyph] = [], width: CGFloat = 0, caret: CGFloat = 0, split = 0, selected = 0..<0
     public init() {}
 }
 
@@ -63,6 +64,11 @@ public enum Line {
     /// The text after the caret (B4): full strength up to 80 % of the width, nothing from 95 % on.
     public static let afterOpaqueTo: CGFloat = 0.8, afterClearAt: CGFloat = 0.95
     public static let paragraphEnd = " ¶ "
+    /// The selection's band (B4, pass 29): the accent at this alpha behind the selected glyphs. 0.3 reads on each
+    /// theme's surface with the text over it: on Lemna's box #0e1013 the band is #2e3d55, 1.74:1 to the box and the
+    /// text 8.0:1 on it; on Still's paper #c4cbb7, 1.47:1 (macOS's own light selection on white, 1.5:1) and the text
+    /// 5.9:1; on Still's night #444a3b, 1.88:1 and the text 6.6:1.
+    public static let selectionAlpha: CGFloat = 0.3
     /// Characters shaped on each side of the caret per edit, enough for the visible 35 % of a window 10,000 pt wide
     /// (before the caret 25 % to 60 %, after it 60 % to 95 %): 300 Menlo cells at 28 pt span about 5,100 pt; under a
     /// proportional face prose takes about 13 pt a character at 30 pt (Literata, Charter 31), so 300 span at least
@@ -83,33 +89,49 @@ public enum Line {
         min(max((afterClearAt * w - x) / ((afterClearAt - afterOpaqueTo) * w), 0), 1)
     }
 
-    /// The width of `s` alone as the line shows it (a paragraph end as ` ¶ `): how far an edit that adds or removes
-    /// `s` at the caret, or a caret move over it, moves the text. Measured on its own, not as the difference of two
-    /// shaped lines, because their start moves with every key.
+    /// The width of `s` alone as the line shows it (a paragraph end as ` ¶ `, its pilcrow in `markFont`): how far an
+    /// edit that adds or removes `s` at the caret, or a caret move over it, moves the text. Measured on its own, not as
+    /// the difference of two shaped lines, because their start moves with every key.
     public static func width(_ s: String, font: CTFont) -> CGFloat {
-        let shown = s.replacingOccurrences(of: "\n", with: paragraphEnd)
-        return shown.isEmpty ? 0 : CTLineGetTypographicBounds(
-            CTLineCreateWithAttributedString(attributed(shown, font, muted: false)), nil, nil, nil)
+        guard !s.isEmpty else { return 0 }
+        let shown = NSMutableAttributedString(), mark = s.contains("\n") ? markFont(for: font) : font
+        for (k, part) in s.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+            if k > 0 { shown.append(attributed(paragraphEnd, font, muted: true, mark: mark)) }
+            if !part.isEmpty { shown.append(attributed(String(part), font, muted: false, mark: mark)) }
+        }
+        return CTLineGetTypographicBounds(CTLineCreateWithAttributedString(shown), nil, nil, nil)
     }
+
+    /// The face of the ` ¶ `'s pilcrow (pass 29; the user, 2026-11-03: "the newline character, which is rendered,
+    /// looks weird when having a serif font. I like the non-serif newline character much better."): the line's own
+    /// when it is monospaced (Lemna's Menlo), else Menlo at its size, as Code's atlas takes it
+    /// (`Ambience.Glyphs.atlasFont`). Its two spaces stay in the line's face, so the mark keeps the room it had.
+    public static func markFont(for font: CTFont) -> CTFont { Ambience.Glyphs.atlasFont(for: font) }
 
     /// Shapes the line around the caret: the text before it with its paragraph ends, then the marked text (a pending
     /// dead key, at the caret, in the text colour), then the text after it; once per edit, as one line, so the two
     /// parts meet where Core Text puts the caret. The text after it is a run of its own, so no ligature (Literata's fi,
-    /// ff, ft, Th) spans the caret, which would draw both letters on one side of it.
+    /// ff, ft, Th) spans the caret, which would draw both letters on one side of it. The selection is no attribute
+    /// (which would split a run at the anchor and move the kerning there), only a range of the line's units.
     public static func shape(_ text: Text, marked: String, font: CTFont) -> Shaped {
         let (before, after) = text.line(around: tail)
-        let s = NSMutableAttributedString()
-        for part in before + [(text: marked, muted: false)] where !part.text.isEmpty {
-            s.append(attributed(part.text, font, muted: part.muted))
+        let s = NSMutableAttributedString(), mark = markFont(for: font)
+        var selected: Range<Int>?
+        func add(_ part: Text.Run) {
+            let start = s.length
+            s.append(attributed(part.text, font, muted: part.muted, mark: mark))
+            if part.selected { selected = (selected?.lowerBound ?? start)..<s.length }
         }
+        for part in before + [(text: marked, muted: false, selected: false)] where !part.text.isEmpty { add(part) }
         let split = s.length  // the caret, in the line's UTF-16 units
-        for part in after { s.append(attributed(part.text, font, muted: part.muted)) }
+        for part in after { add(part) }
         s.addAttribute(afterKey, value: true, range: NSRange(location: split, length: s.length - split))
         let line = CTLineCreateWithAttributedString(s)
         var out = Shaped()
         out.width = CTLineGetTypographicBounds(line, nil, nil, nil)
         out.caret = CTLineGetOffsetForStringIndex(line, split, nil)
         out.split = split
+        out.selected = selected ?? split..<split
         for run in CTLineGetGlyphRuns(line) as! [CTRun] {
             let attributes = CTRunGetAttributes(run) as NSDictionary, n = CTRunGetGlyphCount(run)
             let runFont = attributes[kCTFontAttributeName as String] as! CTFont, muted = attributes[mutedKey.rawValue] != nil
@@ -127,10 +149,14 @@ public enum Line {
         return out
     }
 
-    static func attributed(_ s: String, _ font: CTFont, muted: Bool) -> NSAttributedString {
-        var a: [NSAttributedString.Key: Any] = [NSAttributedString.Key(kCTFontAttributeName as String): font]
+    /// `s` in `font`; a paragraph end's (`muted`) with its pilcrow in `mark` (`markFont`).
+    static func attributed(_ s: String, _ font: CTFont, muted: Bool, mark: CTFont) -> NSAttributedString {
+        let face = NSAttributedString.Key(kCTFontAttributeName as String)
+        var a: [NSAttributedString.Key: Any] = [face: font]
         if muted { a[mutedKey] = true }
-        return NSAttributedString(string: s, attributes: a)
+        let out = NSMutableAttributedString(string: s, attributes: a), pilcrow = (s as NSString).range(of: "¶")
+        if muted, pilcrow.location != NSNotFound { out.addAttribute(face, value: mark, range: pilcrow) }
+        return out
     }
 
     /// The band the line lives in: two em tall (room for descenders and the caret) across the width, on the middle of
@@ -153,7 +179,8 @@ public enum Line {
     /// under it as that part glides, a deleted one is gone at once), nothing after it left of it, and a caret move
     /// passes the text under it. `before` is the edit's glide and the caret move's together, `after` the move's alone.
     /// `newest`: the glyphs a key just added, fading in (F1: K1, E2), in the same pass, one more factor on each glyph's
-    /// alpha.
+    /// alpha. The selection (pass 29) is a band behind its glyphs in the caret's colour at `selectionAlpha`, the
+    /// caret's height, in its part's clip, fading as that part's glyphs do, so it never crosses the caret either.
     public static func draw(_ line: Shaped, before: CGFloat, after: CGFloat, newest: Newest = Newest(), in c: CGContext,
                             band: CGRect, style: Style) {
         let bar = caretRect(in: band, style: style), w = Double(band.width)
@@ -165,6 +192,22 @@ public enum Line {
         func part(_ isAfter: Bool, from x0: CGFloat, clip: CGRect, alpha: (Double) -> Double) {
             c.saveGState()
             c.clip(to: clip)
+            var (lo, hi) = (CGFloat.infinity, -CGFloat.infinity)  // the selected glyphs' span in this part
+            for g in line.glyphs where g.after == isAfter && line.selected.contains(g.index) {
+                (lo, hi) = (min(lo, g.x), max(hi, g.x + g.advance))
+            }
+            if lo < hi {
+                c.saveGState()
+                c.clip(to: CGRect(x: x0 + lo, y: bar.minY, width: hi - lo, height: bar.height))
+                let colours = [style.caret.copy(alpha: selectionAlpha)!, style.caret.copy(alpha: 0)!] as CFArray
+                let ramp = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB), colors: colours,
+                                      locations: [0, 1])!
+                let (full, clear) = isAfter ? (afterOpaqueTo, afterClearAt) : (opaqueFrom, clearAt)  // V2, B4's fades
+                c.drawLinearGradient(ramp, start: CGPoint(x: band.minX + full * band.width, y: 0),
+                                     end: CGPoint(x: band.minX + clear * band.width, y: 0),
+                                     options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
+                c.restoreGState()
+            }
             let first = isAfter || newest.units == 0 ? Int.max : line.split - newest.units  // the newest glyphs' start
             for g in line.glyphs where g.after == isAfter {
                 let x = x0 + g.x, new = g.index >= first

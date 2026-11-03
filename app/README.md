@@ -1193,8 +1193,46 @@ again)"):
 - Build: `LEMNA_VERSION=0.1.2 make-app.sh`, build 83; `Contents/Resources/Beds` holds the five; the executable
   1,252,656 bytes, no home folder in its symbols; signed with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
 
+Pass 29, selection on the line (DESIGN.md B4 amended, TH1 noted; 2026-11-03; the user: "I want to be able to select
+characters and words as well using the standard macos shortcuts (cmd+a, cmd+shift+left, shift+alt+left, ...", and
+of the ` ¶ `: "the newline character, which is rendered, looks weird when having a serif font. I like the non-serif
+newline character much better."):
+
+- The model (`Text.swift`): `anchor`, the selection's fixed end (the caret its moving end; nil when none; any edit,
+  `apply`, ends it); `selection`, `selectedText`, `utf16Selection`; `moveLeft`, `moveRight`, `moveWordLeft`,
+  `moveWordRight`, `moveToParagraphStart`, `moveToParagraphEnd` take `extending:` (⇧), through one `go`; without it a
+  selection collapses (← and → to its side and no further, the others from their side); `selectAll()` (anchor at 0,
+  caret at the end); `insert` replaces a selection (its `replacing:` then unused), the four deletes take it, as ⌫
+  when the caret is at its end and as ⌦ when at its start, so the motion and the journal's edits are those keys'
+  (`delete(at:count:)`, then `insert(at:)` for a replacement). `Change.Motion.selected`: only the selection changed,
+  the line draws again. `line(around:)`'s runs carry `selected`.
+- The line (`Line.swift`): `Shaped.selected`, the selection in the line's UTF-16 units (no attribute, so no run split
+  and no kerning change at the anchor); `Line.draw` puts a band behind those glyphs in each part, the caret's height,
+  in the caret's colour at `Line.selectionAlpha` 0.3, as a gradient that fades as that part's text does, in the part's
+  clip, under the glyphs; the caret over it. The ` ¶ `'s pilcrow in `Line.markFont` (Menlo at the line's size unless
+  the line is monospaced, `Ambience.Glyphs.atlasFont`), its spaces in the line's face, in `shape` and `width` alike.
+- The keys (`LineView.swift`, `main.swift`, `Box.swift`): `doCommand(by:)` takes `moveLeftAndModifySelection:` and
+  `moveBackward…`, `moveRight…`/`moveForward…`, `moveWordLeft…`/`moveWordBackward…`, `moveWordRight…`/`moveWordForward…`,
+  `moveToLeftEndOfLine…`/`moveToBeginningOfLine…`/`moveToBeginningOfParagraph…AndModifySelection:`, their right-hand
+  and end twins, and `moveParagraphBackward/ForwardAndModifySelection:` (⌥⇧↑/↓, as ⌥↑'s two commands); `.selected`
+  draws a frame. The main menu has an Edit menu (Cut ⌘X, Copy ⌘C, Select All ⌘A; no Paste) with no target, so the
+  first responder gets them; `LineView` implements `selectAll(_:)`, `copy(_:)` (`Clipboard.write` of the selection)
+  and `cut(_:)` (written, then ⌫'s cut with its click). `setMarkedText` over a selection takes it first;
+  `selectedRange` reports it. Moves still make no click.
+- Tests: 153 (139 before; 14 new: nine in EditingTests, one each in CoreTests, ThemeTests (two), RenderTests and
+  JournalReplayTests), debug and release. Renders: `selection.png`, `selection-after.png`, `select-all.png`,
+  `selection-still-day.png`, `selection-still-night.png`, `paragraph-still-day.png`; every Lemna render byte for byte
+  as before, `editing-still-day.png` and `editing-still-night.png` changed in their ¶ only.
+- Build: `LEMNA_VERSION=0.1.2 make-app.sh`, build 84; the executable 1,273,056 bytes, no home folder in its symbols;
+  signed with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
+
 ## Known gaps
 
+- Pass 29 is not tried: nothing was launched. Untried: ⌘A, ⌘C and ⌘X reaching the line in the box while Lemna is not
+  the active app (the Edit menu's actions through the responder chain of the non-activating panel; the box's
+  `sendEvent` hands ⌘ keys to the menu as for ⌘⏎), and in the window; the band on real screens by day and night and
+  under Increase Contrast; dead keys and an input method over a selection; the feel of ⌘A's glide to the end. Not
+  built: ⇧↑/⇧↓, ⇧Home/⇧End, ⌘⌫, ⌘V into the line, undo, the mouse.
 - Pass 28 is not tried: nothing was launched or played. Untried: each new bed under the clicks while typing, on the
   built-in speakers and on headphones; whether the 120 Hz low cut is "a bit" on Ship and Lab; Lab's blips, 3.5 dB
   nearer the clicks after the levelling; Space's swells and Synth's chords against writing (they fail sound.md's

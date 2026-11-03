@@ -945,12 +945,13 @@ func themeMenu(target: AnyObject?) -> NSMenu {
     return menu
 }
 
-/// Lemna: About, Quit; Session: Done, Copy, Save…, Discard…, Theme ▸, Sound ▸, Effects ▸, Ambience ▸; View: Open
-/// Window. As an accessory app Lemna shows no menu bar, so this is where the key equivalents live (the menu-bar item's
-/// menu shows the items). No Edit menu yet, so no ⌘ shortcut but these reaches the text. Full screen: the window's green
-/// button.
+/// Lemna: About, Quit; Session: Done, Copy, Save…, Discard…, Theme ▸, Sound ▸, Effects ▸, Ambience ▸; Edit: Cut,
+/// Copy, Select All (pass 29), sent to the first responder, the line; View: Open Window. As an accessory app Lemna shows
+/// no menu bar, so this is where the key equivalents live (the menu-bar item's menu shows the Session items). No Paste:
+/// the line takes no ⌘V, as before. Full screen: the window's green button.
 func mainMenu() -> NSMenu {
     let bar = NSMenu(), app = NSMenu(title: "Lemna"), session = NSMenu(title: "Session"), view = NSMenu(title: "View")
+    let edit = NSMenu(title: "Edit")
     app.addItem(withTitle: "About Lemna", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
                 keyEquivalent: "")  // a placeholder: the standard panel, no credits yet
     app.addItem(.separator())
@@ -965,9 +966,14 @@ func mainMenu() -> NSMenu {
     session.addItem(withTitle: "Sound", action: nil, keyEquivalent: "").submenu = soundMenu(target: nil)  // Off ⌘K
     session.addItem(withTitle: "Effects", action: nil, keyEquivalent: "").submenu = effectsMenu(target: nil)
     session.addItem(withTitle: "Ambience", action: nil, keyEquivalent: "").submenu = ambienceMenu(target: nil)
+    edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")  // ⌘X
+    edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")  // ⌘C, the selection
+    edit.addItem(withTitle: "Select All", action: #selector(NSResponder.selectAll(_:)), keyEquivalent: "a")  // ⌘A
     view.addItem(withTitle: "Open Window", action: #selector(App.toggleWindow(_:)), keyEquivalent: "f")
         .keyEquivalentModifierMask = [.control, .command]
-    for menu in [app, session, view] { bar.addItem(withTitle: menu.title, action: nil, keyEquivalent: "").submenu = menu }
+    for menu in [app, session, edit, view] {
+        bar.addItem(withTitle: menu.title, action: nil, keyEquivalent: "").submenu = menu
+    }
     return bar
 }
 

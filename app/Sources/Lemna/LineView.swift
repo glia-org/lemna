@@ -1,9 +1,10 @@
 // The writing surface (DESIGN.md S1 V2 B4 P0): the view fills its container (the box, or the window: one view moved
 // between them, W2), its layer paints the background, and the line is drawn into the strip across its middle on each
 // key and, while a glide or an entrance runs, on each display refresh. The caret moves through the text and edits
-// anywhere (B4); every change to the text leaves as a journal edit (E2) and, ahead of the drawing, as a click (K1). The
-// newest glyph and a Return's ` ¶ ` fade in, in the same frames (F1: K1, E2). After each key's frame the key goes on to
-// the ambience as a value (A1).
+// anywhere (B4), and with ⇧ selects (pass 29: typing replaces the selection, ⌫ and ⌦ take it, ⌘A, ⌘C and ⌘X); every
+// change to the text leaves as a journal edit (E2) and, ahead of the drawing, as a click (K1). The newest glyph and a
+// Return's ` ¶ ` fade in, in the same frames (F1: K1, E2). After each key's frame the key goes on to the ambience as a
+// value (A1).
 import AppKit
 import LemnaClicks
 import LemnaCore
@@ -203,7 +204,7 @@ final class LineView: NSView, NSTextInputClient {
         switch change.motion {
         case .none: break
         case .before(let added, let removed): edited(before: width(added) - width(removed), typed: added)
-        case .after: edited()
+        case .after, .selected: edited()
         case .caret(let passed, let leftward): edited(moved: leftward ? -width(passed) : width(passed))
         }
     }
@@ -254,7 +255,8 @@ final class LineView: NSView, NSTextInputClient {
 
     override func keyDown(with event: NSEvent) {
         guard accepting else { return }
-        // ⌘ chords are the menu's, or nothing; but ⌘← and ⌘→ move the caret to the paragraph's ends (B4).
+        // ⌘ chords are the menu's (⌘A, ⌘C and ⌘X its Edit items, below), or nothing; but ⌘← and ⌘→ move the caret to
+        // the paragraph's ends (B4), with ⇧ selecting there.
         if event.modifierFlags.contains(.command), event.specialKey != .leftArrow, event.specialKey != .rightArrow {
             return
         }
@@ -267,7 +269,10 @@ final class LineView: NSView, NSTextInputClient {
     /// paragraph's ends (on one line, a paragraph is the only line there is); and Esc (its cancelOperation:, after the
     /// input method had its say, so an input method's own Esc still cancels its pending text). The other commands
     /// that mean the same move come along at no cost (⌃B ⌃F, ⌃⌥B ⌃⌥F, ⌃A ⌃E and ⌥↑ ⌥↓; ⌃H and ⌃D already send
-    /// deleteBackward: and deleteForward:). Every other command (↑, ↓, Tab, a selection) does nothing.
+    /// deleteBackward: and deleteForward:). Each move with ⇧ sends its ...AndModifySelection: twin, which selects
+    /// (pass 29): ⇧← ⇧→, ⇧⌥← ⇧⌥→, ⇧⌘← ⇧⌘→ (moveToLeftEndOfLineAndModifySelection:, …RightEnd…), and so ⌃⇧B ⌃⇧F,
+    /// ⌃⌥⇧B ⌃⌥⇧F, ⌃⇧A ⌃⇧E, ⌃⇧← ⌃⇧→, and ⌥⇧↑ ⌥⇧↓ (moveParagraphBackwardAndModifySelection:, as ⌥↑'s two commands
+    /// with ⇧). Every other command (↑, ↓ and ⇧↑, ⇧↓, Tab, Home and End) does nothing.
     override func doCommand(by selector: Selector) {
         guard accepting else { return }
         typealias K = NSStandardKeyBindingResponding
@@ -290,11 +295,54 @@ final class LineView: NSView, NSTextInputClient {
         case #selector(K.moveToRightEndOfLine(_:)), #selector(K.moveToEndOfLine(_:)),
              #selector(K.moveToEndOfParagraph(_:)):
             take(text.moveToParagraphEnd())
+        case #selector(K.moveLeftAndModifySelection(_:)), #selector(K.moveBackwardAndModifySelection(_:)):
+            take(text.moveLeft(extending: true))
+        case #selector(K.moveRightAndModifySelection(_:)), #selector(K.moveForwardAndModifySelection(_:)):
+            take(text.moveRight(extending: true))
+        case #selector(K.moveWordLeftAndModifySelection(_:)), #selector(K.moveWordBackwardAndModifySelection(_:)):
+            take(text.moveWordLeft(extending: true))
+        case #selector(K.moveWordRightAndModifySelection(_:)), #selector(K.moveWordForwardAndModifySelection(_:)):
+            take(text.moveWordRight(extending: true))
+        case #selector(K.moveToLeftEndOfLineAndModifySelection(_:)),
+             #selector(K.moveToBeginningOfLineAndModifySelection(_:)),
+             #selector(K.moveToBeginningOfParagraphAndModifySelection(_:)):
+            take(text.moveToParagraphStart(extending: true))
+        case #selector(K.moveToRightEndOfLineAndModifySelection(_:)),
+             #selector(K.moveToEndOfLineAndModifySelection(_:)),
+             #selector(K.moveToEndOfParagraphAndModifySelection(_:)):
+            take(text.moveToParagraphEnd(extending: true))
+        case #selector(K.moveParagraphBackwardAndModifySelection(_:)):
+            take(text.moveLeft(extending: true))
+            take(text.moveToParagraphStart(extending: true))
+        case #selector(K.moveParagraphForwardAndModifySelection(_:)):
+            take(text.moveRight(extending: true))
+            take(text.moveToParagraphEnd(extending: true))
         case #selector(NSResponder.cancelOperation(_:)):
             onEscape()
         default:
             break
         }
+    }
+
+    // MARK: Edit (pass 29)
+
+    /// ⌘A, from the main menu's Edit item (the responder chain's first responder): the whole text.
+    override func selectAll(_ sender: Any?) {
+        guard accepting else { return }
+        take(text.selectAll())
+    }
+
+    /// ⌘C: the selection as plain text, Lemna's pasteboard item (`Clipboard.write`, as Copy's); nothing selected,
+    /// nothing. ⌘⇧⏎ (Copy) still takes the whole text and ends the session.
+    @objc func copy(_ sender: Any?) {
+        guard accepting, !text.selection.isEmpty else { return }
+        _ = Clipboard.write(text.selectedText)
+    }
+
+    /// ⌘X: copied as ⌘C does, then taken as ⌫ takes a selection, with its one click; only once the pasteboard has it.
+    @objc func cut(_ sender: Any?) {
+        guard accepting, !text.selection.isEmpty, Clipboard.write(text.selectedText) else { return }
+        delete(text.deleteBackward())
     }
 
     func insertText(_ string: Any, replacementRange r: NSRange) {
@@ -315,8 +363,14 @@ final class LineView: NSView, NSTextInputClient {
         guard accepting else { return }
         let old = marked
         marked = (string as? NSAttributedString)?.string ?? (string as? String) ?? ""
+        var dw = width(marked) - width(old)
+        if !marked.isEmpty, text.anchor != nil {  // pending text over a selection takes its place, as typing does
+            let cut = text.deleteBackward()
+            for e in cut.edits { onEdit(e) }
+            if case .before(_, let removed) = cut.motion { dw -= width(removed) }
+        }
         if !marked.isEmpty && marked != old { clicks?.play(.letter) }  // a dead key: a key pressed, and the line shows it
-        edited(before: width(marked) - width(old))
+        edited(before: dw)
     }
     func unmarkText() {  // the pending text stays as it is shown, so the line does not move
         if !marked.isEmpty { for e in text.insert(marked).edits { onEdit(e) } }
@@ -327,7 +381,11 @@ final class LineView: NSView, NSTextInputClient {
         marked.isEmpty ? NSRange(location: NSNotFound, length: 0)
             : NSRange(location: text.utf16Caret, length: marked.utf16.count)
     }
-    func selectedRange() -> NSRange { NSRange(location: text.utf16Caret + marked.utf16.count, length: 0) }
+    /// The selection, or the caret after the pending text (there is no selection while text is pending).
+    func selectedRange() -> NSRange {
+        let r = text.utf16Selection
+        return NSRange(location: r.lowerBound + marked.utf16.count, length: r.count)
+    }
     /// The document as the input system sees it: the text with the pending text at the caret.
     func attributedSubstring(forProposedRange range: NSRange, actualRange: NSRangePointer?) -> NSAttributedString? {
         let all = NSMutableString(string: text.plainText)

@@ -93,3 +93,54 @@ struct Typist {
     try k.finish()  // the key gone, the file deleted: the folder is empty again
     #expect(rmdir(sessions) == 0 && rmdir(root) == 0)
 }
+
+/// A selection's delete and its replacement in the middle (B4, pass 29) are the journal's two edits, a delete and an
+/// insert, so the replay is the one it was: "two" selected by ⇧⌥← (the caret at its start) and typed over; from there
+/// to the next paragraph's first word by ⇧⌘→, ⇧→ and ⇧⌥→ (the caret at its end), taken by ⌫; a word selected by ⇧⌥→
+/// and replaced by the accent menu's pick (its replacement range not used), the next by Return; then ⌘A and ⌦. Written
+/// through a real journal and read back, as a relaunch would.
+@Test func selectionDeletesAndReplacementsReplayMidText() throws {
+    var t = Typist()
+    t.type("one two three")
+    t.returnKey()
+    t.type("four five six")
+    t.key { $0.moveToParagraphStart() }
+    t.key { $0.moveLeft() }  // the first paragraph's end
+    t.key { $0.moveWordLeft() }
+    t.key { $0.moveLeft() }  // after "two"
+    t.key { $0.moveWordLeft(extending: true) }
+    t.type("2")
+    #expect(t.text.paragraphs == ["one 2 three", "four five six"])
+    t.key { $0.moveToParagraphEnd(extending: true) }
+    t.key { $0.moveRight(extending: true) }
+    t.key { $0.moveWordRight(extending: true) }
+    #expect(t.text.selectedText == " three\nfour")
+    t.backspace()
+    #expect(t.text.paragraphs == ["one 2 five six"])
+    t.key { $0.moveWordRight(extending: true) }  // " five"
+    t.pressAndHold("V", replacing: 1)
+    t.key { $0.moveWordRight(extending: true) }
+    t.returnKey()
+    #expect(t.text.paragraphs == ["one 2V", ""])
+    let start = t.edits.count
+    t.key { $0.selectAll() }
+    t.key { $0.deleteForward() }
+    #expect(t.edits.count == start + 1 && t.text.plainText == "")
+    #expect(Text(replaying: Array(t.edits[..<start])).paragraphs == ["one 2V", ""])
+    #expect(t.edits.allSatisfy { if case .delete(_, let n) = $0 { n > 0 } else { true } })
+
+    var template = Array((String(cString: getenv("TMPDIR")) + "/lemna-app-test-XXXXXX").utf8CString)
+    let root = template.withUnsafeMutableBufferPointer { String(cString: mkdtemp($0.baseAddress!)) }
+    let sessions = root + "/sessions.noindex", store = MemoryKeyStore()
+    do {
+        let j = try Journal.open(directory: .init(fileURLWithPath: sessions), keyStore: store)
+        for e in t.edits[..<start] { j.append(e) }
+        j.flush(.full)
+    }
+    usleep(200_000)  // the lock and the batch window pass, as in journalRoundTripThroughTheAppsReplay
+    let k = try Journal.open(directory: .init(fileURLWithPath: sessions), keyStore: store)
+    #expect(k.replay == Array(t.edits[..<start]))
+    #expect(Text(replaying: k.replay).paragraphs == ["one 2V", ""])
+    try k.finish()
+    #expect(rmdir(sessions) == 0 && rmdir(root) == 0)
+}

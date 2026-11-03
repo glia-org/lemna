@@ -2,7 +2,50 @@
 
 `DESIGN.md` holds the decisions and the plan. This file says what is done and what is next.
 
-## State (2026-11-02)
+## State (2026-11-03)
+
+- App, pass 29, selection on the line (2026-11-03; DESIGN.md B4 amended, TH1 noted; the user: "I want to be able to
+  select characters and words as well using the standard macos shortcuts (cmd+a, cmd+shift+left, shift+alt+left,
+  ..."; then, for the same pass: "the newline character, which is rendered, looks weird when having a serif font. I
+  like the non-serif newline character much better."). **The model** (`Text`, LemnaCore): an anchor beside the caret,
+  the caret the selection's moving end; `selection`, `selectedText`, `utf16Selection`; every move takes `extending`,
+  `selectAll()`; a plain move collapses a selection as a Mac text field does (← to its start, → to its end, ⌥ and ⌘
+  moves from the side they go to); typing, Return, the accent menu's pick and pending text replace it, the four
+  deletes take it and only it. Any edit ends it; the journal gets the existing `delete(at:count:)` then
+  `insert(at:)`, so the replay is unchanged. **The keys** (`LineView`): the moves' `…AndModifySelection:` twins
+  from AppKit's key bindings (⇧← ⇧→, ⇧⌥← ⇧⌥→, ⇧⌘← ⇧⌘→, and ⌃⇧B/F, ⌃⌥⇧B/F, ⌃⇧A/E, ⌥⇧↑/↓); ⌘A, ⌘C and ⌘X through
+  a new Edit menu in the hidden main menu (Cut, Copy, Select All; no Paste: the line takes no ⌘V, as before), sent
+  to the line as first responder, which the box's `sendEvent` hands the menu as it does ⌘⏎; ⌘C writes Lemna's
+  pasteboard item (as Copy's: this Mac only, concealed and transient for clipboard managers); ⌘X one ⌫ click; a
+  selection move no click. `selectedRange` now reports the selection to the input system. Esc still hides the box;
+  ⌘⏎, ⌘⇧⏎, ⌘S take the whole text. **The look** (`Line.draw`): a band behind the selected glyphs in the accent at
+  0.3, the caret's height, clipped at the caret and fading with the text (25–45 % before the caret, 80–95 % after
+  it): Lemna's #2e3d55 (1.74:1 to the box, the text 8.0:1 on it), Still's day #c4cbb7 (1.47:1, 5.9:1), night
+  #444a3b (1.88:1, 6.6:1); no palette colour needed. The selection is a range of the shaped line's units, not an
+  attribute, so selecting never moves the kerning at the anchor. **The ` ¶ `:** its pilcrow in Menlo at the line's
+  size in every theme (`Line.markFont`, Code's atlas face), its spaces in the line's face (the mark keeps its room);
+  Lemna's renders byte for byte as before, Still's `editing-still-*.png` differ only in their ¶. What Return inserts
+  is unchanged. Tests: 153 (139 before; new in EditingTests `shiftArrowsSelectACharacterAtATime`,
+  `shiftOptionArrowsSelectAWordAtATime`, `shiftCommandArrowsSelectToTheParagraphsEnds`,
+  `commandASelectsEverythingWithTheCaretAtTheEnd`, `aPlainMoveCollapsesTheSelectionToItsSide`,
+  `typingReplacesTheSelection`, `pendingTextOverASelectionTakesItsPlace`, `everyDeleteKeyTakesTheSelectionAndOnlyIt`,
+  `copyAndCutTakeTheSelectedText`; CoreTests `theLineCarriesTheSelectionsPart`; ThemeTests
+  `theSelectionReadsInEveryTheme`, `theParagraphEndsPilcrowIsMenloInEveryTheme`; RenderTests `selectionRenders`;
+  JournalReplayTests `selectionDeletesAndReplacementsReplayMidText`), debug and release. Renders (app/renders):
+  `selection.png`, `selection-after.png`, `select-all.png`, `selection-still-day.png`, `selection-still-night.png`,
+  `paragraph-still-day.png`. `LEMNA_VERSION=0.1.2 make-app.sh` built build 84, signed with "Lemna Dev"
+  (`Authority=Lemna Dev`) and verified; the executable 1,273,056 bytes, no home folder in it. Not tried: nothing was
+  launched. Try, after quitting the running Lemna and `open app/build/Lemna.app`:
+  - In the box, type two sentences, then ⇧←, ⇧⌥←, ⇧⌘← and their → twins: the band grows and shrinks at the caret,
+    the text glides as for the plain move, no click; ⇧⌥→ across a ¶; a plain ← or → collapses to the band's side.
+  - ⌘A (the text glides to its end, the band fading out to the left), then ⌘C and paste into another app; ⌘X; ⌫, ⌦,
+    ⌥⌫ and ⌥⌦ over a selection (one click each); typing, Return, ⌥E then e, and a held e over a selection.
+  - **The one thing the tests cannot reach:** that ⌘A, ⌘C and ⌘X arrive in the box while Lemna is not the active
+    app (the menu's action to the non-activating panel's first responder); then the same in the window (⌃⌘F).
+  - Still by day and by night (and with Increase Contrast): does the band read on the paper? The ` ¶ ` now Menlo's.
+  - Esc with a selection, then the hotkey: the box comes back with the selection as it was.
+  - Asked: ⌘A puts the caret at the end, so the text glides there (the anchor at the start); keeping the view where
+    it was would need a caret that is not the moving end. ⌘C's item is transient for clipboard managers, as Copy's.
 
 - App, pass 28, four beds beside the rain (2026-11-02; DESIGN.md K1's BD1 amended, TH1 noted; the user, of
   `docs/design-panel-lemna-future-bed.html`'s eight Freesound loops: "FB8, FB7, FB6 (cut the low low end a bit)", then

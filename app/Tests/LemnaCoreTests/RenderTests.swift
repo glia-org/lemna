@@ -101,3 +101,66 @@ func inkedColumns(_ px: [UInt8]) -> ClosedRange<Int> {
         #expect(ink.lowerBound >= fadeEnd)
     }
 }
+
+/// The pixel (BGRA) where `render` drew the middle of the glyph at line unit `i` of `text`, mid-band, with no glide.
+func pixel(_ frame: [UInt8], glyph i: Int, of text: Text, style: Style) -> [Int] {
+    let size = CGSize(width: 1200, height: 700), band = Line.band(in: size, style: style)
+    let bar = Line.caretRect(in: band, style: style), line = Line.shape(text, marked: "", font: style.font)
+    let g = line.glyphs.first { $0.index == i }!
+    let x = (g.after ? bar.maxX : bar.minX) - line.caret + g.x + g.advance / 2
+    let k = 4 * (Int((size.height - band.midY) * 2) * 2400 + Int(x * 2))
+    return frame[k..<k + 4].map { Int($0) }
+}
+
+/// The selection's band (pass 29) as Core Graphics lays it over `surface`: the accent at `Line.selectionAlpha`. BGRA.
+func band(_ accent: UInt32, over surface: UInt32) -> [Int] {
+    let a = Double(Line.selectionAlpha)
+    func channel(_ shift: UInt32) -> Int {
+        let (x, y) = (Double(accent >> shift & 255), Double(surface >> shift & 255))
+        return Int((a * x + (1 - a) * y).rounded())
+    }
+    return [channel(0), channel(8), channel(16), 255]
+}
+
+func near(_ p: [Int], _ q: [Int]) -> Bool { zip(p, q).allSatisfy { abs($0 - $1) <= 2 } }
+
+/// The selection (B4, pass 29) in the window, as `editing.png` is the caret in the middle: "old words" selected by
+/// ⇧⌥→ twice, before the caret (selection.png), and by ⇧⌥← twice, after it (selection-after.png); everything by ⌘A, the
+/// caret at the end and the band fading out with the text toward 25 % (select-all.png); and Still's by day and by
+/// night (selection-still-day.png, selection-still-night.png). Sampled mid-band in the spaces, where no glyph inks: in
+/// the selection the band's colour, outside it and across the caret the surface.
+@Test func selectionRenders() throws {
+    let words = "The line glides left and the old words fade.\nNext one"  // "old" at 29, "words" ends at 38
+    var before = Text(words, caret: 29), after = Text(words, caret: 38), all = Text(words, caret: 38)
+    for _ in 0 ..< 2 {
+        before.moveWordRight(extending: true)
+        after.moveWordLeft(extending: true)
+    }
+    all.selectAll()
+    #expect(before.selectedText == "old words" && after.selectedText == "old words" && after.caret == 29)
+    let lemna = Style(font: menlo), surface = [0x13, 0x10, 0x0e, 0xff], blue = band(0x7aa7f0, over: 0x0e1013)
+    let left = render(before, offset: 0, name: "selection.png"), right = render(after, offset: 0, name: "selection-after.png")
+    #expect(left != render(Text(words, caret: 38), offset: 0, name: "selection-none.png"))
+    for (frame, text) in [(left, before), (right, after)] {
+        #expect(near(pixel(frame, glyph: 32, of: text, style: lemna), blue))  // the space between "old" and "words"
+        #expect(pixel(frame, glyph: 28, of: text, style: lemna) == surface)  // before "old": not selected
+        #expect(pixel(frame, glyph: 38, of: text, style: lemna) == surface)  // after "words", past the caret or not
+    }
+    let ink = inkedColumns(left)
+    #expect(ink.upperBound < 2 * 1140 && ink.lowerBound >= 2 * Int(300 - advance))  // inside the fades, as editing.png
+    let everything = render(all, offset: 0, name: "select-all.png")
+    #expect(all.caret == all.count && near(pixel(everything, glyph: 51, of: all, style: lemna), blue))  // "Next one"
+    let faded = pixel(everything, glyph: 32, of: all, style: lemna)  // at 28 % of the width: in the fade
+    #expect(faded[0] > surface[0] + 2 && faded[0] < blue[0] - 2 && faded[1] > surface[1] && faded[1] < blue[1])
+    #expect(pixel(everything, glyph: 20, of: all, style: lemna) == surface)  // left of 25 %: none of it
+    #expect(inkedColumns(everything).lowerBound >= 2 * Int(300 - advance))
+    let font = try #require(stillFont)
+    for (dark, name) in [(false, "selection-still-day.png"), (true, "selection-still-night.png")] {
+        let style = Style(.still, dark: dark, font: font), p = style.palette
+        let frame = render(before, offset: 0, style: style, name: name)
+        let paper: [Int] = [Int(p.surface & 255), Int(p.surface >> 8 & 255), Int(p.surface >> 16 & 255), 255]
+        #expect(near(pixel(frame, glyph: 32, of: before, style: style), band(p.accent, over: p.surface)), "\(name)")
+        #expect(pixel(frame, glyph: 28, of: before, style: style) == paper && pixel(frame, glyph: 38, of: before,
+                                                                                  style: style) == paper, "\(name)")
+    }
+}

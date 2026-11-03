@@ -68,6 +68,28 @@ func shown(_ t: Text, around n: Int = 999) -> (before: String, after: String, mu
     #expect(abs(m.caret - 3 * advance) < 1e-9 && abs(m.width - 8 * advance) < 1e-9)
 }
 
+/// The selection on the line (B4, pass 29): the runs it covers, its paragraph ends included, and its range in the
+/// shaped line's units, before the caret or after it; an anchor beyond the shaped tail covers what is shaped.
+@Test func theLineCarriesTheSelectionsPart() {
+    var t = Text("ab\ncd", caret: 5)
+    for _ in 0 ..< 3 { t.moveLeft(extending: true) }  // "\ncd", after the caret
+    let (b, a) = t.line(around: 999)
+    #expect(b.map(\.text) == ["ab"] && b.allSatisfy { !$0.selected })
+    #expect(a.map(\.text) == [" ¶ ", "cd"] && a.allSatisfy(\.selected))
+    let after = Line.shape(t, marked: "", font: menlo)
+    #expect(after.split == 2 && after.selected == 2..<7)
+    #expect(after.glyphs.filter { after.selected.contains($0.index) }.map(\.after) == [true, true, true, true, true])
+    var before = Text("one two", caret: 4)
+    before.moveWordRight(extending: true)  // "two", before the caret
+    #expect(before.line(around: 999).before.map { $0.selected } == [false, true])
+    #expect(Line.shape(before, marked: "", font: menlo).selected == 4..<7)
+    var long = Text(String(repeating: "x", count: 2 * Line.tail))
+    long.selectAll()  // the anchor at 0, far beyond the tail before the caret
+    let shaped = Line.shape(long, marked: "", font: menlo)
+    #expect(shaped.split == Line.tail && shaped.selected == 0..<Line.tail)
+    #expect(Line.shape(Text("ab"), marked: "", font: menlo).selected == 2..<2)  // nothing selected: empty, at the caret
+}
+
 @Test func editsMoveTheTextByTheirWidth() {
     #expect(abs(Line.width("t", font: menlo) - advance) < 1e-9)  // +advance per key
     #expect(abs(Line.width("\n", font: menlo) - 3 * advance) < 1e-9)  // Return, shown as ` ¶ `

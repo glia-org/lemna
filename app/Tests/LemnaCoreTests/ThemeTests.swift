@@ -2,8 +2,9 @@
 // and reaches its contrast in each appearance, the appearance picks the palette, the font resolves (and Code's atlas
 // stays monospaced), the preset leaves the sound's on or off alone, and Still opens and hands off by fades; since pass
 // 22 Still's bundled face, its caret's rounded ends, the line clearing the bottom edge's note and the shaped tail in
-// every theme's face, and Still in the window (editing-still-day.png, editing-still-night.png). Code on Still's day dim
-// and the box at rest by day and night are in AmbienceTests. No Foundation here (see RenderTests.swift).
+// every theme's face, and Still in the window (editing-still-day.png, editing-still-night.png); since pass 29 the
+// selection's band in every theme and the ` ¶ `'s Menlo pilcrow (paragraph-still-day.png). Code on Still's day dim and
+// the box at rest by day and night are in AmbienceTests. No Foundation here (see RenderTests.swift).
 import CoreGraphics
 import CoreText
 import Darwin
@@ -87,6 +88,26 @@ var stillFont: CTFont? {
     #expect(near(n.text, n, 12.4) && near(n.accent, n, 8.0) && near(n.muted, n, 4.7) && near(n.mutedContrast, n, 6.4))
     #expect(near(d.line, d, 1.30) && near(n.line, n, 1.33))
     #expect(d.accentContrast.map { near($0, d, 6.3) } == true && n.accentContrast == nil)  // LK1: the day caret's 6.3:1
+}
+
+/// The selection's band (B4, pass 29): the accent at `Line.selectionAlpha` over the surface shows against it (macOS's own
+/// light selection on white is 1.5:1) and keeps the text readable on it (WCAG's 4.5:1), in every theme and appearance,
+/// with and without Increase Contrast's accent; so no theme needs a selection colour of its own.
+@Test func theSelectionReadsInEveryTheme() {
+    func over(_ accent: CGColor, _ surface: CGColor) -> CGColor {
+        let (a, x, y) = (Line.selectionAlpha, accent.components!, surface.components!)
+        return CGColor(srgbRed: a * x[0] + (1 - a) * y[0], green: a * x[1] + (1 - a) * y[1],
+                       blue: a * x[2] + (1 - a) * y[2], alpha: 1)
+    }
+    for t in Theme.all {
+        for p in [t.day, t.night] {
+            for contrast in [false, true] {
+                let surface = rgb(p.surface), band = over(p.accent(increasedContrast: contrast), surface)
+                #expect(ratio(band, surface) >= 1.4, "\(t.id) \(contrast)")
+                #expect(ratio(rgb(p.text), band) >= 4.5, "\(t.id) \(contrast)")
+            }
+        }
+    }
 }
 
 @Test func theAppearancePicksStillsDayOrNight() {
@@ -288,4 +309,27 @@ var stillFont: CTFont? {
         let ink = inkedColumns(frame)
         #expect(ink.upperBound < 2 * 1140 && ink.lowerBound >= 2 * 300 - 40)  // inside the fades: 25 % to 95 %
     }
+}
+
+/// The ` ¶ ` under every theme (pass 29; the user, 2026-11-03: "the newline character, which is rendered, looks weird
+/// when having a serif font. I like the non-serif newline character much better."): its pilcrow in Menlo at the line's
+/// size, its two spaces in the line's face; Lemna's all Menlo as before. Return's glide (`Line.width`) is the width the
+/// line shows. Drawn on Still's day paper with the paragraph end in full view (app/renders/paragraph-still-day.png).
+@Test func theParagraphEndsPilcrowIsMenloInEveryTheme() throws {
+    let still = try #require(stillFont)
+    for font in [menlo, still, CTFontCreateWithName("Charter" as CFString, 31, nil)] {
+        let size = CTFontGetSize(font), mono = CTFontCreateWithName("Menlo" as CFString, size, nil)
+        let line = Line.shape(Text("reeds\nboats"), marked: "", font: font), mark = line.glyphs.filter(\.muted)
+        #expect(mark.count == 3, "\(font)")
+        #expect(CTFontCopyPostScriptName(mark[1].font) as String == "Menlo-Regular" && CTFontGetSize(mark[1].font) == size)
+        for space in [mark[0], mark[2]] {
+            #expect(CTFontCopyPostScriptName(space.font) == CTFontCopyPostScriptName(font), "\(font)")
+        }
+        let room = 2 * Line.width(" ", font: font) + Line.width("¶", font: mono)
+        #expect(abs(Line.width("\n", font: font) - room) < 0.01, "\(font)")
+        #expect(abs(line.width - Line.width("reeds\nboats", font: font)) < 0.01, "\(font)")
+    }
+    let style = Style(.still, dark: false, font: still)
+    let frame = render(Text("the reeds bent over them.\nThe boats"), offset: 0, style: style, name: "paragraph-still-day.png")
+    #expect(Array(frame[0..<4]) == [0xe8, 0xf0, 0xf3, 0xff])
 }
