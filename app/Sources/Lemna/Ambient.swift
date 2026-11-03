@@ -228,7 +228,8 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
         let step = life.frame(at: update.targetTimestamp, plan: plan, keys: keys, closing: closing,
                               glyphs: renderer.glyphs, into: &sprites)
         keys.removeAll(keepingCapacity: true)
-        draw(step.alpha == nil ? 0 : sprites.count, alpha: step.alpha ?? 0, plan: plan, into: update.drawable)
+        draw(step.alpha == nil ? 0 : sprites.count, bands: step.alpha == nil ? 0 : life.run?.bands ?? 0,
+             alpha: step.alpha ?? 0, plan: plan, into: update.drawable)
         if let size = step.resize { layer.drawableSize = size }  // after the frame is committed
         if let turn = step.show { show(turn) }
         if let hz = step.rate {
@@ -268,8 +269,9 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
     }
 
     /// The first `count` of `sprites` into the link's `drawable` at `alpha` (none: it is cleared), in the blend of the
-    /// stage's ink, committed and presented; at most three frames in flight.
-    private func draw(_ count: Int, alpha: Double, plan: Ambience.Plan?, into drawable: CAMetalDrawable) {
+    /// stage's ink, the last `bands` of them rings drawn as bands (pass 31), committed and presented; at most three
+    /// frames in flight.
+    private func draw(_ count: Int, bands: Int, alpha: Double, plan: Ambience.Plan?, into drawable: CAMetalDrawable) {
         guard let renderer, let commands = renderer.queue.makeCommandBuffer() else { return }
         inFlight.wait()
         let buffer = instances.isEmpty ? nil : instances[next]
@@ -282,7 +284,7 @@ final class Ambient: NSObject, CAMetalDisplayLinkDelegate {
         }
         renderer.encode(commands, instances: buffer, count: n, into: drawable.texture,
                         viewport: plan?.stage.size ?? layer.bounds.size, scale: plan?.scale ?? layer.contentsScale,
-                        alpha: alpha, blend: plan?.stage.ink.blend ?? .add)
+                        alpha: alpha, blend: plan?.stage.ink.blend ?? .add, bands: min(bands, n))
         commands.addCompletedHandler { [inFlight] _ in inFlight.signal() }
         commands.present(drawable)
         commands.commit()

@@ -178,31 +178,66 @@ extension Ambience {
         public static let codeBuildIn = 4.0
 
         /// Still water (pass 24; AM1 of `docs/design-panel-lemna-themes.html`, per word and at rest since pass 25;
-        /// `research_notes/Lemna themes/look.md` §5.3's Ripples): drops land at random on the dim at least `waterClear`
-        /// from the box, Poisson at `waterRate` a second on a 1512 × 982 pt screen, scaled to the stage's area, and one
-        /// at the show `waterSummon` above the middle of the box's top edge. While you write (pass 25; the user,
-        /// 2026-11-01: "the rain drops should probably also be increasing when typing as well"), one more for each word
-        /// at its end (a Space or a Return after a glyph key), at least `waterWordGap` after the last word's, where the
-        /// word's last key is across the screen (`screenSpan`) and higher the higher the key's row: from `waterTop`
-        /// under the screen's top edge for the number row to `waterClear` above the box for the space bar's (a key
-        /// without a position: at the caret's x there), as the panel's canvas drops it (look §3.4, §5.3); none for a
-        /// key, and the rest rate unchanged. A drop is `waterCrests` rings that leave together at `waterSpeed`, each
-        /// further one `waterSpread` slower than the one outside it (±`waterJitter` of that), so the calm centre
-        /// follows the lead at about 0.7 of its speed and the crests stand about 9 pt apart at 1.7 s; each a Gaussian
-        /// across it `waterWidth` wide, its start within ±`waterStart` of the drop's, with a fainter trough ring
-        /// `waterTrough` inside it at `waterTroughShare` of its alpha. A ring's alpha rises over `waterOnset` on the
-        /// curve to the peak, laid over on a light wash and added on a dark one (`waterPeak`; times Still's ink alpha,
-        /// 0.6 by day and 0.5 by night: 0.36 laid over by day and 0.2 added by night on screen; look §5.3's 0.16 and
-        /// 0.07, one drop every 8 s, were not to be seen on a real screen, the user 2026-11-01: "it's showing
-        /// nothing"), then falls as e^(−age / `waterDecay`) · √(`waterNear` / r); under `waterShown` it is not drawn,
-        /// and a drop is gone at `waterLife`. Rings that cross add. At most `waterDrops` alive, at `waterFrameRate`
-        /// frames a second (36 pt/s is 1.2 pt a frame).
-        public static let waterRate = 0.5, waterClear = 48.0, waterSummon = 48.0, waterDrops = 32
-        public static let waterWordGap = 0.8, waterTop = 40.0
-        public static let waterCrests = 3, waterSpeed = 36.0, waterSpread = 0.15, waterJitter = 0.15
-        public static let waterWidth = 2.0...3.5, waterStart = 0.04, waterTrough = 3.0, waterTroughShare = 0.4
-        public static let waterOnset = 0.18, waterPeak = (over: 0.6, add: 0.4), waterDecay = 2.0, waterNear = 12.0
+        /// `research_notes/Lemna themes/look.md` §5.3's Ripples), since pass 31 rain on still water as busy as Code's
+        /// curtain (the user, 2026-11-03: "The rain drops are way to uniform and seem unrealistic. Also its not busy at
+        /// all. Make it way more realistic and similar to the matrix effect regarding the intensity."; pass 25's values
+        /// in brackets). Each pair is (idle, typing), set by one intensity as Code's (0 at rest, 1 at `waterFast` keys
+        /// a second, up with τ `waterRise`, down with τ `waterSettle` from `waterHold` after the last key: Code's own),
+        /// so typing makes the rain heavier: more drops, larger, a little brighter (its light about 2.8 times the
+        /// rest's at 6 keys a second, Code's 2.7).
+        ///
+        /// The rain: drops land at random on the dim at least `waterClear` from the box, `waterRate` a second on a
+        /// 1512 × 982 pt screen, scaled to the stage's area [0.5 a second whatever the typing], at exponential gaps
+        /// (Poisson in time and in space: no grid, no even spacing; each lands where in the step its gap ends), the
+        /// rate swaying in gusts: its share glides on a smoothstep to a new level in `waterGust` every
+        /// `waterGustTime` (bursts and lulls, a mean of 1; drawn apart from the drops, so typing leaves them as they
+        /// were). About 1,100 rings at once on a laptop's screen at rest. At the show the rate rises from 0 over
+        /// `waterBuildIn` on a smoothstep (the rain starting, so the summon does not open on a full pond), and one
+        /// large drop lands `waterSummon` above the middle of the box's top edge: the pond holds 30–36 % of the rest's
+        /// light at 2 s and the rest's from 4 s on, as Code's curtain; 3 s, not Code's 4, because the light lags the
+        /// rate by about a second (a drop's rings live 1–4 s: over 4 s, at 300 a second, it held 82 % at 4 s and the
+        /// rest's at 6 s). Code's veil over a scene stepped ahead would not do here: that pond is gone in its first
+        /// seconds, while the drops landing then, at the full rate, would fill it again at once. At most `waterDrops` alive (`waterCrests` + 1 sprites
+        /// each: under `cap`).
+        public static let waterRate = (idle: 380.0, typing: 620.0), waterClear = 48.0, waterSummon = 48.0
+        public static let waterGust = 0.5...1.5, waterGustTime = 5.0...20.0, waterBuildIn = 3.0, waterDrops = 4000
+        public static let waterFast = codeFast, waterRise = codeRise, waterSettle = codeSettle, waterHold = codeHold
+        /// A drop's size, 0 to 1, exponential as rain's drop sizes are (Marshall–Palmer, N(D) ∝ e^(−ΛD)), its slope
+        /// `waterSize` (many small, few large: the median 0.17, P(size > 0.5) 12 % at rest and 18 % typing, the slope
+        /// falling as the rain gets heavier, as Λ ∝ R^−0.21 does). The size sets, from its smallest to its largest,
+        /// the lead crest's speed (`waterSpeed`, ±`waterJitter`; a little faster for the larger), the rings' width
+        /// (`waterWidth`),
+        /// the radius out to which a ring keeps its peak (`waterNear`, the crater's), the peak's share (`waterBright`,
+        /// times `waterLift` [none]) and the time its rings fade over (`waterFade`): a small drop a small, faint ring
+        /// gone in about a second, a large one a wider, brighter ring that lasts about 4 s. One crest, two from the first
+        /// of `waterCrestSizes`, three from the second [three always], each further one starting `waterGap` behind
+        /// the one before it, `waterSpread` slower (the packet spreads) and at `waterFollow` of its alpha [the trough
+        /// ring 3 pt inside each crest at 0.4: gone, the following crests draw the double line].
+        public static let waterSize = (idle: 4.0, typing: 3.0), waterCrests = 3, waterCrestSizes = (0.3, 0.6)
+        public static let waterSpeed = 24.0...34.0, waterJitter = 0.1, waterSpread = 0.06, waterGap = 2.5...5.0
+        public static let waterWidth = 1.2...3.0, waterNear = 8.0...20.0, waterBright = 0.3...1.0
+        public static let waterFade = 0.5...1.8, waterFollow = 0.5, waterLift = (idle: 1.0, typing: 1.2)
+        /// A ring's alpha rises over `waterOnset` on the curve to the drop's peak, laid over on a light wash and added
+        /// on a dark one (`waterPeak`, times the size's share; times Still's ink alpha, 0.6 by day and 0.5 by night),
+        /// then falls as e^(−t / the drop's fade) and as the crater's radius ÷ r beyond it (its energy spread over the
+        /// circle, ~1/r [√(12 pt / r)]); its width thins as it widens, to `waterThin` of it far out. Under
+        /// `waterShown` it is not drawn, and a drop whose crests have all gone under it is gone, at `waterLife` at
+        /// the latest. Each drop opens with a splash, a soft disc (the ring of radius 0) `waterSplashWidth` wide at
+        /// `waterSplashBright` of its peak, gone over `waterSplash` (four or five frames). Rings that cross add.
+        public static let waterOnset = 0.08, waterPeak = (over: 1.0, add: 0.9), waterThin = 0.6
+        public static let waterSplash = 0.15, waterSplashWidth = 1.2...3.5, waterSplashBright = 1.5
         public static let waterShown = 0.01, waterLife = 6.0, waterFrameRate = 30.0
+        /// A ring wider than `waterBand` is drawn as a band, its stroke's pixels and not its circle's square (pass 31:
+        /// as squares a frame at rest had cost the GPU about twice Code's, typing about three times).
+        public static let waterBand = 16.0
+        /// While you write (pass 25; the user, 2026-11-01: "the rain drops should probably also be increasing when
+        /// typing as well"), besides the heavier rain: one drop for each word at its end (a Space or a Return after a
+        /// glyph key), at least `waterWordGap` after the last word's, where the word's last key is across the screen
+        /// (`screenSpan`) and higher the higher the key's row: from `waterTop` under the screen's top edge for the
+        /// number row to `waterClear` above the box for the space bar's (a key without a position: at the caret's x
+        /// there), as the panel's canvas drops it (look §3.4, §5.3); the largest drop at `waterWord` of its peak, so it
+        /// stands out of the rain as a key's head does out of Code's curtain, as does the show's.
+        public static let waterWordGap = 0.8, waterTop = 40.0, waterWord = 1.5
     }
 }
 
@@ -455,6 +490,9 @@ extension Ambience {
         var count: Int { get }
         /// The frames a second it wants now: `Tuning.frameRate`, Code at rest and Still water fewer.
         var frameRate: Double { get }
+        /// How many of the last step's sprites, its last, are wide rings to draw as bands (`Renderer.encode`): Still
+        /// water's (pass 31); none for Code.
+        var bands: Int { get }
     }
 
     /// The scene of `mode`.
@@ -517,6 +555,8 @@ extension Ambience {
         public var count: Int { scene.count }
         /// The frames a second the scene wants now.
         public var frameRate: Double { scene.frameRate }
+        /// How many of the last frame's sprites, its last, are rings to draw as bands.
+        public var bands: Int { scene.bands }
 
         /// The keys since the last frame, in order.
         public mutating func take(_ keys: [Key]) {

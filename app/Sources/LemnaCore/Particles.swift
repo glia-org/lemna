@@ -3,7 +3,8 @@
 // `Glyphs.atlasFont`, and since pass 27 Code's katakana from its fallback) drawn once with Core Text, and since pass 24
 // Still water's soft rings as a shape in the fragment shader, which since pass 27 also draws Code's halos (a ring of
 // radius 0) and its glyphs mirrored and softened (the rings' arcs and the grid's lines and cells went with their
-// modes). The shader is Metal source compiled at runtime once per device (`makeLibrary(source:)`): the
+// modes), and since pass 31 Still water's wide rings as bands, a strip of quads round each circle in a second draw. The
+// shader is Metal source compiled at runtime once per device (`makeLibrary(source:)`): the
 // Command Line Tools have no Metal compiler, and the system compiles it in a few milliseconds. The app draws into a
 // CAMetalLayer's drawable on the scene's thread; the tests draw into an offscreen texture.
 import CoreGraphics
@@ -37,6 +38,9 @@ extension Ambience {
                 (device, queue, glyphs, (add, over), atlas, sampler)
         }
 
+        /// The segments of a ring drawn as a band (pass 31): its circle's polygon, the outer one circumscribed.
+        static let segments = 48
+
         /// A buffer with room for `Tuning.cap` sprites, for a frame's instances.
         public func makeInstances() -> MTLBuffer? {
             device.makeBuffer(length: MemoryLayout<Sprite>.stride * Tuning.cap, options: .storageModeShared)
@@ -44,9 +48,14 @@ extension Ambience {
 
         /// Encodes one frame into `commands`: `target` cleared to nothing, then `count` sprites from `instances` (a
         /// buffer of `Sprite`s, written by the caller) at `alpha` and combined by `blend` (the theme's ink's), over a
-        /// stage `viewport` points large at `scale` pixels a point. The caller presents and commits.
+        /// stage `viewport` points large at `scale` pixels a point. The caller presents and commits. The last `bands`
+        /// of them are rings drawn as bands (pass 31, Still water's wide rings): each a strip of `segments` quads
+        /// around its circle, out to where its Gaussian ends, rather than the circle's square, so a ring costs about
+        /// its stroke's pixels; drawn after the others, which the blends allow for rings of one colour (added light
+        /// adds in any order, and one ink laid over leaves 1 − Π(1 − α) of it). None (Code): one draw as before.
         public func encode(_ commands: MTLCommandBuffer, instances: MTLBuffer?, count: Int, into target: MTLTexture,
-                           viewport: CGSize, scale: CGFloat, alpha: Double, blend: Theme.Ink.Blend = .add) {
+                           viewport: CGSize, scale: CGFloat, alpha: Double, blend: Theme.Ink.Blend = .add,
+                           bands: Int = 0) {
             let pass = MTLRenderPassDescriptor()
             pass.colorAttachments[0].texture = target
             pass.colorAttachments[0].loadAction = .clear
@@ -58,15 +67,23 @@ extension Ambience {
                 var frame = FrameUniforms(viewport: SIMD2(Float(viewport.width), Float(viewport.height)), scale: Float(scale),
                                           alpha: Float(alpha),
                                           cell: SIMD2(Float(glyphs.pixels.w) / Float(aw), Float(glyphs.pixels.h) / Float(ah)),
-                                          columns: UInt32(Glyphs.columns), unused: 0)
+                                          columns: UInt32(Glyphs.columns), segments: 0)
+                let n = min(count, Tuning.cap), b = min(max(bands, 0), n)
                 draw.setRenderPipelineState(blend == .add ? pipelines.add : pipelines.over)
                 draw.setVertexBuffer(instances, offset: 0, index: 0)
                 draw.setVertexBytes(&frame, length: MemoryLayout<FrameUniforms>.stride, index: 1)
                 draw.setFragmentBytes(&frame, length: MemoryLayout<FrameUniforms>.stride, index: 0)
                 draw.setFragmentTexture(atlas, index: 0)
                 draw.setFragmentSamplerState(sampler, index: 0)
-                draw.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4,
-                                    instanceCount: min(count, Tuning.cap))
+                if n > b {
+                    draw.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: n - b)
+                }
+                if b > 0 {  // the bands: the vertex shader builds each from its ring's radius and width
+                    frame.segments = UInt32(Self.segments)
+                    draw.setVertexBytes(&frame, length: MemoryLayout<FrameUniforms>.stride, index: 1)
+                    draw.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 2 * (Self.segments + 1),
+                                        instanceCount: b, baseInstance: n - b)
+                }
             }
             draw.endEncoding()
         }
@@ -74,7 +91,7 @@ extension Ambience {
         /// One frame drawn into an offscreen texture `size` points large at `scale`, read back: BGRA, premultiplied,
         /// rows from the top; nil without a device. For the tests and the renders.
         public func offscreen(_ sprites: [Sprite], size: CGSize, scale: CGFloat, alpha: Double = 1,
-                              blend: Theme.Ink.Blend = .add) -> [UInt8]? {
+                              blend: Theme.Ink.Blend = .add, bands: Int = 0) -> [UInt8]? {
             let (w, h) = (Int((size.width * scale).rounded()), Int((size.height * scale).rounded()))
             let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
             d.usage = [.renderTarget]
@@ -87,7 +104,7 @@ extension Ambience {
                 instances.contents().copyMemory(from: $0.baseAddress!, byteCount: n * MemoryLayout<Sprite>.stride)
             }
             encode(commands, instances: instances, count: n, into: target, viewport: size, scale: scale, alpha: alpha,
-                   blend: blend)
+                   blend: blend, bands: bands)
             guard let blit = commands.makeBlitCommandEncoder() else { return nil }
             blit.copy(from: target, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                       sourceSize: MTLSize(width: w, height: h, depth: 1), to: readBack, destinationOffset: 0,
@@ -176,21 +193,23 @@ extension Ambience {
             return texture
         }
 
-        /// The frame's values the shader reads: 32 bytes, as `Frame` in `shader`.
+        /// The frame's values the shader reads: 32 bytes, as `Frame` in `shader`; `segments` 0 but in the bands' draw.
         private struct FrameUniforms {
-            var viewport: SIMD2<Float>, scale: Float, alpha: Float, cell: SIMD2<Float>, columns: UInt32, unused: UInt32
+            var viewport: SIMD2<Float>, scale: Float, alpha: Float, cell: SIMD2<Float>, columns: UInt32, segments: UInt32
         }
 
         /// The vertex shader places each sprite's quad (a triangle strip of four corners, turned about its centre;
         /// shapes a pixel larger for their soft edge; a glyph's negative width runs its corners, and so its atlas cell,
-        /// the other way: mirrored, pass 27); the fragment shader covers it by its kind (a glyph sampled as many mipmap
-        /// levels softer as its blur says, pass 27) and writes the colour premultiplied.
+        /// the other way: mirrored, pass 27), or in the bands' draw a ring's band (pass 31: a strip of `segments`
+        /// quads between the circles a pixel beyond where its Gaussian ends, outside and inside, the outer polygon
+        /// round its circle); the fragment shader covers it by its kind (a glyph sampled as many mipmap levels softer
+        /// as its blur says, pass 27) and writes the colour premultiplied.
         static let shader = """
         #include <metal_stdlib>
         using namespace metal;
 
         struct Sprite { float2 centre; float2 size; float rotation; float alpha; uint colour; uint shape; };
-        struct Frame { float2 viewport; float scale; float alpha; float2 cell; uint columns; uint unused; };
+        struct Frame { float2 viewport; float scale; float alpha; float2 cell; uint columns; uint segments; };
 
         struct Shaded {
             float4 position [[position]];
@@ -208,6 +227,12 @@ extension Ambience {
             float2 corner = float2((v & 1u) ? 1.0 : -1.0, (v & 2u) ? 1.0 : -1.0);
             float2 half_size = s.size * 0.5;
             float2 local = corner * (half_size + (kind == 0u ? 0.0 : 1.0 / f.scale));
+            if (f.segments > 0u) {  // a ring's band: vertex 2k on the outer polygon, 2k + 1 on the inner, at angle k
+                float r = float(parameter & 0x3fffu) / 2.0, e = 2.0 * float(parameter >> 14) / 16.0 + 1.0 / f.scale;
+                float turn = 6.28318531 * float(v >> 1) / float(f.segments);
+                float reach = (v & 1u) ? max(r - e, 0.0) : (r + e) / cos(3.14159265 / float(f.segments));
+                local = float2(cos(turn), sin(turn)) * reach;
+            }
             float c = cos(s.rotation), n = sin(s.rotation);
             float2 p = s.centre + float2(c * local.x - n * local.y, n * local.x + c * local.y);
             Shaded o;

@@ -8,8 +8,9 @@
 // nearly the whole screen with brighter streams through it and a nearer sheet of a few larger, softer ones, its cells
 // in one array a sheet. Still water is
 // research_notes/Lemna themes/look.md §5.3's Ripples: soft rings on the dim from the show to the close, from drops at
-// rest and, since pass 25, a drop for each word written. Every magnitude is `Ambience.Tuning`'s; a scene draws no more
-// than `Tuning.cap` sprites.
+// rest and, since pass 25, a drop for each word written; since pass 31 rain as busy as Code's curtain, hundreds of
+// drops a second in gusts, of rain's own sizes, heavier while typing, its wide rings drawn as bands. Every magnitude is
+// `Ambience.Tuning`'s; a scene draws no more than `Tuning.cap` sprites.
 import CoreGraphics
 import Foundation
 
@@ -17,6 +18,7 @@ private typealias T = Ambience.Tuning
 
 extension Ambience.Scene {
     var frameRate: Double { T.frameRate }
+    var bands: Int { 0 }
 }
 
 // MARK: M2 Code
@@ -387,82 +389,158 @@ struct Code: Ambience.Scene {
 
 // MARK: Still water
 
-/// Still water (pass 24; AM1 of docs/design-panel-lemna-themes.html, per word and at rest since pass 25): the dim is
-/// still water, and drops land on it at random at a slow rate, at least `waterClear` from the box, and one above the
-/// box at the show; while you write, one for each word, where its last key is, and never one for a key. Each drop is a
-/// few soft rings that leave together, the outer leading and the calm centre following, each with a fainter trough
-/// inside it; a ring rises softly, then fades with its radius and with time, and rings that cross add (the sprites'
-/// blend). The box's screen only.
+/// Still water (pass 24; AM1 of docs/design-panel-lemna-themes.html, per word and at rest since pass 25; rain on it as
+/// busy as Code's curtain since pass 31): the dim is still water seen from above, and rain falls on it from the show to
+/// the close, hundreds of drops a second scattered at random over the dim at least `waterClear` from the box, in gusts
+/// and lulls, and one above the box at the show. A drop's size is drawn from rain's own skew (many small, few large):
+/// a small one makes a small ring that fades fast, a large one a wider, brighter ring that lasts, with one or two
+/// fainter crests following it; each drop starts with a short bright splash, and its rings fade as they widen (their
+/// energy spread over the circle) and with time, thinning as they go; rings that cross add (the sprites' blend). The
+/// rain builds in at the summon (the rain starting), and typing makes it heavier, as it makes Code more intense:
+/// more drops and larger, a little brighter; while you write, one large, bright drop for each word, where its last key
+/// is. The box's screen only.
 struct Water: Ambience.Scene {
-    /// A crest: its speed, its width and its start (from the drop's landing).
-    struct Crest { let speed, width, start: Double }
-    /// A drop: where it landed, its age and its crests.
-    struct Drop { let x, y: Double; var age: Double; let crests: [Crest] }
+    /// A drop: where it landed, its age, and what its size (0 the smallest, 1 the largest) set when it landed: its
+    /// crests, the lead crest's speed, the rings' width, the radius out to which a ring keeps its peak (the crater's),
+    /// the peak, how long its rings take to fade, how far behind each other its crests start (in seconds) and its
+    /// splash's width.
+    struct Drop {
+        let x, y: Double
+        var age: Double
+        let size: Double, crests: Int, speed, width, near, peak, decay, lag, splash: Double
+    }
     /// The drops alive, and how many have landed since the show.
     private(set) var drops: [Drop] = [], landed = 0
-    private let stage: Ambience.Stage, peak: Double, rate: Double
-    private var random: Ambience.Random
+    private let stage: Ambience.Stage, ink: Double, area: Double
+    /// The drops' draws, and the gusts' own (so typing, which draws more drops, leaves the gusts as they were).
+    private var random: Ambience.Random, gusting: Ambience.Random
     /// Whether a glyph key came since the last word's end, and where the last one is on the keyboard (nil: no place);
     /// the time since the last word's drop.
     private var inWord = false, lastKey: Keyboard.Position?, sinceWord = Double.infinity
+    /// 0 at rest, 1 at `waterFast` keys a second (Code's); the time since the last key.
+    private(set) var intensity = 0.0
+    private var sinceKey = Double.infinity
+    /// The time since the birth: the rain's rate rises from 0 to its own over `waterBuildIn` (`buildIn(at:)`).
+    private(set) var age = 0.0
+    /// The gust under way: the rate's share it glides from and to, how far it is and how long it takes.
+    private var gust: (from: Double, to: Double, at: Double, over: Double)
+    /// The drops still to fall before the next lands (an exponential gap, in drops: the rain is Poisson in time).
+    private var due: Double
+    /// The last step's rings wider than `waterBand`, its last sprites, drawn as bands (`Renderer.encode`).
+    private(set) var bands = 0
+    /// Room for a frame's sprites, written through a pointer and then appended to the frame's at once (as Code's).
+    private var scratch = [Sprite](repeating: Sprite(x: 0, y: 0, w: 0, h: 0, alpha: 0, packed: 0, shape: 0),
+                                   count: T.cap)
 
     init(stage: Ambience.Stage, glyphs: Ambience.Glyphs, seed: UInt64) {
-        (self.stage, random) = (stage, Ambience.Random(seed: seed))
-        peak = stage.ink.blend == .over ? T.waterPeak.over : T.waterPeak.add
-        rate = T.waterRate * Double(stage.size.width * stage.size.height) / (1512 * 982)  // a screen's, by its area
-        drops.reserveCapacity(T.waterDrops)
-        if let box = stage.box { drop(x: Double(box.midX), y: Double(box.maxY) + T.waterSummon) }  // the show's
+        var r = Ambience.Random(seed: seed), g = Ambience.Random(seed: r.next())
+        self.stage = stage
+        ink = stage.ink.blend == .over ? T.waterPeak.over : T.waterPeak.add
+        area = Double(stage.size.width * stage.size.height) / (1512 * 982)  // a screen's rate, by its area
+        let (from, to, over) = (mix(T.waterGust, g.unit()), mix(T.waterGust, g.unit()), mix(T.waterGustTime, g.unit()))
+        gust = (from, to, over * g.unit(), over)  // somewhere in a gust at the show
+        due = -log(1 - r.unit())
+        (random, gusting) = (r, g)
+        drops.reserveCapacity(1024)
+        if let box = stage.box {  // the show's: a large drop, at its full brightness while the rain builds in
+            drop(x: Double(box.midX), y: Double(box.maxY) + T.waterSummon, size: 1, bright: T.waterWord)
+        }
     }
 
-    /// The most it draws: every crest of every drop, with its trough.
-    var count: Int { drops.count * T.waterCrests * 2 }
+    /// The most it draws: every crest of every drop, and its splash.
+    var count: Int { drops.count * (T.waterCrests + 1) }
 
     var frameRate: Double { T.waterFrameRate }
 
-    /// A drop at (x, y), unless `waterDrops` are alive: its crests leave together, each further one slower.
-    mutating func drop(x: Double, y: Double) {
+    /// The rain's share of its rate at `age` after the birth (the build-in): smoothstep over `waterBuildIn`, as Code's
+    /// veil, so it starts from nothing and reaches its own rate without a kink.
+    static func buildIn(at age: Double) -> Double {
+        let u = min(max(age / T.waterBuildIn, 0), 1)
+        return u * u * (3 - 2 * u)
+    }
+
+    /// The gust's share of the rate now: from one level to the next on a smoothstep.
+    var gustLevel: Double {
+        let u = min(max(gust.at / gust.over, 0), 1)
+        return gust.from + (gust.to - gust.from) * u * u * (3 - 2 * u)
+    }
+
+    /// The drops a second now: the intensity's rate on this screen, in the gust, built in.
+    var rate: Double {
+        let r = T.waterRate.idle + (T.waterRate.typing - T.waterRate.idle) * intensity
+        return r * area * gustLevel * Water.buildIn(at: age)
+    }
+
+    /// A drop's size, 0 to 1 (a diameter's share of the largest), exponential as rain's drop sizes are
+    /// (Marshall–Palmer) with the intensity's slope: many small, few large, more of them large as the rain gets heavier.
+    private mutating func size() -> Double {
+        let slope = T.waterSize.idle + (T.waterSize.typing - T.waterSize.idle) * intensity
+        return -log(1 - random.unit() * (1 - exp(-slope))) / slope
+    }
+
+    /// A drop of `size` at (x, y), `age` seconds old (one that landed within the step), `bright` times its peak,
+    /// unless `waterDrops` are alive: one crest, two from `waterCrestSizes`' first, three from its second; the lead's
+    /// speed, the width, the crater and the fade grow with the size, the peak too.
+    mutating func drop(x: Double, y: Double, size s: Double, bright: Double = 1, age: Double = 0) {
         guard drops.count < T.waterDrops else { return }
-        let crests = (0..<T.waterCrests).map { k in
-            Crest(speed: T.waterSpeed * (1 - T.waterSpread * Double(k) * (1 + random.pick(-1...1) * T.waterJitter)),
-                  width: random.pick(T.waterWidth), start: random.pick(-1...1) * T.waterStart)
-        }
-        drops.append(Drop(x: x, y: y, age: 0, crests: crests))
+        let crests = s >= T.waterCrestSizes.1 ? 3 : s >= T.waterCrestSizes.0 ? 2 : 1
+        let speed = mix(T.waterSpeed, s) * (1 + random.pick(-1...1) * T.waterJitter)
+        drops.append(Drop(x: x, y: y, age: age, size: s, crests: min(crests, T.waterCrests), speed: speed,
+                          width: mix(T.waterWidth, s), near: mix(T.waterNear, s),
+                          peak: ink * mix(T.waterBright, s) * bright, decay: mix(T.waterFade, s),
+                          lag: mix(T.waterGap, s) / speed, splash: mix(T.waterSplashWidth, s)))
         landed += 1
     }
 
     /// A drop anywhere on the stage, at least `waterClear` from the box (a few tries, else none this time).
-    private mutating func restDrop() {
+    private mutating func restDrop(age: Double) {
         let (w, h) = (Double(stage.size.width), Double(stage.size.height))
         let clear = stage.box?.insetBy(dx: -T.waterClear, dy: -T.waterClear)
+        let lift = T.waterLift.idle + (T.waterLift.typing - T.waterLift.idle) * intensity
         for _ in 0..<20 {
             let (x, y) = (random.pick(0...w), random.pick(0...h))
             if let clear, clear.contains(CGPoint(x: x, y: y)) { continue }
-            return drop(x: x, y: y)
+            return drop(x: x, y: y, size: size(), bright: lift, age: age)
         }
     }
 
-    /// A ring's alpha: up over `waterOnset` on the curve since its start (`a`), then down with the drop's `age` and
-    /// with its radius `r`.
-    func alpha(a: Double, age: Double, r: Double) -> Double {
-        let spread = (T.waterNear / max(r, T.waterNear)).squareRoot()  // its energy over its circumference
-        return peak * Curve.easeOutQuint(a / T.waterOnset) * exp(-age / T.waterDecay) * spread
+    /// Crest `k` of drop `d` (0 the lead): `a` its age (each further one starts `waterGap` of the drop's size behind
+    /// the one before it and runs `waterSpread` slower), `r` its radius, and its alpha: up over `waterOnset` on the
+    /// curve, then down with time, as e^(−a / the drop's fade), and with the radius, as its energy spreads over the
+    /// circle (the crater's radius ÷ r from there out), each further crest at `waterFollow` of the one before.
+    static func crest(_ k: Int, of d: Drop) -> (a: Double, r: Double, alpha: Double) {
+        let a = d.age - Double(k) * d.lag, r = d.speed * (1 - T.waterSpread * Double(k)) * max(a, 0)
+        guard a > 0 else { return (a, r, 0) }
+        let onset = a < T.waterOnset ? Curve.easeOutQuint(a / T.waterOnset) : 1
+        let follow = k == 0 ? 1 : k == 1 ? T.waterFollow : pow(T.waterFollow, Double(k))
+        return (a, r, d.peak * follow * onset * exp(-a / d.decay) * min(d.near / max(r, 1e-9), 1))
+    }
+
+    /// The splash at a drop's landing: a soft disc (the ring of radius 0), as bright as the drop's peak times
+    /// `waterSplashBright`, gone over `waterSplash` on (1 − t ÷ it)².
+    static func splash(of d: Drop) -> Double {
+        guard d.age < T.waterSplash else { return 0 }
+        let f = 1 - d.age / T.waterSplash
+        return d.peak * T.waterSplashBright * f * f
     }
 
     /// A word's drop (pass 25), where the panel's canvas drops it: across the screen where the word's last key is
     /// (`Stage.screenX`), higher the higher the key's row, from `waterTop` under the stage's top edge for the number
     /// row to `waterClear` above the box for the space bar's; a key without a place drops at the caret's x,
-    /// `waterClear` above the box.
+    /// `waterClear` above the box. The largest drop, at `waterWord` of its peak (pass 31), so it stands out of the rain.
     private mutating func wordDrop(at key: Keyboard.Position?) {
         let low = Double(stage.box?.maxY ?? 0) + T.waterClear, high = Double(stage.size.height) - T.waterTop
         let x = stage.screenX(key) ?? Double(stage.box == nil ? stage.size.width / 2 : stage.caret)
-        drop(x: x, y: low + (1 - (key?.down ?? 1)) * max(high - low, 0))
+        drop(x: x, y: low + (1 - (key?.down ?? 1)) * max(high - low, 0), size: 1, bright: T.waterWord)
     }
 
     /// `events`: a word's end (Space or Return after a glyph key) drops the word's drop, unless the last word's came
-    /// less than `waterWordGap` ago; a glyph key, ⌫ and the typing rate change nothing it draws.
-    mutating func step(dt: Double, events: [Ambience.Event], rate _: Double, into out: inout [Sprite]) {
+    /// less than `waterWordGap` ago; every key and the typing `rate` raise the intensity (pass 31, as Code's: up with
+    /// τ `waterRise`, down with τ `waterSettle` from `waterHold` after the last key).
+    mutating func step(dt: Double, events: [Ambience.Event], rate typing: Double, into out: inout [Sprite]) {
         sinceWord += dt
         for e in events {
+            sinceKey = 0
             switch e {
             case .typed(_, let at): (inWord, lastKey) = (true, at)
             case .space, .paragraph:
@@ -474,22 +552,85 @@ struct Water: Ambience.Scene {
             case .backspace: break
             }
         }
-        if random.unit() < rate * dt { restDrop() }  // Poisson, at `rate` a second
+        let target = min(typing / T.waterFast, 1)  // up at once, down only after a pause
+        if target > intensity {
+            intensity += (target - intensity) * (1 - exp(-dt / T.waterRise))
+        } else if sinceKey >= T.waterHold {
+            intensity += (target - intensity) * (1 - exp(-dt / T.waterSettle))
+        }
+        sinceKey += dt
+        age += dt
+        gust.at += dt
+        while gust.at >= gust.over {  // the next gust: from where this one ended to a new level
+            (gust.from, gust.to) = (gust.to, mix(T.waterGust, gusting.unit()))
+            (gust.at, gust.over) = (gust.at - gust.over, mix(T.waterGustTime, gusting.unit()))
+        }
         for i in drops.indices { drops[i].age += dt }
-        drops.removeAll { $0.age >= T.waterLife }
-        let colour = stage.ink.text
-        for d in drops {
-            for c in d.crests {
-                let a = d.age - c.start, r = c.speed * a
-                guard a > 0, out.count + 2 <= T.cap else { continue }
-                let alpha = alpha(a: a, age: d.age, r: r)
-                guard alpha >= T.waterShown else { continue }
-                out.append(Sprite.ring(x: d.x, y: d.y, radius: r, width: c.width, alpha: alpha, colour: colour))
-                if r > T.waterTrough, alpha * T.waterTroughShare >= T.waterShown {  // the trough inside it
-                    out.append(Sprite.ring(x: d.x, y: d.y, radius: r - T.waterTrough, width: c.width,
-                                           alpha: alpha * T.waterTroughShare, colour: colour))
+        // The rain: drops at exponential gaps at the rate, each landed where in the step its gap ended.
+        let now = rate
+        if now > 0 {
+            var left = now * dt
+            while left >= due {
+                left -= due
+                restDrop(age: left / now)
+                due = -log(1 - random.unit())
+            }
+            due -= left
+        }
+        // Each drop's splash and crests, the drops whose crests have all faded gone (they fade on from their
+        // onset): the narrow rings written from the front of the room, the wide ones from its back and appended after
+        // them (as bands), through pointers (a debug build's Array append and Sprite init cost about 100 ns each).
+        let (colour, ring, life, shown, band) = (Sprite.packed(stage.ink.text), Sprite.Kind.ring.rawValue, T.waterLife,
+                                                 T.waterShown, T.waterBand)
+        var (buffer, list) = ([Sprite](), [Drop]())
+        swap(&buffer, &scratch)  // out of the scene, so it can be written while the drops are read
+        swap(&list, &drops)
+        assert(buffer.count == T.cap, "Still water's room for its sprites is gone: is it stepped on two threads at once?")
+        let room = min(max(T.cap - out.count, 0), buffer.count)
+        var (j, h, kept) = (0, room, 0)  // the narrow at [0, j), the wide at [h, room)
+        list.withUnsafeMutableBufferPointer { ds in buffer.withUnsafeMutableBufferPointer { b in
+            let sp = b.baseAddress!
+            for i in 0..<ds.count {
+                let d = ds[i]
+                guard d.age < life else { continue }
+                var alive = d.age < Double(d.crests - 1) * d.lag + T.waterOnset  // not every crest out yet
+                let dot = Water.splash(of: d)
+                if dot >= shown {
+                    alive = true
+                    if j < h {
+                        sp[j] = Sprite.halo(x: d.x, y: d.y, width: d.splash, alpha: dot, colour: stage.ink.text)
+                        j += 1
+                    }
+                }
+                let (x, y) = (Float(d.x), Float(d.y))
+                for k in 0..<d.crests {
+                    let c = Water.crest(k, of: d)
+                    guard c.alpha >= shown else { continue }
+                    alive = true
+                    guard j < h else { continue }
+                    let w = d.width * (T.waterThin + (1 - T.waterThin) * d.near / (d.near + c.r))  // thinning
+                    let side = Float(2 * (c.r + 2 * w))
+                    let s = Sprite(x: x, y: y, w: side, h: side, alpha: Float(min(c.alpha, 1)), packed: colour,
+                                   shape: ring | Sprite.ring(radius: c.r, width: w) << 8)
+                    if c.r > band {
+                        h -= 1
+                        sp[h] = s
+                    } else {
+                        sp[j] = s
+                        j += 1
+                    }
+                }
+                if alive {
+                    if kept != i { ds[kept] = d }
+                    kept += 1
                 }
             }
-        }
+        } }
+        list.removeLast(list.count - kept)
+        out.append(contentsOf: buffer[0..<j])
+        out.append(contentsOf: buffer[h..<room])
+        bands = room - h
+        swap(&buffer, &scratch)
+        swap(&list, &drops)
     }
 }

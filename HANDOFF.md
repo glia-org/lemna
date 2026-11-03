@@ -4,6 +4,35 @@
 
 ## State (2026-11-03)
 
+- App, pass 31, rain on Still water as busy as Code (2026-11-03; DESIGN.md A1 amended; the user: "The matrix ambient
+  animation is perfect because it is very busy and yet enough in the background. [...] The rain drops are way to
+  uniform and seem unrealistic. Also its not busy at all. Make it way more realistic and similar to the matrix effect
+  regarding the intensity."). Still rings on still water seen from above, no streaks. **Busy:** 380 drops a second
+  on a laptop's screen at rest (0.5), 620 typing, by the area; about 800 drops and 1,000–1,200 rings at once, most of
+  them faint (62 % under 0.1 alpha): the layer's light 0.66 of Code's rest frame in Lemna's look, 0.70 by Still's
+  day, 0.52 by its night. **Realistic:** sizes exponential as rain's (many small, few large; heavier rain, larger
+  drops); a small drop a small ring gone in about a second, a large one a wide, bright ring with two crests close
+  behind it lasting about 4 s; each ring's brightness ~1/r past its crater and fading with time, thinning as it
+  widens; a short splash at each landing; Poisson in space and time, in gusts of 0.5–1.5 its rate over 5–20 s.
+  **Build-in:** the rate rises from 0 over 3 s (the rain starting; the show's large drop at once): 2–5 % of the rest's
+  light at 0.5 s, about a third at 2 s, the rest's from 4 s on (3 s, not Code's 4, as the rings lag the rate).
+  **Typing:** Code's intensity (its constants) raises the rate, the drops' size and their brightness: light 2.78
+  times the rest's at 6 keys a second (Code's 2.70); the word's drop kept where its last key is, now the largest
+  and brightest. **Cost:** the step in release 0.019 ms at rest (Code 0.022), 0.095 ms typing on 2560 × 1440 (0.077);
+  the GPU at 2× 0.31 ms at rest (Code 0.26), 0.60 typing (0.38), with the wide rings drawn as bands in a second draw
+  (`Renderer.encode(bands:)`; as squares 0.65 and 1.46 ms); Code's draw and every render but Still water's byte for
+  byte as before. Tests: 166 (161 before), debug and release. Renders (app/renders): `ambience-water-build-0ms.png`,
+  `-500ms`, `-2000ms`, `-4000ms`, `ambience-water-idle.png`, `ambience-water.png` (typing), `ambience-water-day.png`,
+  `ambience-water-night.png` and their `-typing` twins. No bundle built; nothing launched. **Untried live:** the
+  motion at 30 Hz on a real dim (whether hundreds of rings read as rain in the periphery or as flicker; the
+  splashes), the gusts' sway, whether 3 s of build-in reads as rain starting, the lift's feel while writing, the bands
+  on a 1× screen and a 6K display, the power at rest. The quickest knobs: `waterRate` (busy), `waterPeak` (light),
+  `waterBuildIn`, `waterLift` and `waterRate.typing` (the lift). Try, after `make-app.sh`, quitting the running Lemna
+  and `open app/build/Lemna.app`, Session › Ambience ▸ Still water (or Theme ▸ Still):
+  - Summon over a dark app: a large drop above the box at once, then a few drops, then rain thickening for 3 s.
+  - Leave it for half a minute: busy rings everywhere, gusts and lulls; does it stay in the background?
+  - Type fast for ten seconds: heavier rain, bigger drops, a large drop per word where its last key is; stop: back
+    to the rest within about 5 s.
 - App, pass 30, paste, undo and redo (2026-11-03; DESIGN.md B4 and E2 amended; the user: "It should be possible to
   paste text as well. I wanted for example to paste the name of a Obsidian note that contained an emoji but with the
   current implementation this is not possible. Add this functionality, but also include a undo function with a

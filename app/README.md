@@ -1306,6 +1306,68 @@ shortcut."):
   the window; that macOS shows no paste alert for ⌘V into the box (its read is user originated and paste related, but
   made while another app is active); emoji on real screens and in the Metal strip; the feel of the 1 s pause.
 
+Pass 31, rain on Still water as busy as Code (DESIGN.md A1 amended; 2026-11-03; the user: "The matrix ambient
+animation is perfect because it is very busy and yet enough in the background. [...] With the rain animation this is
+not the case at all. The rain drops are way to uniform and seem unrealistic. Also its not busy at all. Make it way more
+realistic and similar to the matrix effect regarding the intensity."):
+
+- `Water` (`Scenes.swift`): a `Drop` carries what its size (0–1) set when it landed: its crests (1–3), the lead's
+  speed, the width, the crater's radius (`near`), the peak, the fade's τ, the lag between its crests and its splash's
+  width. `size()` draws the size from a truncated exponential, its slope the intensity's (`waterSize`). The rain lands
+  at exponential gaps in drops (`due`), each at the age where in the step its gap ended; the rate (`rate`) is the
+  intensity's `waterRate` by the stage's area, times the gust (`gustLevel`: a smoothstep between levels of `waterGust`
+  over `waterGustTime`, from its own generator, `gusting`) and the build-in (`buildIn(at:)`, smoothstep over
+  `waterBuildIn`). `crest(_:of:)` is crest k's age, radius and alpha (onset, e^(−a/τ), min(1, near ÷ r), `waterFollow`
+  per crest), `splash(of:)` the splash's alpha. The intensity is Code's, the same code and constants (`waterFast`,
+  `waterRise`, `waterSettle`, `waterHold` are `codeFast` …): every event resets the time since the last key, the
+  typing rate sets the target. A word's end drops `wordDrop` as before, now size 1 at `waterWord`; the show's drop too.
+  `step` writes through pointers into the scene's own `scratch` (swapped out while it does, as Code's, and asserting
+  in debug that it is whole), the narrow rings and splashes from its front and the rings wider than `waterBand` from
+  its back, appended after them; `bands` says how many; the drops whose crests have all gone under `waterShown` are
+  dropped in the same pass.
+- The bands (`Particles.swift`, `Ambience.swift`, `Ambient.swift`): `Scene.bands` (0 by default, Code's) and
+  `Run.bands`; `Renderer.encode(…, bands:)` and `offscreen(…, bands:)` draw the last `bands` sprites in a second
+  instanced draw (`baseInstance`), 2 × (48 + 1) vertices each; the shader's `Frame.unused` is now `segments`, 0 in the
+  first draw, where the vertex shader is as before, 48 in the second, where vertex 2k lies on the outer polygon
+  (circumscribing r + 2w + a pixel) and 2k + 1 on the inner circle (r − 2w − a pixel) at angle k; the fragment shader
+  is unchanged. `Ambient.draw` passes the run's bands for a frame it draws.
+- `Tuning`: new `waterGust`, `waterGustTime`, `waterBuildIn`, `waterFast`, `waterRise`, `waterSettle`, `waterHold`,
+  `waterSize`, `waterCrestSizes`, `waterGap`, `waterBright`, `waterFade`, `waterFollow`, `waterLift`, `waterThin`,
+  `waterSplash`, `waterSplashWidth`, `waterSplashBright`, `waterWord`, `waterBand`; changed `waterRate` (a pair,
+  380 / 620 [0.5]), `waterDrops` 4,000 [32], `waterSpeed` 24–34 by size [36], `waterJitter` 0.1 [0.15],
+  `waterSpread` 0.06 [0.15], `waterWidth` 1.2–3 [2–3.5], `waterNear` 8–20 by size [12], `waterOnset` 0.08 [0.18],
+  `waterPeak` (1, 0.9) [(0.6, 0.4)]; gone `waterStart`, `waterTrough`, `waterTroughShare`, `waterDecay`.
+- The tuning, on the renders and the measures: 1, 300 drops a second, pass 24's peaks (0.6, 0.4), crater 4–10 pt,
+  widths 1–2.6: busy, 540 rings, but an eighth of Code's light (0.002 against 0.015), too faint; 2, peaks (0.9, 0.8),
+  crater 8–20, widths 1.2–3: 0.69 of Code's on one seed in a gust, 0.45 over four, and the large drops' crests 4–8 pt
+  apart at 0.6 read as targets; 3, the crests 2.5–5 pt apart
+  at 0.5, 6 % slower; the build-in over 4 s held 82 % at 4 s, over 3 s 93 %; 4, the GPU at twice Code's at rest and
+  three times typing, from the wide rings' squares: the bands; 5, 380 / 620 drops a second and peaks (1, 0.9): 0.66 of
+  Code's light, the lift 2.78 times (Code's 2.70); the step through pointers (debug 4.7 → 2.3 ms typing on
+  2560 × 1440).
+- Tests: 166 (161 before), debug and release. New: `stillWaterRainsInGustsAtItsRateScaledToTheScreen` (the rate over
+  600 s, the gusts' spread, drops of one frame at different ages, the Clark–Evans ratio), `dropSizesAreManySmallFewLarge`,
+  `aDropsSizeSetsItsRings` (crests, splash, 1/r and the fade, thinning, life), `stillWaterAtRestIsHundredsOfRingsAtOnce`,
+  `stillWaterBuildsInAtTheSummon`, `typingMakesTheRainHeavier`, `stillWaterStaysUnderTheCapAndWithinCodesStepBudget`,
+  `aRingDrawnAsABandIsTheRingItsSquareDraws`, `stillWaterRenders`, `stillWatersFrameCostsTheGPUAboutWhatCodesDoes`;
+  `stillWaterDropsOneForEachWord` replaces `stillWaterDropsOneForEachWordAndNoneForAKey` (keys now raise the rain);
+  gone with pass 25's behaviour `stillWatersRestRateHoldsWhileWriting`, `aDropsRingsRiseSoftlyThenFadeWithRadiusAndTime`,
+  `stillWaterStaysUnderTheCapOnALargeScreen` and `stillWaterShowsOnStillsDayAndNightDim`; the tuning record.
+- Renders (app/renders): `ambience-water-build-0ms.png`, `-500ms`, `-2000ms`, `-4000ms`, `ambience-water-idle.png`
+  (20 s at rest) and `ambience-water.png` (10 s of typing), Lemna's; `ambience-water-day.png` and
+  `ambience-water-night.png` (Still at rest, as before named) and their `-typing` twins. Every other render byte for
+  byte as pass 29b's (rendered at its commit and compared), Code's among them.
+- Measured (on the layer at 1×, the mean light over four seeds; release unless said): see DESIGN A1's pass 31. The
+  step 0.019 ms at rest on 1512 × 982 (Code 0.022), 0.095 ms typing on 2560 × 1440 (Code 0.077); the GPU at 2× 0.31 ms
+  at rest (Code 0.26), 0.60 typing (Code 0.38).
+- No app bundle built; nothing launched.
+
+## Known gaps
+
+- Pass 31 is not tried: nothing was launched, and the renders are single frames. Untried: the rain's motion at 30 Hz
+  on a real dim (whether hundreds of rings read as rain or as a flicker in the periphery, whether the splashes
+  twinkle or nag), the gusts' sway, the 3 s build-in, the lift while typing, the bands on a 1× screen and a 6K
+  display, and the power at rest. The site's Still water tile still draws pass 25's drops.
 - Pass 29b is not tried: nothing was launched. Untried: ⇧⏎, ⌃⏎ and ⌥⏎ in the box and the window (that the panel's key
   event carries ⇧ to `doCommand`), the ` ↵ `'s look by day and night, a paste of a line break into other apps. Open: a
   saved Markdown file shows a lone "\n" as a space in a Markdown viewer; no hard break was added.
