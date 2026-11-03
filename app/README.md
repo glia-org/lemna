@@ -83,7 +83,8 @@ git-ignored.
 
 - `Sources/LemnaCore` (no AppKit): `Text.swift` the model (one string with `"\n"` between paragraphs, U+2028 for a
   line break inside one, and a caret in Characters; each key's edits and motion as a `Change`; a journal edit applied,
-  the replay; the line's two parts around the caret with ` ¶ ` and ` ↵ `), `Line.swift` the geometry and drawing (Core Text shaping around the caret, the two
+  the replay; the line's two parts around the caret with ` ¶ ` and ` ↵ `; since pass 30 a paste's text and ⌘Z's way
+  back to a text as ordinary edits), `History.swift` (pass 30) the undo stack and its groups, `Line.swift` the geometry and drawing (Core Text shaping around the caret, the two
   fades, the clips at the caret, caret, the band, the newest glyphs' look, the colours), `Glide.swift` the glide, the curve
   (`Curve.easeOutQuint`) and the newest glyphs' entrance (`Entrance`), `Effects.swift` the Effects submenu's choice and
   every effect's magnitude (`Effects.Tuning`), `Ambience.swift` the Ambience submenu's choice, every magnitude of the
@@ -117,7 +118,8 @@ git-ignored.
   note); `Summon.swift` the hotkey (Carbon) and the menu-bar item with Lemna's menu.
 - `Tests/LemnaCoreTests`: the model, the glide, the fades, nothing before the caret drawn right of it, the text after it
   from the caret to 95 %, the renders (`CoreTests`, `RenderTests`); every key of B4, its boundaries, the word rules,
-  Characters with é, 🙂 and 👩‍💻, the replay of every key's edits (`EditingTests`); R1's rules, counts and idempotence (`MechanicalTests`); the state machine (`SessionTests`); the
+  Characters with é, 🙂 and 👩‍💻, the replay of every key's edits, since pass 30 a paste's text and ⌘Z's groups
+  (`EditingTests`); R1's rules, counts and idempotence (`MechanicalTests`); the state machine (`SessionTests`); the
   journal round trip through the app's replay, edits in the middle included (`JournalReplayTests`); the menu-bar mark,
   the Bluetooth notice, the muted colour's contrast, Start at Login per status (`FrameTests`); the box's frame and its clamps, one container at a
   time, the paste's decision table, the click-outside guard's table (`BoxTests`); the Sound submenu's default, a
@@ -1261,7 +1263,48 @@ then: "Wait, make shift+enter newline and keep enter the old behaviour."):
 - Build: `LEMNA_VERSION=0.1.2 make-app.sh`, build 85; the executable 1,274,112 bytes, no home folder in its symbols;
   signed with "Lemna Dev" (`Authority=Lemna Dev`) and verified.
 
+Pass 30, paste, undo and redo (DESIGN.md B4 and E2 amended; 2026-11-03; the user: "It should be possible to paste text
+as well. I wanted for example to paste the name of a Obsidian note that contained an emoji but with the current
+implementation this is not possible. Add this functionality, but also include a undo function with a corresponding
+shortcut."):
+
+- ⌘V (`LineView.paste(_:)`, `Clipboard.read`): the pasteboard's plain text (`string(forType: .string)`), nothing when
+  there is none, through `Text.pasted`: a run of two or more newlines of any kind ("\r\n" and "\r" one each) one
+  paragraph end, a single one a line break (U+2028), the ones at the very end dropped, a tab one space, the rest
+  verbatim; then `Text.insert`, over the selection as typing, one edit, one click (a letter's, a space's when all white
+  space), one ambience event. Pending text gives way to it (`discardMarkedText` once `marked` is empty). No ⇧⌘V or
+  ⌥⇧⌘V: AppKit sends them only to a menu item of their own (StandardKeyBinding.dict has no ⌘ key), and the paste is plain
+  already.
+- ⌘Z and ⌘⇧Z (`History.swift`, LemnaCore; `LineView.undo(_:)`, `redo(_:)`): each key's edit is recorded with its kind
+  (`History.Kind`: typing, deleting, alone) and its time by `recorded`, a move or a change of the selection closes the
+  group (`take`); a key joins the last group when it is open, of its kind, starts where that group ended and comes less
+  than `History.pause` (1 s) after its last key; ⌘V, Return, ⇧⏎ and ⌘X are alone. A group keeps the text before and
+  after it; `Text.become` goes from one to the other by one delete and one insert of what differs (the whole text when
+  the cut's ends would join regional indicators), the caret and the selection as they were, and its motion is the text
+  before the caret gaining and losing at its end, so `show` glides it and fades in what came back. ⌘Z plays ⌫'s click
+  and the ambience's ⌫, ⌘⇧Z a letter's and a glyph. `load` empties the stack (the silent restore, a finished session).
+- The menu (`main.swift`): Edit is Undo ⌘Z, Redo ⌘⇧Z (key equivalent "Z", the mask ⌘ alone, the capital holding the
+  ⇧, as AppKit's own menus have it; in a probe that sent key events to `performKeyEquivalent` and showed no window, it
+  took both a made-up ⇧⌘Z event with "Z" for its characters and one made from the keyboard's own (characters "z",
+  without modifiers "Z"), where "z" with ⌘⇧ as the mask took only the second; ⇧⌘V and ⌥⇧⌘V reached no ⌘V item), Cut,
+  Copy, Paste ⌘V, Select All; the box's `sendEvent` hands them to the menu as before.
+- The glide (`LineView.edited`): an edit's glide starts at most a band's width away, as a caret move's slide does.
+- Tests: 172 (161 before; 11 new: nine in EditingTests, `aPastesNewlinesBecomeLineBreaksAndParagraphEnds`,
+  `aPasteReplacesTheSelection`, `anEmojiPastedIsOneCharacter`, `typedRunsUndoAsOneGroupUntilAPauseOrAMove`,
+  `deleteRunsUndoAsOneGroup`, `aPasteReturnAndALineBreakAreEachAGroup`, `aNewEditClearsRedo`,
+  `undoAcrossASelectionReplacementRestoresTheSelection`, `undoGivesBackTheTextWhereverTheCaretIs`, through a `Writer`
+  that records as the line does; JournalReplayTests `pasteUndoAndRedoReplayThroughTheJournal`; RenderTests
+  `emojiRenders`), debug and release. Renders: `emoji.png`, `emoji-selection.png`, `emoji-still-day.png`,
+  `emoji-still-night.png` (a duck, a flag before the caret, a ZWJ sequence with a skin tone after it, in colour from
+  Apple Color Emoji in Menlo's and Literata's lines); the 43 earlier renders byte for byte as pass 29b's. No test
+  reaches the Edit menu: the tests depend on LemnaCore alone.
+
 ## Known gaps
+
+- Pass 30 is not tried: nothing was built as an app or launched. Untried: ⌘V, ⌘Z and ⌘⇧Z reaching the line in the box
+  while Lemna is not the active app (the Edit menu's actions through the non-activating panel, as pass 29's ⌘C), and in
+  the window; that macOS shows no paste alert for ⌘V into the box (its read is user originated and paste related, but
+  made while another app is active); emoji on real screens and in the Metal strip; the feel of the 1 s pause.
 
 - Pass 29b is not tried: nothing was launched. Untried: ⇧⏎, ⌃⏎ and ⌥⏎ in the box and the window (that the panel's key
   event carries ⇧ to `doCommand`), the ` ↵ `'s look by day and night, a paste of a line break into other apps. Open: a
@@ -1270,7 +1313,7 @@ then: "Wait, make shift+enter newline and keep enter the old behaviour."):
   the active app (the Edit menu's actions through the responder chain of the non-activating panel; the box's
   `sendEvent` hands ⌘ keys to the menu as for ⌘⏎), and in the window; the band on real screens by day and night and
   under Increase Contrast; dead keys and an input method over a selection; the feel of ⌘A's glide to the end. Not
-  built: ⇧↑/⇧↓, ⇧Home/⇧End, ⌘⌫, ⌘V into the line, undo, the mouse.
+  built: ⇧↑/⇧↓, ⇧Home/⇧End, ⌘⌫, the mouse (⌘V into the line and undo since pass 30).
 - Pass 28 is not tried: nothing was launched or played. Untried: each new bed under the clicks while typing, on the
   built-in speakers and on headphones; whether the 120 Hz low cut is "a bit" on Ship and Lab; Lab's blips, 3.5 dB
   nearer the clicks after the levelling; Space's swells and Synth's chords against writing (they fail sound.md's

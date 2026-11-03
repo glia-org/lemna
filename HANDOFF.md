@@ -4,6 +4,37 @@
 
 ## State (2026-11-03)
 
+- App, pass 30, paste, undo and redo (2026-11-03; DESIGN.md B4 and E2 amended; the user: "It should be possible to
+  paste text as well. I wanted for example to paste the name of a Obsidian note that contained an emoji but with the
+  current implementation this is not possible. Add this functionality, but also include a undo function with a
+  corresponding shortcut."). **⌘V** pastes the pasteboard's plain text at the caret, over the selection as typing, from
+  a Paste item in the hidden Edit menu (to the line as first responder, as ⌘C): a run of two or more newlines one
+  paragraph end, a single newline a line break (U+2028, ` ↵ `), the ones at the very end dropped, a tab one space, the
+  rest verbatim (`Text.pasted`); one `insert(at:)`, one click, one ambience event; pending text gives way to it. Emoji,
+  flags and ZWJ sequences are one Character each and draw in colour from Apple Color Emoji under Menlo and Literata
+  (renders below). No ⇧⌘V or ⌥⇧⌘V (AppKit routes them only to a menu item of their own; the paste is plain already).
+  Lemna now reads the clipboard at ⌘V, and only there; a hand-off still never reads it. **⌘Z / ⌘⇧Z** (Undo, Redo in the
+  same menu; `History` in LemnaCore, no NSUndoManager): typed keys are one group while each comes less than 1 s after
+  the one before (`History.pause`) and nothing comes between, deletes likewise; a move or a selection change closes a
+  group; ⌘V, Return, ⇧⏎ and ⌘X are each a group of their own; typing over a selection starts a group the typing after
+  it joins, so one ⌘Z gives back the selected text, selected. ⌘Z restores the text, the caret and the selection, ⌘⇧Z
+  the text and the caret after; a new edit clears the redo; unbounded within a session, empty at launch and after a
+  hand-off. **The journal** gets ⌘Z and ⌘⇧Z as the existing `delete(at:count:)` and `insert(at:)` of what differs
+  (`Text.become`), no new record kind, so the replay gives what the screen showed. **Sound:** ⌘Z ⌫'s click and the
+  ambience's ⌫, ⌘⇧Z a letter's click and a glyph, once each. An edit's glide now starts at most a band's width away (a
+  long paste or its ⌘Z). Tests: 172 (161 before; nine in EditingTests, `pasteUndoAndRedoReplayThroughTheJournal` in
+  JournalReplayTests, `emojiRenders` in RenderTests), debug and release. Renders (app/renders): `emoji.png`,
+  `emoji-selection.png`, `emoji-still-day.png`, `emoji-still-night.png`; the 43 earlier ones byte for byte as pass
+  29b's. Not built as an app and nothing launched (`make-app.sh` not run). Try, after `make-app.sh`, quitting the
+  running Lemna and `open app/build/Lemna.app`:
+  - **The thing the tests cannot reach:** ⌘V, ⌘Z and ⌘⇧Z arriving in the box while another app is active (the Edit
+    menu's actions to the non-activating panel's first responder, pass 29's untried path), and in the window (⌃⌘F).
+  - Copy an Obsidian note's name with an emoji in it, summon the box, ⌘V: the emoji in colour, one ← and one ⌫ each;
+    ⌘V over a selection; text with blank lines (a ` ¶ ` each) and single newlines (a ` ↵ ` each), its trailing newline
+    gone; whether macOS asks about the paste (it should not: a user's paste is always allowed).
+  - Type a phrase, pause, another, ⌘Z twice, ⌘⇧Z twice; ⌫ a run and ⌘Z; ⌘A, a letter, ⌘Z (all back, selected); ⌘Z
+    after Return and ⇧⏎. Say if 1 s is the right pause, or if typing and deleting should share a group as in TextEdit.
+  - Emoji under Still by day and by night, and in the hand-off's glyphs.
 - App, pass 29b, the line break (2026-11-03; DESIGN.md B4 and R1 amended; the user, after seeing a Return come out as
   a blank line in the pasted text: "a enter does not put a newline but rather two. Is that intended?", then
   "newline.", then: "Wait, make shift+enter newline and keep enter the old behaviour."). **Return is unchanged:** a

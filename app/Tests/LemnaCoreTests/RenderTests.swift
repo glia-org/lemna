@@ -206,6 +206,56 @@ func near(_ p: [Int], _ q: [Int]) -> Bool { zip(p, q).allSatisfy { abs($0 - $1) 
     #expect(fading != render(typed, offset: CGFloat(g.offset(at: 0.025)), name: "line-break-25ms.png"))
 }
 
+/// ⌘V's emoji on the line (pass 30; the user, 2026-11-03, wanted to paste "the name of a Obsidian note that contained
+/// an emoji"): a duck, a flag just before the caret and a ZWJ sequence with a skin tone after it, in every theme's face
+/// (Lemna's Menlo, Still's Literata by day and by night). Each is one glyph of Apple Color Emoji, Core Text's fallback
+/// for every face, at the advance `Line.width` gives its Character alone (the glide moves by what the line lays out),
+/// and draws in colour: pixels of a hue in its cell, which no theme's text, muted grey or band has. With "of 🇩🇪"
+/// selected by ⇧⌥← twice the band runs from the caret behind the flag and ends with it (emoji.png,
+/// emoji-selection.png, emoji-still-day.png, emoji-still-night.png).
+@Test func emojiRenders() throws {
+    let words = "Pasted: 🦆 Ducks of 🇩🇪 by 👩🏽‍💻 here", emoji: [Character] = ["🦆", "🇩🇪", "👩🏽‍💻"]
+    let text = Text(words, caret: 20)  // after the flag
+    var selected = text
+    for _ in 0 ..< 2 { selected.moveWordLeft(extending: true) }
+    #expect(selected.selectedText == "of 🇩🇪")
+    let still = try #require(stillFont)
+    let looks = [(Style(font: menlo), "emoji.png"), (Style(.still, dark: false, font: still), "emoji-still-day.png"),
+                 (Style(.still, dark: true, font: still), "emoji-still-night.png")]
+    for (style, name) in looks {
+        let line = Line.shape(text, marked: "", font: style.font)
+        let frame = render(text, offset: 0, style: style, name: name)
+        let size = CGSize(width: 1200, height: 700), band = Line.band(in: size, style: style)
+        let bar = Line.caretRect(in: band, style: style)
+        for c in emoji {
+            let at = words.utf16.distance(from: words.startIndex, to: words.firstIndex(of: c)!)
+            let glyphs = line.glyphs.filter { (at..<at + String(c).utf16.count).contains($0.index) }
+            let g = try #require(glyphs.first)
+            #expect(glyphs.count == 1 && CTFontCopyPostScriptName(g.font) as String == "AppleColorEmoji", "\(name) \(c)")
+            #expect(abs(g.advance - Line.width(String(c), font: style.font)) < 0.01 && g.advance > 0.9 * style.size,
+                    "\(name) \(c): \(g.advance)")
+            #expect(g.after == (c == "👩🏽‍💻"), "\(name) \(c)")
+            guard c != "🦆" else { continue }  // in V2's fade: dimmed toward the surface
+            let left = (g.after ? bar.maxX : bar.minX) - line.caret + g.x
+            var hued = 0
+            for y in Int(2 * (size.height - band.maxY))..<Int(2 * (size.height - band.minY)) {
+                for x in Int(2 * left)..<Int(2 * (left + g.advance)) {
+                    let k = 4 * (y * 2400 + x), (b, gr, r) = (Int(frame[k]), Int(frame[k + 1]), Int(frame[k + 2]))
+                    if max(b, gr, r) - min(b, gr, r) > 60 { hued += 1 }
+                }
+            }
+            #expect(hued > 200, "\(name) \(c): \(hued) pixels of a hue")
+        }
+        #expect(inkedColumns(frame).upperBound < 2 * 1140, "\(name)")  // inside the fade after the caret
+    }
+    let lemna = Style(font: menlo), frame = render(selected, offset: 0, name: "emoji-selection.png")
+    // In the line's UTF-16 units (🦆 and each regional indicator two): the space before the flag, selected; the one
+    // before "of", before the caret, and the one after the flag, not.
+    #expect(near(pixel(frame, glyph: 19, of: selected, style: lemna), band(0x7aa7f0, over: 0x0e1013)))
+    #expect(pixel(frame, glyph: 16, of: selected, style: lemna) == [0x13, 0x10, 0x0e, 0xff])
+    #expect(pixel(frame, glyph: 24, of: selected, style: lemna) == [0x13, 0x10, 0x0e, 0xff])
+}
+
 extension String {
     /// The text with each line break a paragraph end: the same line with ` ¶ ` where ` ↵ ` stood.
     func replacingLineBreak() -> String { String(map { $0 == Text.lineBreak ? "\n" : $0 }) }

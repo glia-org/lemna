@@ -1,7 +1,8 @@
 // Editing anywhere on the line (DESIGN.md B4): the caret's moves, the deletes, the word rules, Characters as the one
 // unit, and the edits each key hands the journal; since pass 29 the selection: every move with ⇧, ⌘A, the collapse of
 // a plain move, typing and pending text over a selection, the four deletes of one, and what ⌘C and ⌘X take; since
-// pass 29b the line break (⇧⏎), one Character inside its paragraph for every key. No Foundation here (see
+// pass 29b the line break (⇧⏎), one Character inside its paragraph for every key; since pass 30 ⌘V's text, an emoji
+// pasted, and ⌘Z's and ⌘⇧Z's groups, through a `Writer` that records as the line does. No Foundation here (see
 // RenderTests.swift).
 import LemnaJournal
 import Testing
@@ -377,4 +378,239 @@ let br = String(Text.lineBreak)
     t.selectAll()
     #expect(t.selectedText == "one\ntwo\nthree")  // a line break and a paragraph end alike: "\n" for ⌘C
     #expect(t.deleteBackward().edits == [.delete(at: 0, count: 13)] && t.plainText == "")
+}
+
+// MARK: Paste, undo and redo (pass 30)
+
+/// Writes as the line does (LineView): each key's edit kept for ⌘Z with its kind at its time (`History.record`; keys
+/// 0.1 s apart unless a pause is given), a move closing the group, ⌘V as one edit of `Text.pasted`'s text, ⌘Z and
+/// ⌘⇧Z; and the edits the journal gets, every key's in order.
+struct Writer {
+    var text = Text(), history = History(), edits: [Edit] = [], t = 0.0
+
+    mutating func key(_ kind: History.Kind, after pause: Double = 0.1, _ k: (inout Text) -> Change) {
+        t += pause
+        let before = text, change = k(&text)
+        history.record(change, from: before, to: text, kind: kind, at: t)
+        edits += change.edits
+    }
+    /// Each Character a key; the first after `pause`.
+    mutating func type(_ s: String, after pause: Double = 0.1) {
+        for (i, c) in s.enumerated() { key(.typing, after: i == 0 ? pause : 0.1) { $0.insert(String(c)) } }
+    }
+    mutating func backspace(after pause: Double = 0.1) { key(.deleting, after: pause) { $0.deleteBackward() } }
+    mutating func returnKey() { key(.alone) { $0.insert("\n") } }
+    mutating func lineBreak() { key(.alone) { $0.insert(br) } }
+    mutating func paste(_ s: String) { key(.alone) { $0.insert(Text.pasted(s)) } }
+    mutating func move(_ k: (inout Text) -> Change) {
+        let change = k(&text)
+        if change.edits.isEmpty, change.motion != .none { history.close() }
+    }
+    @discardableResult mutating func undo() -> Change { revisit(history.undo(&text)) }
+    @discardableResult mutating func redo() -> Change { revisit(history.redo(&text)) }
+    private mutating func revisit(_ change: Change) -> Change {
+        t += 0.1
+        edits += change.edits
+        return change
+    }
+    /// The journal's replay of every edit so far gives the text on screen.
+    var replays: Bool { Text(replaying: edits).plainText == text.plainText }
+}
+
+/// ⌘V (B4, pass 30; the user, 2026-11-03: "It should be possible to paste text as well."): the newlines of the pasted
+/// text as the line has them, a single one a line break and a run of them a paragraph end, "\r\n" and "\r" as one
+/// newline each, those at the very end dropped, a tab one space, the rest as it is.
+@Test func aPastesNewlinesBecomeLineBreaksAndParagraphEnds() {
+    #expect(Text.pasted("one\ntwo") == "one\u{2028}two")  // a single newline: a line break, as ⇧⏎
+    #expect(Text.pasted("one\n\ntwo") == "one\ntwo" && Text.pasted("one\n\n\n\ntwo") == "one\ntwo")  // a paragraph end
+    #expect(Text.pasted("one\r\ntwo\r\n\r\nthree") == "one\u{2028}two\nthree")  // "\r\n" one newline
+    #expect(Text.pasted("one\rtwo\r\rthree") == "one\u{2028}two\nthree")  // and "\r"
+    #expect(Text.pasted("a\u{2028}b\u{2029}\u{2029}c") == "a\u{2028}b\nc")  // a newline of any kind counts
+    #expect(Text.pasted("Note name\n") == "Note name" && Text.pasted("end\r\n\r\n") == "end")  // the end's dropped
+    #expect(Text.pasted("\n\nstart") == "\nstart")  // at the start kept
+    #expect(Text.pasted("col\tumn\t") == "col umn ")  // a tab one space
+    #expect(Text.pasted("  two  spaces, i. e. as is ") == "  two  spaces, i. e. as is ")  // no R1 here
+    #expect(Text.pasted("\n\r\n") == "" && Text.pasted("") == "")  // nothing left: ⌘V does nothing
+}
+
+/// ⌘V types its text at the caret in one insert, over the selection as typing does (⌫'s or ⌦'s cut of it first).
+@Test func aPasteReplacesTheSelection() {
+    var t = Text("the slow fox", caret: 4)
+    t.moveWordRight(extending: true)  // "slow", the caret at its end
+    let pasted = Text.pasted("quick\nbrown")
+    #expect(t.insert(pasted) == Change(edits: [.delete(at: 4, count: 4), .insert(at: 4, "quick\u{2028}brown")],
+                                       motion: .before(added: "quick\u{2028}brown", removed: "slow")))
+    #expect(selecting(t) == "the quick\u{2028}brown| fox" && t.paragraphs.count == 1)
+    t = Text("a b", caret: 1)
+    #expect(t.insert(Text.pasted(" new\n\npara")).edits == [.insert(at: 1, " new\npara")])
+    #expect(marked(t) == "a new\npara| b")
+}
+
+/// An emoji pasted (the user's case: an Obsidian note's name with one in it) is one Character as typed ones are: one
+/// step of ← and one ⌫, a flag, a ZWJ sequence with a skin tone and a letter with a combining accent alike.
+@Test func anEmojiPastedIsOneCharacter() {
+    var t = Text("Notes: ")
+    t.insert(Text.pasted("🦆 Ducks 🇩🇪 👩🏽‍💻 cafe\u{301}"))
+    #expect(t.count == 7 + 16 && t.plainText.unicodeScalars.count == 7 + 21)  // 👩🏽‍💻 four scalars, 🇩🇪 two
+    #expect(t.deleteBackward() == Change(edits: [.delete(at: 22, count: 1)],
+                                         motion: .before(added: "", removed: "e\u{301}")))
+    for _ in 0 ..< 4 { t.deleteBackward() }  // "caf" and the space
+    #expect(t.deleteBackward() == Change(edits: [.delete(at: 17, count: 1)],
+                                         motion: .before(added: "", removed: "👩🏽‍💻")))
+    t.deleteBackward()
+    #expect(t.moveLeft() == Change(motion: .caret(passed: "🇩🇪", leftward: true)))  // the flag, one step
+    #expect(t.moveLeft(extending: true) == Change(motion: .caret(passed: " ", leftward: true)))
+    t.moveWordLeft(extending: true)
+    t.moveWordLeft(extending: true)
+    #expect(t.selectedText == "🦆 Ducks " && t.utf16Selection == 7..<16)  // 🦆 is two UTF-16 units
+}
+
+/// Typed keys are one group of ⌘Z's while they come less than `History.pause` apart and nothing else comes between:
+/// a pause of 1 s, a move, a delete, starts the next. ⌘Z gives back the text and the caret before the group, ⌘⇧Z the
+/// text and the caret after it; the edits of both are the journal's ordinary ones, and its replay is the text.
+@Test func typedRunsUndoAsOneGroupUntilAPauseOrAMove() {
+    var w = Writer()
+    w.type("the quick")
+    w.type(" brown", after: History.pause)  // a pause of 1 s: a group of its own
+    w.type(" fox", after: History.pause - 0.01)  // under it: the same group
+    #expect(w.undo() == Change(edits: [.delete(at: 9, count: 10)], motion: .before(added: "", removed: " brown fox")))
+    #expect(marked(w.text) == "the quick|" && w.replays)
+    #expect(w.undo().edits == [.delete(at: 0, count: 9)] && w.text.plainText == "" && w.undo() == Change())  // no more
+    #expect(w.redo() == Change(edits: [.insert(at: 0, "the quick")], motion: .before(added: "the quick", removed: "")))
+    #expect(w.redo().edits == [.insert(at: 9, " brown fox")] && marked(w.text) == "the quick brown fox|")
+    #expect(w.redo() == Change() && w.replays)  // nothing left to redo
+    w.move { $0.moveWordLeft() }  // a move: the next key starts a group, even back where it was
+    w.move { $0.moveWordRight() }
+    w.type("es")
+    w.move { $0.moveLeft() }
+    w.move { $0.moveLeft() }
+    w.type("x")
+    #expect(marked(w.text) == "the quick brown foxx|es")
+    w.undo()
+    #expect(marked(w.text) == "the quick brown fox|es")  // the caret where the move left it
+    w.undo()
+    #expect(marked(w.text) == "the quick brown fox|" && w.replays)
+}
+
+/// Deletes are a group of their own kind, as typing is: a run of ⌫ with ⌥⌫ in it is one ⌘Z, which puts the text back
+/// before the caret (it glides out as typing would); a run of ⌦ after a move another, put back after the caret, which
+/// shows at once. Typing after a delete starts a group, and a pause of 1 s does too.
+@Test func deleteRunsUndoAsOneGroup() {
+    var w = Writer()
+    w.type("one two three four")
+    w.backspace(after: History.pause)
+    w.backspace()
+    w.key(.deleting) { $0.deleteWordBackward() }  // ⌥⌫: "fo", the run goes on
+    #expect(marked(w.text) == "one two three |")
+    w.type("4")  // typing: a group of its own
+    w.backspace(after: History.pause)  // a pause: another
+    w.move { $0.moveToParagraphStart() }
+    for _ in 0 ..< 4 { w.key(.deleting) { $0.deleteForward() } }  // ⌦ ×4: "one "
+    #expect(marked(w.text) == "|two three " && w.replays)
+    #expect(w.undo() == Change(edits: [.insert(at: 0, "one ")], motion: .after(removed: "")))  // after the caret
+    #expect(marked(w.text) == "|one two three ")
+    #expect(w.undo().edits == [.insert(at: 14, "4")] && marked(w.text) == "one two three 4|")  // the caret back with it
+    w.undo()
+    #expect(w.undo() == Change(edits: [.insert(at: 14, "four")], motion: .before(added: "four", removed: "")))
+    #expect(marked(w.text) == "one two three four|" && w.replays)
+}
+
+/// ⌘V, Return, ⇧⏎ and ⌘X are each a group of their own, however fast the keys come: nothing joins them and they
+/// join nothing. ⌘Z takes them back one by one, ⌘⇧Z brings them back the same way.
+@Test func aPasteReturnAndALineBreakAreEachAGroup() {
+    var w = Writer()
+    w.type("ab")
+    w.returnKey()
+    w.type("cd")
+    w.lineBreak()
+    w.type("e")
+    w.paste("🦆 X\nY\n")
+    w.type("f")
+    #expect(w.text.plainText == "ab\ncd\u{2028}e🦆 X\u{2028}Yf" && w.replays)
+    let steps = ["ab\ncd\u{2028}e🦆 X\u{2028}Y", "ab\ncd\u{2028}e", "ab\ncd\u{2028}", "ab\ncd", "ab\n", "ab", ""]
+    for text in steps {
+        w.undo()
+        #expect(w.text.plainText == text && w.text.caret == w.text.count)
+    }
+    #expect(w.undo() == Change() && w.replays)
+    for text in steps.reversed().dropFirst() + ["ab\ncd\u{2028}e🦆 X\u{2028}Yf"] {
+        w.redo()
+        #expect(w.text.plainText == text && w.text.caret == w.text.count)
+    }
+    #expect(w.redo() == Change() && w.replays)
+    var u = Writer()  // a cut (⌘X) is a group of its own: ⌘Z gives the text back, selected as it was
+    u.type("one two")
+    u.move { $0.moveWordLeft(extending: true) }
+    u.key(.alone) { $0.deleteBackward() }
+    u.backspace()
+    #expect(u.text.plainText == "one" && u.undo().edits == [.insert(at: 3, " ")])
+    u.undo()
+    #expect(selecting(u.text) == "one |two^" && u.replays)
+}
+
+/// A new edit after ⌘Z ends what ⌘⇧Z could bring back; a move or a selection does not.
+@Test func aNewEditClearsRedo() {
+    var w = Writer()
+    w.type("first")
+    w.type(" second", after: History.pause)
+    w.undo()
+    w.move { $0.moveLeft() }
+    w.move { $0.moveRight(extending: true) }
+    #expect(w.redo().edits == [.insert(at: 5, " second")] && w.text.plainText == "first second")
+    w.undo()
+    w.type(" third")
+    #expect(w.redo() == Change() && w.text.plainText == "first third")
+    w.undo()  // the typing after ⌘Z is a group of its own, even where it began at the group's end
+    #expect(w.text.plainText == "first" && w.replays)
+}
+
+/// ⌘Z across a selection's replacement gives back the text with the selection as it was, the caret at the end it
+/// was at; the typing after the replacement joins its group, as in a Mac text field; ⌘⇧Z types it again.
+@Test func undoAcrossASelectionReplacementRestoresTheSelection() {
+    var w = Writer()
+    w.type("the slow fox")
+    w.move { $0.moveWordLeft() }
+    w.move { $0.moveLeft() }
+    w.move { $0.moveWordLeft(extending: true) }  // "slow", the caret at its start
+    w.type("quick", after: History.pause)
+    #expect(marked(w.text) == "the quick| fox")
+    #expect(w.undo() == Change(edits: [.delete(at: 4, count: 5), .insert(at: 4, "slow")],
+                               motion: .before(added: "", removed: "quick")))
+    #expect(selecting(w.text) == "the |slow^ fox" && w.text.selectedText == "slow")
+    #expect(w.redo().edits == [.delete(at: 4, count: 4), .insert(at: 4, "quick")])
+    #expect(selecting(w.text) == "the quick| fox")
+    w.undo()
+    w.move { $0.moveToParagraphEnd() }
+    w.move { $0.moveWordLeft(extending: true) }  // "fox", the caret at its start
+    w.paste("🦆")  // ⌘V over it
+    #expect(marked(w.text) == "the slow 🦆|")
+    #expect(w.undo() == Change(edits: [.delete(at: 9, count: 1), .insert(at: 9, "fox")],
+                               motion: .before(added: "", removed: "🦆")))
+    #expect(selecting(w.text) == "the slow |fox^" && w.replays)
+    var all = Writer()  // ⌘A and a letter: everything back, selected, the caret at the end
+    all.type("a\u{2028}b\nc")
+    all.move { $0.selectAll() }
+    all.type("x", after: History.pause)
+    #expect(all.undo() == Change(edits: [.delete(at: 0, count: 1), .insert(at: 0, "a\u{2028}b\nc")],
+                                 motion: .before(added: "a\u{2028}b\nc", removed: "x")))
+    #expect(selecting(all.text) == "^a\u{2028}b\nc|" && all.replays)
+}
+
+/// ⌘Z after the caret moved on: the text and the caret as before the group, wherever the caret is now; what the two
+/// texts share before the caret stays still, the rest glides. Should the cut's two ends join into one Character (a
+/// lone regional indicator each), the whole text is put in, so the text is still exactly what it was.
+@Test func undoGivesBackTheTextWhereverTheCaretIs() {
+    var w = Writer()
+    w.type("ab ")
+    w.type("cd", after: History.pause)
+    for _ in 0 ..< 4 { w.move { $0.moveLeft() } }
+    #expect(marked(w.text) == "a|b cd")
+    #expect(w.undo() == Change(edits: [.delete(at: 3, count: 2)], motion: .before(added: "b ", removed: "")))
+    #expect(marked(w.text) == "ab |" && w.replays)
+    var t = Text("\u{1F1E9}x\u{1F1EA}", caret: 2)  // 🇩, x, 🇪: three Characters; without the x one flag
+    let change = t.become(Text("\u{1F1E9}y\u{1F1EA}", caret: 2))
+    #expect(t.plainText == "\u{1F1E9}y\u{1F1EA}" && t.count == 3 && t.caret == 2)
+    var replayed = Text("\u{1F1E9}x\u{1F1EA}")
+    for e in change.edits { replayed.apply(e) }
+    #expect(replayed.plainText == t.plainText)
 }

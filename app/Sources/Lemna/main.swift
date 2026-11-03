@@ -945,10 +945,10 @@ func themeMenu(target: AnyObject?) -> NSMenu {
     return menu
 }
 
-/// Lemna: About, Quit; Session: Done, Copy, Save…, Discard…, Theme ▸, Sound ▸, Effects ▸, Ambience ▸; Edit: Cut,
-/// Copy, Select All (pass 29), sent to the first responder, the line; View: Open Window. As an accessory app Lemna shows
-/// no menu bar, so this is where the key equivalents live (the menu-bar item's menu shows the Session items). No Paste:
-/// the line takes no ⌘V, as before. Full screen: the window's green button.
+/// Lemna: About, Quit; Session: Done, Copy, Save…, Discard…, Theme ▸, Sound ▸, Effects ▸, Ambience ▸; Edit: Undo,
+/// Redo, Cut, Copy, Paste, Select All (Cut, Copy and Select All since pass 29, the rest since pass 30), sent to the
+/// first responder, the line; View: Open Window. As an accessory app Lemna shows no menu bar, so this is where the key
+/// equivalents live (the menu-bar item's menu shows the Session items). Full screen: the window's green button.
 func mainMenu() -> NSMenu {
     let bar = NSMenu(), app = NSMenu(title: "Lemna"), session = NSMenu(title: "Session"), view = NSMenu(title: "View")
     let edit = NSMenu(title: "Edit")
@@ -966,8 +966,12 @@ func mainMenu() -> NSMenu {
     session.addItem(withTitle: "Sound", action: nil, keyEquivalent: "").submenu = soundMenu(target: nil)  // Off ⌘K
     session.addItem(withTitle: "Effects", action: nil, keyEquivalent: "").submenu = effectsMenu(target: nil)
     session.addItem(withTitle: "Ambience", action: nil, keyEquivalent: "").submenu = ambienceMenu(target: nil)
+    edit.addItem(withTitle: "Undo", action: #selector(LineView.undo(_:)), keyEquivalent: "z")  // ⌘Z
+    edit.addItem(withTitle: "Redo", action: #selector(LineView.redo(_:)), keyEquivalent: "Z")  // ⌘⇧Z: "Z" holds the ⇧
+    edit.addItem(.separator())
     edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")  // ⌘X
     edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")  // ⌘C, the selection
+    edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")  // ⌘V, plain text
     edit.addItem(withTitle: "Select All", action: #selector(NSResponder.selectAll(_:)), keyEquivalent: "a")  // ⌘A
     view.addItem(withTitle: "Open Window", action: #selector(App.toggleWindow(_:)), keyEquivalent: "f")
         .keyEquivalentModifierMask = [.control, .command]

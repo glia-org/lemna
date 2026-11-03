@@ -1,10 +1,11 @@
 // The writing surface (DESIGN.md S1 V2 B4 P0): the view fills its container (the box, or the window: one view moved
 // between them, W2), its layer paints the background, and the line is drawn into the strip across its middle on each
 // key and, while a glide or an entrance runs, on each display refresh. The caret moves through the text and edits
-// anywhere (B4), and with ⇧ selects (pass 29: typing replaces the selection, ⌫ and ⌦ take it, ⌘A, ⌘C and ⌘X); every
-// change to the text leaves as a journal edit (E2) and, ahead of the drawing, as a click (K1). Return ends a paragraph,
-// ⇧⏎ breaks the line inside it (pass 29b). The newest glyph and a Return's ` ¶ ` or a ⇧⏎'s ` ↵ ` fade in, in the same
-// frames (F1: K1, E2). After each key's frame the key goes on to the ambience as a value (A1).
+// anywhere (B4), and with ⇧ selects (pass 29: typing replaces the selection, ⌫ and ⌦ take it, ⌘A, ⌘C and ⌘X); ⌘V pastes
+// plain text, ⌘Z and ⌘⇧Z undo and redo (pass 30, `History`); every change to the text leaves as a journal edit (E2)
+// and, ahead of the drawing, as a click (K1). Return ends a paragraph, ⇧⏎ breaks the line inside it (pass 29b). The
+// newest glyph and a Return's ` ¶ ` or a ⇧⏎'s ` ↵ ` fade in, in the same frames (F1: K1, E2). After each key's frame
+// the key goes on to the ambience as a value (A1).
 import AppKit
 import LemnaClicks
 import LemnaCore
@@ -24,6 +25,8 @@ final class LineView: NSView, NSTextInputClient {
     private let strip = Strip()
     private(set) var text = Text()
     private var marked = ""
+    /// ⌘Z and ⌘⇧Z (pass 30): the groups of edits since the line was loaded.
+    private var history = History()
     /// Each change to the text, as the journal records it; called on the key event.
     var onEdit: (Edit) -> Void = { _ in }
     /// Clicks on the keys that change the text, played before the edit is laid out and drawn so the sound leaves
@@ -132,14 +135,15 @@ final class LineView: NSView, NSTextInputClient {
     private func animating(at t: Double) -> Bool { glide.active(at: t) || slide.active(at: t) || entrance.active(at: t) }
 
     /// Shows a change at once, on the key event itself: the text before the caret moved left by `dw` points (an edit
-    /// there), the whole text by `ds` (a caret move; capped at a word behind, and starting at most a band's width
-    /// away), or neither (a deletion after the caret closes up at once). `typed`: what the key added before the caret,
+    /// there; since pass 30 starting at most a band's width away, where a long paste or its ⌘Z would start beyond
+    /// what is shaped), the whole text by `ds` (a caret move; capped at a word behind, and starting at most a band's
+    /// width away), or neither (a deletion after the caret closes up at once). `typed`: what the key added before the caret,
     /// which enters (K1, E2); nil for anything else, which ends an entrance under way.
     private func edited(before dw: CGFloat = 0, moved ds: CGFloat = 0, typed: String? = nil) {
         let now = CACurrentMediaTime(), still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         shaped = Line.shape(text, marked: marked, font: style.font)
         pushed = Double(dw)
-        glide.add(Double(dw), at: now, reduceMotion: still)
+        glide.add(Double(dw), at: now, reduceMotion: still, limit: Double(bounds.width))
         slide.add(Double(ds), at: now, reduceMotion: still, cap: max(abs(Double(ds)), Double(word)),
                   limit: Double(bounds.width))
         entrance = entering(typed, at: now, reduceMotion: still)
@@ -198,8 +202,17 @@ final class LineView: NSView, NSTextInputClient {
         onAmbient(Ambience.Key(t: keyFrame, kind: kind, code: code, line: shaped, pushed: pushed))
     }
 
-    /// A key's change: its edits to the journal, then on screen as its motion says.
+    /// A key's edit of `kind`, kept for ⌘Z (pass 30): the text before it and after it.
+    private func recorded(_ kind: History.Kind, _ key: (inout Text) -> Change) -> Change {
+        let before = text, change = key(&text)
+        history.record(change, from: before, to: text, kind: kind, at: CACurrentMediaTime())
+        return change
+    }
+
+    /// A key's change: its edits to the journal, then on screen as its motion says. A move, or a change of the
+    /// selection alone, closes the group of edits ⌘Z takes back (pass 30).
     private func take(_ change: Change) {
+        if change.edits.isEmpty, change.motion != .none { history.close() }
         for e in change.edits { onEdit(e) }
         switch change.motion {
         case .none: break
@@ -223,6 +236,7 @@ final class LineView: NSView, NSTextInputClient {
     /// Shows `t` at rest and takes keys: the restore at launch, and the clear after a session ends.
     func load(_ t: Text) {
         (text, marked, glide, slide, entrance, accepting) = (t, "", Glide(), Glide(), Entrance(), true)
+        history = History()  // nothing to undo in a restored or a new session
         strip.isHidden = false  // a hand-off's cut hid it
         inputContext?.discardMarkedText()  // after `marked` is empty, so an unmarkText it may send adds nothing
         shaped = Line.shape(text, marked: "", font: style.font)
@@ -234,7 +248,7 @@ final class LineView: NSView, NSTextInputClient {
     func stop() {
         accepting = false
         if !marked.isEmpty {
-            for e in text.insert(marked).edits { onEdit(e) }
+            for e in recorded(.typing, { $0.insert(marked) }).edits { onEdit(e) }
             marked = ""
             shaped = Line.shape(text, marked: "", font: style.font)
         }
@@ -255,8 +269,8 @@ final class LineView: NSView, NSTextInputClient {
 
     override func keyDown(with event: NSEvent) {
         guard accepting else { return }
-        // ⌘ chords are the menu's (⌘A, ⌘C and ⌘X its Edit items, below), or nothing; but ⌘← and ⌘→ move the caret to
-        // the paragraph's ends (B4), with ⇧ selecting there.
+        // ⌘ chords are the menu's (⌘A, ⌘C, ⌘X, ⌘V, ⌘Z and ⌘⇧Z its Edit items, below), or nothing; but ⌘← and ⌘→ move
+        // the caret to the paragraph's ends (B4), with ⇧ selecting there.
         if event.modifierFlags.contains(.command), event.specialKey != .leftArrow, event.specialKey != .rightArrow {
             return
         }
@@ -282,17 +296,17 @@ final class LineView: NSView, NSTextInputClient {
         switch selector {
         case #selector(K.insertNewline(_:)) where NSApp.currentEvent?.modifierFlags.contains(.shift) != true:
             clicks?.play(.paragraph)
-            take(text.insert("\n"))
+            take(recorded(.alone) { $0.insert("\n") })
             ambient(.paragraph)
         case #selector(K.insertNewline(_:)), #selector(K.insertLineBreak(_:)),
              #selector(K.insertNewlineIgnoringFieldEditor(_:)):  // ⇧⏎, ⌃⏎, ⌥⏎: Return's click, the ambience's Return
             clicks?.play(.paragraph)
-            take(text.insert(String(Text.lineBreak)))
+            take(recorded(.alone) { $0.insert(String(Text.lineBreak)) })
             ambient(.paragraph)
-        case #selector(K.deleteBackward(_:)): delete(text.deleteBackward())
-        case #selector(K.deleteWordBackward(_:)): delete(text.deleteWordBackward())
-        case #selector(K.deleteForward(_:)): delete(text.deleteForward())
-        case #selector(K.deleteWordForward(_:)): delete(text.deleteWordForward())
+        case #selector(K.deleteBackward(_:)): delete(recorded(.deleting) { $0.deleteBackward() })
+        case #selector(K.deleteWordBackward(_:)): delete(recorded(.deleting) { $0.deleteWordBackward() })
+        case #selector(K.deleteForward(_:)): delete(recorded(.deleting) { $0.deleteForward() })
+        case #selector(K.deleteWordForward(_:)): delete(recorded(.deleting) { $0.deleteWordForward() })
         case #selector(K.moveLeft(_:)), #selector(K.moveBackward(_:)): take(text.moveLeft())
         case #selector(K.moveRight(_:)), #selector(K.moveForward(_:)): take(text.moveRight())
         case #selector(K.moveWordLeft(_:)), #selector(K.moveWordBackward(_:)): take(text.moveWordLeft())
@@ -350,7 +364,63 @@ final class LineView: NSView, NSTextInputClient {
     /// ⌘X: copied as ⌘C does, then taken as ⌫ takes a selection, with its one click; only once the pasteboard has it.
     @objc func cut(_ sender: Any?) {
         guard accepting, !text.selection.isEmpty, Clipboard.write(text.selectedText) else { return }
-        delete(text.deleteBackward())
+        delete(recorded(.alone) { $0.deleteBackward() })
+    }
+
+    // MARK: Paste, undo and redo (pass 30)
+
+    /// ⌘V, from the main menu's Edit item: the pasteboard's plain text (`Clipboard.read`) at the caret, over the
+    /// selection if there is one, its newlines and tabs as `Text.pasted` maps them, in one edit and one group of
+    /// ⌘Z's; one click and one ambience event, as one typed key. Pending text (a dead key, an input method's) gives
+    /// way to it, as to typing over a selection. No plain text on the pasteboard: nothing.
+    @objc func paste(_ sender: Any?) {
+        guard accepting, let s = Clipboard.read().map(Text.pasted), let last = s.last else { return }
+        let old = marked
+        marked = ""
+        if !old.isEmpty { inputContext?.discardMarkedText() }  // after `marked` is empty: an unmarkText adds nothing
+        let space = s.allSatisfy(\.isWhitespace)
+        clicks?.play(space ? .space : .letter)
+        show(recorded(.alone) { $0.insert(s) }, over: old)
+        ambient(space ? .space : .glyph(last))
+    }
+
+    /// ⌘Z: the last group of edits taken back (`History.undo`), the text, the caret and the selection as they were
+    /// before it, by the journal's ordinary edits; ⌫'s click and the ambience's ⌫, once. Pending text goes first.
+    /// Nothing to undo: nothing.
+    @objc func undo(_ sender: Any?) {
+        guard accepting else { return }
+        revisit(history.undo(&text), click: .backspace, ambience: .backspace)
+    }
+
+    /// ⌘⇧Z: the group ⌘Z took back, again; a typed key's click and the ambience's glyph (the last Character it puts
+    /// back before the caret, else the last it takes), once.
+    @objc func redo(_ sender: Any?) {
+        guard accepting else { return }
+        let change = history.redo(&text)
+        var glyph: Character = " "
+        if case .before(let added, let removed) = change.motion { glyph = added.last ?? removed.last ?? glyph }
+        if case .after(let removed) = change.motion { glyph = removed.last ?? glyph }
+        revisit(change, click: .letter, ambience: .glyph(glyph))
+    }
+
+    /// ⌘Z's or ⌘⇧Z's change on screen, in place of any pending text, with its one click and ambience event.
+    private func revisit(_ change: Change, click: KeyKind, ambience: Ambience.Key.Kind) {
+        guard change != Change() else { return }
+        let old = marked
+        marked = ""
+        if !old.isEmpty { inputContext?.discardMarkedText() }
+        clicks?.play(click)
+        show(change, over: old)
+        ambient(ambience)
+    }
+
+    /// A change that takes the place of the pending text `old` (typing, ⌘V, ⌘Z, ⌘⇧Z): its edits to the journal, and
+    /// the text before the caret moved by what it gained and lost there and by the pending text gone.
+    private func show(_ change: Change, over old: String) {
+        for e in change.edits { onEdit(e) }
+        var dw = -width(old), typed: String?
+        if case .before(let added, let removed) = change.motion { (dw, typed) = (dw + width(added) - width(removed), added) }
+        edited(before: dw, typed: typed)
     }
 
     func insertText(_ string: Any, replacementRange r: NSRange) {
@@ -359,12 +429,9 @@ final class LineView: NSView, NSTextInputClient {
         if !s.isEmpty { clicks?.play(s.allSatisfy(\.isWhitespace) ? .space : .letter) }
         // The press-and-hold accent menu replaces the letter just typed: a range that ends at the caret.
         let pressAndHold = marked.isEmpty && r.location != NSNotFound && NSMaxRange(r) == text.utf16Caret
-        let change = text.insert(s, replacing: pressAndHold ? r.length : 0), old = marked
+        let change = recorded(.typing) { $0.insert(s, replacing: pressAndHold ? r.length : 0) }, old = marked
         marked = ""
-        for e in change.edits { onEdit(e) }
-        var dw = -width(old), typed: String?  // the pending text it takes the place of
-        if case .before(let added, let removed) = change.motion { (dw, typed) = (dw + width(added) - width(removed), added) }
-        edited(before: dw, typed: typed)
+        show(change, over: old)  // the pending text it takes the place of
         if let last = s.last { ambient(s.allSatisfy(\.isWhitespace) ? .space : .glyph(last)) }
     }
     func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
@@ -373,7 +440,7 @@ final class LineView: NSView, NSTextInputClient {
         marked = (string as? NSAttributedString)?.string ?? (string as? String) ?? ""
         var dw = width(marked) - width(old)
         if !marked.isEmpty, text.anchor != nil {  // pending text over a selection takes its place, as typing does
-            let cut = text.deleteBackward()
+            let cut = recorded(.typing) { $0.deleteBackward() }
             for e in cut.edits { onEdit(e) }
             if case .before(_, let removed) = cut.motion { dw -= width(removed) }
         }
@@ -381,7 +448,7 @@ final class LineView: NSView, NSTextInputClient {
         edited(before: dw)
     }
     func unmarkText() {  // the pending text stays as it is shown, so the line does not move
-        if !marked.isEmpty { for e in text.insert(marked).edits { onEdit(e) } }
+        if !marked.isEmpty { for e in recorded(.typing, { $0.insert(marked) }).edits { onEdit(e) } }
         marked = ""
     }
     func hasMarkedText() -> Bool { !marked.isEmpty }

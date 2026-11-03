@@ -187,3 +187,49 @@ struct Typist {
     try k.finish()
     #expect(rmdir(sessions) == 0 && rmdir(root) == 0)
 }
+
+/// ⌘V, ⌘Z and ⌘⇧Z (pass 30) are the journal's ordinary edits, no new kind: a paste with an emoji, a flag and a line
+/// break typed over a selection is one insert after its cut; ⌘Z takes it back by a delete and an insert, ⌘⇧Z puts it in
+/// again; a typed run undone and typed anew in its place; written through a real journal and read back as a relaunch
+/// would, the replay is the text the screen showed, and the line it restores has nothing to undo.
+@Test func pasteUndoAndRedoReplayThroughTheJournal() throws {
+    var w = Writer()
+    w.type("A note: TITLE here")
+    w.move { $0.moveWordLeft() }
+    w.move { $0.moveLeft() }
+    w.move { $0.moveWordLeft(extending: true) }  // "TITLE"
+    w.paste("🦆 Ducks of 🇩🇪\r\nand 👩🏽‍💻\n")
+    #expect(w.text.plainText == "A note: 🦆 Ducks of 🇩🇪\u{2028}and 👩🏽‍💻 here")
+    let pasted = w.edits.count
+    #expect(Array(w.edits[pasted - 2..<pasted])
+        == [.delete(at: 8, count: 5), .insert(at: 8, "🦆 Ducks of 🇩🇪\u{2028}and 👩🏽‍💻")])  // one insert, after the cut
+    w.undo()
+    #expect(selecting(w.text) == "A note: |TITLE^ here")
+    w.redo()
+    w.undo()
+    w.redo()
+    w.move { $0.moveToParagraphEnd() }
+    w.returnKey()
+    w.type("more", after: History.pause)
+    w.undo()
+    w.type("less")
+    #expect(w.text.plainText == "A note: 🦆 Ducks of 🇩🇪\u{2028}and 👩🏽‍💻 here\nless" && w.replays)
+
+    var template = Array((String(cString: getenv("TMPDIR")) + "/lemna-app-test-XXXXXX").utf8CString)
+    let root = template.withUnsafeMutableBufferPointer { String(cString: mkdtemp($0.baseAddress!)) }
+    let sessions = root + "/sessions.noindex", store = MemoryKeyStore()
+    do {
+        let j = try Journal.open(directory: .init(fileURLWithPath: sessions), keyStore: store)
+        for e in w.edits { j.append(e) }
+        j.flush(.full)
+    }
+    usleep(200_000)  // the lock and the batch window pass, as in journalRoundTripThroughTheAppsReplay
+    let k = try Journal.open(directory: .init(fileURLWithPath: sessions), keyStore: store)
+    #expect(k.replay == w.edits)
+    var restored = Writer(text: Text(replaying: k.replay))
+    #expect(restored.text.plainText == w.text.plainText)
+    #expect(restored.undo() == Change() && restored.redo() == Change())  // a restored session starts with no undo
+    #expect(Mechanical.apply(restored.text.plainText).text == "A note: 🦆 Ducks of 🇩🇪\nand 👩🏽‍💻 here\n\nLess")
+    try k.finish()
+    #expect(rmdir(sessions) == 0 && rmdir(root) == 0)
+}

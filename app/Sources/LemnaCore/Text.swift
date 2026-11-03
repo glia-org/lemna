@@ -1,7 +1,8 @@
 // The writing as one string, paragraphs apart by "\n", a line break inside one as U+2028 (pass 29b, ⇧⏎), with a caret
 // anywhere in it and a selection from an anchor to the caret (DESIGN.md S1 B4 P0; the selection since pass 29), rebuilt
-// from the journal's edits (E2). One unit everywhere: Characters (the caret, the anchor, the journal's offsets, the
-// line's parts), so a letter with its accent, an emoji or a line break is one step of ← and one ⌫.
+// from the journal's edits (E2); since pass 30 a paste's text, and ⌘Z and ⌘⇧Z as ordinary edits (`become`). One unit
+// everywhere: Characters (the caret, the anchor, the journal's offsets, the line's parts), so a letter with its accent,
+// an emoji or a line break is one step of ← and one ⌫.
 import LemnaJournal
 import Foundation
 
@@ -85,6 +86,24 @@ public struct Text: Equatable {
         if !s.isEmpty { change.edits.append(apply(.insert(at: caret, s))) }
         if !change.edits.isEmpty { change.motion = .before(added: s, removed: removed) }
         return change
+    }
+
+    /// ⌘V's text as the line takes it (pass 30), typed at the caret in one `insert` (over the selection, as typing):
+    /// a run of newlines of any kind ("\n", "\r\n" and "\r" alike, each one) two or more long is one paragraph end, a
+    /// single newline a line break (`lineBreak`, as ⇧⏎), newlines at the very end are dropped, a tab is one space; the
+    /// rest as it is (R1 works on the output only, as for typing).
+    public static func pasted(_ s: String) -> String {
+        var out = "", newlines = 0
+        for c in s {
+            if c.isNewline {  // "\r\n" is one Character
+                newlines += 1
+                continue
+            }
+            if newlines > 0 { out.append(newlines > 1 ? "\n" : lineBreak) }
+            newlines = 0
+            out.append(c == "\t" ? " " : c)
+        }
+        return out
     }
 
     /// ⌫: the Character before the caret, across spaces and paragraph ends alike (B4); at the start, nothing. With a
@@ -205,6 +224,41 @@ public struct Text: Equatable {
         (caret, at) = (count, plainText.endIndex)
     }
 
+    /// ⌘Z and ⌘⇧Z (pass 30, `History`): the text made what `target` was, by the journal's ordinary edits, so the replay
+    /// gives what the screen showed: what the two do not share at their start and at their end, in Characters, deleted
+    /// and the target's in its place; then the caret and the selection as `target` had them. Should the cut's two ends
+    /// join into one Character (two regional indicators), the whole text is put in instead. The motion: the text before
+    /// the caret gained and lost at its end, past what the two share there, so it glides as that typing or that ⌫
+    /// would; a change after the caret alone closes up or shows at once; the selection alone draws again.
+    mutating func become(_ target: Text) -> Change {
+        let (now, then) = (Array(plainText), Array(target.plainText)), shorter = min(now.count, then.count)
+        let (wasCaret, wasAnchor) = (caret, anchor)
+        var start = 0, end = 0
+        while start < shorter, now[start] == then[start] { start += 1 }
+        while end < shorter - start, now[now.count - 1 - end] == then[then.count - 1 - end] { end += 1 }
+        var change = Change()
+        let (cut, put) = (now.count - start - end, String(then[start..<then.count - end]))
+        if cut > 0 { change.edits.append(apply(.delete(at: start, count: cut))) }
+        if !put.isEmpty { change.edits.append(apply(.insert(at: start, put))) }
+        if plainText != target.plainText {
+            if count > 0 { change.edits.append(apply(.delete(at: 0, count: count))) }
+            if !target.plainText.isEmpty { change.edits.append(apply(.insert(at: 0, target.plainText))) }
+        }
+        (caret, anchor) = (min(target.caret, count), target.anchor)
+        at = plainText.index(plainText.startIndex, offsetBy: caret)
+        let (was, will) = (now[..<wasCaret], then[..<min(target.caret, then.count)])
+        var shared = 0
+        while shared < min(was.count, will.count), was[shared] == will[shared] { shared += 1 }
+        if shared < was.count || shared < will.count {
+            change.motion = .before(added: String(will[shared...]), removed: String(was[shared...]))
+        } else if !change.edits.isEmpty {
+            change.motion = .after(removed: String(now[start..<now.count - end]))
+        } else if anchor != wasAnchor {
+            change.motion = .selected
+        }
+        return change
+    }
+
     // MARK: The line
 
     /// A part of the line: its text, whether it is a paragraph end's ` ¶ ` or a line break's ` ↵ ` (muted), whether it
@@ -322,7 +376,8 @@ public struct Change: Equatable {
         /// the caret for an insertion, back for a deletion.
         case before(added: String, removed: String)
         /// The text after the caret lost `removed` at its start: that part closes up at once, since a glide would move
-        /// text the eye rests on.
+        /// text the eye rests on. Also ⌘Z or ⌘⇧Z changing only the text after the caret (pass 30; `removed` what went,
+        /// "" when it only gained), which shows at once.
         case after(removed: String)
         /// The caret passed over `passed`, leftwards or rightwards: the whole text glides by its width, so the caret
         /// stays where it is.

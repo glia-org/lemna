@@ -1,6 +1,6 @@
-// The pasteboard and the keys for Copy (O1) and Paste (O3): Lemna's item, and ⌘V as the keyboard would send it. Lemna
-// writes the pasteboard and never reads it: after a paste its text stays on the clipboard. Since pass 17a also the
-// hand-off's timing log.
+// The pasteboard and the keys for Copy (O1) and Paste (O3): Lemna's item, and ⌘V as the keyboard would send it. A
+// hand-off writes the pasteboard and never reads it: after a paste its text stays on the clipboard; since pass 30 ⌘V
+// into the line reads it, and nothing else does. Since pass 17a also the hand-off's timing log.
 import AppKit
 import Carbon.HIToolbox
 import QuartzCore
@@ -19,6 +19,11 @@ enum Clipboard {
         }
         return pasteboard.writeObjects([item])
     }
+
+    /// ⌘V into the line (pass 30): the pasteboard's plain text, nil when it holds none (an image, a file alone). The
+    /// one read, made at the user's ⌘V, which macOS allows without its paste alert (NSPasteboard.h: an access "both
+    /// user originated and paste related will always be allowed").
+    static func read() -> String? { NSPasteboard.general.string(forType: .string) }
 }
 
 /// ⌘V as two key events, down and up, with the Command flag, posted at the HID tap so they reach whatever has the keys
