@@ -1567,3 +1567,17 @@ the default settings when launching the app.")
 
 - Pass 32 is tried only on a Mac whose defaults were already set by the menus; a fresh install (`defaults delete`
   the app's domain) has not been launched.
+
+Pass 33, the dim over the menu bar (DESIGN.md W2 amended; 2026-11-04; the user: "Currently when I run Lemna the
+background ambient animation does not extend to the menu bar. It should though.")
+
+- `Box.swift`: `Box.level`, NSStatusWindowLevel + 2, for the box and the ghost; the dims one level under, as before.
+  The dims were at floating − 1, under the menu bar (24), its status items (25) and the Dock (20), so the shade and the
+  scene stopped at the menu bar's edge though their frames were the screen's. Menus and pop-ups (101 up) stay above;
+  the dim ignores the mouse, so the menu bar and the Dock stay clickable through it. Built and signed.
+
+## Known gaps
+
+- Pass 33 is not tried: whether the menu bar's status items (a window manager's workspace indicator among them) show
+  dimmed under the scene, and whether anything of the system's that should stay bright (notification banners, the
+  Control Centre's pop-overs) now sits under the dim.

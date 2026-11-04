@@ -4,6 +4,11 @@
 
 ## State (2026-11-04)
 
+- App, pass 33, the dim over the menu bar (2026-11-04; DESIGN.md W2 amended; the user: "Currently when I run Lemna the
+  background ambient animation does not extend to the menu bar. It should though."): the box and the ghost at
+  `Box.level` (NSStatusWindowLevel + 2), the dims one under, so the shade and the ambience cover the menu bar, its
+  status items and the Dock; menus and pop-ups (101 up) stay above; the dim ignores the mouse. Untried: the look over
+  the menu bar and a window manager's workspace item, and whether a system banner now sits under the dim.
 - App, pass 32, the launch defaults (2026-11-04; DESIGN.md TH1, K1 and A1 amended; the user: "Make the current lemna
   settings the default settings when launching the app."): `main.swift` registers `theme` still, `ambience` code,
   `bed` Lab (and `sound` on, as before) as UserDefaults' defaults, so a fresh install starts as the user's Mac does

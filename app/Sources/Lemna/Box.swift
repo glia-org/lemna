@@ -172,7 +172,7 @@ final class Box {
         (self.style, lineHeight) = (style, BoxFrame.height(fontSize: style.size))
         panel = BoxPanel(contentRect: .zero, styleMask: [.nonactivatingPanel, .borderless, .fullSizeContentView],
                          backing: .buffered, defer: true)
-        panel.level = .floating
+        panel.level = Self.level
         // On every Space and over a full-screen app (as an auxiliary of its Space), left out of Mission Control.
         panel.collectionBehavior = Self.behavior
         panel.hidesOnDeactivate = false  // NSPanel's default; the box stays until Esc, the hotkey or a paste
@@ -189,7 +189,7 @@ final class Box {
         content.addSubview(face)  // the line goes in under it (`hold`)
         panel.contentView = content
         ghost = NSPanel(contentRect: .zero, styleMask: [.nonactivatingPanel, .borderless], backing: .buffered, defer: true)
-        ghost.level = .floating
+        ghost.level = Self.level
         ghost.collectionBehavior = Self.behavior
         ghost.ignoresMouseEvents = true  // and a borderless panel never becomes key
         ghost.isReleasedWhenClosed = false
@@ -224,6 +224,9 @@ final class Box {
     }
 
     static let behavior: NSWindow.CollectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+    /// The box and the ghost above the menu bar and its status items (NSStatusWindowLevel, 25) so the dim, one under,
+    /// covers them and the Dock as well as the apps (pass 33); menus (NSPopUpMenuWindowLevel, 101) stay above.
+    static let level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 2)
 
     var isVisible: Bool { panel.isVisible }
 
@@ -577,7 +580,7 @@ final class Box {
             w.isOpaque = false
             w.hasShadow = false
             w.ignoresMouseEvents = true
-            w.level = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue - 1)
+            w.level = NSWindow.Level(rawValue: Self.level.rawValue - 1)
             w.collectionBehavior = Self.behavior
             w.isReleasedWhenClosed = false
             w.animationBehavior = .none
