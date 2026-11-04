@@ -40,7 +40,10 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     private var timing = Timing.off
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        UserDefaults.standard.register(defaults: [Self.soundKey: true])
+        // The launch defaults (pass 32): the sound on with the first pack, the Lab bed, Code on the dim, the Still theme;
+        // a key once written by a menu keeps its own value.
+        UserDefaults.standard.register(defaults: [Self.soundKey: true, Self.bedKey: "Lab", Self.ambienceKey: "code",
+                                                  Self.themeKey: "still"])
         choice = SoundChoice(pack: UserDefaults.standard.string(forKey: Self.packKey),
                              on: UserDefaults.standard.bool(forKey: Self.soundKey))
         bedChoice = BedChoice(kept: UserDefaults.standard.string(forKey: Self.bedKey))

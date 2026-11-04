@@ -1551,3 +1551,19 @@ realistic and similar to the matrix effect regarding the intensity."):
 - The bundle identifier `dev.lemna.app` is for personal builds: lemna.dev belongs to someone else. Change it before a
   public release if a domain of your own exists (DESIGN.md N, X1); a new id resets the Accessibility grant, the
   keychain item's access and the settings, as the rename did.
+
+Pass 32, the launch defaults (DESIGN.md TH1, K1 and A1 amended; 2026-11-04; the user: "Make the current lemna settings
+the default settings when launching the app.")
+
+- `main.swift` registers the launch defaults in UserDefaults: `sound` on (as before), `bed` Lab, `ambience` code,
+  `theme` still. A key once written by a menu keeps its own value; a kept value since removed falls back as before
+  (no bed, no ambience, the first theme). The first pack (`soundPack` unset) and every effect on were the defaults
+  already. Still's preset (Stone pack, Rain bed, Still water) is unchanged: it is what choosing Still from the Theme
+  menu writes.
+- No test: the registration is in the app target, which the tests do not link. Build: `LEMNA_VERSION=0.1.2
+  make-app.sh`, signed with "Lemna Dev".
+
+## Known gaps
+
+- Pass 32 is tried only on a Mac whose defaults were already set by the menus; a fresh install (`defaults delete`
+  the app's domain) has not been launched.

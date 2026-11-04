@@ -2,8 +2,14 @@
 
 `DESIGN.md` holds the decisions and the plan. This file says what is done and what is next.
 
-## State (2026-11-03)
+## State (2026-11-04)
 
+- App, pass 32, the launch defaults (2026-11-04; DESIGN.md TH1, K1 and A1 amended; the user: "Make the current lemna
+  settings the default settings when launching the app."): `main.swift` registers `theme` still, `ambience` code,
+  `bed` Lab (and `sound` on, as before) as UserDefaults' defaults, so a fresh install starts as the user's Mac does
+  (Still, Code on the dim, the Lab bed, the first pack, every effect on); a key once written by a menu keeps. Still's
+  preset (Stone pack, Rain bed, Still water) is unchanged. No test (app target). Untried: a fresh install's first
+  launch.
 - App, pass 31, rain on Still water as busy as Code (2026-11-03; DESIGN.md A1 amended; the user: "The matrix ambient
   animation is perfect because it is very busy and yet enough in the background. [...] The rain drops are way to
   uniform and seem unrealistic. Also its not busy at all. Make it way more realistic and similar to the matrix effect
