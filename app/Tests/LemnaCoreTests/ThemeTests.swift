@@ -161,11 +161,11 @@ var stillFont: CTFont? {
 @Test func thePresetSetsTheBedAndTheThemeSaysSo() {
     var bed = BedChoice(kept: nil)
     bed.choose(Theme.still.defaults.bed)
-    #expect(bed.folder == "Rain")  // the rain bed; the sound's on or off is SoundChoice's, untouched
+    #expect(bed.folder == "Lab")  // the Lab bed (pass 34); the sound's on or off is SoundChoice's, untouched
     bed.choose(Theme.lemna.defaults.bed)
     #expect(bed.folder == nil)
     // Never a bed unasked (TH1, sound.md §5): a theme whose preset turns one on names it in its item.
-    #expect(Theme.lemna.menuTitle == "Lemna" && Theme.still.menuTitle == "Still (rain bed)")
+    #expect(Theme.lemna.menuTitle == "Lemna" && Theme.still.menuTitle == "Still (lab bed)")
 }
 
 @Test func stillOpensAndHandsOffByFades() {

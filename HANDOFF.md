@@ -2,8 +2,10 @@
 
 `DESIGN.md` holds the decisions and the plan. This file says what is done and what is next.
 
-## State (2026-11-04)
+## State (2026-11-05)
 
+- App, pass 34, Still's preset (2026-11-05; DESIGN.md TH1 amended; the user: "Make the Still preset Code + Lab bed
+  too."): `Theme.still.defaults` = Stone pack, Lab bed, Code; the item "Still (lab bed)". Tests follow.
 - App, pass 33, the dim over the menu bar (2026-11-04; DESIGN.md W2 amended; the user: "Currently when I run Lemna the
   background ambient animation does not extend to the menu bar. It should though."): the box and the ghost at
   `Box.level` (NSStatusWindowLevel + 2), the dims one under, so the shade and the ambience cover the menu bar, its

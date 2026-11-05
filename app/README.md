@@ -1581,3 +1581,8 @@ background ambient animation does not extend to the menu bar. It should though."
 - Pass 33 is not tried: whether the menu bar's status items (a window manager's workspace indicator among them) show
   dimmed under the scene, and whether anything of the system's that should stay bright (notification banners, the
   Control Centre's pop-overs) now sits under the dim.
+
+Pass 34, Still's preset (DESIGN.md TH1 amended; 2026-11-05; the user: "Make the Still preset Code + Lab bed too.")
+
+- `Theme.still.defaults` is the Stone pack, the Lab bed and Code (was the Rain bed and Still water), so Theme ▸ Still
+  writes what a fresh install starts with (pass 32); its item reads "Still (lab bed)". ThemeTests follow.

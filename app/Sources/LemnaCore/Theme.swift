@@ -132,7 +132,7 @@ extension Theme {
     /// box's fade (MO1); the ink one
     /// colour (LK1's), laid over at 0.6 of the alphas by day, added at 0.5 by night. A stub in pass 21 (the Soft pack,
     /// no bed, Rain), filled in since: the look's last values (pass 22), the Stone pack and the light rain bed (pass
-    /// 23), Still water (pass 24).
+    /// 23), Still water (pass 24); the Lab bed and Code since pass 34 (the user's own state), the pack kept.
     public static let still = Theme(
         id: "still", title: "Still", appearance: .followsSystem,
         day: Palette(surface: 0xf3f0e8, text: 0x46433d, muted: 0x86817a, mutedContrast: 0x6b675f, accent: 0x577446,
@@ -145,7 +145,7 @@ extension Theme {
                        smoothed: false),
         box: Shape(border: .hairline, borderWidth: 1, corner: 16, shadow: false, continuous: true, caretEnds: 1),
         motion: Motion(open: .fade, handOff: .fade),
-        defaults: Defaults(pack: "StonePack", bed: "Rain", ambience: .water))
+        defaults: Defaults(pack: "StonePack", bed: "Lab", ambience: .code))
 }
 
 extension Theme.Typeface {

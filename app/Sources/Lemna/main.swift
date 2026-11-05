@@ -936,7 +936,7 @@ func ambienceMenu(target: AnyObject?) -> NSMenu {
 }
 
 /// Session › Theme and the menu-bar item's Theme (TH1): the themes as radio items, one whose preset turns a bed on
-/// saying so ("Still (rain bed)"); choosing one sets the look and writes its preset into Sound and Ambience. No key
+/// saying so ("Still (lab bed)"); choosing one sets the look and writes its preset into Sound and Ambience. No key
 /// (chosen once). `target` as for Sound.
 func themeMenu(target: AnyObject?) -> NSMenu {
     let menu = NSMenu(title: "Theme")

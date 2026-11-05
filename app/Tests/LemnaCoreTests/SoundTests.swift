@@ -63,8 +63,8 @@ import Testing
         #expect(access(beds + bed.folder + "/bed.json", F_OK) == 0, "\(bed.folder)")
         #expect(access(beds + bed.folder + "/" + bed.folder.lowercased() + ".caf", F_OK) == 0, "\(bed.folder)")
     }
-    // A theme names its bed in its item; only Still's preset turns one on, the rain (pass 23), as before.
-    #expect(Theme.all.map(\.menuTitle) == ["Lemna", "Still (rain bed)"])
+    // A theme names its bed in its item; only Still's preset turns one on, the Lab bed since pass 34 (the rain, pass 23, before).
+    #expect(Theme.all.map(\.menuTitle) == ["Lemna", "Still (lab bed)"])  // the Lab bed since pass 34
 }
 
 @Test func theBedPlaysOnlyWhileWritingInAContainerOnScreenWithTheSoundOn() {
