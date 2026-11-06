@@ -1,97 +1,144 @@
-/* Lemna's website: one page, the use case shown as it looks. Lemna's own colours (DESIGN.md T2: the box #0e1013,
-   text #d8dce3, muted #8d95a0 and #5c646f, the accent #7aa7f0, the line #262b32) and its box: a 1 px edge on a 10 px
-   radius (Face.cornerRadius in app/Sources/Lemna/Box.swift). The accent is for the caret, the box's edge and keyboard
-   focus only; the app window in the demo is neutral grey.
-   Font: the app draws in Menlo 28 (app/Sources/Lemna/main.swift), a system font that may not be served, and no
-   open-licence mono font of Lemna's own is at hand, so the page names Menlo first and downloads no font. */
+/* Lemna's website: one page, the use case shown as a fresh install looks (passes 32-34: the Still theme, Code on the
+   dim, the Lab bed). The page is Still's box: its paper by day and its warm dark by night, as the system's appearance
+   is (LK1), the colours of Theme.still in app/Sources/LemnaCore/Theme.swift; the copy in its muted grey's Increase
+   Contrast variant, which holds 4.9:1 on the paper and 6.4:1 on the dark (the plain muted, 3.4:1 by day, only marks
+   the ` ¶ `, as in the app). The accent is for the caret and keyboard focus only.
+   Type: Literata (TY1; OFL, assets/fonts/OFL.txt), the variable face of app/Fonts with both axes, cut to its Latin
+   characters losslessly (every glyph and feature they use; pyftsubset, U+0000-024F, U+0259, U+02BB-02BC, U+02C6,
+   U+02DA, U+02DC, U+0300-036F, U+1E00-1EFF, U+2000-206F, U+2074, U+20AC, U+20BA, U+20BD, U+2113, U+2122,
+   U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD, --layout-features='*' --name-IDs='*' --notdef-outline, woff2); keys,
+   the toggles and the line's marks in Menlo or the system's monospaced face, none downloaded. */
+@font-face{font-family:Literata;src:url(fonts/literata-latin.woff2) format("woff2");font-weight:200 900;font-style:normal;
+  font-display:swap}
 :root{
-  --box:#0e1013;--text:#d8dce3;--muted:#8d95a0;--dim:#5c646f;--accent:#7aa7f0;--line:#262b32;
-  --mono:Menlo,ui-monospace,"SF Mono",SFMono-Regular,Consolas,"DejaVu Sans Mono",monospace;--r:10px;color-scheme:dark}
+  color-scheme:light dark;
+  --paper:#f3f0e8;--text:#46433d;--copy:#6b675f;--mark:#86817a;--accent:#577446;--line:#d9d4c8;
+  --dim:rgba(211,216,206,.74);--ink:#3f4a3c;
+  /* the app under the dim: a light window on a light desktop by day */
+  --desk:#c9ccc5;--win:#fbfbf9;--win-edge:#d9d9d4;--win-bar:#efefec;--win-dot:#d0d0cb;--win-ph:#e0e0dc;--win-ph-t:#cdcdc8;
+  --win-text:#2e2e2c;
+  --serif:Literata,Charter,"Iowan Old Style",Georgia,serif;
+  --mono:Menlo,ui-monospace,"SF Mono",SFMono-Regular,Consolas,"DejaVu Sans Mono",monospace;
+  --r:12px}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#1c1b18;--text:#e2daca;--copy:#a69d8e;--mark:#8c8476;--accent:#a2b88e;--line:#34312c;
+  --dim:rgba(15,20,18,.62);--ink:#c9d3c4;
+  --desk:#1d1e20;--win:#2b2c2f;--win-edge:#3b3c40;--win-bar:#323336;--win-dot:#55565a;--win-ph:#45464a;--win-ph-t:#55565a;
+  --win-text:#d4d5d8}}
 *{box-sizing:border-box}
-html{background:var(--box);color:var(--muted)}
-body{margin:0;font:15px/1.6 var(--mono);-webkit-font-smoothing:antialiased}
-h1,p,ul,figure{margin:0}
-a{color:var(--text);text-decoration:underline;text-decoration-color:var(--dim);text-underline-offset:.22em}
+html{background:var(--paper);color:var(--copy)}
+body{margin:0;font:17px/1.6 var(--serif);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+h1,h2,p,ul,figure{margin:0}
+a{color:var(--text);text-decoration:underline;text-decoration-color:var(--line);text-decoration-thickness:1px;
+  text-underline-offset:.2em}
 a:hover{text-decoration-color:var(--text)}
 :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-kbd{font:inherit;color:var(--text)}
+kbd{font:.84em/1 var(--mono);color:var(--text)}
 .nojs .js{display:none!important}
 
-.wrap{max-width:1180px;margin:0 auto;padding:40px 40px 0}
-.top{display:flex;flex-direction:column;gap:14px;margin-bottom:32px}
-.brand{display:inline-flex;align-self:flex-start;align-items:center;gap:12px;font-size:18px;color:var(--text);text-decoration:none}
+.wrap{max-width:1180px;margin:0 auto;padding:44px 40px 0}
+.top{display:flex;flex-direction:column;gap:14px;margin-bottom:36px}
+.brand{display:inline-flex;align-self:flex-start;align-items:center;gap:10px;font-size:21px;color:var(--text);
+  text-decoration:none;letter-spacing:.01em}
 .brand svg{display:block}
-h1{font-size:30px;line-height:1.3;font-weight:400;color:var(--text);max-width:54ch;text-wrap:balance}
-.lead{font-size:16px;color:var(--muted);max-width:72ch}
-.get{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;font-size:13px}
-.btn{display:inline-block;background:var(--text);color:var(--box);border-radius:var(--r);padding:6px 16px;text-decoration:none;font-size:15px;white-space:nowrap}
-.btn:hover{background:#fff}
+.brand path{fill:currentColor}
+.brand rect{fill:var(--accent)}
+h1{font-size:36px;line-height:1.22;font-weight:400;color:var(--text);max-width:30ch;text-wrap:balance;letter-spacing:-.005em}
+.lead{font-size:19px;max-width:60ch}
+.get{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;font-size:14px}
+.btn{display:inline-block;background:var(--text);color:var(--paper);border-radius:10px;padding:6px 18px;
+  text-decoration:none;font-size:16px;white-space:nowrap}
+.btn:hover{background:var(--copy)}
 
 /* the demo: a 1100 × 620 px piece of a screen at actual size on a 2× display (1 px = 1 pt), scaled down to fit */
-.still{display:block;max-width:100%;height:auto;border-radius:var(--r)}
-.js-on .still{display:none}
-.fit{position:relative;width:100%;max-width:1100px;aspect-ratio:1100/620;overflow:hidden;border-radius:var(--r)}
-.stage{position:absolute;left:0;top:0;width:1100px;height:620px;transform-origin:0 0;background:#1d1e20;overflow:hidden;cursor:text}
+.still img{display:block;max-width:100%;height:auto;border-radius:var(--r);box-shadow:0 0 0 1px var(--line)}
+.fit{position:relative;width:100%;max-width:1100px;aspect-ratio:1100/620;overflow:hidden;border-radius:var(--r);
+  box-shadow:0 0 0 1px var(--line)}
+.stage{position:absolute;left:0;top:0;width:1100px;height:620px;transform-origin:0 0;background:var(--desk);
+  overflow:hidden;cursor:text}
 .stage:focus-visible{outline-offset:-3px}
-.win{position:absolute;left:170px;top:36px;width:760px;height:548px;background:#2b2c2f;border:1px solid #3b3c40;border-radius:10px;overflow:hidden}
-.win .bar{height:30px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#323336;border-bottom:1px solid #3b3c40}
-.win .bar i{width:11px;height:11px;border-radius:50%;background:#55565a}
+/* the dim lies over the stage's own outline: the ring goes round the frame instead */
+.fit:has(>.stage:focus-visible){outline:2px solid var(--accent);outline-offset:3px}
+@supports selector(:has(*)){.stage:focus-visible{outline:none}}
+.win{position:absolute;left:170px;top:36px;width:760px;height:548px;background:var(--win);border:1px solid var(--win-edge);
+  border-radius:10px;overflow:hidden}
+.win .bar{height:30px;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--win-bar);
+  border-bottom:1px solid var(--win-edge)}
+.win .bar i{width:11px;height:11px;border-radius:50%;background:var(--win-dot)}
 .doc{display:flex;flex-direction:column;gap:14px;padding:28px 40px}
-.doc b{display:block;height:10px;border-radius:2px;background:#45464a}
-.doc b.t{height:14px;background:#55565a;margin-bottom:8px}
+.doc b{display:block;height:10px;border-radius:2px;background:var(--win-ph)}
+.doc b.t{height:14px;background:var(--win-ph-t);margin-bottom:8px}
 .doc .gap{height:4px}
-.cur{min-height:24px;margin-top:-7px;font-size:15px;line-height:24px;color:#d4d5d8;max-width:680px}
-.ic{display:inline-block;width:2px;height:18px;margin-left:1px;vertical-align:-4px;background:#c9cbcf}
-/* the dim: the box's background at α 0.5 (F1 D1), an ambience's canvas on it */
-.dim{position:absolute;left:0;top:0;width:1100px;height:620px;background:rgba(14,16,19,.5);visibility:hidden;opacity:0}
+.cur{min-height:24px;margin-top:-7px;font:15px/24px system-ui,-apple-system,"Helvetica Neue",sans-serif;color:var(--win-text);
+  max-width:680px;white-space:pre-line}
+.ic{display:inline-block;width:2px;height:18px;margin-left:1px;vertical-align:-4px;background:var(--win-text)}
+/* the dim: Still's wash, by day #d3d8ce at 0.74, by night #0f1412 at 0.62 (Theme.still's dim and dimAlpha); the
+   ambience's canvas on it */
+.dim{position:absolute;left:0;top:0;width:1100px;height:620px;background:var(--dim);visibility:hidden;opacity:0}
 .dim canvas{position:absolute;left:0;top:0;width:1100px;height:620px}
-.hint{position:absolute;left:0;right:0;top:516px;display:flex;justify-content:center;gap:24px;opacity:0;pointer-events:none;color:var(--text);font-size:15px}
-.hint kbd{display:inline-block;background:var(--box);border:1px solid var(--dim);border-radius:var(--r);padding:6px 14px}
-.hint span{align-self:center;color:var(--text)}
-/* the box: 907 × 112 pt (60 % of a 1512 pt screen, 4 × Menlo 28), its centre two thirds down */
-.box{position:absolute;left:96px;top:357px;width:907px;height:112px;background:var(--box);border:1px solid var(--accent);border-radius:var(--r);font-size:28px;line-height:1;color:var(--text);overflow:hidden;visibility:hidden;opacity:0}
+/* MO1's ring (pass 24): the strokes site.js grows out of the box's outline at a paste */
+.ring{position:absolute;left:0;top:0;width:1100px;height:620px;pointer-events:none}
+.ring i{position:absolute;border:0 solid var(--ink);opacity:0}
+.hint{position:absolute;left:0;right:0;top:520px;display:flex;justify-content:center;gap:24px;opacity:0;pointer-events:none;
+  color:var(--text);font:15px/1.4 var(--serif)}
+.hint kbd{display:inline-block;font-size:15px;line-height:1.4;background:var(--paper);border:1px solid var(--line);
+  border-radius:10px;padding:6px 14px}
+.hint span{align-self:center}
+/* the box: 907 × 120 pt (60 % of a 1512 pt screen, 4 × Literata 30), its centre two thirds down; Still's shape: a 1 pt
+   hairline, 16 pt continuous corners (a superellipse where the browser draws one), no shadow */
+.box{position:absolute;left:96px;top:353px;width:907px;height:120px;background:var(--paper);border:1px solid var(--line);
+  border-radius:16px;font:400 30px/1 var(--serif);color:var(--text);overflow:hidden;visibility:hidden;opacity:0;
+  font-kerning:normal}
+@supports (corner-shape:superellipse(1.5)){.box{border-radius:22px;corner-shape:superellipse(1.5)}}
 .box.up,.dim.up{visibility:visible;opacity:1}
 .box:focus-within{outline:2px solid var(--accent);outline-offset:3px}
-/* the band (app/Sources/LemnaCore/Line.swift): the caret 2 px at 60 %; the text before it fading from 45 % to nothing
-   at 25 % of the width, the text after it from 80 % to 95 % */
+/* the band (app/Sources/LemnaCore/Line.swift): the caret 2 px at 60 %, 1.2 em tall, its ends rounded by 1 px; the text
+   before it fading from 45 % to nothing at 25 % of the width, the text after it from 80 % to 95 % */
 .ll-b,.ll-a{position:absolute;top:0;bottom:0;display:flex;align-items:center;overflow:hidden;white-space:pre}
-.ll-b{left:0;right:40%;justify-content:flex-end;-webkit-mask-image:linear-gradient(to right,transparent 41.667%,#000 75%);mask-image:linear-gradient(to right,transparent 41.667%,#000 75%)}
-.ll-a{left:calc(60% + 2px);right:5%;-webkit-mask-image:linear-gradient(to right,#000 57.143%,transparent 100%);mask-image:linear-gradient(to right,#000 57.143%,transparent 100%)}
+.ll-b{left:0;right:40%;justify-content:flex-end;-webkit-mask-image:linear-gradient(to right,transparent 41.667%,#000 75%);
+  mask-image:linear-gradient(to right,transparent 41.667%,#000 75%)}
+.ll-a{left:calc(60% + 2px);right:5%;-webkit-mask-image:linear-gradient(to right,#000 57.143%,transparent 100%);
+  mask-image:linear-gradient(to right,#000 57.143%,transparent 100%)}
 .ll-b>span,.ll-a>span{flex:none;display:block}
-.ll-c{position:absolute;left:60%;top:50%;width:2px;height:1.2em;margin-top:-.6em;background:var(--accent)}
+.ll-c{position:absolute;left:60%;top:50%;width:2px;height:1.2em;margin-top:-.6em;background:var(--accent);border-radius:1px}
+/* a paragraph end, ` ¶ `: its two spaces in the line's face, the pilcrow in Menlo (pass 29), in the muted grey */
+.box .p{color:var(--mark)}
+.box .p b{font:inherit;font-family:var(--mono);font-weight:400}
 .box .new{animation:fadein 80ms cubic-bezier(.23,1,.32,1)}
+.box .p.new{animation-duration:200ms}
 @keyframes fadein{from{opacity:0}}
-.box.off .ll-b,.box.off .ll-a,.box.off .ll-c{visibility:hidden}
-.ghost{position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none}
-.ghost span{position:absolute;top:0;bottom:0;display:flex;align-items:center;white-space:pre}
-.ll-in{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;border:0;margin:0;padding:0;font-size:16px;color:transparent;background:transparent;caret-color:transparent;cursor:text}
+.ll-in{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;border:0;margin:0;padding:0;font-size:16px;
+  color:transparent;background:transparent;caret-color:transparent;cursor:text}
 
-.under{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 20px;max-width:1100px;margin-top:12px;font-size:13px}
-.snd{font:inherit;font-size:13px;color:var(--text);background:none;border:1px solid var(--line);border-radius:var(--r);padding:2px 12px;cursor:pointer}
-.snd:hover,.snd[aria-pressed="true"]{border-color:var(--muted)}
+.under{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 20px;max-width:1100px;
+  margin-top:12px;font-size:14px}
+.tog{display:flex;gap:8px}
+.snd{font:13px/1.6 var(--mono);color:var(--text);background:none;border:1px solid var(--line);border-radius:10px;
+  padding:2px 12px;cursor:pointer}
+.snd:hover,.snd[aria-pressed="true"]{border-color:var(--copy)}
 
-.facts{list-style:none;padding:0;margin:28px 0 0;display:flex;flex-direction:column;gap:6px;font-size:14px;max-width:84ch}
+.facts{list-style:none;padding:0;margin:30px 0 0;display:flex;flex-direction:column;gap:6px;font-size:16px;max-width:76ch}
 
 /* Ambience: two live tiles at half the demo's size (540 × 304 px, the same piece of screen), Code and Still water */
-.amb{margin-top:44px}
-.amb h2{margin:0 0 14px;font-size:15px;font-weight:400;color:var(--text)}
+.amb{margin-top:48px}
+.amb h2{margin:0 0 14px;font-size:21px;font-weight:400;color:var(--text)}
 .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,540px));gap:20px}
 .tiles figure{margin:0;min-width:0}
-.tiles img{display:block;width:100%;height:auto;border-radius:var(--r)}
+.tiles img{display:block;width:100%;height:auto;border-radius:var(--r);box-shadow:0 0 0 1px var(--line)}
 .tiles .fit{max-width:540px}
-.tiles figcaption{margin-top:8px;font-size:13px;color:var(--text)}
+.tiles figcaption{margin-top:8px;font-size:16px;color:var(--text)}
 .stage.quiet{cursor:default}
-.cap{margin-top:14px;font-size:13px}
+.cap{margin-top:14px;font-size:15px}
 
-.foot{max-width:1180px;margin:40px auto 0;padding:24px 40px 48px;display:flex;flex-direction:column;gap:4px;font-size:12px;line-height:1.6;
-  background:linear-gradient(var(--line),var(--line)) 40px 0/calc(100% - 80px) 1px no-repeat}
+.foot{max-width:1180px;margin:44px auto 0;padding:24px 40px 48px;display:flex;flex-direction:column;gap:4px;font-size:13px;
+  line-height:1.6;background:linear-gradient(var(--line),var(--line)) 40px 0/calc(100% - 80px) 1px no-repeat}
 .foot p{max-width:110ch}
 
 @media (max-width:760px){
-  .wrap{padding:24px 16px 0}
+  .wrap{padding:26px 16px 0}
   .foot{padding:20px 16px 40px;background-position:16px 0;background-size:calc(100% - 32px) 1px}
-  h1{font-size:22px}
-  .lead{font-size:14px}
-  .facts{font-size:13px}
+  h1{font-size:27px}
+  .lead{font-size:17px}
+  .facts{font-size:15px}
   .tiles{grid-template-columns:1fr}
 }

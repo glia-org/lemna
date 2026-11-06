@@ -2,8 +2,34 @@
 
 `DESIGN.md` holds the decisions and the plan. This file says what is done and what is next.
 
-## State (2026-11-05)
+## State (2026-11-06)
 
+- Site, pass 35, the page previews the launch defaults (2026-11-06; `site/`; DESIGN.md A1's two notes on the site
+  follow). The page is Still's box: its paper by day and its warm dark by night as the system's appearance is, in
+  Literata (a lossless Latin subset of `app/Fonts`' variable face, both axes and every feature, 224 KB woff2, with its
+  OFL in `site/assets/fonts/`). **Demo:** Still's box (the hairline, 16 px corners drawn as a CSS superellipse where the
+  browser has one, no shadow, Literata 30, the caret at 60 % in Still's accent with rounded ends), opened and closed by
+  fades, the hand-off the box's fade with MO1's ring while the wash lifts over 1.2 s; the loop now types a second
+  paragraph, so the muted ` ¶ ` shows in Menlo. On Still's dim, Code live: Scenes.swift's two sheets ported to a 2D
+  canvas with Tuning's values (born 20 s ahead and built in over 4 s at each summon, the lift while the demo types,
+  each key's glyph where it sits, halos by night only), the main atlas drawn at twice the line's size and scaled down
+  as the app samples it; at most 2,800 glyphs a frame (a tile 2,400), the dimmest going first. **Sound:** the Keychron
+  pack's 13 files byte for byte (the first pack, a fresh install's: `main.swift` registers none); the Lab bed as AAC at 64 kbit/s (741 KB; decodes to 90.000 s in Chrome, so the loop
+  meets itself), behind its own toggle beside the clicks', at the app's level under the clicks, fading in over 1.5 s
+  as the box opens and out over 0.6 s as it goes; both load only when turned on. **Tiles:** Code as the demo's; Still
+  water pass 31's rain (380 drops a second on a laptop's screen, scaled to the stage, rain's sizes, one to three
+  crests, splashes, gusts, the 3 s build-in, a drop per word), each ring one stroke its Gaussian's half-power width,
+  batched by alpha and width. The `<noscript>` stills are cut from `app/renders` (`ambience-code-still-*`,
+  `ambience-water-day`/`-night`), one per scheme, 34–110 KB each. **Copy:** a facts line on the two looks; the sound
+  line says a fresh install starts with the lab bed and Code; the caption names Code the default; the footer says the
+  page's clicks are Keychron's, gives the Lab credit in full with the page's encoding, and Literata's licence. **Weight:**
+  288 KB with JavaScript and sound off (the font 224 KB), the clicks 130 KB and the bed 741 KB on first use, 1.16 MB
+  in all. **Checked** in headless Chrome 156 through the DevTools protocol, at 1440 and 390 px, by day and by night,
+  under reduced motion (a still frame of each scene), without JavaScript and with Tab: no console message, exception
+  or failed load, every path relative (served under `/lemna/`); the rest frames' ink against the renders, the share of
+  pixels 15 levels off the wash 3.3 % by day (the render 3.4 %) and 4.6 % by night (3.8 %); script 6–9 % of a core
+  with the demo and both tiles running (software raster). **Untried:** the live Pages deploy (not pushed), Safari and
+  Firefox, phones, the sound by ear.
 - App, pass 34, Still's preset (2026-11-05; DESIGN.md TH1 amended; the user: "Make the Still preset Code + Lab bed
   too."): `Theme.still.defaults` = Stone pack, Lab bed, Code; the item "Still (lab bed)". Tests follow.
 - App, pass 33, the dim over the menu bar (2026-11-04; DESIGN.md W2 amended; the user: "Currently when I run Lemna the
