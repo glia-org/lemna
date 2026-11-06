@@ -517,16 +517,20 @@ function hintHide(){cancel(hint);if(reduced){hint.style.opacity=0;return}
   anim(hint,[{opacity:1},{opacity:0}],{duration:T.close,easing:Q,fill:'forwards'})}
 
 /* ---------- keys, from the loop or the reader: the line, the click, the ambience ---------- */
-function key(ch){
-  if(ch==='\b'){Line.back();Sound.play('backspace');Code.pulse();return}
+function key(ch,quiet){  // quiet: the loop's fast-forward, where a click per key would be a rattle
+  var play=quiet?function(){}:Sound.play;
+  if(ch==='\b'){Line.back();play('backspace');Code.pulse();return}
   Line.insert(ch);
-  if(ch==='\n'){Sound.play('paragraph');Code.pulse()}
-  else if(ch===' '){Sound.play('space');Code.pulse()}
-  else{Sound.play('letter');Code.key(ch)}
+  if(ch==='\n'){play('paragraph');Code.pulse()}
+  else if(ch===' '){play('space');Code.pulse()}
+  else{play('letter');Code.key(ch)}
 }
 
-/* ---------- the loop: about 50 s, three paragraphs, so the line is seen carrying a longer piece ---------- */
+/* ---------- the loop: about 25 s, three paragraphs, so the line is seen carrying a longer piece: the first sentence
+   at a human pace, the middle fast-forwarded at six times it under a ▸▸ hint and without clicks, the last sentence at
+   the pace again ---------- */
 var SEQ='The morning was grey and I kept circling the same paragraph, so I closed everything and started again from what I actually knew.\nThe argument is simpler than the draft makes it look. Three claims, one example each, and the figure can go.\nWhat worries me is the second claim, which rests on teh\b\bhe older data. Say so plainly, and move on.';
+var FAST={from:SEQ.indexOf('.')+1,to:SEQ.lastIndexOf('. ')+2,by:6};
 var timers=[],mode='auto',idleT=0;
 function later(ms,f){var id=setTimeout(function(){var i=timers.indexOf(id);if(i>=0)timers.splice(i,1);f()},ms);timers.push(id)}
 function cancelTimers(){timers.forEach(clearTimeout);timers=[]}
@@ -540,7 +544,11 @@ function loop(){
   t+=600;later(t,show);
   later(t+300,hintHide);
   t+=T.open+900;  // Code builds in for a moment before the first key
-  var prev='';Array.from(SEQ).forEach(function(ch){t+=gap(prev,ch);prev=ch;later(t,function(){key(ch)})});
+  var prev='';Array.from(SEQ).forEach(function(ch,i){
+    var fast=i>=FAST.from&&i<FAST.to;t+=gap(prev,ch)/(fast?FAST.by:1);prev=ch;
+    if(i===FAST.from)later(t,function(){hintShow('<kbd>▸▸</kbd>')});
+    if(i===FAST.to)later(t,hintHide);
+    later(t,function(){key(ch,fast)})});
   t+=900;later(t,function(){hintShow('<kbd>⌘⏎</kbd>')});
   t+=600;later(t,handOff);
   later(t+500,hintHide);
