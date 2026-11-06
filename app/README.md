@@ -1683,8 +1683,18 @@ Pass 38, Emoji & Symbols from the box (DESIGN.md B4 amended; 2026-11-06; the use
 - Pass 38 is not tried: nothing was launched. Untried: whether ⌃⌘Space reaches the box's menu at all or macOS takes
   it first (the system's list has a Character Viewer chord; if it is on, macOS may open the viewer for the app in
   front before Lemna sees the key); the viewer then targeting the line rather than the app behind; a pick landing in
-  the line with its click and as one ⌘Z step; whether a click into the viewer takes the keys from the box, which pass
-  26 would take as a click outside and hide the box; whether the viewer activating anything hides the box; Lemna's
+  the line with its click and as one ⌘Z step; Lemna's
   activation leaving the hand-off alone (⌘⏎ pasting into the app behind after a pick); the viewer left open across a
   hand-off or Esc (it then follows whichever app is in front); the same in the window; an AppKit item appended to the
   Edit menu after launch (Lemna's comes first, so its chord is still Lemna's).
+- Pass 38b, fixed: build 101 hid the box as the viewer opened. The viewer runs in processes of its own, and pass 26's
+  watch (`appActivated`, NSWorkspace's didActivateApplication) took its coming forward for another app's. The
+  identifiers, read from the Info.plists on macOS 26.5: `/System/Library/Input Methods/CharacterPalette.app`,
+  "Emoji & Symbols", com.apple.CharacterPaletteIM (LSUIElement), and in
+  `/System/Library/PrivateFrameworks/CharacterPicker.framework` two XPC services, com.apple.CharacterPicker
+  .RemoteGenerationViewService and .FileService (nothing under `/System/Library/CoreServices`). The watch now ignores
+  the first two as it ignores Lemna. A click outside is the panel's resign (`boxLostKeys`, a turn later), no mouse
+  monitor; it now also keeps the box when the app in front is the viewer or Lemna itself (which it is after
+  `showCharacters`), so only another app taking the keys hides it. Lemna coming back to the front with the box up and
+  no sheet on it makes the panel key again (`appActivated`), for when the viewer closes. Untried: all of it, and
+  whether closing the viewer brings Lemna back to the front or the app behind (which would hide the box as before).

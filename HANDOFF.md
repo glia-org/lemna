@@ -4,6 +4,13 @@
 
 ## State (2026-11-06)
 
+- App, pass 38b, the box stays while the Character Viewer is up (2026-11-06; build 101 hid it): pass 26's watch of
+  other apps ignores the viewer's processes (com.apple.CharacterPaletteIM, CharacterPalette.app in
+  `/System/Library/Input Methods`, and the CharacterPicker framework's com.apple.CharacterPicker
+  .RemoteGenerationViewService), a click into the viewer is no click outside while it or Lemna is in front, and Lemna
+  back in front makes the box key again. Tests 183; release build; nothing launched. Try pass 38's list again, and
+  close the viewer: the line takes the keys at once.
+
 - App, pass 38, Emoji & Symbols from the box (2026-11-06; DESIGN.md B4 amended, the user's decision): ⌃⌘Space, a new
   item of the hidden Edit menu, makes the box (or the window) key with the line first, brings Lemna forward as the
   window does, and opens macOS's Character Viewer once Lemna is active, so its picks go to the line through

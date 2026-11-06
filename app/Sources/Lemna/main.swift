@@ -492,12 +492,25 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// and hiding then would pull the box from under its own sheet or question: a sheet on the box (Save…, Discard…, an
     /// alert) takes the keys as it opens, and the box is going anyway on Esc, the hotkey, a paste and Open Window.
     /// Decided a turn later, once AppKit has made the new key window key: `NSApp.keyWindow` then names it when it is
-    /// Lemna's, and is nil when another app has the keys.
+    /// Lemna's, and is nil when another app has the keys. Since pass 38b the Character Viewer is not another app: a
+    /// click into it takes the keys while the viewer, or Lemna, which comes forward for it, is in front.
     private func boxLostKeys() {
         DispatchQueue.main.async { [self] in
             guard !box.panel.isKeyWindow else { return }  // it has them back already
-            hideIfKeysGone(lemnaHasKeys: NSApp.keyWindow != nil)
+            let front = NSWorkspace.shared.frontmostApplication
+            hideIfKeysGone(lemnaHasKeys: NSApp.keyWindow != nil || front == NSRunningApplication.current
+                || Self.isCharacterViewer(front))
         }
+    }
+
+    /// macOS's Character Viewer (Emoji & Symbols, pass 38), which runs in processes of its own: the input method's
+    /// CharacterPalette.app (`/System/Library/Input Methods`, com.apple.CharacterPaletteIM) and the CharacterPicker
+    /// framework's view service; their bundle identifiers as their Info.plists give them on macOS 26.5.
+    private static let characterViewer: Set = ["com.apple.CharacterPaletteIM",
+                                               "com.apple.CharacterPicker.RemoteGenerationViewService"]
+
+    private static func isCharacterViewer(_ app: NSRunningApplication?) -> Bool {
+        app?.bundleIdentifier.map(characterViewer.contains) == true
     }
 
     /// Another app came to the front (pass 26): it has the keys, so the box goes as Esc does, under the same guard. The
@@ -505,10 +518,17 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// key" (NSWindow.h), and an app that activates itself as it launches or relaunches does neither to Lemna, which
     /// never activated for the box. The box then stayed over the dim taking nothing (2026-11-02): ⌘⏎ and ⌘⇧⏎ went to
     /// the other app, and a click into a box AppKit still counts key asks for nothing. Lemna's own coming to the front
-    /// (the window, a question) and the paste's bringing its app forward are not another app's.
+    /// (the window, a question) and the paste's bringing its app forward are not another app's, nor is the Character
+    /// Viewer coming forward (pass 38b). Lemna back in front with the box up and no sheet on it (the viewer closed, its
+    /// process gone from the front): the box takes the keys again, the line its first responder as before.
     private func appActivated(_ app: NSRunningApplication?) {
-        guard let app, app != NSRunningApplication.current else { return }
+        guard let app else { return }
+        if app == NSRunningApplication.current {
+            if surface.onScreen == .box, !box.panel.isKeyWindow, box.panel.attachedSheet == nil { box.panel.makeKey() }
+            return
+        }
         if app == bringing { return bringing = nil }
+        if Self.isCharacterViewer(app) { return }
         hideIfKeysGone(lemnaHasKeys: false)
     }
 
