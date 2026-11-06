@@ -4,6 +4,13 @@
 
 ## State (2026-11-06)
 
+- App, pass 39, the ambience in Settings alone (2026-11-06; DESIGN.md SP2 and A1 amended, the user's decision):
+  Ambience ▸ is gone from both menus; the Settings window's new Ambience group ("Mode:" Code, Still water, Off, between
+  Sound and the box's chords) calls the submenu's own action and follows a theme's preset while the window is up.
+  427 × 599 pt inside the title bar. Tests 183; release build; nothing launched. Try: Settings… → Mode: Still water,
+  summon: the water on the dim; Off: none; Theme ▸ Still with the window up: Mode jumps to Code; Reduce Motion on:
+  the pop-up shows Off, the modes grey.
+
 - App, pass 38b, the box stays while the Character Viewer is up (2026-11-06; build 101 hid it): pass 26's watch of
   other apps ignores the viewer's processes (com.apple.CharacterPaletteIM, CharacterPalette.app in
   `/System/Library/Input Methods`, and the CharacterPicker framework's com.apple.CharacterPicker

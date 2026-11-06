@@ -142,13 +142,14 @@ private final class SettingsWindow: NSWindow {
     }
 }
 
-/// The Settings window (SW3; since pass 37 three groups on its one page): "Lemna Settings", a plain titled window at
+/// The Settings window (SW3; since pass 37 groups on its one page): "Lemna Settings", a plain titled window at
 /// the normal level (under the box's), system controls and the system's appearance whatever Lemna's theme. Shortcut:
 /// "Show Lemna:", the field, Reset to ⌃⌥Space (grey while the chord is ⌃⌥Space), and under them a grey line saying
 /// how the chord stands, empty while there is nothing to say, or what to do while the field listens. Sound: Play sound
 /// (⌘K's on or off), the clicks' pack and the bed, as Session › Sound ▸ has them; they call the menu's own actions, and
-/// the app refreshes them whenever those keep a change, made here or in a menu. Shortcuts in the box: the fixed
-/// chords, read-only (`Shortcuts.overview`). The app supplies the state and acts on what the controls ask.
+/// the app refreshes them whenever those keep a change, made here or in a menu. Ambience (pass 39, here alone): the
+/// mode on the dim, Code, Still water or Off, by the submenu's action it replaces, refreshed the same way (a theme's
+/// preset writes it too). Shortcuts in the box: the fixed chords, read-only (`Shortcuts.overview`). The app supplies the state and acts on what the controls ask.
 final class Settings: NSObject, NSWindowDelegate {
     let window: NSWindow = SettingsWindow(contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered,
                                           defer: true)
@@ -157,6 +158,7 @@ final class Settings: NSObject, NSWindowDelegate {
     private let help = NSTextField(wrappingLabelWithString: "")
     private let soundBox = NSButton(checkboxWithTitle: "Play sound", target: nil, action: nil)
     private let pack = NSPopUpButton(frame: .zero, pullsDown: false), bed = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let mode = NSPopUpButton(frame: .zero, pullsDown: false)
     /// The chord kept and how it stands now.
     var stand: () -> (chord: Chord?, standing: Chord.Standing) = { (nil, .none) }
     /// Whether a recorded chord may be kept (SC2), read against the menus and the system's list as they are now.
@@ -173,6 +175,10 @@ final class Settings: NSObject, NSWindowDelegate {
     var toggleSound: () -> Void = {}
     var choosePack: (NSMenuItem) -> Void = { _ in }
     var chooseBed: (NSMenuItem) -> Void = { _ in }
+    /// The ambience shown: the mode's place in `Ambience.Mode.allCases` (nil: Off), and whether the modes are offered
+    /// (not under Reduce Motion); and the action the submenu's items had (tag −1: Off).
+    var ambience: () -> (mode: Int?, available: Bool) = { (nil, true) }
+    var chooseAmbience: (NSMenuItem) -> Void = { _ in }
     var onClose: () -> Void = {}
 
     override init() {
@@ -198,12 +204,19 @@ final class Settings: NSObject, NSWindowDelegate {
         }
         bed.addItem(withTitle: "No bed")
         bed.lastItem?.tag = -1
-        for p in [pack, bed] {
+        for (i, m) in Ambience.Mode.allCases.enumerated() {
+            mode.addItem(withTitle: m.title)
+            mode.lastItem?.tag = i
+        }
+        mode.addItem(withTitle: "Off")
+        mode.lastItem?.tag = -1
+        for p in [pack, bed, mode] {
             p.autoenablesItems = false
             p.target = self
         }
         pack.action = #selector(packChosen)
         bed.action = #selector(bedChosen)
+        mode.action = #selector(modeChosen)
         let chord = NSStackView(views: [recorder, reset])
         chord.spacing = 8
         let none = NSGridCell.emptyContentView
@@ -212,6 +225,8 @@ final class Settings: NSObject, NSWindowDelegate {
             [separator(), none],
             [header("Sound"), none], [none, soundBox], [NSTextField(labelWithString: "Clicks:"), pack],
             [NSTextField(labelWithString: "Bed:"), bed],
+            [separator(), none],
+            [header("Ambience"), none], [NSTextField(labelWithString: "Mode:"), mode],
             [separator(), none],
             [header("Shortcuts in the box"), none],
         ]
@@ -285,13 +300,14 @@ final class Settings: NSObject, NSWindowDelegate {
         window.makeFirstResponder(recorder)
     }
 
-    /// Both groups as things stand now; while the field listens its line is the field's.
+    /// The groups as things stand now; while the field listens its line is the field's.
     func refresh() {
         let (chord, standing) = stand()
         recorder.chord = chord
         reset.isEnabled = chord != Chord.summon
         if !recorder.listening { help.stringValue = Chord.help(chord, standing, letter: layoutLetter) }
         refreshSound()
+        refreshAmbience()
     }
 
     /// The sound group as the model has it (the app calls this whenever it keeps a change of the sound or the bed).
@@ -306,6 +322,17 @@ final class Settings: NSObject, NSWindowDelegate {
     @objc private func soundToggled() { toggleSound() }
     @objc private func packChosen() { pack.selectedItem.map(choosePack) }
     @objc private func bedChosen() { bed.selectedItem.map(chooseBed) }
+    @objc private func modeChosen() { mode.selectedItem.map(chooseAmbience) }
+
+    /// The ambience group as the model has it (the app calls this whenever it keeps a change of the mode).
+    func refreshAmbience() {
+        let a = ambience()
+        for item in mode.itemArray where item.tag >= 0 { item.isEnabled = a.available }
+        mode.selectItem(withTag: a.mode ?? -1)
+    }
+
+    /// Reduce Motion may have changed while the window was behind.
+    func windowDidBecomeKey(_ notification: Notification) { refreshAmbience() }
 
     func windowDidResignKey(_ notification: Notification) { recorder.cancel() }
 

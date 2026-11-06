@@ -66,7 +66,7 @@ var stillFont: CTFont? {
             #expect(access(packs + "Beds/" + bed + "/bed.json", F_OK) == 0, "\(t.id)")
         }
         let mode = t.defaults.ambience
-        #expect(Ambience(kept: Ambience(mode).kept).mode == mode, "\(t.id)")  // a mode Ambience ▸ has, or Off
+        #expect(Ambience(kept: Ambience(mode).kept).mode == mode, "\(t.id)")  // a mode the window offers, or Off
         #expect(Theme(kept: t.id) == t)
     }
 }

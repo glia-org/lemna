@@ -87,7 +87,7 @@ git-ignored.
   back to a text as ordinary edits), `History.swift` (pass 30) the undo stack and its groups, `Line.swift` the geometry and drawing (Core Text shaping around the caret, the two
   fades, the clips at the caret, caret, the band, the newest glyphs' look, the colours), `Glide.swift` the glide, the curve
   (`Curve.easeOutQuint`) and the newest glyphs' entrance (`Entrance`), `Effects.swift` the Effects submenu's choice and
-  every effect's magnitude (`Effects.Tuning`), `Ambience.swift` the Ambience submenu's choice, every magnitude of the
+  every effect's magnitude (`Effects.Tuning`), `Ambience.swift` the ambience's choice (the Settings window's since pass 39), every magnitude of the
   ambience (`Ambience.Tuning`), what the line sends and a scene is told, the stage, the sprite, the atlas's index and the
   run of a scene (`Ambience.Run`), `Scenes.swift` the four scenes, `Particles.swift` the Metal pipeline that draws them
   (`Ambience.Renderer`: the shader's source, the glyph atlas, an offscreen frame for the tests), `Keyboard.swift` where
@@ -1698,3 +1698,25 @@ Pass 38, Emoji & Symbols from the box (DESIGN.md B4 amended; 2026-11-06; the use
   `showCharacters`), so only another app taking the keys hides it. Lemna coming back to the front with the box up and
   no sheet on it makes the panel key again (`appActivated`), for when the viewer closes. Untried: all of it, and
   whether closing the viewer brings Lemna back to the front or the app behind (which would hide the box as before).
+
+Pass 39, the ambience in Settings alone (DESIGN.md SP2 and A1 amended; 2026-11-06; the user's decision of 2026-11-06)
+
+- Ambience ▸ is gone from the menu-bar item's menu and from the hidden Session menu (`ambienceMenu` and the submenu's
+  case in `validateMenuItem` with it); Theme ▸ and Effects ▸ are unchanged. The Settings window has an Ambience group
+  between Sound and the box's chords: "Mode:", a pop-up of Code, Still water and Off with the submenu's tags, whose
+  choice goes to `chooseAmbience(_:)` as the submenu's items did (the default written, the box given the mode, the
+  path a theme's preset takes). `keepAmbience()` ends with `settings?.refreshAmbience()`, as `keepSound()` does for
+  the Sound group; `show()` and the window becoming key refresh it too. Under Reduce Motion it shows Off and greys the
+  modes, as the submenu did. The window is 427 × 599 pt inside its title bar (534 before), measured offscreen with a
+  throwaway build of its code.
+- Comments that named Session › Ambience ▸ (`Ambience.swift`, `Theme.swift`, `ThemeTests`) now name the window.
+  The site's script comments still say Ambience ▸ (site/assets/site.js; not the app).
+- Tests: 183, as before (none named the submenu; the tests' copy of the main menu has only key equivalents). Debug and
+  release build without warnings; `make-app.sh` not run.
+
+## Known gaps
+
+- Pass 39 is not tried: nothing was launched. Untried: the pop-up switching the mode (Code to Still water to Off and
+  back) and the box's dim showing it at the next summon; Theme ▸ with the window up moving the pop-up to the preset's
+  mode; Reduce Motion turned on and off with the window open (read when it becomes key); the window's new height on a
+  small screen (measured, not seen).

@@ -1,15 +1,15 @@
 // The ambience (DESIGN.md A1): a scene that plays on the dim around the box from the show to the close (Code since
 // pass 19b, Still water since pass 24; until pass 24 the other modes played while you typed and died out within
-// seconds of silence), one mode at a time from Session › Ambience ▸, Off at first. Here, free of AppKit and Metal: the
-// choice, every magnitude (`Ambience.Tuning`), what the line sends (`Key`), what a scene is told (`Event`), where it
-// plays (`Stage`), what it draws (`Sprite`), the atlas's index (`Glyphs`), the scenes' protocol and the run of one
-// scene (`Run`), so the tests step every mode without a window. The scenes themselves are in Scenes.swift, the Metal
-// pipeline that draws the sprites in Particles.swift.
+// seconds of silence), one mode at a time from the Settings window (Session › Ambience ▸ until pass 39). Here, free of
+// AppKit and Metal: the choice, every magnitude (`Ambience.Tuning`), what the line sends (`Key`), what a scene is told
+// (`Event`), where it plays (`Stage`), what it draws (`Sprite`), the atlas's index (`Glyphs`), the scenes' protocol and
+// the run of one scene (`Run`), so the tests step every mode without a window. The scenes themselves are in
+// Scenes.swift, the Metal pipeline that draws the sprites in Particles.swift.
 import CoreGraphics
 import CoreText
 
-/// Session › Ambience ▸: the mode that plays, or Off (nil, the default, D0). One at a time. Reduce Motion forces Off
-/// and greys the modes, and keeps the pick for when it is turned off again.
+/// The Settings window's Ambience (Session › Ambience ▸ until pass 39): the mode that plays, or Off (nil, the default,
+/// D0). One at a time. Reduce Motion forces Off and greys the modes, and keeps the pick for when it is turned off again.
 public struct Ambience: Equatable {
     public enum Mode: String, CaseIterable {
         /// M2 of `docs/design-panel-lemna-ambience.html` and, since pass 24, AM1 of
@@ -50,10 +50,10 @@ public struct Ambience: Equatable {
     /// The mode that plays now: none under Reduce Motion.
     public func playing(reduceMotion: Bool) -> Mode? { reduceMotion ? nil : mode }
 
-    /// Whether the submenu offers the modes: greyed under Reduce Motion (Off stays).
+    /// Whether the window offers the modes: greyed under Reduce Motion (Off stays).
     public static func available(reduceMotion: Bool) -> Bool { !reduceMotion }
 
-    /// A mode from the submenu, or Off (nil).
+    /// A mode from the window, or Off (nil).
     public mutating func choose(_ mode: Mode?) { self.mode = mode }
 }
 

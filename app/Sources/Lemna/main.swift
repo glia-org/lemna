@@ -2,9 +2,9 @@
 // doing, or in an ordinary window for long sessions (W2), kept in the journal (E2), with key clicks (K1), summoning
 // (hotkey, menu-bar item), and the end of a session: Done pastes into the app behind the box, or Copy, Save… or
 // Discard…, with R1 applied silently and the session finished at once (O1 O2 O3 R1); the effects, switched in the
-// Effects submenu (F1); the ambience on the dim, chosen in the Ambience submenu (A1); Start at Login (Y1); the theme,
-// chosen in the Theme submenu, with its preset for Sound and Ambience (TH1); and Settings…: the summon chord, the sound
-// and the box's chords (SP2).
+// Effects submenu (F1); the ambience on the dim, chosen in the Settings window since pass 39 (A1); Start at Login (Y1);
+// the theme, chosen in the Theme submenu, with its preset for Sound and Ambience (TH1); and Settings…: the summon
+// chord, the sound, the ambience and the box's chords (SP2).
 import AppKit
 import Carbon.HIToolbox
 import LemnaClicks
@@ -247,19 +247,22 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     // MARK: Ambience (A1)
 
     private static let ambienceKey = "ambience"
-    /// Session › Ambience: the mode that plays on the dim, or Off; kept across launches (read at launch).
+    /// The Settings window's Ambience (Session › Ambience ▸ until pass 39): the mode that plays on the dim, or Off;
+    /// kept across launches (read at launch).
     private var ambience = Ambience()
 
-    /// A mode from Session › Ambience (the item's tag is its place in `Ambience.Mode.allCases`), or Off (tag −1).
+    /// A mode from the Settings window's pop-up (the item's tag is its place in `Ambience.Mode.allCases`), or Off (tag
+    /// −1), as the submenu's items had them.
     @objc func chooseAmbience(_ sender: NSMenuItem) {
         ambience.choose(Ambience.Mode.allCases.indices.contains(sender.tag) ? Ambience.Mode.allCases[sender.tag] : nil)
         keepAmbience()
     }
 
-    /// The choice kept across launches and given to the box.
+    /// The choice kept across launches and given to the box; the window's group follows (a theme's preset writes it too).
     private func keepAmbience() {
         UserDefaults.standard.set(ambience.kept, forKey: Self.ambienceKey)
         box.ambience = ambience
+        settings?.refreshAmbience()
     }
 
     // MARK: Theme (TH1)
@@ -402,6 +405,15 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         s.toggleSound = { [unowned self] in self.toggleSound(nil) }
         s.choosePack = { [unowned self] in self.chooseSound($0) }
         s.chooseBed = { [unowned self] in self.chooseBed($0) }
+        // The Ambience group (pass 39): the submenu's action, as the Sound group's are the menu's.
+        // Reduce Motion ticks Off and greys the modes, read each time the group refreshes, as the submenu read it as
+        // it opened.
+        s.ambience = { [unowned self] in
+            let still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+            return (self.ambience.playing(reduceMotion: still).flatMap { Ambience.Mode.allCases.firstIndex(of: $0) },
+                    Ambience.available(reduceMotion: still))
+        }
+        s.chooseAmbience = { [unowned self] in self.chooseAmbience($0) }
         // Closed: back to the app before, as after the box (`handBack`); in window mode the window keeps the keys.
         s.onClose = { [unowned self] in if self.surface.onScreen == nil { self.handBack() } }
         return s
@@ -723,11 +735,6 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         case #selector(chooseTheme(_:)):
             item.state = Theme.all[item.tag] == theme ? .on : .off
             return true
-        case #selector(chooseAmbience(_:)):  // Reduce Motion greys the modes and ticks Off, read as the menu opens
-            let still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-            let mode = Ambience.Mode.allCases.indices.contains(item.tag) ? Ambience.Mode.allCases[item.tag] : nil
-            item.state = ambience.playing(reduceMotion: still) == mode ? .on : .off
-            return mode == nil || Ambience.available(reduceMotion: still)
         case #selector(openSettings(_:)): return session.phase == .writing && !asking && container.attachedSheet == nil
         case #selector(closeWindow(_:)): return NSApp.keyWindow?.styleMask.contains(.closable) == true
         case #selector(showCharacters(_:)):
@@ -1061,22 +1068,6 @@ func effectsMenu(target: AnyObject?) -> NSMenu {
     return menu
 }
 
-/// Session › Ambience and the menu-bar item's Ambience (A1 S1): the modes as radio items, then Off (last, as Sound and
-/// Effects have theirs; the default, D0); no key (chosen once, not muted for a call). `target` as for Sound.
-func ambienceMenu(target: AnyObject?) -> NSMenu {
-    let menu = NSMenu(title: "Ambience")
-    for (i, mode) in Ambience.Mode.allCases.enumerated() {
-        let item = menu.addItem(withTitle: mode.title, action: #selector(App.chooseAmbience(_:)), keyEquivalent: "")
-        item.tag = i
-        item.target = target
-    }
-    menu.addItem(.separator())
-    let off = menu.addItem(withTitle: "Off", action: #selector(App.chooseAmbience(_:)), keyEquivalent: "")
-    off.tag = -1
-    off.target = target
-    return menu
-}
-
 /// Session › Theme and the menu-bar item's Theme (TH1): the themes as radio items, one whose preset turns a bed on
 /// saying so ("Still (lab bed)"); choosing one sets the look and writes its preset into Sound and Ambience. No key
 /// (chosen once). `target` as for Sound.
@@ -1091,11 +1082,10 @@ func themeMenu(target: AnyObject?) -> NSMenu {
 }
 
 /// Lemna: About, Settings… (⌘,, pass 36), Quit; Session: Done, Copy, Save…, Discard…, Close (⌘W, pass 36), Theme ▸,
-/// Sound ▸, Effects ▸, Ambience ▸; Edit: Undo, Redo, Cut, Copy, Paste, Select All (Cut, Copy and Select All since pass
-/// 29, the rest since pass 30), sent to the first responder, the line, and Emoji & Symbols (⌃⌘Space, pass 38), the
-/// App's; View: Open Window. As an accessory app Lemna
-/// shows no menu bar, so this is where the key equivalents live (the menu-bar item's menu shows the Session items).
-/// Full screen: the window's green button.
+/// Sound ▸, Effects ▸ (Ambience ▸ until pass 39); Edit: Undo, Redo, Cut, Copy, Paste, Select All (Cut, Copy and Select
+/// All since pass 29, the rest since pass 30), sent to the first responder, the line, and Emoji & Symbols (⌃⌘Space,
+/// pass 38), the App's; View: Open Window. As an accessory app Lemna shows no menu bar, so this is where the key
+/// equivalents live (the menu-bar item's menu shows the Session items). Full screen: the window's green button.
 func mainMenu() -> NSMenu {
     let bar = NSMenu(), app = NSMenu(title: "Lemna"), session = NSMenu(title: "Session"), view = NSMenu(title: "View")
     let edit = NSMenu(title: "Edit")
@@ -1115,7 +1105,6 @@ func mainMenu() -> NSMenu {
     session.addItem(withTitle: "Theme", action: nil, keyEquivalent: "").submenu = themeMenu(target: nil)
     session.addItem(withTitle: "Sound", action: nil, keyEquivalent: "").submenu = soundMenu(target: nil)  // Off ⌘K
     session.addItem(withTitle: "Effects", action: nil, keyEquivalent: "").submenu = effectsMenu(target: nil)
-    session.addItem(withTitle: "Ambience", action: nil, keyEquivalent: "").submenu = ambienceMenu(target: nil)
     edit.addItem(withTitle: "Undo", action: #selector(LineView.undo(_:)), keyEquivalent: "z")  // ⌘Z
     edit.addItem(withTitle: "Redo", action: #selector(LineView.redo(_:)), keyEquivalent: "Z")  // ⌘⇧Z: "Z" holds the ⇧
     edit.addItem(.separator())

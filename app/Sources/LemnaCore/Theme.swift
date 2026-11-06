@@ -7,8 +7,8 @@ import CoreGraphics
 import CoreText
 import Foundation
 
-/// Session › Theme ▸: the look of the box, the line, the dim and the ambience's ink, and a preset for Sound ▸ and
-/// Ambience ▸, whose menus go on overriding it until the next theme is chosen. The first of `all` is the default.
+/// Session › Theme ▸: the look of the box, the line, the dim and the ambience's ink, and a preset for Sound ▸ and the
+/// ambience (Settings' Ambience since pass 39), which go on overriding it until the next theme is chosen. The first of `all` is the default.
 public struct Theme: Equatable {
     /// Which palette shows: the system's appearance picks day or night (LK1), or one shows always.
     public enum Appearance: Equatable { case followsSystem, dark, light }
