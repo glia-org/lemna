@@ -101,7 +101,8 @@ git-ignored.
   (`ReturnUp`), `Handoff.swift` (pass 17b) the hand-off's motion: the line cut into its glyphs, when each sets off
   and where it is, the box's collapse, the dim's lift, and when it plays; `Chord.swift` (pass 36) the summon chord:
   its glyphs, how `hotkey` keeps it, the rules and the checks against Lemna's keys and the system's, what the menu
-  and the Settings window say (`Chord`, `MenuKey`).
+  and the Settings window say (`Chord`, `MenuKey`); `Shortcuts.swift` (pass 37) the box's fixed chords as the
+  Settings window lists them (`Shortcuts.overview`).
 - `Sources/Lemna`: `main.swift` the app, window, menus, clicks and the sound toggle, the Effects submenu, Start at Login, summoning and the two containers
   (`apply()`), a click outside the box, and the end of a session (Done's paste or copy, Copy, Save, Discard, each
   finishing at once); `Box.swift` the box (the non-activating panel, the dim overlays, the line in it; since pass 14 its
@@ -141,7 +142,7 @@ git-ignored.
   pass 21 the themes: Lemna equal to the literals it replaced, the packs and modes named, the contrast per appearance,
   the palette by appearance, the font and the atlas's, the preset, Still's fades (`ThemeTests`), and Rain on Still's
   day wash (`AmbienceTests`); since pass 36 the summon chord's glyphs, its storage, the rules, Lemna's own keys and the
-  system's, and what the menu and the window say (`ChordTests`).
+  system's, and what the menu and the window say, since pass 37 the overview's chords (`ChordTests`).
 
 ## What it covers
 
@@ -1630,3 +1631,30 @@ Pass 36, Settings and the summon chord (DESIGN.md SP2, W2 amended, Open 7 closed
   without a relaunch; a chord another app holds (that app reacts, the field sees nothing; no check can tell); a German
   layout (⌃⌥Z reads Z); the menu's chord and its grey line; VoiceOver on the field and its focus ring; ⌘W in the box
   (Close is disabled there; whether AppKit swallows the key or hands it on to the line, which ignores it, is unseen).
+
+Pass 37, sound and the box's chords in Settings (DESIGN.md SP2 amended; 2026-11-06; the user's follow-up decision of
+2026-11-06)
+
+- `Settings.swift`: the window's one page is an `NSGridView` of three groups under bold labels with separators:
+  Shortcut (pass 36's row, unchanged), Sound (Play sound, Clicks and Bed pop-ups with Sound ▸'s items in its order
+  and names, No bed last) and Shortcuts in the box (`Shortcuts.overview`, the chords in the monospaced system face and
+  what each does, small system font, read-only). The help line keeps two lines' height and wraps at the row's width,
+  so the window does not change size; it is 427 × 517 pt inside the title bar, measured offscreen with a throwaway
+  build of the window's code (not kept).
+- The Sound group calls the menu items' own actions: the checkbox `toggleSound(_:)` (⌘K's Off), a pop-up's chosen item
+  `chooseSound(_:)` or `chooseBed(_:)` with the item's tag as the menu's. `keepSound()` and `keepBed()`, which every
+  change of the sound goes through (the window, Sound ▸ in either menu, ⌘K, a theme's preset), end with
+  `settings?.refreshSound()`, and `show()` reads it too, so the group always shows the model. A pack or a bed chosen
+  while the sound is off turns it on, as in the menu; the pop-ups show the kept pack and bed in either state.
+- `Shortcuts.swift` (LemnaCore): the fourteen rows, each its chords and a label, checked against `mainMenu()`'s key
+  equivalents and `LineView.doCommand`; letters from the US table, as the menus' key equivalents are characters.
+- Tests: 183 (182 before; new `theOverviewListsEachChordOnceAsMenusWriteIt`: no chord or label twice, every chord
+  printable, the glyphs in order, every ⌘ chord but the caret's moves one of the main menu's key equivalents as the
+  tests' copy of `mainMenu()` has them). Debug and release build without warnings; `make-app.sh` not run.
+
+## Known gaps
+
+- Pass 37 is not tried: nothing was launched. Untried: the window's look (the groups, the separators, the list's
+  faces) by day and night; the checkbox and the pop-ups changing the sound, the bed and the menus' ticks; ⌘K, Sound ▸
+  and a theme from the menu while the window is up updating it; Tab through the controls; the height on a small
+  screen (measured, not seen).

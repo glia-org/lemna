@@ -4,6 +4,17 @@
 
 ## State (2026-11-06)
 
+- App, pass 37, sound and the box's chords in Settings (2026-11-06; DESIGN.md SP2 amended, the user's follow-up
+  decision): the window keeps its one page, now three groups: Shortcut (as pass 36), Sound (Play sound, Clicks, Bed,
+  calling Sound ▸'s own actions and refreshed from the model by `keepSound`/`keepBed`, so the window and the menus
+  always agree) and Shortcuts in the box (fourteen fixed chords, read-only, from `Shortcuts.overview`). The menus are
+  unchanged. 427 × 517 pt inside the title bar. Tests 183 (182); debug and release build; nothing launched. Try:
+  - Settings…: the three groups, by day and night; nothing cut off, no scrolling.
+  - Untick Play sound: the clicks and the bed stop, Sound ▸ ticks Off; ⌘K in the window: the checkbox ticks again.
+  - Choose Typewriter and Ship bed in the window: they play, and Sound ▸ ticks them. Choose a theme from the menu
+    with the window up: Clicks and Bed follow its preset.
+  - With the sound off, choose a bed in the window: the sound comes on, as from the menu.
+
 - App, pass 36, Settings and the summon chord (2026-11-06; DESIGN.md SP2 new, W2 amended, Open 7 closed; the user's
   picks `SP2 SK1 SR1 SC2 SW3 SD2` of `docs/design-panel-lemna-settings.html`, evidence in
   `research_notes/Lemna settings/survey.md`, both committed, the panel's preview folder not, `docs/*_files/` now

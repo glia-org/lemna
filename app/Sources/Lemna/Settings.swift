@@ -1,6 +1,8 @@
 // Settings… (DESIGN.md SP2, the picks SP2 SK1 SR1 SC2 SW3 SD2 of `docs/design-panel-lemna-settings.html`): one plain
-// window holding the summon chord, the one setting a menu cannot hold, and the field that records it. The chord's model,
-// its rules and what the window says are LemnaCore's (`Chord`); the app keeps and registers it (main.swift, Summon.swift).
+// window holding the summon chord, the one setting a menu cannot hold, and the field that records it; since pass 37 also
+// the sound as Session › Sound ▸ has it and the box's fixed chords. The chord's model, its rules, what the window says
+// and the chords' list are LemnaCore's (`Chord`, `Shortcuts`); the app keeps and registers the chord and keeps the
+// sound (main.swift, Summon.swift).
 import AppKit
 import Carbon.HIToolbox
 import LemnaCore
@@ -140,16 +142,21 @@ private final class SettingsWindow: NSWindow {
     }
 }
 
-/// The Settings window (SW3): "Lemna Settings", a plain titled window at the normal level (under the box's), system
-/// controls and the system's appearance whatever Lemna's theme, one row: "Show Lemna:", the field, Reset to ⌃⌥Space
-/// (grey while the chord is ⌃⌥Space), and under them a grey line saying how the chord stands, empty while there is
-/// nothing to say, or what to do while the field listens. The app supplies the chord and acts on what the row asks.
+/// The Settings window (SW3; since pass 37 three groups on its one page): "Lemna Settings", a plain titled window at
+/// the normal level (under the box's), system controls and the system's appearance whatever Lemna's theme. Shortcut:
+/// "Show Lemna:", the field, Reset to ⌃⌥Space (grey while the chord is ⌃⌥Space), and under them a grey line saying
+/// how the chord stands, empty while there is nothing to say, or what to do while the field listens. Sound: Play sound
+/// (⌘K's on or off), the clicks' pack and the bed, as Session › Sound ▸ has them; they call the menu's own actions, and
+/// the app refreshes them whenever those keep a change, made here or in a menu. Shortcuts in the box: the fixed
+/// chords, read-only (`Shortcuts.overview`). The app supplies the state and acts on what the controls ask.
 final class Settings: NSObject, NSWindowDelegate {
-    let window: NSWindow = SettingsWindow(contentRect: NSRect(x: 0, y: 0, width: 470, height: 98),
-                                          styleMask: [.titled, .closable], backing: .buffered, defer: true)
+    let window: NSWindow = SettingsWindow(contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered,
+                                          defer: true)
     let recorder = Recorder()
     private let reset = NSButton(title: "Reset to \(Chord.summon.glyphs())", target: nil, action: nil)
     private let help = NSTextField(wrappingLabelWithString: "")
+    private let soundBox = NSButton(checkboxWithTitle: "Play sound", target: nil, action: nil)
+    private let pack = NSPopUpButton(frame: .zero, pullsDown: false), bed = NSPopUpButton(frame: .zero, pullsDown: false)
     /// The chord kept and how it stands now.
     var stand: () -> (chord: Chord?, standing: Chord.Standing) = { (nil, .none) }
     /// Whether a recorded chord may be kept (SC2), read against the menus and the system's list as they are now.
@@ -159,39 +166,84 @@ final class Settings: NSObject, NSWindowDelegate {
     var resetChord: () -> Void = {}
     /// The field began or ended listening: the hotkey pauses meanwhile.
     var pause: (Bool) -> Void = { _ in }
+    /// The sound as Session › Sound ▸ has it: on or off, the pack's place in `SoundChoice.packs`, the bed's in
+    /// `BedChoice.beds` (nil: none).
+    var sound: () -> (on: Bool, pack: Int, bed: Int?) = { (true, 0, nil) }
+    /// The menu's own actions, given the item they would get: Off (⌘K), a pack, a bed (tag −1: No bed).
+    var toggleSound: () -> Void = {}
+    var choosePack: (NSMenuItem) -> Void = { _ in }
+    var chooseBed: (NSMenuItem) -> Void = { _ in }
     var onClose: () -> Void = {}
 
     override init() {
         super.init()
         window.title = "Lemna Settings"
         window.isReleasedWhenClosed = false
+        window.autorecalculatesKeyViewLoop = true
         window.delegate = self
-        let label = NSTextField(labelWithString: "Show Lemna:")
-        label.alignment = .right
         help.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
         help.textColor = .secondaryLabelColor
         help.maximumNumberOfLines = 2
+        help.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)  // wraps at the row's width
         reset.bezelStyle = .push
-        reset.target = self
-        reset.action = #selector(resetPressed)
-        let view = NSView()
-        for v in [label, recorder, reset, help] {
-            v.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(v)
+        (reset.target, reset.action) = (self, #selector(resetPressed))
+        (soundBox.target, soundBox.action) = (self, #selector(soundToggled))
+        for (i, p) in SoundChoice.packs.enumerated() {
+            pack.addItem(withTitle: p.title)
+            pack.lastItem?.tag = i
         }
+        for (i, b) in BedChoice.beds.enumerated() {
+            bed.addItem(withTitle: b.title)
+            bed.lastItem?.tag = i
+        }
+        bed.addItem(withTitle: "No bed")
+        bed.lastItem?.tag = -1
+        for p in [pack, bed] {
+            p.autoenablesItems = false
+            p.target = self
+        }
+        pack.action = #selector(packChosen)
+        bed.action = #selector(bedChosen)
+        let chord = NSStackView(views: [recorder, reset])
+        chord.spacing = 8
+        let none = NSGridCell.emptyContentView
+        let groups: [[NSView]] = [
+            [header("Shortcut"), none], [NSTextField(labelWithString: "Show Lemna:"), chord], [none, help],
+            [separator(), none],
+            [header("Sound"), none], [none, soundBox], [NSTextField(labelWithString: "Clicks:"), pack],
+            [NSTextField(labelWithString: "Bed:"), bed],
+            [separator(), none],
+            [header("Shortcuts in the box"), none],
+        ]
+        let small = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        let mono = NSFont.monospacedSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
+        let overview: [[NSView]] = Shortcuts.overview.map { row in
+            let keys = NSTextField(labelWithString: Shortcuts.glyphs(row)), what = NSTextField(labelWithString: row.label)
+            (keys.font, what.font) = (mono, small)
+            return [keys, what]
+        }
+        let grid = NSGridView(views: groups + overview)
+        (grid.rowSpacing, grid.columnSpacing, grid.yPlacement) = (3, 8, .center)
+        grid.column(at: 0).xPlacement = .trailing
+        for i in 1...groups.count { grid.row(at: i).topPadding = i == 2 ? 3 : 5 }  // the list's own rows closer
+        for i in groups.indices where groups[i][1] === none {
+            grid.row(at: i).mergeCells(in: NSRange(location: 0, length: 2))
+            grid.cell(for: groups[i][0])?.xPlacement = groups[i][0] is NSBox ? .fill : .leading
+        }
+        let view = NSView()
+        grid.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(grid)
         NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            label.centerYAnchor.constraint(equalTo: recorder.centerYAnchor),
-            recorder.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: 8),
-            recorder.topAnchor.constraint(equalTo: view.topAnchor, constant: 20),
-            reset.leadingAnchor.constraint(equalTo: recorder.trailingAnchor, constant: 8),
-            reset.centerYAnchor.constraint(equalTo: recorder.centerYAnchor),
-            reset.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -20),
-            help.topAnchor.constraint(equalTo: recorder.bottomAnchor, constant: 6),
-            help.leadingAnchor.constraint(equalTo: recorder.leadingAnchor),
-            help.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            grid.topAnchor.constraint(equalTo: view.topAnchor, constant: 20),
+            grid.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -20),
+            grid.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            grid.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            // Two lines, written or not, so the window keeps its size as the line changes.
+            help.widthAnchor.constraint(equalTo: chord.widthAnchor),
+            help.heightAnchor.constraint(equalToConstant: 2 * NSLayoutManager().defaultLineHeight(for: help.font!)),
         ])
         window.contentView = view
+        window.setContentSize(view.fittingSize)
         window.initialFirstResponder = recorder
         recorder.onClear = { [unowned self] in self.keep(nil) }
         // Refused: not kept, the old chord stays and the field listens on; taken by macOS: kept, the line says so.
@@ -214,6 +266,18 @@ final class Settings: NSObject, NSWindowDelegate {
         window.center()
     }
 
+    private func header(_ title: String) -> NSTextField {
+        let l = NSTextField(labelWithString: title)
+        l.font = NSFont.boldSystemFont(ofSize: NSFont.systemFontSize)
+        return l
+    }
+
+    private func separator() -> NSBox {
+        let b = NSBox()
+        b.boxType = .separator
+        return b
+    }
+
     /// On screen with the keys, on the field (when the chord is taken that is where to go).
     func show() {
         refresh()
@@ -221,15 +285,27 @@ final class Settings: NSObject, NSWindowDelegate {
         window.makeFirstResponder(recorder)
     }
 
-    /// The row as the chord stands now; while the field listens its line is the field's.
+    /// Both groups as things stand now; while the field listens its line is the field's.
     func refresh() {
         let (chord, standing) = stand()
         recorder.chord = chord
         reset.isEnabled = chord != Chord.summon
         if !recorder.listening { help.stringValue = Chord.help(chord, standing, letter: layoutLetter) }
+        refreshSound()
+    }
+
+    /// The sound group as the model has it (the app calls this whenever it keeps a change of the sound or the bed).
+    func refreshSound() {
+        let s = sound()
+        soundBox.state = s.on ? .on : .off
+        pack.selectItem(withTag: s.pack)
+        bed.selectItem(withTag: s.bed ?? -1)
     }
 
     @objc private func resetPressed() { resetChord() }
+    @objc private func soundToggled() { toggleSound() }
+    @objc private func packChosen() { pack.selectedItem.map(choosePack) }
+    @objc private func bedChosen() { bed.selectedItem.map(chooseBed) }
 
     func windowDidResignKey(_ notification: Notification) { recorder.cancel() }
 

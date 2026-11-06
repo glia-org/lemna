@@ -1,5 +1,5 @@
 // The summon chord (SP2: SR1 SC2 SD2): its glyphs, how `hotkey` keeps it, the rules, Lemna's own keys and the system's,
-// and what the menu and the Settings window say.
+// and what the menu and the Settings window say; since pass 37 the window's overview of the box's chords.
 import Testing
 @testable import LemnaCore
 
@@ -116,3 +116,17 @@ private let lemna = [("Done", "\r", cmd), ("Copy", "\r", cmd | shift), ("Save…
     #expect(Chord(key: 0x24, modifiers: cmd | shift).help(.lemna("Copy"), typed: "\r") == "Copy uses ⇧⌘↩ in the box.")
 }
 
+@Test func theOverviewListsEachChordOnceAsMenusWriteIt() {
+    let rows = Shortcuts.overview, chords = rows.flatMap(\.chords)
+    #expect(Set(chords).count == chords.count && Set(rows.map(\.label)).count == rows.count)
+    for c in chords {
+        let g = c.glyphs(letter: Chord.usLetter)
+        #expect(!g.isEmpty && !g.contains("Key"))
+    }
+    #expect(rows.map(Shortcuts.glyphs) == ["⌘↩", "⇧⌘↩", "⌘S", "⎋", "↩", "⇧↩", "⌥← ⌥→", "⌘← ⌘→", "⇧← ⇧→", "⌥⌫ ⌥⌦",
+                                           "⌘Z ⇧⌘Z", "⌘A ⌘C ⌘X ⌘V", "⌘K", "⌃⌘F"])
+    // Every ⌘ chord but the caret's moves is a key equivalent of the main menu, so it is what the box does.
+    for c in chords where c.modifiers & cmd != 0 && ![0x7B, 0x7C].contains(c.key) {
+        #expect(lemna.contains { $0.equivalent == c.equivalent() && $0.modifiers == c.modifiers })
+    }
+}

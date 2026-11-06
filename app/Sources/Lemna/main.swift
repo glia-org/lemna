@@ -3,7 +3,8 @@
 // (hotkey, menu-bar item), and the end of a session: Done pastes into the app behind the box, or Copy, Save… or
 // Discard…, with R1 applied silently and the session finished at once (O1 O2 O3 R1); the effects, switched in the
 // Effects submenu (F1); the ambience on the dim, chosen in the Ambience submenu (A1); Start at Login (Y1); the theme,
-// chosen in the Theme submenu, with its preset for Sound and Ambience (TH1); and Settings…, the summon chord (SP2).
+// chosen in the Theme submenu, with its preset for Sound and Ambience (TH1); and Settings…: the summon chord, the sound
+// and the box's chords (SP2).
 import AppKit
 import Carbon.HIToolbox
 import LemnaClicks
@@ -156,6 +157,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         clicks?.enabled = sound
         updateBed()
         warnIfBluetooth()  // turned on over Bluetooth: said once for this output
+        settings?.refreshSound()  // the window's Sound group follows every change, from it or from a menu (pass 37)
     }
 
     // MARK: The bed (BD1)
@@ -179,6 +181,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         UserDefaults.standard.set(bedChoice.folder, forKey: Self.bedKey)  // nil removes it
         loadBed()
         updateBed()
+        settings?.refreshSound()
     }
 
     /// The chosen bed on the player, which holds only that one, decoded off the main thread (`ClickPlayer.bed`; the
@@ -387,6 +390,11 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             self.useChord(self.keptChord())
         }
         s.pause = { [unowned self] in self.hotkey?.paused = $0 }
+        // The Sound group (pass 37): the menu's own actions, so one path keeps the defaults, the player and the ticks.
+        s.sound = { [unowned self] in (self.sound, self.choice.index, self.bedChoice.index) }
+        s.toggleSound = { [unowned self] in self.toggleSound(nil) }
+        s.choosePack = { [unowned self] in self.chooseSound($0) }
+        s.chooseBed = { [unowned self] in self.chooseBed($0) }
         // Closed: back to the app before, as after the box (`handBack`); in window mode the window keeps the keys.
         s.onClose = { [unowned self] in if self.surface.onScreen == nil { self.handBack() } }
         return s
