@@ -17,9 +17,10 @@
   /* the app under the dim: a light window on a light desktop by day */
   --desk:#c9ccc5;--win:#fbfbf9;--win-edge:#d9d9d4;--win-bar:#efefec;--win-dot:#d0d0cb;--win-ph:#e0e0dc;--win-ph-t:#cdcdc8;
   --win-text:#2e2e2c;
-  /* the loop's tape scrub (pass 35e): the on-screen display in the ink with a paper edge, the tracking bands, the smear */
+  /* the loop's tape scrub (passes 35e, 35f): the on-screen display in the ink with a paper edge, the tracking bands,
+     the smear's colour */
   --osd:rgba(63,74,60,.82);--osd-edge:rgba(243,240,232,.75);--trk:rgba(63,74,60,.05);--trk-hi:rgba(255,253,246,.5);
-  --smear:rgba(70,67,61,.2);--smear-far:rgba(70,67,61,.08);
+  --smear:70,67,61;
   --serif:Literata,Charter,"Iowan Old Style",Georgia,serif;
   --mono:Menlo,ui-monospace,"SF Mono",SFMono-Regular,Consolas,"DejaVu Sans Mono",monospace;
   --r:12px}
@@ -29,7 +30,7 @@
   --desk:#1d1e20;--win:#2b2c2f;--win-edge:#3b3c40;--win-bar:#323336;--win-dot:#55565a;--win-ph:#45464a;--win-ph-t:#55565a;
   --win-text:#d4d5d8;
   --osd:rgba(226,218,202,.86);--osd-edge:rgba(15,20,18,.8);--trk:rgba(226,218,202,.035);--trk-hi:rgba(226,218,202,.13);
-  --smear:rgba(226,218,202,.2);--smear-far:rgba(226,218,202,.08)}}
+  --smear:226,218,202}}
 *{box-sizing:border-box}
 html{background:var(--paper);color:var(--copy)}
 body{margin:0;font:17px/1.6 var(--serif);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
@@ -75,7 +76,12 @@ h1{font-size:36px;line-height:1.22;font-weight:400;color:var(--text);max-width:3
 .doc b.t{height:14px;background:var(--win-ph-t);margin-bottom:8px}
 .doc .gap{height:4px}
 .cur{min-height:24px;margin-top:-7px;font:15px/24px system-ui,-apple-system,"Helvetica Neue",sans-serif;color:var(--win-text);
-  max-width:680px;white-space:pre-line}
+  max-width:680px}
+/* what a hand-off pastes (site.js Doc): paragraphs with a blank line between them, wrapped at the document's width, down
+   to the window's bottom margin */
+#pasted{margin-top:8px;max-height:256px;overflow:hidden}  /* a paragraph's gap under the bars, as between theirs */
+#pasted p{margin:0 0 24px}
+#pasted p:last-child{margin:0}
 .ic{display:inline-block;width:2px;height:18px;margin-left:1px;vertical-align:-4px;background:var(--win-text)}
 /* the dim: Still's wash, by day #d3d8ce at 0.74, by night #0f1412 at 0.62 (Theme.still's dim and dimAlpha); the
    ambience's canvas on it */
@@ -114,17 +120,15 @@ h1{font-size:36px;line-height:1.22;font-weight:400;color:var(--text);max-width:3
 .box .new{animation:fadein 80ms cubic-bezier(.23,1,.32,1)}
 .box .p.new{animation-duration:200ms}
 @keyframes fadein{from{opacity:0}}
-.box .ll-b>span,.box .ll-a>span{transition:text-shadow .3s}
 .ll-in{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;border:0;margin:0;padding:0;font-size:16px;
   color:transparent;background:transparent;caret-color:transparent;cursor:text}
 
-/* the loop's fast-forward (pass 35e), a tape scrubbing, in the page's ink: a VCR's on-screen display at the top left
-   (two blocky triangles and FF, a hard offset edge), two faint tracking bands drifting down the frame, softening what
-   they cross, the line jittering by a pixel or two and smeared to the right; all of it eases out over 0.3 s as the
-   pace returns (the jitter at once). Reduced motion never scrubs. */
-.vhs{position:absolute;left:0;top:0;width:1100px;height:620px;pointer-events:none;opacity:0;transition:opacity .3s;
-  overflow:hidden}
-.stage.ff .vhs{opacity:1}
+/* the loop's fast-forward (passes 35e, 35f), a tape scrubbing, in the page's ink: a VCR's on-screen display at the top
+   left (two blocky triangles and FF, a hard offset edge), two faint tracking bands drifting down the frame, softening
+   what they cross, the line jittering by up to 1.5 px and smeared to the right. All of it follows the scrub's level,
+   `--ff` (0 to 1, the speed-up's share of its peak, site.js scrubRun), and `--jit`, so it rises and falls with the
+   speed-up and nothing switches. Reduced motion never scrubs. */
+.vhs{position:absolute;left:0;top:0;width:1100px;height:620px;pointer-events:none;opacity:var(--ff,0);overflow:hidden}
 .osd{position:absolute;left:34px;top:30px;display:flex;align-items:flex-end;gap:10px;color:var(--osd);
   filter:drop-shadow(2px 2px 0 var(--osd-edge))}
 .osd i{display:block;width:38px;height:24px;background:currentColor;
@@ -138,10 +142,10 @@ h1{font-size:36px;line-height:1.22;font-weight:400;color:var(--text);max-width:3
 .stage.ff .trk{animation:trk 1.9s linear infinite}
 .stage.ff .trk+.trk{animation-duration:2.7s;animation-delay:-1.6s}
 @keyframes trk{from{transform:translateY(-60px)}to{transform:translateY(660px)}}
-.stage.ff .ll-b,.stage.ff .ll-a{animation:jit .42s steps(1,end) infinite}
-@keyframes jit{0%{translate:0}14%{translate:1.5px}29%{translate:-1px}43%{translate:.5px}57%{translate:-1.5px}
-  71%{translate:1px}86%{translate:-.5px}}
-.stage.ff .box .ll-b>span,.stage.ff .box .ll-a>span{text-shadow:3px 0 0 var(--smear),7px 0 1px var(--smear-far)}
+.stage.ff .box .ll-b,.stage.ff .box .ll-a{translate:var(--jit,0px) 0}
+.stage.ff .box .ll-b>span,.stage.ff .box .ll-a>span{
+  text-shadow:calc(var(--ff,0)*3px) 0 0 rgba(var(--smear),calc(var(--ff,0)*.2)),
+    calc(var(--ff,0)*7px) 0 1px rgba(var(--smear),calc(var(--ff,0)*.08))}
 
 .under{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 20px;max-width:1100px;
   margin-top:12px;font-size:14px}

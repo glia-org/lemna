@@ -478,11 +478,23 @@ function tidy(s){
       .replace(/(^| )i(?=[ ,.;:!?]|$)/g,'$1I');
   }).filter(Boolean).join('\n');
 }
-function paste(s){
-  if(!s)return;var cur=pasted.textContent;
-  pasted.textContent=(cur?cur+'\n':'')+s;
-  if(pasted.textContent.length>300)pasted.textContent='…'+pasted.textContent.slice(-300);
-}
+/* what has landed in the app window: its paragraphs as a document's, a blank line between them, the caret after the
+   last; all of a hand-off shows, and only text sent before it gives way when the window is full */
+var Doc=(function(){
+  var paras=[],caret=pasted.querySelector('.ic');
+  function render(){
+    pasted.textContent='';
+    paras.forEach(function(t){var e=document.createElement('p');e.textContent=t;pasted.appendChild(e)});
+    (pasted.lastElementChild||pasted).appendChild(caret);
+  }
+  return {
+    clear:function(){paras=[];render()},
+    add:function(s){var n=s.split('\n').length;paras=paras.concat(s.split('\n'));render();
+      while(pasted.scrollHeight>pasted.clientHeight+1&&paras.length>n){paras.shift();render()}
+      pasted.scrollTop=pasted.scrollHeight}
+  };
+})();
+function paste(s){if(s)Doc.add(s)}
 /* MO1's ring (Handoff.ring, ringOutline, ringAlpha): two crests 9 px apart leave the box's outline at 60 px/s from
    ⌘⏎'s key-down, each with a trough 3 px inside it at 0.4 of its alpha, each line three strokes laid over each other
    (3.2 px at 0.2, 1.8 at 0.35, 0.9 at 0.45), the box's rectangle grown by how far out it is, its corners with it; the
@@ -534,47 +546,74 @@ function key(ch,quiet){  // quiet: the loop's fast-forward, where a click per ke
 }
 
 /* ---------- the loop: three paragraphs, so the line is seen carrying a longer piece, in at most 10 s from the first
-   hint to the hand-off (`LOOP`): the first two words at a human pace, the middle fast-forwarded as a tape scrubbing
-   (`scrub`: the keys at the factor that fits the rest into the time left, at least 14, without clicks; Code's curtain
-   stepped at the same factor), the last words at the pace again, then ⌘⏎ ---------- */
+   hint to the hand-off (`LOOP.most`): the first four words at a human pace, the middle fast-forwarded as a tape
+   scrubbing, the last three words at the pace again, then ⌘⏎. The scrub never switches: the keys' speed-up rises from
+   1 to its peak on a smoothstep over `SCRUB.ramp`, holds, and falls back over the same into the last words; the peak is
+   what fits the middle into the time left (`plan`). The clicks fall silent above `SCRUB.quiet`, so a few audible keys
+   bracket it, and the scrub's look and Code's curtain follow the same curve (`scrubRun`). ---------- */
 var SEQ='The morning was grey and I kept circling the same paragraph, so I closed everything and started again from what I actually knew.\nThe argument is simpler than the draft makes it look. Three claims, one example each, and the figure can go.\nWhat worries me is the second claim, which rests on teh\b\bhe older data. Say so plainly, and move on.';
-var FAST={from:SEQ.indexOf(' ',SEQ.indexOf(' ')+1)+1,to:SEQ.lastIndexOf('and move on.'),least:14};
-var LOOP={most:9600,show:600,settle:700,send:800,go:600};  // ms: hint to hand-off at most; the fixed waits in it
+var FAST={from:SEQ.indexOf('grey')+4,to:SEQ.lastIndexOf('and move on.')};  // the scrub's first key, the first key after it
+var LOOP={most:9700,show:500,settle:500,send:550,go:450};  // ms: hint to hand-off at most; the fixed waits in it
+var SCRUB={ramp:800,quiet:3,least:1600};  // ms up and down; the speed-up above which keys are silent; its shortest
 var timers=[],mode='auto',idleT=0;
 function later(ms,f){var id=setTimeout(function(){var i=timers.indexOf(id);if(i>=0)timers.splice(i,1);f()},ms);timers.push(id)}
-function cancelTimers(){timers.forEach(clearTimeout);timers=[];scrub(0)}
+function cancelTimers(){timers.forEach(clearTimeout);timers=[];scrubStop()}
 function gap(prev,ch){  // a human pace: 90–200 ms a key, longer after a space or a full stop, a pause before fixing a typo
   if(ch==='\b')return prev==='\b'?130:420;
   var g=90+rnd()*110;if(prev===' ')g+=rnd()*150;if(prev==='.'||prev===',')g+=260;if(prev==='\n')g+=320;return g;
 }
-/* the scrub: the stage under `.ff` (site.css: the on-screen display, two tracking bands, the line's jitter and smear),
-   Code at the keys' factor; all of it eases out as the pace returns */
+/* the scrub's speed-up `t` ms into it: 1, rising on a smoothstep over the ramp to `peak`, held, falling back over the
+   ramp to 1 at `span` */
+function lapse(t,P){var r=t<P.ramp?smooth(t/P.ramp):t>P.span-P.ramp?smooth((P.span-t)/P.ramp):1;return 1+(P.peak-1)*r}
+/* the loop's keys in time: each key's human-pace time (`tape`), the slow parts as they are, the middle stepped through
+   ms by ms at the speed-up, whose peak is set so that its integral over the time left covers the middle's tape:
+   span + (peak − 1)(span − ramp) */
+function plan(){
+  var keys=Array.from(SEQ),tape=[],prev='',u=0,i;
+  keys.forEach(function(ch){u+=gap(prev,ch);prev=ch;tape.push(u)});
+  var a=FAST.from-1,b=FAST.to-1,uA=tape[a],U=tape[b]-uA,slow=uA+(u-tape[b]);
+  var span=Math.max(SCRUB.least,LOOP.most-LOOP.show-T.open-LOOP.settle-LOOP.send-LOOP.go-slow);
+  var P={ramp:Math.min(SCRUB.ramp,span/2),span:span},at=[],quiet=[];P.peak=1+(U-span)/(span-P.ramp);
+  for(i=0;i<=a;i++){at.push(tape[i]);quiet.push(false)}
+  var t=0,v=0;i=a+1;
+  while(i<=b){v+=lapse(t,P);t++;while(i<=b&&v>=tape[i]-uA){at.push(uA+t);quiet.push(lapse(t,P)>SCRUB.quiet);i++}if(t>span)break}
+  for(;i<=b;i++){at.push(uA+span);quiet.push(false)}
+  for(i=b+1;i<keys.length;i++){at.push(uA+span+tape[i]-tape[b]);quiet.push(false)}
+  return {keys:keys,at:at,quiet:quiet,start:uA,P:P,end:at[at.length-1]};
+}
+/* the scrub's look (site.css .vhs, the line's jitter and smear) at its level 0–1 in `--ff`, the jitter's step in
+   `--jit` (at 24 Hz), Code's curtain stepped at the speed-up itself */
 var vhs=document.createElement('div');vhs.className='vhs';vhs.setAttribute('aria-hidden','true');
 vhs.innerHTML='<i class="trk"></i><i class="trk"></i><div class="osd"><i></i><b>FF</b></div>';stage.appendChild(vhs);
-function scrub(by){stage.classList.toggle('ff',by>1);Code.lapse(by>1?by:1)}
+var scrubRaf=0;
+function scrubStop(){if(scrubRaf)cancelAnimationFrame(scrubRaf);scrubRaf=0;stage.classList.remove('ff');
+  stage.style.setProperty('--ff','0');stage.style.setProperty('--jit','0px');Code.lapse(1)}
+function scrubRun(P){
+  scrubStop();stage.classList.add('ff');var t0=performance.now(),jt=0;
+  function f(now){var t=now-t0;if(t>=P.span){scrubStop();return}
+    var x=lapse(t,P),level=(x-1)/Math.max(P.peak-1,1e-6);stage.style.setProperty('--ff',level.toFixed(3));
+    if(now-jt>42){jt=now;stage.style.setProperty('--jit',((2*rnd()-1)*1.5*level).toFixed(2)+'px')}
+    Code.lapse(x);scrubRaf=requestAnimationFrame(f)}
+  scrubRaf=requestAnimationFrame(f);
+}
 function loop(){
-  mode='auto';pasted.textContent='';cancel(pasted);scrub(0);
+  mode='auto';Doc.clear();cancel(pasted);scrubStop();
   var t=600;later(t,function(){hintShow('<kbd>⌃⌥Space</kbd>')});
   t+=LOOP.show;later(t,show);
   later(t+300,hintHide);
   t+=T.open+LOOP.settle;  // Code builds in for a moment before the first key
-  var keys=Array.from(SEQ),gaps=[],prev='',slow=0,fast=0;
-  keys.forEach(function(ch,i){var g=gap(prev,ch);prev=ch;gaps.push(g);if(i>=FAST.from&&i<FAST.to)fast+=g;else slow+=g});
-  var room=LOOP.most-LOOP.show-T.open-LOOP.settle-LOOP.send-LOOP.go-slow,by=Math.max(FAST.least,fast/Math.max(room,1));
-  keys.forEach(function(ch,i){
-    var quick=i>=FAST.from&&i<FAST.to;t+=gaps[i]/(quick?by:1);
-    if(i===FAST.from)later(t,function(){scrub(by)});
-    if(i===FAST.to)later(t,function(){scrub(0)});
-    later(t,function(){key(ch,quick)})});
-  t+=LOOP.send;later(t,function(){hintShow('<kbd>⌘⏎</kbd>')});
+  var p=plan();
+  later(t+p.start,function(){scrubRun(p.P)});
+  p.keys.forEach(function(ch,i){later(t+p.at[i],function(){key(ch,p.quiet[i])})});
+  t+=p.end+LOOP.send;later(t,function(){hintShow('<kbd>⌘⏎</kbd>')});
   t+=LOOP.go;later(t,handOff);
   later(t+500,hintHide);
-  t+=T.ringLife*1000+2000;
+  t+=T.ringLife*1000+2600;
   later(t,function(){anim(pasted,[{opacity:1},{opacity:0}],{duration:T.close,easing:Q,fill:'forwards'})});
   later(t+T.close,loop);
 }
 function still(){  // reduced motion: one frame of the box over the dimmed app and Code's rest, the key hints as labels
-  mode='still';pasted.textContent='';up=true;box.classList.add('up');dim.classList.add('up');Code.still();
+  mode='still';Doc.clear();up=true;box.classList.add('up');dim.classList.add('up');Code.still();
   Line.set(SEQ.replace('teh\b\bhe','the'));
   hintShow('<kbd>⌃⌥Space</kbd><span>opens the box</span><kbd>⌘⏎</kbd><span>sends the text into the app</span>');
 }

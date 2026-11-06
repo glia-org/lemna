@@ -22,6 +22,15 @@
   factor so its streams pour; all of it eases out over 0.3 s as the pace returns. The ▸▸ hint is gone; reduced motion
   shows the still frame as before. Checked in headless Chrome under `/lemna/`, by day and night, at 1440 and 390 px: no
   console message but the check's own, 9.60 s a loop each time. Untried on the live page.
+- Site, pass 35f (2026-11-06): the scrub starts after four words at a human pace ("The morning was grey", about 3 s)
+  and eases: the keys' speed-up rises from 1 to its peak on a smoothstep over 0.8 s, holds, and falls back over 0.8 s
+  into the last three words, the peak (about 25–40) set so the middle fits the time left; the clicks fall silent above
+  a speed-up of 3, and the display, the tracking bands, the jitter, the smear and Code's curtain all follow the same
+  curve, so nothing switches. The waits around the open and the ⌘⏎ hint are shorter (0.5, 0.5, 0.55, 0.45 s), the
+  slow parts at their pace; 9.70 s from the first hint to the hand-off. The hand-off pastes all of the text, with no
+  cap or ellipsis, as a document's paragraphs with a blank line between them under the window's own (the three fit in
+  168 of its 256 px; text sent earlier by a reader gives way first when it is full). Checked in headless Chrome under
+  `/lemna/`, both schemes, 1440 and 390 px, the screenshots looked at: console clean. Untried on the live page.
 - Site, pass 35, the page previews the launch defaults (2026-11-06; `site/`; DESIGN.md A1's two notes on the site
   follow). The page is Still's box: its paper by day and its warm dark by night as the system's appearance is, in
   Literata (a lossless Latin subset of `app/Fonts`' variable face, both axes and every feature, 224 KB woff2, with its
