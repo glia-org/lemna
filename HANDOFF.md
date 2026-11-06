@@ -4,6 +4,27 @@
 
 ## State (2026-11-06)
 
+- App, pass 36, Settings and the summon chord (2026-11-06; DESIGN.md SP2 new, W2 amended, Open 7 closed; the user's
+  picks `SP2 SK1 SR1 SC2 SW3 SD2` of `docs/design-panel-lemna-settings.html`, evidence in
+  `research_notes/Lemna settings/survey.md`, both committed, the panel's preview folder not, `docs/*_files/` now
+  ignored): Settings… ⌘, in the menu-bar item's menu and the hidden Lemna menu opens "Lemna Settings", one plain
+  window with one row: the summon chord's field (Lemna's own `Recorder`), Reset to ⌃⌥Space and a grey line saying how
+  the chord stands. The chord is kept under `hotkey` as key code and Carbon mask (⌃⌥Space registered as the default);
+  a recorded one goes through the rules (an F-key alone or with ⌃ or ⌘; Space, Return, Enter, Tab with ⌃ or ⌘; any
+  other key with two modifiers, one ⌃ or ⌘), Lemna's own menu keys (refused) and macOS's enabled chords from
+  `CopySymbolicHotKeys` (kept with a warning). The menu-bar item's menu reads macOS's list each time it opens: a taken
+  chord leaves Show Lemna without one, with a grey line "⌃⌥Space: taken by macOS" under it. ⌘W closes the key window
+  (new Close item). Tests 182 (177; `ChordTests`); debug and release build; `make-app.sh` not run, nothing launched.
+  Try, after a build:
+  - The menu-bar item's menu: Show Lemna shows ⌃⌥Space (or, with the input-source shortcut on, no chord and the grey
+    line); Settings… opens the window in front with the field focused; Esc, ⌘W and the close button close it and the
+    app before comes back.
+  - ⌘, in the box: the box goes, the window comes; summon with the window up: the window goes, the box comes.
+  - Click the field, press ⌃⌥K: kept, the menu shows it, ⌃⌥K summons and ⌃⌥Space no longer does. Press ⌃⌥Space while
+    the field listens: recorded, not summoned. ⌥K: refused, "⌥K types ˚. Add ⌃ or ⌘."; ⇧⌘↩: "Copy uses ⇧⌘↩ in the
+    box."; ⌃Space: kept with "macOS uses ⌃Space (input sources)…". ⌫ or the ×: None, Show Lemna from the menu only;
+    Reset to ⌃⌥Space brings it back. Esc while listening keeps the old chord.
+  - On a German layout ⌃⌥Z reads Z; VoiceOver reads the field as "Show Lemna shortcut".
 - Site, pass 35c (2026-11-06): the hero no longer reads as if the app were for short notes. Headline, title and
   description: "A quiet place to write without stopping."; the lead says "for as long as you like" and "puts all of it
   into that app"; the demo's loop types three paragraphs of a journal entry (about 50 s, one typo and its fix kept, so

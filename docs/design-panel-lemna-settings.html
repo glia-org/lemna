@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lemna settings design options</title>
+<style>
+/* Six decisions on a Settings window for Lemna and on changing its chords. Same language as
+   design-panel-lemna-themes.html and design-panel-lemna-future-bed.html: one mono font, 1 px lines, glyph + colour.
+   Readable without scripts; the pick line runs where scripts run. The previews are HTML and CSS wireframes, not
+   captures. Preview assets (Literata for SW2, with its OFL) sit in design-panel-lemna-settings_files/, which stays out
+   of git and travels with the results copy; in the repository the face loads from app/Fonts instead. */
+:root{
+  color-scheme:dark;
+  --bg:#0e1013; --surface:#14171b; --raise:#1b1f25; --line:#262b32; --line-2:#3a414c;
+  --fg:#d9dde3; --muted:#8d95a0; --faint:#5c646f;
+  --accent:#7aa7f0; --accent-soft:rgba(122,167,240,.13); --on-accent:#0e1013;
+  --work:#e2a03a; --need:#f06a43; --done:#52b87c;
+  --ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"CaskaydiaCove Nerd Font Mono","Cascadia Code","Cascadia Mono","Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--ui);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin-inline:auto;padding:32px clamp(16px,4vw,32px) 120px;display:flex;flex-direction:column;gap:52px}
+h1,h2,h3,p,ul,figure{margin:0}
+ul{padding:0;list-style:none}
+code{font:12.5px/1 var(--mono);white-space:nowrap}
+.eyebrow{font:500 12px/1 var(--mono);color:var(--muted)}
+h1{font:600 clamp(24px,4vw,34px)/1.15 var(--mono);letter-spacing:-.02em}
+.lede{max-width:80ch;color:var(--muted);font-size:15px}
+.lede b{color:var(--fg);font-weight:600}
+.top{display:flex;flex-direction:column;gap:14px}
+.bundle{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.bundle-l{font:500 12px/1 var(--mono);color:var(--muted);margin-right:4px}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:5px 9px;border-radius:6px;background:var(--accent-soft);text-decoration:none;font-size:13px;white-space:nowrap;color:inherit}
+.chip b{font:600 12px/1 var(--mono);color:var(--accent)}
+.sec{display:flex;flex-direction:column;gap:18px}
+.sec-h{display:flex;gap:14px;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:12px}
+.num{font:600 28px/1 var(--mono);color:var(--accent)}
+.sec-h h2{font:600 19px/1.2 var(--mono)}
+.sec-h p{color:var(--muted);margin-top:3px;max-width:84ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:16px;align-items:start}
+.grid.two{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+.card{min-width:0;display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.card:has(.pick input:checked){border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.card-h{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.oid{font:600 13px/1 var(--mono);padding:5px 7px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.card-h h3{font:600 16px/1.2 var(--ui)}
+.tag{font:500 11px/1 var(--mono);padding:4px 6px;border-radius:4px;border:1px solid var(--line-2);color:var(--muted);white-space:nowrap}
+.tag.rec{border-color:var(--done);color:var(--done)}
+.tag.ask{border-color:var(--work);color:var(--work)}
+.tag.no{border-color:var(--need);color:var(--need)}
+.pick{margin-left:auto;display:inline-flex;gap:6px;align-items:center;font:500 12px/1 var(--mono);color:var(--muted);cursor:pointer;padding:5px 8px;border:1px solid var(--line);border-radius:6px}
+.pick input{accent-color:var(--accent);margin:0}
+.pick:has(input:checked){color:var(--fg);border-color:var(--accent)}
+.pitch{font-size:15px;max-width:76ch}
+.how{display:flex;flex-direction:column;gap:5px;color:var(--muted)}
+.how li{padding-left:14px;position:relative;max-width:80ch}
+.how li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--faint)}
+.how b{color:var(--fg);font-weight:600}
+.src{font:12px/1.5 var(--mono);color:var(--muted)}
+.src b{color:var(--fg);font-weight:500}
+.risk{font-size:13px;color:var(--muted);border-left:2px solid var(--line-2);padding-left:10px;max-width:80ch}
+.risk b{color:var(--fg)}
+.risk.ask{border-left-color:var(--work)} .risk.ask b{color:var(--work)}
+.risk.no{border-left-color:var(--need)} .risk.no b{color:var(--need)}
+.ledger{display:grid;grid-template-columns:1fr;gap:6px}
+.ledger div{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13px;color:var(--muted)}
+.ledger b{color:var(--fg);font-weight:600}
+.ledger b:first-child{display:inline;margin-right:8px;font:600 12px/1.6 var(--mono)}
+.ledger .ok b:first-child{color:var(--done)}
+.finding{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
+.finding div{padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13.5px;color:var(--muted)}
+.finding b{color:var(--fg);display:block;margin-bottom:4px;font-weight:600}
+table.keys{border-collapse:collapse;font-size:13px;color:var(--muted)}
+table.keys td,table.keys th{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+table.keys th{font:500 12px/1.3 var(--mono);color:var(--fg)}
+table.keys td:first-child{color:var(--fg)}
+table.keys td.n,table.keys th.n{text-align:right;font-family:var(--mono);font-size:12.5px}
+table.keys tr.rec td{color:var(--fg)}
+table.keys td.bad{color:var(--need)}
+.mock{overflow-x:auto}
+.mock table.keys{width:100%;min-width:860px}
+.note{font-size:13px;color:var(--muted);max-width:86ch}
+.note b{color:var(--fg);font-weight:600}
+.picks{position:sticky;bottom:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-inline:calc(-1 * clamp(8px,2vw,16px));padding:10px clamp(8px,2vw,16px);background:var(--surface);border:1px solid var(--line-2);border-radius:10px}
+.picks-l{font:500 12px/1 var(--mono);color:var(--muted)}
+.picks code{font:600 14px/1.3 var(--mono);color:var(--fg);user-select:all;white-space:normal}
+.picks button{margin-left:auto;font:600 13px/1 var(--ui);padding:8px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);cursor:pointer}
+.wrap a:not(.chip){color:var(--accent);text-decoration:none}
+.wrap a:not(.chip):hover{text-decoration:underline}
+.refs{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:13px;max-width:100ch}
+.refs li{padding-left:14px;position:relative}
+.refs li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--faint)}
+.refs b{color:var(--fg);font-weight:600}
+figure{margin:0}
+.real{display:flex;flex-direction:column;gap:12px}
+/* this panel: wireframes of a macOS window (not screenshots; proportions at 1 CSS px = 1 pt), the menus, the recorder */
+@font-face{font-family:"Literata Lemna";src:url("design-panel-lemna-settings_files/Literata-opsz-wght.ttf") format("truetype"),url("../app/Fonts/Literata/Literata%5Bopsz%2Cwght%5D.ttf") format("truetype");font-weight:200 900;font-style:normal;font-display:swap}
+.pv{display:flex;flex-wrap:wrap;gap:22px 18px;align-items:flex-start;overflow-x:auto;padding-bottom:4px}
+.pv figure{display:flex;flex-direction:column;gap:8px}
+.pv figcaption{font-size:12px;color:var(--muted);max-width:520px}
+.pv figcaption b{color:var(--fg);font-weight:600}
+.desk{padding:26px;border:1px solid var(--line-2);border-radius:8px;background:var(--desk);
+  --desk:#9aa3ad}
+.desk.dk{--desk:#2a2f36}
+/* the macOS window, light and dark */
+.mw{--w-bg:#ececec;--w-bar:#e3e3e3;--w-line:#d0d0d0;--w-fg:#1d1d1f;--w-mut:#6e6e73;--w-field:#ffffff;--w-fline:#c8c8cc;--w-acc:#0a64d8;--w-acc-soft:rgba(10,100,216,.16);--w-warn:#b25000;--w-btn:#ffffff;--w-tab:#d4d4d8;
+  width:var(--ww,480px);border-radius:12px;background:var(--w-bg);color:var(--w-fg);font:13px/1.35 -apple-system,system-ui,"Helvetica Neue",sans-serif;
+  box-shadow:0 0 0 .5px rgba(0,0,0,.25),0 18px 50px rgba(0,0,0,.28);overflow:hidden}
+.mw.dk{--w-bg:#262628;--w-bar:#2e2e30;--w-line:#3a3a3c;--w-fg:#e8e8ed;--w-mut:#98989d;--w-field:#1c1c1e;--w-fline:#48484a;--w-acc:#3b8cff;--w-acc-soft:rgba(59,140,255,.22);--w-warn:#ff9f0a;--w-btn:#3a3a3c;--w-tab:#48484a;
+  box-shadow:0 0 0 .5px rgba(255,255,255,.18),0 18px 50px rgba(0,0,0,.5)}
+.mw .bar{height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;background:var(--w-bar);border-bottom:1px solid var(--w-line);position:relative}
+.mw .bar i{width:12px;height:12px;border-radius:50%;background:#ff5f57;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.15)}
+.mw .bar i:nth-child(2){background:#c8c8c8}.mw .bar i:nth-child(3){background:#c8c8c8}
+.mw.dk .bar i:nth-child(2),.mw.dk .bar i:nth-child(3){background:#55555a}
+.mw .bar span{position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:13px;pointer-events:none}
+.mw .tabs{display:flex;justify-content:center;gap:4px;padding:4px 0 6px;background:var(--w-bar);border-bottom:1px solid var(--w-line)}
+.mw .tabs b{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px;padding:4px 8px;border-radius:6px;font:500 11px/1.1 -apple-system,system-ui,sans-serif;color:var(--w-mut)}
+.mw .tabs b svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.5}
+.mw .tabs b.on{background:var(--w-tab);color:var(--w-acc)}
+.mw.tabbed .bar{border-bottom:0}
+.mw .body{padding:20px 24px 22px;display:grid;grid-template-columns:auto 1fr;gap:12px 14px;align-items:center}
+.mw .body .l{justify-self:end;color:var(--w-fg)}
+.mw .body .s{grid-column:2;margin-top:-6px;font-size:11.5px;color:var(--w-mut)}
+.mw .body .s.warn{color:var(--w-warn)}
+.mw .body .hr{grid-column:1/-1;border-top:1px solid var(--w-line);margin:2px 0}
+.mw .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mw .btn{padding:3px 11px;border-radius:6px;background:var(--w-btn);box-shadow:0 0 0 .5px var(--w-fline),0 .5px 1px rgba(0,0,0,.12);font-size:13px}
+.mw .pop{display:inline-flex;gap:18px;justify-content:space-between;min-width:150px;padding:3px 6px 3px 10px;border-radius:6px;background:var(--w-btn);box-shadow:0 0 0 .5px var(--w-fline),0 .5px 1px rgba(0,0,0,.12)}
+.mw .pop::after{content:"⌃";transform:rotate(180deg);font-size:10px;color:var(--w-mut);line-height:1.6}
+.mw .chk{display:inline-flex;gap:6px;align-items:center}
+.mw .chk::before{content:"✓";display:inline-grid;place-items:center;width:14px;height:14px;border-radius:4px;background:var(--w-acc);color:#fff;font-size:10px;font-weight:700}
+.mw .chk.off::before{content:"";background:var(--w-field);box-shadow:inset 0 0 0 1px var(--w-fline)}
+/* the recorder field */
+.rf{display:inline-flex;align-items:center;gap:6px;width:188px;height:24px;padding:0 4px 0 9px;border-radius:6px;background:var(--w-field);box-shadow:inset 0 0 0 1px var(--w-fline);font:13px/1 -apple-system,system-ui,sans-serif;color:var(--w-fg)}
+.rf .k{flex:1;letter-spacing:.06em;white-space:nowrap}
+.rf .x{width:15px;height:15px;border-radius:50%;background:var(--w-mut);color:var(--w-field);display:grid;place-items:center;font-size:10px;font-weight:700;opacity:.7}
+.rf.live{box-shadow:inset 0 0 0 1px var(--w-acc),0 0 0 3px var(--w-acc-soft)}
+.rf.live .k{color:var(--w-mut)}
+.rf.live .k b{color:var(--w-fg);font-weight:400}
+.rf.bad{box-shadow:inset 0 0 0 1px var(--w-warn)}
+.rf.none .k{color:var(--w-mut)}
+/* Still's look for SW2 */
+.mw.still{--w-bg:#f3f0e8;--w-bar:#f3f0e8;--w-line:#d9d4c8;--w-fg:#46433d;--w-mut:#86817a;--w-field:#faf8f3;--w-fline:#d9d4c8;--w-acc:#577446;--w-acc-soft:rgba(87,116,70,.18);--w-warn:#9a5a1c;--w-btn:#faf8f3;
+  border-radius:16px;box-shadow:0 0 0 1px #d9d4c8;font-family:"Literata Lemna",Charter,Georgia,serif;font-size:14px}
+.mw.still.dk{--w-bg:#1c1b18;--w-bar:#1c1b18;--w-line:#34312c;--w-fg:#e2daca;--w-mut:#8c8476;--w-field:#23221e;--w-fline:#34312c;--w-acc:#a2b88e;--w-acc-soft:rgba(162,184,142,.2);--w-warn:#d9a066;--w-btn:#23221e;box-shadow:0 0 0 1px #34312c}
+.mw.still .bar{border-bottom:0}
+.mw.still .bar span{font-weight:500;font-size:14px}
+.mw.still .rf,.mw.still .btn{font-family:inherit;font-size:14px;box-shadow:inset 0 0 0 1px var(--w-fline)}
+/* the status item's menu (macOS menu, light) */
+.mm{--m-bg:rgba(236,236,236,.97);--m-fg:#1d1d1f;--m-mut:#8a8a8e;--m-line:rgba(0,0,0,.1);--m-new:#0a64d8;--m-gone:#c0392b;
+  width:236px;padding:5px;border-radius:10px;background:var(--m-bg);color:var(--m-fg);font:13px/1 -apple-system,system-ui,sans-serif;box-shadow:0 0 0 .5px rgba(0,0,0,.25),0 10px 30px rgba(0,0,0,.25)}
+.mm.dk{--m-bg:rgba(44,44,46,.97);--m-fg:#e8e8ed;--m-mut:#8e8e93;--m-line:rgba(255,255,255,.12);--m-new:#5aa2ff;--m-gone:#ff6b5b;box-shadow:0 0 0 .5px rgba(255,255,255,.2),0 10px 30px rgba(0,0,0,.5)}
+.mm span{display:flex;justify-content:space-between;gap:12px;padding:4px 10px 4px 22px;border-radius:5px;position:relative;white-space:nowrap}
+.mm span kbd{font:inherit;color:var(--m-mut);letter-spacing:.04em}
+.mm span.sub::after{content:"›";color:var(--m-mut);font-size:15px;line-height:.8}
+.mm span.on::before{content:"✓";position:absolute;left:7px;font-size:11px}
+.mm span.new{color:var(--m-new)}
+.mm span.new kbd{color:var(--m-new)}
+.mm span.gone{color:var(--m-gone);text-decoration:line-through;text-decoration-thickness:1px}
+.mm span.dis{color:var(--m-mut)}
+.mm hr{border:0;border-top:1px solid var(--m-line);margin:5px 9px}
+.legend{font:12px/1.5 var(--mono);color:var(--muted)}
+.legend .n{color:#5aa2ff}.legend .g{color:#ff6b5b;text-decoration:line-through}
+.states{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:12px}
+.states>div{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.states b{font:600 12px/1.3 var(--mono);color:var(--fg)}
+.states p{font-size:12.5px;color:var(--muted)}
+.states .mw{width:auto;box-shadow:none;border-radius:8px}
+.states .mw .body{padding:12px 12px 14px;grid-template-columns:1fr}
+.states .mw .body .s{grid-column:1;margin-top:-4px}
+
+.menus-row{gap:22px 16px}
+.menus-row>figure{width:204px}
+.menus-row .mm{width:204px}
+.menus-row figcaption{max-width:204px}
+.mw .btn.dis{color:var(--w-mut);opacity:.7}
+.mw .pop{justify-self:start}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+<p class="eyebrow">Design panel · Lemna</p>
+<h1>Lemna settings design options</h1>
+<p class="lede">Six decisions on a Settings window and on changing Lemna's chords: where settings live (<b>SP</b>), which chords can be changed (<b>SK</b>), the recorder (<b>SR</b>), conflicts (<b>SC</b>), the window's look (<b>SW</b>), and how the chord is kept (<b>SD</b>). The evidence is <a href="../research_notes/Lemna%20settings/survey.md">research_notes/Lemna settings/survey.md</a>, cited as survey with its sections: ten comparable apps and four libraries, the code at 2f237e3, and three throwaway probes on macOS 26.5 that registered chords and read the system's list without pressing a key. <b>recommended</b> is the proposed pick, <b>ask</b> a pick that amends a DESIGN decision (named on the tag), <b>no</b> advised against by the evidence.</p>
+<p class="lede"><b>Recommended: SP2 SK1 SR1 SC2 SW3 SD2.</b> Only the summon chord needs a control a menu cannot hold, and it is the only global chord, the one that collides: ⌃⌥Space is macOS's next-input-source chord, Things' Quick Entry with Autofill and OmniFocus's quick entry. The box's chords are menu items, which macOS's App Shortcuts already rebind (probed), so one field in a small Settings… ⌘, window is enough, and the menus stay, ticks and all. The recorder is Lemna's own, since a library's weight goes to many shortcuts and Lemna registers one. The check reads the system's list and Lemna's menu, because registration reports nothing: it returned 0 even for Spotlight's ⌘Space. A taken chord stays the user's and the menu says it is taken. About 435 lines and 80 test lines; no dependency, no permission.</p>
+<p class="lede">The previews are wireframes in HTML and CSS at 1 CSS px = 1 pt, light and dark, not captures of AppKit. SW2's Literata loads from <code>app/Fonts</code> in the repository and from the results copy's <code>_files</code> folder; the links to the notes, DESIGN.md and the other panels resolve only in the repository.</p>
+<div class="bundle"><span class="bundle-l">Recommended</span><a class="chip" href="#opt-SP2"><b>SP2</b> window for what menus cannot do</a><a class="chip" href="#opt-SK1"><b>SK1</b> summon chord only</a><a class="chip" href="#opt-SR1"><b>SR1</b> own control</a><a class="chip" href="#opt-SC2"><b>SC2</b> rules, menu, system list</a><a class="chip" href="#opt-SW3"><b>SW3</b> system window, one page</a><a class="chip" href="#opt-SD2"><b>SD2</b> keep the chord, say so</a></div>
+<p class="eyebrow">Pick line: <span id="pickline">SP2 SK1 SR1 SC2 SW3 SD2</span></p>
+</header>
+
+<section class="sec" aria-labelledby="s0h">
+<header class="sec-h"><span class="num">0</span><div><h2 id="s0h">What holds today, and what the notes found</h2><p>Today every setting is a menu, in the menu-bar item's and in the hidden main menu, and the summon chord is a constant: <code>Hotkey</code> in Summon.swift, ⌃⌥Space through Carbon's <code>RegisterEventHotKey</code>, a line in the system log if it fails (survey §1).</p></div></header>
+<div class="finding">
+<div><b>Registration reports nothing.</b>On macOS 26.5 a plain <code>RegisterEventHotKey</code> returned 0 for every chord tried, Spotlight's ⌘Space and a chord another running app holds among them; Carbon hot keys are shared by design. Only a second registration in the same process failed (survey §6).</div>
+<div><b>The field never sees a held chord.</b>A chord another app or macOS holds goes to its holder: that app opens, the input source switches. Lemna's own would summon Lemna, so the field pauses it while it listens, as the libraries do (survey §4, §5).</div>
+<div><b>⌃⌥Space is crowded.</b>macOS's "Select next source in Input menu", Things' Quick Entry with Autofill, OmniFocus's quick entry. Things' own default, ⌃Space, is macOS's other input-source chord (survey §8).</div>
+<div><b>macOS already rebinds Lemna's menu chords.</b>App Shortcuts' <code>NSUserKeyEquivalents</code> changed Done ⌘↩ and Session › Copy ⇧⌘↩ in a probe with Lemna's hidden menus, and left Edit › Copy alone (survey §7).</div>
+<div><b>Every utility checked has a window.</b>None of the ten keeps all its settings in a menu; tabs or a sidebar from two panes up. Rectangle, the closest to Lemna, keeps a long menu of actions and puts the chord fields and behaviour in the window (survey §2).</div>
+<div><b>Activation is where the windows fail.</b>macOS 14's <code>activate()</code> does not promise activation; Ice turns into a regular app and activates the Dock first; SwiftUI's Settings scene does not open from a menu-bar app; focus bugs on 26 in Ice and CleanShot; Hidden Bar's ⌘W did nothing for want of a Close item (survey §3).</div>
+<div><b>Secure Input silences ⌥ chords.</b>While another app has Secure Keyboard Entry on (a password manager, Terminal's option), chords of ⌥ or ⌥⇧ alone and single keys stop firing (Rectangle #1592, KeyboardShortcuts #176); ⌃⌥Space has ⌃ and is not reported among them (survey §5).</div>
+<div><b>No Globe, no media keys, no double-tap.</b>Carbon hot keys take ⌃⌥⇧⌘ and a key: Globe is not handled (Rectangle #1605), media keys belong to the system, a modifier alone needs an event tap with Input Monitoring or a monitor with Accessibility (survey §5).</div>
+</div>
+<div class="ledger">
+<div class="ok"><b>Kept, under every pick.</b>The box's chords and how they reach the menu (<code>BoxPanel.sendEvent</code>); Carbon registration with no permission; the journal; W2's activation: the box never activates Lemna, a window does and hands back. Under every pick but SP1 the menus as they are.</div>
+<div><b>Amended by these picks.</b>DESIGN Open 7 closes: the chord becomes the user's, ⌃⌥Space its default. W2's "summoned by the hotkey" names that chord. SP1 alone amends TH1 ("those menus stay as they are") and Y1 (Start at Login in the menu).</div>
+<div><b>Not on this panel.</b>About Lemna in the menu-bar item's menu: the CC BY credits (Electric, Lab bed) are nowhere in the app, About sits in the hidden menu, and AppKit's standard About panel shows a bundled <code>Credits.rtf</code>, a fix of its own. ↵ to send: a change to B4, where ↵ ends a paragraph (section 2). A second global chord; modifier-only or double-tap chords (an event tap and Input Monitoring, as Raycast and Alfred have); Globe.</div>
+<div><b>IDs.</b>Two letters and a digit, this panel's own; DESIGN's rows are named with their IDs.</div>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s1h">
+<header class="sec-h"><span class="num">1</span><div><h2 id="s1h">SP: where settings live</h2><p>A window, the menus, or both, and what the menu-bar item's menu keeps.</p></div></header>
+<figure class="real">
+<div class="pv menus-row" aria-label="The menu-bar item's menu today and under each SP">
+<figure><div class="mm"><span>Show Lemna<kbd>⌃⌥Space</kbd></span><span>Open Window<kbd>⌃⌘F</kbd></span><hr><span class="dis">Done<kbd>⌘↩</kbd></span><span class="dis">Copy<kbd>⇧⌘↩</kbd></span><span class="dis">Save…<kbd>⌘S</kbd></span><span class="dis">Discard…</span><hr><span class="sub">Theme</span><span class="sub">Sound</span><span class="sub">Effects</span><span class="sub">Ambience</span><hr><span>Start at Login</span><span>Quit Lemna<kbd>⌘Q</kbd></span></div><figcaption><b>Today</b> (<code>makeStatusItem</code>): 15 items, four submenus of 2, 12, 6 and 3; the hand-offs greyed with no text.</figcaption></figure>
+<figure><div class="mm"><span>Show Lemna<kbd>⌃⌥Space</kbd></span><span class="gone">Open Window<kbd>⌃⌘F</kbd></span><span class="new">Settings…<kbd>⌘,</kbd></span><hr><span class="gone">Done<kbd>⌘↩</kbd></span><span class="gone">Copy<kbd>⇧⌘↩</kbd></span><span class="gone">Save…<kbd>⌘S</kbd></span><span class="dis">Discard…</span><hr><span class="gone sub">Theme</span><span class="gone sub">Sound</span><span class="gone sub">Effects</span><span class="gone sub">Ambience</span><span class="gone">Start at Login</span><hr><span>Quit Lemna<kbd>⌘Q</kbd></span></div><figcaption><b>SP1</b>: Show, Settings…, Discard…, Quit. The chords still work from the box (hidden main menu); with the mouse the hand-offs and the window are gone.</figcaption></figure>
+<figure><div class="mm"><span>Show Lemna<kbd>⌃⌥Space</kbd></span><span>Open Window<kbd>⌃⌘F</kbd></span><hr><span class="dis">Done<kbd>⌘↩</kbd></span><span class="dis">Copy<kbd>⇧⌘↩</kbd></span><span class="dis">Save…<kbd>⌘S</kbd></span><span class="dis">Discard…</span><hr><span class="sub">Theme</span><span class="sub">Sound</span><span class="sub">Effects</span><span class="sub">Ambience</span><hr><span class="new">Settings…<kbd>⌘,</kbd></span><span>Start at Login</span><span>Quit Lemna<kbd>⌘Q</kbd></span></div><figcaption><b>SP2</b>: one item, Settings… ⌘, in the group with Start at Login and Quit, where macOS apps keep it; the rest as today.</figcaption></figure>
+<figure><div class="mm"><span>Show Lemna<kbd>⌃⌥Space</kbd></span><span>Open Window<kbd>⌃⌘F</kbd></span><hr><span class="dis">Done<kbd>⌘↩</kbd></span><span class="dis">Copy<kbd>⇧⌘↩</kbd></span><span class="dis">Save…<kbd>⌘S</kbd></span><span class="dis">Discard…</span><hr><span class="sub">Theme</span><span class="sub">Sound</span><span class="sub">Effects</span><span class="sub">Ambience</span><hr><span class="new">Summon Key…</span><span>Start at Login</span><span>Quit Lemna<kbd>⌘Q</kbd></span></div><figcaption><b>SP3</b>: one item that opens the recorder alone; no ⌘,.</figcaption></figure>
+<figure><div class="mm dk"><span>Show Lemna</span><span class="dis">⌃⌥Space: taken by macOS</span><span>Open Window<kbd>⌃⌘F</kbd></span><hr><span class="dis">Done<kbd>⌘↩</kbd></span><span class="dis">…</span><hr><span class="new">Settings…<kbd>⌘,</kbd></span><span>Start at Login</span><span>Quit Lemna<kbd>⌘Q</kbd></span></div><figcaption><b>SD2 at a launch where the chord is taken</b> (dark): Show Lemna loses its chord, a grey line under it says why; Settings… opens on the field.</figcaption></figure>
+</div>
+<p class="legend">Legend: <span class="n">blue</span> new · <span class="g">red, struck</span> gone · grey disabled. Drawn as macOS draws a status item's menu, not captured.</p>
+</figure>
+
+<div class="grid">
+<article class="card" id="opt-SP1"><div class="card-h"><span class="oid">SP1</span><h3>One Settings window for everything</h3><span class="tag ask">ask: amends TH1, Y1</span><label class="pick"><input type="radio" name="SP" value="SP1"> pick</label></div>
+<p class="pitch">Settings… ⌘, opens a window with General (the summon chord, Start at Login), Sound (clicks, bed, on/off) and Look (theme, ambience, effects). The menu-bar item's menu shrinks to Show Lemna, Settings…, Discard… and Quit.</p>
+<ul class="how">
+<li><b>One place, the common pattern:</b> each of the ten apps surveyed has a settings window, none keeps all its settings in a menu, and all use toolbar tabs or a sidebar (survey §2).</li>
+<li><b>Room to grow:</b> a credits pane for the CC BY lines (Electric, Lab bed), which no part of the app shows today (survey §1).</li>
+<li><b>No second surface:</b> the hidden main menu keeps its submenus for ⌘K and the box's keys, but nobody sees it.</li>
+</ul>
+<p class="risk ask"><b>Risk: the look can no longer be judged where it shows.</b> A theme, a bed or an ambience is seen and heard on the box and its dim. The window activates Lemna and would sit under <code>Box.level</code>, so the box goes first, as for Open Window; the menu opens over the box (whether the box keeps the keys meanwhile is untried, app README). The ticks go, a switch takes three steps instead of two, Done, Copy, Save… and Open Window leave the mouse's reach. ≈ 330 lines over SP2: three panes bound to <code>SoundChoice</code>, <code>BedChoice</code>, <code>Theme</code>, <code>Ambience</code>, <code>Effects</code>, refreshed by TH1's preset.</p></article>
+<article class="card" id="opt-SP2"><div class="card-h"><span class="oid">SP2</span><h3>A window for what menus cannot do</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="SP" value="SP2" checked> pick</label></div>
+<p class="pitch">Settings… ⌘, opens a small window holding the summon chord. Every menu stays as it is.</p>
+<ul class="how">
+<li><b>Split by the kind of input:</b> choosing from a list stays a menu with ticks; typing a chord needs a field, which a menu cannot hold.</li>
+<li><b>The name people look for:</b> Settings… and ⌘, are where Mac apps keep this (survey §2); the window can take a pane later when a setting with evidence needs one.</li>
+<li><b>A save folder needs no setting:</b> the save panel remembers the last folder (<code>SaveFolder</code>), so the window holds one row.</li>
+<li><b>Opening and closing as the window mode does:</b> <code>activateLemna()</code> in, <code>handBack()</code> out, so the app in front before comes back (survey §3).</li>
+</ul>
+<p class="risk"><b>Risk.</b> A window of one row looks thin, and settings sit in two places, the menus and the window. ≈ 90 lines for the window and its two menu items, besides SR's control.</p></article>
+<article class="card" id="opt-SP3"><div class="card-h"><span class="oid">SP3</span><h3>No window: Summon Key…</h3><label class="pick"><input type="radio" name="SP" value="SP3"> pick</label></div>
+<p class="pitch">A menu item opens a small panel with the recorder and nothing else.</p>
+<ul class="how"><li>About 20 lines less than SP2; nothing named Settings that promises more.</li><li>A sheet needs a parent window, which the menu-bar item does not have, and a popover from it needs Lemna active as well, so it is a small window under another name.</li></ul>
+<p class="risk"><b>Risk.</b> ⌘, finds nothing; the next setting that needs a field is another item in a 16-item menu.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s2h">
+<header class="sec-h"><span class="num">2</span><div><h2 id="s2h">SK: which chords can be changed</h2><p>Lemna's chords, where each lives, and who would plausibly change it (survey §1, §8, §9).</p></div></header>
+<div class="mock"><table class="keys">
+<thead><tr><th>Chord</th><th>What</th><th>Where it is defined</th><th>Reach</th><th>Collides with</th><th>Who would change it</th></tr></thead>
+<tbody>
+<tr class="rec"><td>⌃⌥Space</td><td>Show Lemna</td><td><code>Hotkey</code>, Carbon (Summon.swift)</td><td>every app</td><td>macOS: Select next source in Input menu; Things' Quick Entry with Autofill; OmniFocus's quick entry</td><td>anyone with two input sources or one of those apps (survey §8)</td></tr>
+<tr><td>⌘↩</td><td>Done (paste)</td><td>Session menu</td><td>box, window</td><td>none found</td><td>a few; ↩ is a paragraph end (B4), so ↩-to-send is not a rebinding</td></tr>
+<tr><td>⇧⌘↩ · ⌘S</td><td>Copy · Save…</td><td>Session menu</td><td>box, window</td><td>none found</td><td>rarely</td></tr>
+<tr><td>⌘K · ⌃⌘F</td><td>Sound off · Open Window</td><td>Sound ▸, View menu</td><td>box, window</td><td>⌃⌘F is Enter Full Screen in most apps</td><td>rarely</td></tr>
+<tr><td>⌘Z ⇧⌘Z ⌘X ⌘C ⌘V ⌘A ⌘Q</td><td>Edit, Quit</td><td>Edit, Lemna menus</td><td>box, window</td><td>none: they are the convention</td><td>no one</td></tr>
+<tr><td>Esc · ⇧↩ · moves</td><td>hide · line break · caret</td><td>key bindings in <code>LineView</code></td><td>box, window</td><td>none: the convention</td><td>no one</td></tr>
+</tbody></table></div>
+
+<p class="note"><b>macOS already rebinds every menu chord.</b> System Settings › Keyboard › Keyboard Shortcuts › App Shortcuts writes <code>NSUserKeyEquivalents</code>, which AppKit applies by title, or by menu path where a title is used twice (Session › Copy against Edit › Copy). Probed with a throwaway accessory app carrying Lemna's hidden Session and Edit menus: Done ⌘↩ became ⌥⌘D, Session › Copy changed and Edit › Copy did not, and an item titled Done outside the main menu changed too (survey §7). Untested: a chord without ⌘ from the box, since <code>BoxPanel.sendEvent</code> hands only ⌘ chords to the menu.</p>
+<div class="grid">
+<article class="card" id="opt-SK1"><div class="card-h"><span class="oid">SK1</span><h3>The summon chord only</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="SK" value="SK1" checked> pick</label></div>
+<p class="pitch">One field: Show Lemna. The box's chords stay as they are.</p>
+<ul class="how">
+<li><b>The only global one:</b> it is pressed over every other app, so it is the only chord that collides with other apps and with macOS, and ⌃⌥Space does (the table, survey §8).</li>
+<li><b>The rest are local:</b> they act only while the box or the window has the keys, follow the Mac's conventions, and App Shortcuts covers anyone who wants another.</li>
+<li><b>Closes DESIGN Open 7:</b> its condition, a build going to others, holds now (the README links a release download; v0.1.0 is tagged).</li>
+</ul>
+<p class="risk"><b>Risk.</b> Someone who wants ⌥↩ for Done has to know App Shortcuts exists.</p></article>
+<article class="card" id="opt-SK2"><div class="card-h"><span class="oid">SK2</span><h3>Summon, Done, Copy and Save…</h3><label class="pick"><input type="radio" name="SK" value="SK2"> pick</label></div>
+<p class="pitch">Four fields; the three hand-offs' key equivalents follow them in both menus.</p>
+<ul class="how"><li>The send key is a known preference in chat and capture tools (survey §9); here it would be ⌘↩ against another chord with a modifier, never plain ↩, which is a paragraph end (B4) and ⇧↩ a line break.</li></ul>
+<p class="risk"><b>Risk.</b> ≈ 90 lines more: three fields, checks among the four and against the Edit menu, both menus rebuilt on a change; a second way to do what App Shortcuts does, and the two can disagree (an App Shortcut overrides the item's own chord).</p></article>
+<article class="card" id="opt-SK3"><div class="card-h"><span class="oid">SK3</span><h3>Every chord</h3><span class="tag no">no: the conventions</span><label class="pick"><input type="radio" name="SK" value="SK3"> pick</label></div>
+<p class="pitch">Esc, ⇧↩, ⌘Z and the rest, each with a field.</p>
+<p class="risk no"><b>No.</b> B4 takes standard macOS text editing as the spec; Esc, ⇧↩ and the moves are AppKit key bindings in <code>LineView</code>, not menu items, so changing them needs a key map of Lemna's own (≈ 200 lines more and a test per binding). No one asked to move them.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s3h">
+<header class="sec-h"><span class="num">3</span><div><h2 id="s3h">SR: the recorder</h2><p>The field that takes a chord. Its states as the recommended picks (SR1, SC2, SD2) draw them; every library surveyed draws much the same (survey §4).</p></div></header>
+<div class="states" aria-label="The recorder's states">
+<div><b>Set</b><div class="mw"><div class="body"><span class="rf"><span class="k">⌃⌥Space</span><span class="x">×</span></span><span class="s">&nbsp;</span></div></div><p>The chord in Apple's order ⌃⌥⇧⌘ and the key's name; × clears.</p></div>
+<div><b>Listening</b><div class="mw"><div class="body"><span class="rf live"><span class="k"><b>⌃⌥</b>…</span></span><span class="s">Esc keeps ⌃⌥Space.</span></div></div><p>A click starts it. Held modifiers show as they go down. Lemna's own hotkey is off until it ends.</p></div>
+<div><b>Refused: types a character</b><div class="mw"><div class="body"><span class="rf bad"><span class="k">⌥K</span></span><span class="s warn">⌥K types ˚. Add ⌃ or ⌘.</span></div></div><p>Not kept; the old chord stays. Also refused: ⇧ alone, ⌘ or ⌃ alone with a letter, no modifier but on F-keys (SC2).</p></div>
+<div><b>Refused: Lemna's own</b><div class="mw"><div class="body"><span class="rf bad"><span class="k">⇧⌘↩</span></span><span class="s warn">Copy uses ⇧⌘↩ in the box.</span></div></div><p>Against the hidden main menu's key equivalents, read from the menu itself.</p></div>
+<div><b>Warned: taken by macOS</b><div class="mw"><div class="body"><span class="rf"><span class="k">⌃Space</span><span class="x">×</span></span><span class="s warn">macOS uses ⌃Space (input sources).</span></div></div><p>Kept and registered (SC2 + SD2): it works once that shortcut is off. Named from a short table; other system chords read "macOS uses it".</p></div>
+<div><b>None</b><div class="mw"><div class="body"><span class="rf none"><span class="k">None</span></span><span class="s">Show Lemna from the menu-bar item.</span></div></div><p>After × or ⌫ while listening. Default brings ⌃⌥Space back.</p></div>
+</div>
+
+<div class="mock"><table class="keys">
+<thead><tr><th></th><th>KeyboardShortcuts (SR2)</th><th>MASShortcut (SR3)</th><th>ShortcutRecorder (SR3)</th><th>HotKey</th><th>Own (SR1)</th></tr></thead>
+<tbody>
+<tr><td>Licence</td><td>MIT</td><td>BSD-2-Clause</td><td>CC BY 4.0</td><td>MIT</td><td>Lemna's, Apache-2.0</td></tr>
+<tr><td>Last release</td><td>3.1.0, 2026-09-11, active</td><td>2.4.0, 2019; archived</td><td>3.4.0, 2022-08</td><td>0.2.1, 2024-12</td><td>—</td></tr>
+<tr><td>Language, size</td><td>Swift 6, ≈ 4,700 lines</td><td>Objective-C, ≈ 2,240</td><td>Objective-C, ≈ 11,100</td><td>Swift, ≈ 1,140, no recorder</td><td>Swift, ≈ 290</td></tr>
+<tr><td>Resources</td><td class="bad">17 <code>.lproj</code> via <code>Bundle.module</code></td><td class="bad">15 <code>.lproj</code></td><td class="bad">22 <code>.lproj</code>, an asset catalog</td><td>none</td><td>none</td></tr>
+<tr><td>Checks</td><td>menu, system list; block / warn / allow</td><td>menu, system list</td><td>menu, delegate, system list</td><td>none</td><td>rules, menu, system list (SC2)</td></tr>
+<tr><td>Pauses own chords</td><td>yes</td><td>not found</td><td>yes</td><td>—</td><td>yes</td></tr>
+<tr><td>Letters shown</td><td>current layout</td><td>current layout</td><td>current layout</td><td>US only</td><td>current layout</td></tr>
+<tr><td>Stored as</td><td><code>KeyboardShortcuts_&lt;name&gt;</code>, a JSON string</td><td>keyed archive or dictionary</td><td>keyed archive or dictionary</td><td>the app's</td><td><code>hotkey</code>, a dictionary (SD)</td></tr>
+</tbody></table></div>
+<p class="note"><b>Red:</b> SwiftPM's generated <code>Bundle.module</code> looks for the package's bundle at the .app's root, not in <code>Contents/Resources</code>, and ends in <code>fatalError</code> when it is missing, so an app put together by a script, as <code>make-app.sh</code> does, works on the Mac that built it and crashes on another (KeyboardShortcuts #231 on 26.1, ShortcutRecorder #154; survey §4). Sizes are rounded counts of each clone at HEAD.</p>
+
+<div class="grid">
+<article class="card" id="opt-SR1"><div class="card-h"><span class="oid">SR1</span><h3>Lemna's own control</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="SR" value="SR1" checked> pick</label></div>
+<p class="pitch">An <code>NSControl</code> in the app target and a <code>Chord</code> value in LemnaCore; <code>Hotkey</code> keeps registering with Carbon as today.</p>
+<ul class="how">
+<li><b>One chord does not need a framework:</b> the libraries' weight is in naming, storing and registering many shortcuts and in SwiftUI views; Lemna has one, and its registration exists (Summon.swift).</li>
+<li><b>Builds as Lemna builds:</b> no package dependency (today only Lemna's own two, by path), no resource bundle for <code>make-app.sh</code> to copy, no licence line.</li>
+<li><b>The rules and the checks are tested:</b> <code>Chord</code> and SC2's verdict live in LemnaCore, so <code>swift test</code> covers them; only the drawing and the key capture are the app target's.</li>
+<li><b>What to copy from the libraries:</b> pause the own hotkey while listening (KeyboardShortcuts, Rectangle), take <code>performKeyEquivalent</code> too, show the letter of the current layout through <code>UCKeyTranslate</code> while storing the key code (KeyboardShortcuts), ⓧ and ⌫ clear, Esc cancels (all of them).</li>
+</ul>
+<p class="risk"><b>Risk.</b> ≈ 290 lines to own (control 180, <code>Chord</code> 110) and the layout cases the libraries met over years: a chord recorded on one layout shows another letter on the next (KeyboardShortcuts #62, still open), CleanShot shipped layout fixes in five releases, Raycast lets the user choose physical key or character (survey §4). Owning the control means owning those reports.</p></article>
+<article class="card" id="opt-SR2"><div class="card-h"><span class="oid">SR2</span><h3>sindresorhus/KeyboardShortcuts</h3><label class="pick"><input type="radio" name="SR" value="SR2"> pick</label></div>
+<p class="pitch">The package's <code>RecorderCocoa</code> in the window and its registration in place of <code>Hotkey</code>; the chord stored under the package's own key.</p>
+<ul class="how"><li><b>Maintained, MIT:</b> 3.1.0 of 2026-09-11, Swift 6, macOS 10.15+; Maccy ships it.</li><li><b>Does what SR1 would:</b> refuses no-modifier and ⇧-only chords, checks the main menu and <code>CopySymbolicHotKeys</code> under a policy (block, warn, allow), pauses the app's chords while recording, shows the current layout's letter; Carbon registration, no permission.</li><li><code>RecorderCocoa</code> is a plain AppKit <code>NSSearchField</code>; no SwiftUI needed in Lemna.</li></ul>
+<p class="risk"><b>Risk.</b> Its 17 localisations come through <code>Bundle.module</code>, on which a script-built app crashes away from the Mac that built it, and it reads them even to name the Space key (#231 on 26.1; the known fix copies the bundle into <code>Contents/Resources</code> and patches the package to look there). So <code>make-app.sh</code> copies a bundle and Lemna patches or forks the package; ≈ 4,700 lines arrive for one chord, Lemna's first package from outside; the chord lives as a JSON string under <code>KeyboardShortcuts_summon</code> beside Lemna's own keys; SD2's launch check stays Lemna's to write.</p></article>
+<article class="card" id="opt-SR3"><div class="card-h"><span class="oid">SR3</span><h3>MASShortcut or ShortcutRecorder</h3><span class="tag no">no: older, Objective-C</span><label class="pick"><input type="radio" name="SR" value="SR3"> pick</label></div>
+<p class="pitch">One of the two Objective-C recorders.</p>
+<ul class="how"><li>MASShortcut (BSD-2, ≈ 2,240 lines) is what Rectangle ships, as its maintainer's fork; ShortcutRecorder (CC BY 4.0, ≈ 11,100 lines) also takes modifier-only chords through an event tap.</li></ul>
+<p class="risk no"><b>No.</b> MASShortcut is archived (last tag 2019; its SwiftPM manifest came after it, so a revision is pinned); ShortcutRecorder's last release is of 2022, its licence asks for a credit, and its asset catalog needs <code>actool</code>, which the Command Line Tools lack. Both carry localisation bundles with SR2's <code>Bundle.module</code> problem.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s4h">
+<header class="sec-h"><span class="num">4</span><div><h2 id="s4h">SC: conflicts</h2><p>What can be known about a chord before it is kept, and at each launch. The probes ran on macOS 26.5 with Lemna running (survey §6).</p></div></header>
+<div class="mock"><table class="keys" style="min-width:640px">
+<thead><tr><th>Chord</th><th>Held by</th><th class="n">register</th><th class="n">exclusive</th><th>in <code>CopySymbolicHotKeys</code></th></tr></thead>
+<tbody>
+<tr><td>⌃⌥Space</td><td>Lemna (another process)</td><td class="n">0</td><td class="n">0</td><td>listed, its enabled flag the user's</td></tr>
+<tr><td>⌘Space</td><td>Spotlight</td><td class="n">0</td><td class="n bad">−9878</td><td>listed, enabled</td></tr>
+<tr><td>⌃⌘Space</td><td>Character Viewer</td><td class="n">0</td><td class="n">0</td><td>listed, enabled</td></tr>
+<tr><td>⌥K, ⌥⇧K, ⌥Space</td><td>nobody (⌥ alone)</td><td class="n">0</td><td class="n"></td><td></td></tr>
+<tr><td>the same chord twice in one process</td><td>itself</td><td class="n bad">−9878</td><td class="n"></td><td></td></tr>
+</tbody></table></div>
+<div class="finding">
+<div><b>Registration reports nothing.</b>A plain registration returned 0 for every chord tried, Spotlight's and another app's included: Carbon hot keys are shared, "the same hot key can, however, be registered by multiple applications" (CarbonEvents.h). An exclusive trial agreed with the system's list for 64 of its 148 chords.</div>
+<div><b>The field never sees a held chord.</b>A chord another app registered, or one macOS holds, goes to its holder first: the other app opens, the input source switches (a third-party probe, warble #109; Alfred's and Raycast's advice on ⌘Space). Lemna's own chord would summon Lemna, so the field pauses it while it listens, as KeyboardShortcuts and Rectangle pause all theirs and Ice the edited one. Recording a chord macOS holds needs <code>PushSymbolicHotKeyMode</code>, which acts only with the Accessibility grant (survey §3, §5).</div>
+<div><b>The system's list is public.</b><code>CopySymbolicHotKeys</code> (Carbon, not deprecated in the 26 SDK): 230 entries here, 161 enabled, key code, Carbon modifiers and the enabled flag, no names ("no way to determine which hotkey … corresponds"); 3.6 ms a call. The plist behind it and the private CGS calls add nothing a check needs (survey §5).</div>
+<div><b>Another app's chord cannot be seen.</b>Non-exclusive registrations are not listed anywhere; when one is pressed, the other app reacts. No public API lists them (Electron's maintainers: “OS X doesn't provide a public API to check”); a third-party probe found the first registrant getting the key, against the header's “sent to all registrants” (survey §5).</div>
+</div>
+<div class="grid">
+<article class="card" id="opt-SC1"><div class="card-h"><span class="oid">SC1</span><h3>Register and report a failure</h3><span class="tag no">no: never fails</span><label class="pick"><input type="radio" name="SC" value="SC1"> pick</label></div>
+<p class="pitch">Keep the chord; if <code>RegisterEventHotKey</code> refuses it, say so.</p>
+<p class="risk no"><b>No.</b> On the probe it refused only a second registration in the same process: SC1 behaves as SC3 with an extra branch.</p></article>
+<article class="card" id="opt-SC2"><div class="card-h"><span class="oid">SC2</span><h3>Rules, Lemna's menu and the system's list</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="SC" value="SC2" checked> pick</label></div>
+<p class="pitch">Before a chord is kept, and again at each launch, three checks, the first two refusing and the third warning.</p>
+<ul class="how">
+<li><b>Rules (refuse):</b> a letter, digit or punctuation key needs two modifiers, one of them ⌃ or ⌘ (⌃⌥L, not ⌃L or ⌘L); Space, ↩ and ⇥ take a single ⌃ or ⌘; ⌥ or ⌥⇧ alone never; only F1–F20 go without.</li>
+<li><b>Why so strict:</b> ⌘ with one key is every app's menu chord (a global ⌘L takes every browser's address bar), ⌃ with one a text field's and Terminal's (⌃K, ⌃C); ⌥ and ⌥⇧ type characters (⌥Space a no-break space), macOS 15.0–15.1 refused them (−9868, until 15.2) and Secure Input silences them. MASShortcut passes anything with ⌘ or ⌃, and ⌥ with Space or Esc.</li>
+<li><b>Lemna's own (refuse):</b> the hidden main menu's key equivalents, read from the menu, so ⇧⌘↩ or ⌃⌘F cannot become the summon chord.</li>
+<li><b>The system (warn, keep):</b> an enabled entry of <code>CopySymbolicHotKeys</code> with the same key code and modifiers, the Fn bit (0x20000) masked, since 104 of the enabled entries carry it for function and arrow keys. The common ones named from a short table (Spotlight, input sources, Character Viewer, screenshots, Mission Control); the rest "macOS uses it".</li>
+<li>In LemnaCore, against a list passed in, so <code>swift test</code> checks it without Carbon: ≈ 50 lines, ≈ 40 test lines.</li>
+</ul>
+<p class="risk"><b>Risk.</b> A chord another app holds passes every check; the user finds out when that app opens instead. The table of names needs a look at each macOS release.</p></article>
+<article class="card" id="opt-SC3"><div class="card-h"><span class="oid">SC3</span><h3>No check</h3><label class="pick"><input type="radio" name="SC" value="SC3"> pick</label></div>
+<p class="pitch">Keep whatever was typed.</p>
+<p class="risk"><b>Risk.</b> ⌘C as the summon chord breaks copying in every app until it is changed back, and a chord macOS holds fails without a word, as ⌃⌥Space does today where the input-source chord is on.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s5h">
+<header class="sec-h"><span class="num">5</span><div><h2 id="s5h">SW: the window's look</h2><p>Wireframes at 1 CSS px = 1 pt in HTML and CSS, not captures of AppKit. Under SP2 the window holds one row; under SP1 three panes.</p></div></header>
+<!-- SW3 under SP2, the recommendation, both schemes -->
+<div class="pv" aria-label="The recommended window, light and dark">
+<figure><div class="desk"><div class="mw" style="--ww:440px"><div class="bar"><i></i><i></i><i></i><span>Lemna Settings</span></div>
+<div class="body"><span class="l">Show Lemna:</span><span class="row"><span class="rf"><span class="k">⌃⌥Space</span><span class="x">×</span></span><span class="btn dis">Default</span></span><span class="s">&nbsp;</span></div></div></div>
+<figcaption><b>SP2 + SW3, light.</b> One row; system controls; follows the system's appearance whatever Lemna's theme. The grey line under the field is empty until there is something to say (section 3's states).</figcaption></figure>
+<figure><div class="desk dk"><div class="mw dk" style="--ww:440px"><div class="bar"><i></i><i></i><i></i><span>Lemna Settings</span></div>
+<div class="body"><span class="l">Show Lemna:</span><span class="row"><span class="rf"><span class="k">⌃⌥Space</span><span class="x">×</span></span><span class="btn dis">Default</span></span><span class="s">&nbsp;</span></div></div></div>
+<figcaption><b>The same, dark.</b> Default greys out while the chord is ⌃⌥Space.</figcaption></figure>
+</div>
+
+<div class="pv" aria-label="SP1's window with toolbar tabs">
+<figure><div class="desk"><div class="mw tabbed" style="--ww:500px"><div class="bar"><i></i><i></i><i></i><span>General</span></div>
+<div class="tabs"><b class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.5v2.6M12 17.9v2.6M3.5 12h2.6M17.9 12h2.6M6 6l1.8 1.8M16.2 16.2 18 18M6 18l1.8-1.8M16.2 7.8 18 6"/></svg>General</b><b><svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>Sound</b><b><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><path d="M12 4.5v15a7.5 7.5 0 0 0 0-15z" fill="currentColor"/></svg>Look</b></div>
+<div class="body"><span class="l">Show Lemna:</span><span class="row"><span class="rf"><span class="k">⌃⌥Space</span><span class="x">×</span></span><span class="btn">Default</span></span>
+<span class="hr"></span><span class="l"></span><span class="chk">Start at Login</span></div></div></div>
+<figcaption><b>SP1 + SW1, General, light.</b> Toolbar tabs as NSTabViewController's <code>.toolbar</code> style draws them; the window's title is the tab's.</figcaption></figure>
+<figure><div class="desk dk"><div class="mw dk tabbed" style="--ww:500px"><div class="bar"><i></i><i></i><i></i><span>Sound</span></div>
+<div class="tabs"><b><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.5v2.6M12 17.9v2.6M3.5 12h2.6M17.9 12h2.6M6 6l1.8 1.8M16.2 16.2 18 18M6 18l1.8-1.8M16.2 7.8 18 6"/></svg>General</b><b class="on"><svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>Sound</b><b><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><path d="M12 4.5v15a7.5 7.5 0 0 0 0-15z" fill="currentColor"/></svg>Look</b></div>
+<div class="body"><span class="l"></span><span class="chk">Key sound<span style="color:var(--w-mut);margin-left:8px">⌘K</span></span><span class="l">Clicks:</span><span class="pop">Keychron</span><span class="l">Bed:</span><span class="pop">Lab bed</span></div></div></div>
+<figcaption><b>SP1, Sound, dark.</b> Today's Sound ▸ as a checkbox and two pop-ups. Look holds Theme and Ambience as pop-ups and the four effects as checkboxes.</figcaption></figure>
+</div>
+
+<div class="pv" aria-label="SW2: the window in Still's look">
+<figure><div class="desk" style="--desk:#d3d8ce"><div class="mw still" style="--ww:440px"><div class="bar"><i></i><i></i><i></i><span>Lemna Settings</span></div>
+<div class="body"><span class="l">Show Lemna</span><span class="row"><span class="rf"><span class="k">⌃⌥Space</span><span class="x">×</span></span><span class="btn">Default</span></span><span class="s">&nbsp;</span></div></div></div>
+<figcaption><b>SW2, Still by day:</b> the box's paper #f3f0e8, ink #46433d, the hairline, 16 pt corners, no shadow, Literata.</figcaption></figure>
+<figure><div class="desk dk" style="--desk:#0f1412"><div class="mw still dk" style="--ww:440px"><div class="bar"><i></i><i></i><i></i><span>Lemna Settings</span></div>
+<div class="body"><span class="l">Show Lemna</span><span class="row"><span class="rf"><span class="k">⌃⌥Space</span><span class="x">×</span></span><span class="btn">Default</span></span><span class="s">&nbsp;</span></div></div></div>
+<figcaption><b>SW2, Still by night:</b> #1c1b18, #e2daca, sage #a2b88e as the focus ring. Under the theme Lemna it would be Menlo on #0e1013 with the blue border.</figcaption></figure>
+</div>
+
+<div class="grid">
+<article class="card" id="opt-SW1"><div class="card-h"><span class="oid">SW1</span><h3>System window with toolbar tabs</h3><span class="tag rec">with SP1</span><label class="pick"><input type="radio" name="SW" value="SW1"> pick</label></div>
+<p class="pitch"><code>NSTabViewController</code> in its <code>.toolbar</code> style: a tab per pane, the window titled by the tab, system controls, the system's appearance.</p>
+<ul class="how"><li><b>What every surveyed utility with a window does</b> (survey §2), so it needs no explanation; AppKit draws it and follows macOS's restyles (26's toolbars) for free.</li><li>Tabs pay off from three panes up: SP1's General, Sound and Look.</li></ul>
+<p class="risk"><b>Risk.</b> For SP2's one row a tab bar with one tab is chrome around nothing.</p></article>
+<article class="card" id="opt-SW2"><div class="card-h"><span class="oid">SW2</span><h3>The window in Lemna's theme</h3><span class="tag no">no: custom controls</span><label class="pick"><input type="radio" name="SW" value="SW2"> pick</label></div>
+<p class="pitch">The theme's palette, edge and corners; Literata under Still, Menlo under Lemna.</p>
+<ul class="how"><li>It would look like the box, and the box is what people see of Lemna.</li></ul>
+<p class="risk no"><b>No.</b> AppKit's pop-ups, checkboxes and buttons take an appearance (light, dark) and the system accent, not a palette or a face, so a themed window means drawing them, ≈ 120–200 lines more, and restyling it on a theme switch and on Lemna's always-dark look. A settings window is system chrome, read for a few seconds; the box's look is for writing.</p></article>
+<article class="card" id="opt-SW3"><div class="card-h"><span class="oid">SW3</span><h3>System window, one page</h3><span class="tag rec">recommended with SP2</span><label class="pick"><input type="radio" name="SW" value="SW3" checked> pick</label></div>
+<p class="pitch">A plain titled window, "Lemna Settings", labels right-aligned to a column of controls as macOS lays out a settings pane; system controls; the system's appearance; no tabs.</p>
+<ul class="how"><li>The least code: one view, no tab controller; SW1 is the step after if a second pane ever comes.</li><li>Closes with its button and ⌘W (a Close item the hidden menu lacks today; in window mode it then does what the close button does, back to the box).</li></ul>
+<p class="risk"><b>Risk.</b> Under SP1 one page would run long; take SW1 there.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s6h">
+<header class="sec-h"><span class="num">6</span><div><h2 id="s6h">SD: defaults and migration</h2><p>How the chord is kept, reset and checked at launch. The first part holds under either option.</p></div></header>
+<div class="ledger">
+<div class="ok"><b>Key.</b><code>hotkey</code> in UserDefaults, a dictionary <code>{key: 49, modifiers: 6144}</code>: the virtual key code and Carbon's modifier mask, what <code>RegisterEventHotKey</code> takes and <code>CopySymbolicHotKeys</code> reports, so nothing converts on the way. Registered as a default at launch, as pass 32 registers the others: <code>{49, 6144}</code> is ⌃⌥Space (<code>controlKey | optionKey</code>).</div>
+<div class="ok"><b>Migration.</b>None: no key exists today, so every Mac reads the registered default, today's chord. <code>Hotkey.keyCode</code> and <code>carbonModifiers</code> become that default.</div>
+<div class="ok"><b>Clear, reset, bad values.</b>× or ⌫ while listening writes <code>{}</code>: no hotkey, Show Lemna from the menu only, without a chord. Default removes the key, so the registered default shows again. A value that does not decode, or that the rules refuse, reads as the default.</div>
+<div class="ok"><b>The menus follow.</b>Show Lemna's key equivalent is built from the chord (the key's character from the current layout, Space as " ", an F-key as its function-key character), none when cleared.</div>
+<div><b>Default chord.</b>⌃⌥Space stays (Open 7, the user's). It is also macOS's next-input-source chord, which Apple lists for Macs with more than one input source (whether it is on with one was not found), and the HIG's own example of why to avoid ⌃: “The system uses Control in many systemwide features”; SD's launch check is what tells a new user so.</div>
+</div>
+<div class="grid">
+<article class="card" id="opt-SD1"><div class="card-h"><span class="oid">SD1</span><h3>Fall back to the default and say so</h3><label class="pick"><input type="radio" name="SD" value="SD1"> pick</label></div>
+<p class="pitch">At launch a stored chord that macOS holds (or that does not decode) is replaced by ⌃⌥Space for the session; the menu says so.</p>
+<ul class="how"><li>Something always summons Lemna from the keyboard.</li></ul>
+<p class="risk ask"><b>Risk: a chord the user did not choose.</b> The default may be the one they moved away from, and it is itself held where the input-source chord is on, so the fallback can land on a second dead chord. Undoing it means knowing what happened.</p></article>
+<article class="card" id="opt-SD2"><div class="card-h"><span class="oid">SD2</span><h3>Keep the user's chord and say so</h3><span class="tag rec">recommended</span><label class="pick"><input type="radio" name="SD" value="SD2" checked> pick</label></div>
+<p class="pitch">The stored chord is registered as it is; if SC2's check finds macOS holding it, Show Lemna loses its chord in the menu and a grey line under it says "⌃⌥Space: taken by macOS"; the field in Settings shows the same warning.</p>
+<ul class="how"><li><b>Nothing changes on the user's behalf.</b> Registration is shared and costs nothing, so the chord starts working the moment the system shortcut is turned off, with no relaunch.</li><li><b>Checked when it matters:</b> at launch and each time the menu opens, as Start at Login's tick is read from the system each time (Y1); 3.6 ms a read. The menu is where an accessory app with no window up can say anything (today a failure goes to the system log only).</li></ul>
+<p class="risk"><b>Risk.</b> Until the user opens the menu, the keyboard summons nothing and nothing says why; where the menu bar is full, the notch can hide the item itself.</p></article>
+</div>
+</section>
+
+<section class="sec" aria-labelledby="s7h">
+<header class="sec-h"><span class="num">7</span><div><h2 id="s7h">Costs and order of work</h2><p>Estimates against the code at 2f237e3 (6,363 lines of Swift in the app and LemnaCore), for the recommended picks; the other picks' differences below.</p></div></header>
+<div class="mock"><table class="keys" style="min-width:720px">
+<thead><tr><th>Step</th><th>What</th><th class="n">lines</th><th class="n">test lines</th><th>Checked by</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><code>Chord</code> in LemnaCore: key code and Carbon modifiers, decoded from and encoded to <code>hotkey</code>; its glyphs (⌃⌥⇧⌘, special keys by table, a letter through a layout closure); SC2's rules and verdict against a list</td><td class="n">≈ 110</td><td class="n">≈ 80</td><td><code>swift test</code>: glyph order, F-keys, Space, the Fn mask, bad values, each rule, each verdict</td></tr>
+<tr><td>2</td><td><code>Hotkey</code> takes a <code>Chord</code>, registers again on a change, pauses while the field listens</td><td class="n">≈ 25</td><td class="n">—</td><td>by hand</td></tr>
+<tr><td>3</td><td>The recorder: an <code>NSControl</code> that listens on a click, takes the next key-down and <code>performKeyEquivalent</code> (so ⌘S does not save), shows held modifiers on <code>flagsChanged</code>, Esc cancels, ⌫ and × clear, a click outside cancels; the letter via <code>UCKeyTranslate</code> of the current layout</td><td class="n">≈ 180</td><td class="n">—</td><td>by hand (app target, not linked by the tests)</td></tr>
+<tr><td>4</td><td>The window (SW3: one row, the grey line, Default), Settings… ⌘, in both menus, Close ⌘W in the hidden one; <code>activateLemna()</code> and <code>handBack()</code></td><td class="n">≈ 90</td><td class="n">—</td><td>by hand</td></tr>
+<tr><td>5</td><td>SD2: the check at launch and at each menu opening, Show Lemna's chord and the grey line</td><td class="n">≈ 30</td><td class="n">—</td><td>by hand; the verdict itself by step 1's tests</td></tr>
+<tr class="rec"><td></td><td><b>Total</b>; no package, no resource bundle, no permission, no new UserDefaults key but <code>hotkey</code></td><td class="n">≈ 435</td><td class="n">≈ 80</td><td></td></tr>
+</tbody></table></div>
+<div class="ledger">
+<div><b>Other picks.</b>SP1 + SW1: ≈ +330 (three panes, the tab controller, the shrunken menu, TH1's preset refreshing the panes). SP3: ≈ −20. SK2: ≈ +90. SK3: ≈ +290. SC3: −50 and −40 test lines. SW2: ≈ +120–200. SD1: ≈ +10. SR2: steps 1–3 shrink to ≈ 60 lines of glue and the check to what the package does, plus the package (≈ 4,700 lines of Swift, 17 localisations), a <code>THIRD_PARTY.md</code> line and, if its bundle is needed, <code>make-app.sh</code> copying it (section 3).</div>
+<div><b>Tries by hand</b> (the builder shows no windows): record, Esc, ⌫, ×, Default; a refused chord; ⌃Space with the input-source chord on; a chord another app holds (that app opens, the field sees nothing); ⌘, from the box; the app in front before comes back on close; a German layout (⌃⌥Z shows Z); Lemna's and Still's themes with the system light and dark; a launch with the chord taken.</div>
+<div><b>DESIGN.md on landing.</b>A new row for the picks, Open 7 closed, W2's "summoned by the hotkey" naming the user's chord; the app README a pass; nothing in the journal or the box changes.</div>
+</div>
+</section>
+<section class="sec" aria-labelledby="s8h">
+<header class="sec-h"><span class="num">8</span><div><h2 id="s8h">Sources</h2><p>As of 2026-11-06. Nothing was built into Lemna; the probes registered chords and read lists, and no key was pressed.</p></div></header>
+<ul class="refs">
+<li><b>Research note</b>: <a href="../research_notes/Lemna%20settings/survey.md">survey.md</a>: Lemna today (§1), ten apps (§2), activation (§3), recorders and libraries (§4), Carbon on 14–27 (§5), the probes (§6), App Shortcuts (§7), default chords (§8), which chords people change (§9).</li>
+<li><b>Apple</b>: CarbonEvents.h and CarbonEventsCore.h (the Command Line Tools' macOS 26 SDK); <a href="https://developer.apple.com/forums/thread/763878">forum 763878</a> (the ⌥ rule of 15.0 and its reversal), <a href="https://developer.apple.com/forums/thread/735223">735223</a> and <a href="https://developer.apple.com/forums/thread/707680">707680</a> (DTS on hot keys, taps and permissions); <a href="https://developer.apple.com/documentation/appkit/nsapplication/activate()">activate()</a>, <a href="https://developer.apple.com/documentation/appkit/nsapplication/yieldactivation(to:)">yieldActivation(to:)</a>; <a href="https://developer.apple.com/design/human-interface-guidelines/keyboards">HIG, Keyboards</a>; <a href="https://support.apple.com/en-us/102650">Mac keyboard shortcuts</a>; <a href="https://support.apple.com/guide/mac-help/mchlp1406">input sources</a>; <a href="https://developer.apple.com/documentation/bundleresources/placing-content-in-a-bundle">placing content in a bundle</a>.</li>
+<li><b>Apps</b>: Raycast <a href="https://manual.raycast.com/settings.md">settings</a>, <a href="https://manual.raycast.com/command-aliases-and-hotkeys.md">hotkeys</a>, <a href="https://manual.raycast.com/ai/ai-chat.md">AI chat</a>; Alfred <a href="https://www.alfredapp.com/help/general/">general</a>, <a href="https://www.alfredapp.com/help/troubleshooting/cmd-space/">⌘Space</a>; Rectangle <a href="https://github.com/rxhanson/Rectangle/blob/main/Rectangle/SettingsWindow/SettingsWindowController.swift">settings window</a>, <a href="https://github.com/rxhanson/MASShortcut/blob/master/Framework/Model/MASShortcutValidator.m">validator</a>, <a href="https://github.com/rxhanson/Rectangle/issues/1592">#1592</a>, <a href="https://github.com/rxhanson/Rectangle/issues/1605">#1605</a>; Maccy <a href="https://github.com/p0deje/Maccy/blob/master/Maccy/Observables/AppState.swift">AppState.swift</a>; Ice <a href="https://github.com/jordanbaird/Ice/blob/main/Ice/UI/HotkeyRecorder/HotkeyRecorderModel.swift">recorder</a>, <a href="https://github.com/jordanbaird/Ice/blob/main/Ice/Main/AppState.swift">activation</a>; Hidden Bar <a href="https://github.com/dwarvesf/hidden/blob/develop/hidden/Features/Preferences/PreferencesViewController.swift">preferences</a>, <a href="https://github.com/dwarvesf/hidden/pull/417">PR #417</a>; <a href="https://shottr.cc/kb/startguide">Shottr</a>; <a href="https://cleanshot.com/changelog">CleanShot changelog</a>; Things <a href="https://culturedcode.com/things/support/articles/2249437/">Quick Entry</a>; Drafts <a href="https://docs.getdrafts.com/docs/extensions/capture-window">capture</a>, <a href="https://forums.getdrafts.com/t/cant-set-quick-capture-to-ctrl-shift-space/16429">⌃⇧Space</a>.</li>
+<li><b>Libraries</b>: <a href="https://github.com/sindresorhus/KeyboardShortcuts">KeyboardShortcuts</a> (<a href="https://github.com/sindresorhus/KeyboardShortcuts/issues/231">#231</a>, <a href="https://github.com/sindresorhus/KeyboardShortcuts/issues/62">#62</a>, <a href="https://github.com/sindresorhus/KeyboardShortcuts/issues/176">#176</a>, <a href="https://github.com/sindresorhus/KeyboardShortcuts/issues/235">#235</a>), <a href="https://github.com/soffes/HotKey">HotKey</a>, <a href="https://github.com/shpakovski/MASShortcut">MASShortcut</a>, <a href="https://github.com/Kentzo/ShortcutRecorder">ShortcutRecorder</a> (<a href="https://github.com/Kentzo/ShortcutRecorder/issues/154">#154</a>); <a href="https://github.com/swiftlang/swift-package-manager/blob/main/Sources/Build/BuildDescription/SwiftModuleBuildDescription.swift">SwiftPM's resource accessor</a>; <a href="https://github.com/orchetect/SettingsAccess">SettingsAccess</a>.</li>
+<li><b>Single reports</b>, marked where used: <a href="https://github.com/LorcanChinnock/warble/issues/109">warble #109</a> (who gets a shared chord), <a href="https://github.com/fif7y/pelmet/issues/55">pelmet #55</a> (a system-held chord registers and never fires, 27.0), <a href="https://steipete.me/posts/2025/showing-settings-from-macos-menu-bar-items/">steipete.me</a> (Settings behind other apps on 26).</li>
+<li><b>Decisions and code</b>: <a href="../DESIGN.md">DESIGN.md</a> rows W2, B4, K1, TH1, Y1 and Open 7; <code>Summon.swift</code> (<code>Hotkey</code>, <code>makeStatusItem</code>), <code>main.swift</code> (<code>mainMenu</code>, the four submenu builders, <code>activateLemna</code>, <code>handBack</code>), <code>Box.swift</code> (<code>BoxPanel.sendEvent</code>), <code>LineView.swift</code> (the key bindings); the <a href="design-panel-lemna-themes.html">themes panel</a> for the format.</li>
+</ul>
+</section>
+
+<div class="picks"><span class="picks-l">Picks</span><code id="picks">SP2 SK1 SR1 SC2 SW3 SD2</code><button type="button" id="copy" hidden>Copy picks</button></div>
+</div>
+<script>
+/* the pick line: one ID per decision */
+(()=>{
+'use strict';
+const N=['SP','SK','SR','SC','SW','SD'];
+function picks(){
+  const t=N.map(n=>{const i=document.querySelector(`input[name="${n}"]:checked`);return i?i.value:n+'–'}).join(' ');
+  document.getElementById('pickline').textContent=t;document.getElementById('picks').textContent=t;
+}
+document.querySelectorAll('.pick input').forEach(i=>i.addEventListener('change',picks));
+const cb=document.getElementById('copy');
+if(navigator.clipboard){cb.hidden=false;cb.addEventListener('click',()=>navigator.clipboard.writeText(document.getElementById('picks').textContent).then(()=>{cb.textContent='Copied';setTimeout(()=>{cb.textContent='Copy picks'},1200)},()=>{}))}
+picks();
+})();
+</script>
+</body>
+</html>

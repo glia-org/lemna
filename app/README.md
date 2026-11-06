@@ -99,7 +99,9 @@ git-ignored.
   (`ClickOutside`), `Paste.swift` the paste's
   decision table, and since pass 17a its steps in order (`Paste.acts`) and the wait for Return to come up
   (`ReturnUp`), `Handoff.swift` (pass 17b) the hand-off's motion: the line cut into its glyphs, when each sets off
-  and where it is, the box's collapse, the dim's lift, and when it plays.
+  and where it is, the box's collapse, the dim's lift, and when it plays; `Chord.swift` (pass 36) the summon chord:
+  its glyphs, how `hotkey` keeps it, the rules and the checks against Lemna's keys and the system's, what the menu
+  and the Settings window say (`Chord`, `MenuKey`).
 - `Sources/Lemna`: `main.swift` the app, window, menus, clicks and the sound toggle, the Effects submenu, Start at Login, summoning and the two containers
   (`apply()`), a click outside the box, and the end of a session (Done's paste or copy, Copy, Save, Discard, each
   finishing at once); `Box.swift` the box (the non-activating panel, the dim overlays, the line in it; since pass 14 its
@@ -115,7 +117,9 @@ git-ignored.
   link's callback runs inside it);
   `Strip.swift` the Metal band (Core Graphics into a shared
   buffer, blitted into the drawable); `Frame.swift` the surface's bottom edge (the Bluetooth notice, a hand-off's
-  note); `Summon.swift` the hotkey (Carbon) and the menu-bar item with Lemna's menu.
+  note); `Summon.swift` the hotkey (Carbon; since pass 36 the kept chord, registered again on a change and paused
+  while the field listens, and the readers of the system's chords, Lemna's menu keys and the layout's letters) and the
+  menu-bar item with Lemna's menu; `Settings.swift` (pass 36) the Settings window and the chord's field (`Recorder`).
 - `Tests/LemnaCoreTests`: the model, the glide, the fades, nothing before the caret drawn right of it, the text after it
   from the caret to 95 %, the renders (`CoreTests`, `RenderTests`); every key of B4, its boundaries, the word rules,
   Characters with é, 🙂 and 👩‍💻, the replay of every key's edits, since pass 30 a paste's text and ⌘Z's groups
@@ -136,7 +140,8 @@ git-ignored.
   schedule for a paste and a copy, the collapse and the lift, when it plays, and its renders (`HandoffTests`); since
   pass 21 the themes: Lemna equal to the literals it replaced, the packs and modes named, the contrast per appearance,
   the palette by appearance, the font and the atlas's, the preset, Still's fades (`ThemeTests`), and Rain on Still's
-  day wash (`AmbienceTests`).
+  day wash (`AmbienceTests`); since pass 36 the summon chord's glyphs, its storage, the rules, Lemna's own keys and the
+  system's, and what the menu and the window say (`ChordTests`).
 
 ## What it covers
 
@@ -1586,3 +1591,42 @@ Pass 34, Still's preset (DESIGN.md TH1 amended; 2026-11-05; the user: "Make the 
 
 - `Theme.still.defaults` is the Stone pack, the Lab bed and Code (was the Rain bed and Still water), so Theme ▸ Still
   writes what a fresh install starts with (pass 32); its item reads "Still (lab bed)". ThemeTests follow.
+
+Pass 36, Settings and the summon chord (DESIGN.md SP2, W2 amended, Open 7 closed; 2026-11-06; the user's picks
+`SP2 SK1 SR1 SC2 SW3 SD2` of `docs/design-panel-lemna-settings.html`, evidence in `research_notes/Lemna settings/`)
+
+- Settings… ⌘, in the menu-bar item's menu (above Start at Login) and in the hidden Lemna menu, so ⌘, works from the
+  box and the window. It opens "Lemna Settings" (`Settings.swift`): a plain titled window at the normal level, system
+  controls and appearance, one row: "Show Lemna:", the field, Reset to ⌃⌥Space (grey while the chord is ⌃⌥Space),
+  and a grey line under them. Opening it from the box hides the box first (the session stays); a summon while it is
+  up orders it out before the box shows; it is off while a hand-off, a question or a sheet holds the container.
+  `activateLemna()` brings it forward (the 0.2 s fallback now also while it alone is up); closing it (its button,
+  Esc, ⌘W) calls `handBack()` unless the window mode's window is up. ⌘W is a new Close item in the hidden Session
+  menu, which presses the key window's close button; in window mode that is back to the box, as the button.
+- The field (`Recorder`): a click, or Space or Return with the focus, starts listening; the hotkey is unregistered
+  meanwhile (`Hotkey.paused`); a local monitor takes every key-down first, the held modifiers show; the next chord goes
+  through `Chord.verdict` (the rules, the main menu's key equivalents read from the menu, `CopySymbolicHotKeys`'
+  enabled entries): refused, the line says why and the field listens on; taken by macOS, kept with the warning; else
+  kept. ⌫ alone and the × clear (`hotkey` = `{}`), Esc alone or a click elsewhere cancels, Reset removes the key.
+- `hotkey` in UserDefaults, `{key, modifiers}` (Carbon's key code and mask), registered as ⌃⌥Space's default with the
+  others. At launch the kept chord is registered as it is (`Chord.kept`: what does not decode or is refused reads as
+  the default). The menu-bar item's menu is the App's delegate: as it opens, macOS's list is read again and Show Lemna
+  carries the chord, or, while it is taken (or RegisterEventHotKey refused it), no chord and a grey line under it,
+  "⌃⌥Space: taken by macOS" or "…: not available". The glyphs follow the current ASCII-capable layout
+  (`layoutLetter`, UCKeyTranslate), the US table when it cannot be read.
+- Tests: 182 (177 before; new in `ChordTests`: the glyphs and the key equivalent, the storage round trip and bad
+  values, the rules, Lemna's own keys and the system's with the Fn bit masked, the menu's and the window's lines).
+  Debug and release build without warnings; `make-app.sh` not run.
+
+## Known gaps
+
+- Pass 36 is not tried: nothing was launched, and the window, the field and the registration are the app target's,
+  which the tests do not link. Untried: Settings… from the menu-bar item, from the box (⌘,) and from the window, the
+  window coming forward with the keys and the app before coming back on close (button, Esc, ⌘W); a summon while it is
+  up; the field's real key events (a click and Space or Return to listen, the held modifiers, ⌘S and ⌘Q taken by
+  the field, Tab, ⌫, the ×, Esc, a click elsewhere, the window losing the keys), the hotkey paused while listening
+  (pressing ⌃⌥Space records it rather than summoning) and registered again after; the refusals' lines (⌥K, ⌘L, ⇧⌘↩);
+  a chord macOS has on (⌃Space with the input-source shortcut on) kept with the warning and working once that is off,
+  without a relaunch; a chord another app holds (that app reacts, the field sees nothing; no check can tell); a German
+  layout (⌃⌥Z reads Z); the menu's chord and its grey line; VoiceOver on the field and its focus ring; ⌘W in the box
+  (Close is disabled there; whether AppKit swallows the key or hands it on to the line, which ignores it, is unseen).

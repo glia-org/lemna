@@ -5,3 +5,4 @@ spikes/results/*.csv
 .DS_Store
 app/build/
 app/renders/
+docs/*_files/

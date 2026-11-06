@@ -2,8 +2,8 @@
 // doing, or in an ordinary window for long sessions (W2), kept in the journal (E2), with key clicks (K1), summoning
 // (hotkey, menu-bar item), and the end of a session: Done pastes into the app behind the box, or Copy, Save… or
 // Discard…, with R1 applied silently and the session finished at once (O1 O2 O3 R1); the effects, switched in the
-// Effects submenu (F1); the ambience on the dim, chosen in the Ambience submenu (A1); Start at Login (Y1); and the theme,
-// chosen in the Theme submenu, with its preset for Sound and Ambience (TH1).
+// Effects submenu (F1); the ambience on the dim, chosen in the Ambience submenu (A1); Start at Login (Y1); the theme,
+// chosen in the Theme submenu, with its preset for Sound and Ambience (TH1); and Settings…, the summon chord (SP2).
 import AppKit
 import Carbon.HIToolbox
 import LemnaClicks
@@ -12,7 +12,7 @@ import LemnaJournal
 import ServiceManagement
 import UniformTypeIdentifiers
 
-final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemValidation {
+final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemValidation, NSMenuDelegate {
     private var window: NSWindow!
     private var box: Box!
     private var view: LineView!
@@ -41,9 +41,9 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // The launch defaults (pass 32): the sound on with the first pack, the Lab bed, Code on the dim, the Still theme;
-        // a key once written by a menu keeps its own value.
+        // a key once written by a menu keeps its own value. Since pass 36 the summon chord too, ⌃⌥Space (SD2).
         UserDefaults.standard.register(defaults: [Self.soundKey: true, Self.bedKey: "Lab", Self.ambienceKey: "code",
-                                                  Self.themeKey: "still"])
+                                                  Self.themeKey: "still", Self.hotkeyKey: Chord.summon.stored])
         choice = SoundChoice(pack: UserDefaults.standard.string(forKey: Self.packKey),
                              on: UserDefaults.standard.bool(forKey: Self.soundKey))
         bedChoice = BedChoice(kept: UserDefaults.standard.string(forKey: Self.bedKey))
@@ -86,7 +86,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         warnIfNotKept()  // waits for the first container on screen
         startClicks()
         hotkey = Hotkey { [unowned self] in self.hotkeyPressed() }
-        if hotkey == nil { NSLog("Lemna: the hotkey could not be registered; the menu-bar item shows Lemna") }
+        useChord(keptChord())  // SD2: the kept chord, registered as it is; the menu says when it is taken
+        if case .taken = chordStanding() { NSLog("Lemna: macOS has the hotkey on itself; the menu-bar item says so") }
         statusItem = makeStatusItem(target: self)
         NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification, object: box.panel,
                                                queue: .main) { [unowned self] _ in self.boxLostKeys() }
@@ -331,6 +332,83 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         }
     }
 
+    // MARK: Settings and the summon chord (SP2: SK1 SR1 SC2 SW3 SD2)
+
+    /// `hotkey`: the summon chord as `Chord.stored` writes it, `[:]` for none; registered as ⌃⌥Space's (SD2).
+    private static let hotkeyKey = "hotkey"
+    /// The chord kept (nil: none), registered unless Settings' field listens.
+    private var chord: Chord? = Chord.summon
+    /// The tag of the menu-bar item's grey line under Show Lemna.
+    static let chordNote = 1
+    private var settings: Settings?
+
+    /// What `hotkey` holds, checked as at each launch: what does not decode or what the rules or Lemna's own keys
+    /// refuse reads as the default.
+    private func keptChord() -> Chord? {
+        Chord.kept(UserDefaults.standard.dictionary(forKey: Self.hotkeyKey), lemna: menuKeys(), letter: layoutLetter)
+    }
+
+    /// `c` kept and registered; the window's row follows.
+    private func useChord(_ c: Chord?) {
+        chord = c
+        hotkey?.chord = c
+        settings?.refresh()
+    }
+
+    /// How the kept chord stands, macOS's list read afresh: at launch, as the menu opens, as the window shows.
+    private func chordStanding() -> Chord.Standing {
+        Chord.standing(chord, registered: hotkey?.refused != true, system: systemChords())
+    }
+
+    /// Settings… (⌘,, in the menu-bar item's menu and the main menu, so from the box and the window too): the window,
+    /// with Lemna in front for it. Never over the box: the box goes first, the session staying, as for Open Window.
+    /// Not while a hand-off or a question holds the container.
+    @objc func openSettings(_ sender: Any?) {
+        guard session.phase == .writing, !asking, container.attachedSheet == nil else { return }
+        if surface.onScreen == .box {
+            surface.hide()
+            apply()
+        }
+        if settings == nil { settings = makeSettings() }
+        settings?.show()
+        activateLemna()
+    }
+
+    private func makeSettings() -> Settings {
+        let s = Settings()
+        s.stand = { [unowned self] in (self.chord, self.chordStanding()) }
+        s.check = { $0.verdict(lemna: menuKeys(), system: systemChords(), letter: layoutLetter) }
+        s.keep = { [unowned self] c in
+            UserDefaults.standard.set(c?.stored ?? [:], forKey: Self.hotkeyKey)
+            self.useChord(c)
+        }
+        s.resetChord = { [unowned self] in
+            UserDefaults.standard.removeObject(forKey: Self.hotkeyKey)  // the registered default reads again
+            self.useChord(self.keptChord())
+        }
+        s.pause = { [unowned self] in self.hotkey?.paused = $0 }
+        // Closed: back to the app before, as after the box (`handBack`); in window mode the window keeps the keys.
+        s.onClose = { [unowned self] in if self.surface.onScreen == nil { self.handBack() } }
+        return s
+    }
+
+    /// The menu-bar item's menu as it opens (SD2): Show Lemna with the kept chord while it works as far as can be told,
+    /// else without one and with the grey line under it saying why, read afresh each time, as Start at Login's tick is.
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        guard let show = menu.items.first(where: { $0.action == #selector(summon(_:)) }),
+              let note = menu.item(withTag: Self.chordNote) else { return }
+        let standing = chordStanding(), works = standing == .free
+        show.keyEquivalent = works ? chord?.equivalent(letter: layoutLetter) ?? "" : ""
+        show.keyEquivalentModifierMask = works ? flags(chord?.modifiers ?? 0) : []
+        let text = Chord.note(chord, standing, letter: layoutLetter)
+        note.title = text ?? ""
+        note.isHidden = text == nil
+    }
+
+    /// Close (⌘W, the main menu's): the key window's close button, the Settings window's or the window mode's (back to
+    /// the box); nothing in the box, which has none.
+    @objc func closeWindow(_ sender: Any?) { NSApp.keyWindow?.performClose(sender) }
+
     // MARK: Summoning (W2)
 
     /// The hotkey and Show Lemna toggle: the container on screen with the keys goes away, else it comes (the box, or in
@@ -455,6 +533,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
                 target = front  // after the window or a question Lemna is in front itself: the target stays
             }
             if NSApp.isHidden { NSApp.unhideWithoutActivation() }
+            if let w = settings?.window, w.isVisible { w.orderOut(nil) }  // never under the box (SP2)
             box.show(view)
             // A sheet on the box (Save…, a question) takes the keys only in the active app: the hotkey brings it back
             // with them after another app came to the front.
@@ -484,13 +563,15 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         }
     }
 
-    /// Lemna comes forward: the window, and a question on the box (a sheet takes keys only in the active app; the box
-    /// itself needs no activation). macOS 14's `activate()` does not promise it (cooperative activation); if Lemna is
-    /// still not active a moment later, the older call, to be deprecated but still working, forces it.
+    /// Lemna comes forward: the window, the Settings window, and a question on the box (a sheet takes keys only in the
+    /// active app; the box itself needs no activation). macOS 14's `activate()` does not promise it (cooperative
+    /// activation); if Lemna is still not active a moment later, the older call, to be deprecated but still working,
+    /// forces it.
     private func activateLemna() {
         NSApp.activate()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-            guard let self, !NSApp.isActive, self.surface.onScreen != nil else { return }
+            guard let self, !NSApp.isActive, self.surface.onScreen != nil || self.settings?.window.isVisible == true
+            else { return }
             NSApp.activate(ignoringOtherApps: true)
         }
     }
@@ -590,6 +671,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             let mode = Ambience.Mode.allCases.indices.contains(item.tag) ? Ambience.Mode.allCases[item.tag] : nil
             item.state = ambience.playing(reduceMotion: still) == mode ? .on : .off
             return mode == nil || Ambience.available(reduceMotion: still)
+        case #selector(openSettings(_:)): return session.phase == .writing && !asking && container.attachedSheet == nil
+        case #selector(closeWindow(_:)): return NSApp.keyWindow?.styleMask.contains(.closable) == true
         case #selector(toggleLogin(_:)):  // the status read as the menu opens
             let login = loginItem
             item.title = login.title
@@ -948,15 +1031,18 @@ func themeMenu(target: AnyObject?) -> NSMenu {
     return menu
 }
 
-/// Lemna: About, Quit; Session: Done, Copy, Save…, Discard…, Theme ▸, Sound ▸, Effects ▸, Ambience ▸; Edit: Undo,
-/// Redo, Cut, Copy, Paste, Select All (Cut, Copy and Select All since pass 29, the rest since pass 30), sent to the
-/// first responder, the line; View: Open Window. As an accessory app Lemna shows no menu bar, so this is where the key
-/// equivalents live (the menu-bar item's menu shows the Session items). Full screen: the window's green button.
+/// Lemna: About, Settings… (⌘,, pass 36), Quit; Session: Done, Copy, Save…, Discard…, Close (⌘W, pass 36), Theme ▸,
+/// Sound ▸, Effects ▸, Ambience ▸; Edit: Undo, Redo, Cut, Copy, Paste, Select All (Cut, Copy and Select All since pass
+/// 29, the rest since pass 30), sent to the first responder, the line; View: Open Window. As an accessory app Lemna
+/// shows no menu bar, so this is where the key equivalents live (the menu-bar item's menu shows the Session items).
+/// Full screen: the window's green button.
 func mainMenu() -> NSMenu {
     let bar = NSMenu(), app = NSMenu(title: "Lemna"), session = NSMenu(title: "Session"), view = NSMenu(title: "View")
     let edit = NSMenu(title: "Edit")
     app.addItem(withTitle: "About Lemna", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
                 keyEquivalent: "")  // a placeholder: the standard panel, no credits yet
+    app.addItem(.separator())
+    app.addItem(withTitle: "Settings…", action: #selector(App.openSettings(_:)), keyEquivalent: ",")  // ⌘,
     app.addItem(.separator())
     app.addItem(withTitle: "Quit Lemna", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     session.addItem(withTitle: "Done", action: #selector(App.done(_:)), keyEquivalent: "\r")  // ⌘⏎
@@ -964,6 +1050,7 @@ func mainMenu() -> NSMenu {
         .keyEquivalentModifierMask = [.command, .shift]  // ⌘⇧⏎
     session.addItem(withTitle: "Save…", action: #selector(App.saveText(_:)), keyEquivalent: "s")  // ⌘S
     session.addItem(withTitle: "Discard…", action: #selector(App.discard(_:)), keyEquivalent: "")
+    session.addItem(withTitle: "Close", action: #selector(App.closeWindow(_:)), keyEquivalent: "w")  // ⌘W
     session.addItem(.separator())
     session.addItem(withTitle: "Theme", action: nil, keyEquivalent: "").submenu = themeMenu(target: nil)
     session.addItem(withTitle: "Sound", action: nil, keyEquivalent: "").submenu = soundMenu(target: nil)  // Off ⌘K
