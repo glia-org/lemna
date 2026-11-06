@@ -4,6 +4,8 @@
 
 ## State (2026-11-06)
 
+- Site, pass 35b (2026-11-06): the headline, title and description now read "A quiet place to write a thought down
+  without stopping." (a warmer line that still carries the forward-only rule); the lead and the rest unchanged.
 - Site, pass 35, the page previews the launch defaults (2026-11-06; `site/`; DESIGN.md A1's two notes on the site
   follow). The page is Still's box: its paper by day and its warm dark by night as the system's appearance is, in
   Literata (a lossless Latin subset of `app/Fonts`' variable face, both axes and every feature, 224 KB woff2, with its
