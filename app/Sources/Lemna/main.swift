@@ -90,6 +90,13 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         useChord(keptChord())  // SD2: the kept chord, registered as it is; the menu says when it is taken
         if case .taken = chordStanding() { NSLog("Lemna: macOS has the hotkey on itself; the menu-bar item says so") }
         statusItem = makeStatusItem(target: self)
+        // AppKit may append its own Emoji & Symbols (orderFrontCharacterPalette:, ⌃⌘Space) to a menu it takes for the
+        // Edit menu; NSApplication.h does not say when. Lemna's own comes first, and one AppKit put there goes (B4).
+        if let edit = NSApp.mainMenu?.item(withTitle: "Edit")?.submenu {
+            for i in edit.items where i.action == #selector(NSApplication.orderFrontCharacterPalette(_:)) {
+                edit.removeItem(i)
+            }
+        }
         NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification, object: box.panel,
                                                queue: .main) { [unowned self] _ in self.boxLostKeys() }
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification,
@@ -417,6 +424,28 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// the box); nothing in the box, which has none.
     @objc func closeWindow(_ sender: Any?) { NSApp.keyWindow?.performClose(sender) }
 
+    /// Emoji & Symbols (⌃⌘Space, the hidden Edit menu; B4, pass 38): macOS's Character Viewer, which puts its picks into
+    /// the active app's key window's first responder. The box is a non-activating panel over the app behind, which
+    /// would get them, so the container takes the keys with the line as its first responder, Lemna comes forward as for
+    /// the window (`activateLemna`; pass 26's watch ignores Lemna's own activation, and the hand-off's target, kept at
+    /// the summon, stays), and the viewer opens once Lemna is active (at most a second later; else not at all). Its
+    /// picks come through the line's `insertText`, as the accent menu's: typed glyphs.
+    @objc func showCharacters(_ sender: Any?) {
+        guard surface.onScreen != nil, session.phase == .writing, !asking, container.attachedSheet == nil else { return }
+        container.makeKey()
+        container.makeFirstResponder(view)
+        activateLemna()
+        if NSApp.isActive { return NSApp.orderFrontCharacterPalette(nil) }
+        let center = NotificationCenter.default
+        var token: NSObjectProtocol?
+        let done = { if let t = token { center.removeObserver(t) }; token = nil }
+        token = center.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in
+            done()
+            NSApp.orderFrontCharacterPalette(nil)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1, execute: done)
+    }
+
     // MARK: Summoning (W2)
 
     /// The hotkey and Show Lemna toggle: the container on screen with the keys goes away, else it comes (the box, or in
@@ -681,6 +710,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             return mode == nil || Ambience.available(reduceMotion: still)
         case #selector(openSettings(_:)): return session.phase == .writing && !asking && container.attachedSheet == nil
         case #selector(closeWindow(_:)): return NSApp.keyWindow?.styleMask.contains(.closable) == true
+        case #selector(showCharacters(_:)):
+            return surface.onScreen != nil && session.phase == .writing && !asking && container.attachedSheet == nil
         case #selector(toggleLogin(_:)):  // the status read as the menu opens
             let login = loginItem
             item.title = login.title
@@ -1041,7 +1072,8 @@ func themeMenu(target: AnyObject?) -> NSMenu {
 
 /// Lemna: About, Settings… (⌘,, pass 36), Quit; Session: Done, Copy, Save…, Discard…, Close (⌘W, pass 36), Theme ▸,
 /// Sound ▸, Effects ▸, Ambience ▸; Edit: Undo, Redo, Cut, Copy, Paste, Select All (Cut, Copy and Select All since pass
-/// 29, the rest since pass 30), sent to the first responder, the line; View: Open Window. As an accessory app Lemna
+/// 29, the rest since pass 30), sent to the first responder, the line, and Emoji & Symbols (⌃⌘Space, pass 38), the
+/// App's; View: Open Window. As an accessory app Lemna
 /// shows no menu bar, so this is where the key equivalents live (the menu-bar item's menu shows the Session items).
 /// Full screen: the window's green button.
 func mainMenu() -> NSMenu {
@@ -1071,6 +1103,9 @@ func mainMenu() -> NSMenu {
     edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")  // ⌘C, the selection
     edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")  // ⌘V, plain text
     edit.addItem(withTitle: "Select All", action: #selector(NSResponder.selectAll(_:)), keyEquivalent: "a")  // ⌘A
+    edit.addItem(.separator())
+    edit.addItem(withTitle: "Emoji & Symbols", action: #selector(App.showCharacters(_:)), keyEquivalent: " ")
+        .keyEquivalentModifierMask = [.control, .command]  // ⌃⌘Space (pass 38)
     view.addItem(withTitle: "Open Window", action: #selector(App.toggleWindow(_:)), keyEquivalent: "f")
         .keyEquivalentModifierMask = [.control, .command]
     for menu in [app, session, edit, view] {

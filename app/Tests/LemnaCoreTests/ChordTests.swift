@@ -8,7 +8,8 @@ private let (ctrl, opt, shift, cmd) = (Chord.control, Chord.option, Chord.shift,
 /// Lemna's main menu's key equivalents as `mainMenu()` writes them (the app reads them from the menu itself).
 private let lemna = [("Done", "\r", cmd), ("Copy", "\r", cmd | shift), ("Save…", "s", cmd), ("Off", "k", cmd),
                      ("Undo", "z", cmd), ("Redo", "Z", cmd), ("Cut", "x", cmd), ("Copy", "c", cmd),
-                     ("Paste", "v", cmd), ("Select All", "a", cmd), ("Open Window", "f", ctrl | cmd),
+                     ("Paste", "v", cmd), ("Select All", "a", cmd), ("Emoji & Symbols", " ", ctrl | cmd),
+                     ("Open Window", "f", ctrl | cmd),
                      ("Settings…", ",", cmd), ("Close", "w", cmd), ("Quit Lemna", "q", cmd)]
     .map { MenuKey(title: $0.0, equivalent: $0.1, modifiers: $0.2) }
 
@@ -70,6 +71,9 @@ private let lemna = [("Done", "\r", cmd), ("Copy", "\r", cmd | shift), ("Save…
     #expect(Chord(key: 0x03, modifiers: ctrl | cmd).verdict(lemna: lemna, system: none) == .refused(.lemna("Open Window")))
     #expect(Chord(key: 0x06, modifiers: cmd | shift).verdict(lemna: lemna, system: none) == .refused(.lemna("Redo")))
     #expect(Chord(key: 0x06, modifiers: ctrl | cmd).verdict(lemna: lemna, system: none) == .keep)  // ⌃⌘Z is free
+    // Emoji & Symbols (pass 38): Lemna's own before the system's Character Viewer.
+    #expect(Chord(key: 0x31, modifiers: ctrl | cmd).verdict(lemna: lemna, system: [Chord(key: 0x31, modifiers: ctrl | cmd)])
+        == .refused(.lemna("Emoji & Symbols")))
     // The menu is matched by what the key types: on a layout where kVK_ANSI_F types something else, ⌃⌘F is not it.
     #expect(Chord(key: 0x03, modifiers: ctrl | cmd).verdict(lemna: lemna, system: none, letter: { _ in "q" }) == .keep)
     // The system's enabled chords, as CopySymbolicHotKeys gives them: kept with a warning, named when well known.
@@ -124,7 +128,7 @@ private let lemna = [("Done", "\r", cmd), ("Copy", "\r", cmd | shift), ("Save…
         #expect(!g.isEmpty && !g.contains("Key"))
     }
     #expect(rows.map(Shortcuts.glyphs) == ["⌘↩", "⇧⌘↩", "⌘S", "⎋", "↩", "⇧↩", "⌥← ⌥→", "⌘← ⌘→", "⇧← ⇧→", "⌥⌫ ⌥⌦",
-                                           "⌘Z ⇧⌘Z", "⌘A ⌘C ⌘X ⌘V", "⌘K", "⌃⌘F"])
+                                           "⌘Z ⇧⌘Z", "⌘A ⌘C ⌘X ⌘V", "⌃⌘Space", "⌘K", "⌃⌘F"])
     // Every ⌘ chord but the caret's moves is a key equivalent of the main menu, so it is what the box does.
     for c in chords where c.modifiers & cmd != 0 && ![0x7B, 0x7C].contains(c.key) {
         #expect(lemna.contains { $0.equivalent == c.equivalent() && $0.modifiers == c.modifiers })

@@ -4,6 +4,18 @@
 
 ## State (2026-11-06)
 
+- App, pass 38, Emoji & Symbols from the box (2026-11-06; DESIGN.md B4 amended, the user's decision): ⌃⌘Space, a new
+  item of the hidden Edit menu, makes the box (or the window) key with the line first, brings Lemna forward as the
+  window does, and opens macOS's Character Viewer once Lemna is active, so its picks go to the line through
+  `insertText` (typed glyphs, an emoji one Character) and not to the app behind. The hand-off's target is untouched:
+  ⌘⏎ still pastes into the app behind. ⌃⌘Space is in the Settings overview and refused as the summon chord. An
+  Emoji & Symbols item AppKit adds to the Edit menu is removed at launch. Tests 183; debug and release build; nothing
+  launched. Try:
+  - In the box over TextEdit, ⌃⌘Space: the viewer opens at the caret; pick 🙂 and ★: they land on the line with a
+    click each; ⌘Z takes back the last pick (with typing just before it, the burst).
+  - ⌘⏎ after a pick: the text goes into TextEdit, not into Lemna. Esc instead: TextEdit comes back in front.
+  - Click into a larger viewer (its window): the box should stay. The same in the window (⌃⌘F).
+
 - App, pass 37, sound and the box's chords in Settings (2026-11-06; DESIGN.md SP2 amended, the user's follow-up
   decision): the window keeps its one page, now three groups: Shortcut (as pass 36), Sound (Play sound, Clicks, Bed,
   calling Sound ▸'s own actions and refreshed from the model by `keepSound`/`keepBed`, so the window and the menus

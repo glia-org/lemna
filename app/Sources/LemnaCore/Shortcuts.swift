@@ -26,6 +26,7 @@ public enum Shortcuts {
         Row(chords: [c(0x06, command), c(0x06, shift | command)], label: "Undo, redo"),
         Row(chords: [c(0x00, command), c(0x08, command), c(0x07, command), c(0x09, command)],
             label: "Select all, copy, cut, paste"),
+        Row(chords: [c(0x31, control | command)], label: "Emoji & Symbols"),
         Row(chords: [c(0x28, command)], label: "Sound off, on"),
         Row(chords: [c(0x03, control | command)], label: "Window mode"),
     ]

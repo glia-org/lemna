@@ -1658,3 +1658,33 @@ Pass 37, sound and the box's chords in Settings (DESIGN.md SP2 amended; 2026-11-
   faces) by day and night; the checkbox and the pop-ups changing the sound, the bed and the menus' ticks; ⌘K, Sound ▸
   and a theme from the menu while the window is up updating it; Tab through the controls; the height on a small
   screen (measured, not seen).
+
+Pass 38, Emoji & Symbols from the box (DESIGN.md B4 amended; 2026-11-06; the user's decision of 2026-11-06)
+
+- `main.swift`: an Emoji & Symbols item, ⌃⌘Space, in the hidden Edit menu after Select All, to `App.showCharacters`:
+  the container key with the line as its first responder, `activateLemna()`, then `NSApp.orderFrontCharacterPalette`
+  once Lemna is active (`didBecomeActiveNotification`, given up after 1 s; at once in the window, where Lemna is
+  active). The box's `sendEvent` hands ⌃⌘Space to the menu as its other ⌘ chords. Disabled while no container is up, a
+  hand-off or a question holds it, or a sheet is on it. At launch an Emoji & Symbols item AppKit put into the Edit menu
+  itself (`orderFrontCharacterPalette:`) is removed; the SDK's headers say nothing on when AppKit adds one.
+- Unchanged and read for it: picks reach `LineView.insertText(_:replacementRange:)`, which needs only the line to be
+  the key window's first responder (the box is key whenever it is up, `Box.show`'s `makeKey`), plays a letter's click,
+  records a typing group and sends the ambience a glyph without a key code (the caret's place, as the accent menu's
+  pick); `appActivated` returns at Lemna's own activation; `target`, the paste's app, is set only at a summon from
+  another app, and `bringForward` yields to it when Lemna is active.
+- `Shortcuts.overview` lists ⌃⌘Space "Emoji & Symbols"; the tests' copy of the main menu has the item, so the summon
+  field refuses ⌃⌘Space as Lemna's own before the system's Character Viewer. The Settings window is 427 × 534 pt
+  inside the title bar (517 before), measured offscreen with a throwaway build of its code.
+- Tests: 183, as before (`theOverviewListsEachChordOnceAsMenusWriteIt` and `lemnasOwnKeysAreRefusedAndTheSystemsWarned`
+  check the new row and the refusal). Debug and release build without warnings; `make-app.sh` not run.
+
+## Known gaps
+
+- Pass 38 is not tried: nothing was launched. Untried: whether ⌃⌘Space reaches the box's menu at all or macOS takes
+  it first (the system's list has a Character Viewer chord; if it is on, macOS may open the viewer for the app in
+  front before Lemna sees the key); the viewer then targeting the line rather than the app behind; a pick landing in
+  the line with its click and as one ⌘Z step; whether a click into the viewer takes the keys from the box, which pass
+  26 would take as a click outside and hide the box; whether the viewer activating anything hides the box; Lemna's
+  activation leaving the hand-off alone (⌘⏎ pasting into the app behind after a pick); the viewer left open across a
+  hand-off or Esc (it then follows whichever app is in front); the same in the window; an AppKit item appended to the
+  Edit menu after launch (Lemna's comes first, so its chord is still Lemna's).

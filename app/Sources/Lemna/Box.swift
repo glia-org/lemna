@@ -22,8 +22,9 @@ final class BoxPanel: NSPanel {
     override func sendEvent(_ e: NSEvent) {
         // Lemna is not the active app while the box has the keys. Should AppKit then leave out the main menu's key
         // equivalents (Done ⌘⏎, Copy ⌘⇧⏎, Save… ⌘S, Open Window ⌃⌘F, Sound ⌘K, Quit ⌘Q; since pass 29 Edit's ⌘X, ⌘C
-        // and ⌘A, since pass 30 its ⌘V, ⌘Z and ⌘⇧Z, which go to the line, the panel's first responder), the menu gets
-        // them here; only a key no menu item took reaches this, so nothing runs twice.
+        // and ⌘A, since pass 30 its ⌘V, ⌘Z and ⌘⇧Z, which go to the line, the panel's first responder, since pass 38
+        // its Emoji & Symbols, ⌃⌘Space), the menu gets them here; only a key no menu item took reaches this, so nothing
+        // runs twice.
         if e.type == .keyDown, e.modifierFlags.contains(.command), NSApp.mainMenu?.performKeyEquivalent(with: e) == true {
             return
         }
