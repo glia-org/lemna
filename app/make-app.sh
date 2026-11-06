@@ -4,6 +4,8 @@
 # item survive a rebuild), else ad-hoc: there is no Developer ID yet (DESIGN.md E2, X1).
 # Idempotent: the bundle is assembled afresh on each run. Run: app/make-app.sh
 # LSUIElement: an accessory app from launch on (no Dock icon, no menu bar; DESIGN.md W2), as main.swift sets it too.
+# NSAudioCaptureUsageDescription: the line macOS shows in its System Audio Recording prompt, which comes the first time
+# Settings' "Quieten other apps while the box is up" is ticked (DESIGN.md DK1); without it the tap would hear nothing.
 # The app icon (DESIGN.md L1): make-icon.swift draws the variant below into build/AppIcon.icns.
 set -eu
 cd "${0:A:h}"
@@ -60,6 +62,8 @@ cat > "$app/Contents/Info.plist" <<PLIST
 	<true/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>Lemna plays other apps a little quieter and softer while its box is up. Nothing is recorded or kept.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

@@ -3,8 +3,9 @@
 // (hotkey, menu-bar item), and the end of a session: Done pastes into the app behind the box, or Copy, Save… or
 // Discard…, with R1 applied silently and the session finished at once (O1 O2 O3 R1); the effects, switched in the
 // Effects submenu (F1); the ambience on the dim, chosen in the Settings window since pass 39 (A1); Start at Login (Y1);
-// the theme, chosen in the Theme submenu, with its preset for Sound and Ambience (TH1); and Settings…: the summon
-// chord, the sound, the ambience and the box's chords (SP2).
+// the theme, chosen in the Theme submenu, with its preset for Sound and Ambience (TH1); Settings…: the summon chord,
+// the sound, the ambience and the box's chords (SP2); and since pass 40 other apps' sound quieter and softer while the
+// box is up, when ticked there (DK1).
 import AppKit
 import Carbon.HIToolbox
 import LemnaClicks
@@ -43,14 +44,17 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     func applicationDidFinishLaunching(_ notification: Notification) {
         // The launch defaults (pass 32): the sound on with the first pack, the Lab bed, Code on the dim, the Still theme;
         // a key once written by a menu keeps its own value. Since pass 36 the summon chord too, ⌃⌥Space (SD2).
+        // Since pass 40 other sound (DK1), off.
         UserDefaults.standard.register(defaults: [Self.soundKey: true, Self.bedKey: "Lab", Self.ambienceKey: "code",
-                                                  Self.themeKey: "still", Self.hotkeyKey: Chord.summon.stored])
+                                                  Self.themeKey: "still", Self.hotkeyKey: Chord.summon.stored,
+                                                  Self.duckKey: false])
         choice = SoundChoice(pack: UserDefaults.standard.string(forKey: Self.packKey),
                              on: UserDefaults.standard.bool(forKey: Self.soundKey))
         bedChoice = BedChoice(kept: UserDefaults.standard.string(forKey: Self.bedKey))
         effects = Effects(kept: UserDefaults.standard.dictionary(forKey: Self.effectsKey) as? [String: Bool])
         ambience = Ambience(kept: UserDefaults.standard.string(forKey: Self.ambienceKey))
         theme = Theme(kept: UserDefaults.standard.string(forKey: Self.themeKey))
+        otherSound = OtherSound.State(on: Self.tapsExist && UserDefaults.standard.bool(forKey: Self.duckKey))
         // The faces the app bundles (Still's Literata, TY1), registered before the first style resolves its font; one
         // that does not register leaves its theme on the fallback.
         for failed in Theme.Typeface.register(fontsIn: (Bundle.main.resourcePath ?? "") + "/Fonts") {
@@ -102,6 +106,14 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification,
                                                           object: nil, queue: .main) { [unowned self] n in
             self.appActivated(n.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)
+        }
+        // The other-sound tap goes at the sleep and is made again at the wake while the box is up (DK1).
+        let workspace = NSWorkspace.shared.notificationCenter
+        workspace.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [unowned self] _ in
+            self.otherSoundCommand(self.otherSound.sleep())
+        }
+        workspace.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [unowned self] _ in
+            self.otherSoundCommand(self.otherSound.wake())
         }
     }
 
@@ -210,11 +222,79 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// `handOff`, `notHandedOff` and `end` (whether writing goes on), `keepSound` (⌘K) and `keepBed`. With the sound
     /// off the player starts nothing; with no bed it has nothing to play.
     private func updateBed() {
+        updateOtherSound()  // the same moments decide whether other apps are shaded (DK1)
         guard let clicks else { return }
         if bedChoice.plays(onScreen: surface.onScreen != nil, writing: session.phase == .writing, sound: sound) {
             clicks.startBed(fadeIn: 1.5)
         } else {
             clicks.stopBed(fadeOut: 0.6)
+        }
+    }
+
+    // MARK: Other sound (DK1)
+
+    /// `duck`: other apps' sound quieter and softer while the box is up; off until ticked in Settings.
+    private static let duckKey = "duck"
+    private var otherSound = OtherSound.State(on: false)
+    /// The tap (`OtherSoundTap`, macOS 14.2), made at its first use; untyped so the property needs no availability.
+    private var tapHolder: AnyObject?
+    /// Ends the trial without a verdict; a newer trial makes an older one's end moot.
+    private var trialGeneration = 0
+
+    /// Process taps exist (macOS 14.2); before, the group in Settings is greyed with the reason.
+    private static var tapsExist: Bool {
+        if #available(macOS 14.2, *) { return true }
+        return false
+    }
+
+    @available(macOS 14.2, *)
+    private var tap: OtherSoundTap {
+        if let t = tapHolder as? OtherSoundTap { return t }
+        let t = OtherSoundTap()
+        t.onStarted = { [unowned self] in self.otherSoundCommand(self.otherSound.started()) }
+        t.onFailed = { [unowned self] why in
+            NSLog("Lemna: other sound not shaded: %@", why)
+            self.otherSoundCommand(self.otherSound.failed(why))
+        }
+        t.onVerdict = { [unowned self] in self.otherSoundCommand(self.otherSound.watched($0)) }
+        t.onOutputChanged = { [unowned self] in self.otherSoundCommand(self.otherSound.outputChanged()) }
+        tapHolder = t
+        return t
+    }
+
+    /// The Settings checkbox. On: the trial at once, so macOS's prompt comes up over the window and not over the box.
+    private func tickOtherSound(_ on: Bool) {
+        guard Self.tapsExist else { return }
+        otherSoundCommand(otherSound.tick(on))
+    }
+
+    /// From `updateBed()`: whether the box is up and writing goes on. The window (W2) is for long sessions with other
+    /// apps in use around it, so only the box shades them.
+    private func updateOtherSound() {
+        otherSoundCommand(otherSound.want(surface.onScreen == .box && session.phase == .writing))
+    }
+
+    /// What the state asks of the tap; the setting kept (the watch may have unticked it) and the window's group told.
+    private func otherSoundCommand(_ c: OtherSound.Command) {
+        if UserDefaults.standard.bool(forKey: Self.duckKey) != otherSound.on {
+            UserDefaults.standard.set(otherSound.on, forKey: Self.duckKey)
+        }
+        settings?.refreshOtherSound()
+        guard #available(macOS 14.2, *), c != .none else { return }
+        switch c {
+        case .none: break
+        case .trial:
+            trialGeneration += 1
+            let g = trialGeneration
+            DispatchQueue.main.asyncAfter(deadline: .now() + OtherSound.Tuning.duckTrial + 0.5) { [weak self] in
+                guard let self, self.trialGeneration == g else { return }
+                self.otherSoundCommand(self.otherSound.trialEnded())
+            }
+            tap.trial()
+        case .start: tap.start()
+        case .release: tap.release()
+        case .rebuild: tap.rebuild(trial: otherSound.phase == .trial)
+        case .stop: tap.stop()
         }
     }
 
@@ -414,6 +494,11 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
                     Ambience.available(reduceMotion: still))
         }
         s.chooseAmbience = { [unowned self] in self.chooseAmbience($0) }
+        // The Other sound group (pass 40, DK1): the checkbox, and the line as the state has it.
+        s.otherSound = { [unowned self] in
+            (self.otherSound.on, Self.tapsExist ? self.otherSound.line : OtherSound.State.unavailable, Self.tapsExist)
+        }
+        s.tickOtherSound = { [unowned self] in self.tickOtherSound($0) }
         // Closed: back to the app before, as after the box (`handBack`); in window mode the window keeps the keys.
         s.onClose = { [unowned self] in if self.surface.onScreen == nil { self.handBack() } }
         return s
@@ -682,6 +767,11 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         keeper.flushNow()
         return .terminateNow
+    }
+
+    /// The other-sound tap down before Lemna goes (DK1); a private tap would go with the process anyway.
+    func applicationWillTerminate(_ notification: Notification) {
+        if #available(macOS 14.2, *), let t = tapHolder as? OtherSoundTap { t.stopNow() }
     }
 
     /// One plain alert when the journal could not be opened, on the container on screen (or the first to come); the

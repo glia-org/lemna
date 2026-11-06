@@ -1720,3 +1720,58 @@ Pass 39, the ambience in Settings alone (DESIGN.md SP2 and A1 amended; 2026-11-0
   back) and the box's dim showing it at the next summon; Theme ▸ with the window up moving the pop-up to the preset's
   mode; Reduce Motion turned on and off with the window open (read when it becomes key); the window's new height on a
   small screen (measured, not seen).
+
+Pass 40, other sound (DESIGN.md DK1 new, SP2 amended; 2026-11-06; the user's decision of 2026-11-06)
+
+- Opt-in, off by default: `duck` in UserDefaults, registered false, ticked only in the Settings window's new Other
+  sound group (between Sound and Ambience): the checkbox "Quieten other apps while the box is up", under it "Other
+  apps play a little quieter and softer while the box is up, and as before once it hides. This needs macOS's
+  permission to tap system audio: nothing is recorded or kept, and nothing leaves the Mac. There is a short gap in
+  their sound as it switches." and a grey line, two lines high, with the state: "Off.", "Asking macOS…", "On.", "On.
+  Not checked yet: nothing else was playing.", "Needs permission: allow Lemna in System Settings › Privacy & Security ›
+  Screen & System Audio Recording, then tick it again.", "On. Last time it could not start: …", or before macOS 14.2,
+  greyed, "Not on this macOS: it needs macOS 14.2 or later." The window is 427 × 764 pt inside its title bar (599
+  before), measured offscreen with a throwaway build of its code.
+- `OtherSound.swift` (LemnaCore): `Tuning` (`duckGain` −6 dB, `duckCutoff` 4000 Hz, `duckGlide` 0.25 s, `duckWatch`
+  3 s, `duckTrial` 15 s, `duckRelease` 0.6 s, `silence` −120 dBFS); `Shade`, the gain and one-pole low-pass gliding
+  together toward a target by a step, over strided float buffers; `Watch`, fed the IO block's counts (cycles, cycles
+  with sound) and whether another process plays to the output: `heard`, `silent` (no buffer with sound for the window
+  while another plays), `dead` (no cycle for 3 s; never in the trial); `State`, the phases off, trial, armed,
+  running, rebuilding and denied, and the command each event asks of the tap (trial, start, release, rebuild, stop).
+  `silent` takes the tap down at once; with nothing heard since launch it is a denial (unticked), after sound was
+  heard the tap goes for that summon alone (a paused app with its stream open, or silence between tracks).
+- `OtherSound.swift` (app, macOS 14.2): `OtherSoundTap`, ported from the spike (not committed): a private tap,
+  `CATapDescription(excludingProcesses: [Lemna's process object], deviceUID: default output, stream: 0)`,
+  `.mutedWhenTapped` (`.unmuted` for the trial); a private aggregate device, the output its clock and only sub-device,
+  the tap its sub-tap with drift compensation, a 256-frame buffer; an IO block that counts its cycles and those with
+  sound and, but in the trial, writes the tap's first two channels shaded to the output's first two; the output's own
+  input streams off (`kAudioDevicePropertyIOProcStreamUsage`). Every Core Audio call on one serial queue; the watch
+  runs there four times a second (the process objects' running output and devices); verdicts, failures and output
+  changes (the default output, its sample rate) come to the main queue. Anything that fails takes down what was made.
+- `main.swift`: `updateOtherSound()` first in `updateBed()`, so the same moments decide (the box on screen, not the
+  window, and writing going on); `otherSoundCommand` hands the state's command to the tap, keeps `duck` and refreshes
+  the group; the trial's end after 15.5 s without a verdict; the sleep and the wake (NSWorkspace) take the tap down
+  and make it again while the box is up; `applicationWillTerminate` takes it down.
+- `lib/LemnaClicks`: `AtomicPair`, the bed's `click_fade` cell made public: the shade's target and step to the IO
+  block, the block's counts back. Test `anAtomicPairReadsBothValuesOfOneSet`.
+- `make-app.sh`: `NSAudioCaptureUsageDescription`, "Lemna plays other apps a little quieter and softer while its box
+  is up. Nothing is recorded or kept."
+- Tests: 190 (183 before; new `OtherSoundTests`: the shade at 1, 4 and 16 kHz against the one-pole's transfer function
+  and at 44.1 kHz, open passing the input as it is; the glide's quarter second both ways and turning back midway; the
+  watch's verdicts, silence counted from the last sound, its window restarting when the others stop, wrapping counts;
+  the states' transitions on the tick, the box, an output change, sleep and wake, a failure, silence before and after
+  sound was heard, the trial's end and the lines). LemnaClicks: the new test and the bed's fade test run (the filter
+  also ran the engine's quiet rain test). Debug and release build without warnings; `make-app.sh` not run; nothing
+  launched; no tap was ever started, here or in the spike, since that brings up macOS's prompt.
+
+## Known gaps
+
+- Pass 40 is not tried on any hardware. Untried: macOS's prompt at the tick (for a script-built, self-signed
+  LSUIElement bundle: a prompt, or a silent denial), Allow and Don't Allow; whether a denied tap still mutes the apps
+  it taps (if it does: up to 3 s of silence at the first summon after the permission is taken back, then the tap goes);
+  the shade's sound (−6 dB, duller) and its gap at the switch in and out on music and on speech; a summon during the
+  glide out; the outputs: built-in speakers, an audio interface with inputs (a microphone prompt? the inputs left off?),
+  Bluetooth headphones (the call profile, DESIGN Open 6), display audio over HDMI and DisplayPort, AirPlay, an output
+  of more than two channels; the default output switched with the box up; 44.1 and 96 kHz outputs and a rate change;
+  sleep and wake with the box up; an app holding a silent stream open taken for a denial; a menu-bar recording
+  indicator; CPU use; Lemna's own clicks and bed unchanged throughout.

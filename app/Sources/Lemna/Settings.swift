@@ -149,7 +149,9 @@ private final class SettingsWindow: NSWindow {
 /// (⌘K's on or off), the clicks' pack and the bed, as Session › Sound ▸ has them; they call the menu's own actions, and
 /// the app refreshes them whenever those keep a change, made here or in a menu. Ambience (pass 39, here alone): the
 /// mode on the dim, Code, Still water or Off, by the submenu's action it replaces, refreshed the same way (a theme's
-/// preset writes it too). Shortcuts in the box: the fixed chords, read-only (`Shortcuts.overview`). The app supplies the state and acts on what the controls ask.
+/// preset writes it too). Other sound (pass 40, DK1, after Sound): the checkbox that shades other apps while the box
+/// is up, what it does and needs in a few plain sentences, and a line saying how it stands. Shortcuts in the box: the
+/// fixed chords, read-only (`Shortcuts.overview`). The app supplies the state and acts on what the controls ask.
 final class Settings: NSObject, NSWindowDelegate {
     let window: NSWindow = SettingsWindow(contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered,
                                           defer: true)
@@ -159,6 +161,13 @@ final class Settings: NSObject, NSWindowDelegate {
     private let soundBox = NSButton(checkboxWithTitle: "Play sound", target: nil, action: nil)
     private let pack = NSPopUpButton(frame: .zero, pullsDown: false), bed = NSPopUpButton(frame: .zero, pullsDown: false)
     private let mode = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let duckBox = NSButton(checkboxWithTitle: "Quieten other apps while the box is up", target: nil, action: nil)
+    private let duckAbout = NSTextField(wrappingLabelWithString: Settings.duckAbout)
+    private let duckLine = NSTextField(wrappingLabelWithString: "")
+    /// The Other sound group's explanation (DK1).
+    static let duckAbout = "Other apps play a little quieter and softer while the box is up, and as before once it "
+        + "hides. This needs macOS's permission to tap system audio: nothing is recorded or kept, and nothing leaves "
+        + "the Mac. There is a short gap in their sound as it switches."
     /// The chord kept and how it stands now.
     var stand: () -> (chord: Chord?, standing: Chord.Standing) = { (nil, .none) }
     /// Whether a recorded chord may be kept (SC2), read against the menus and the system's list as they are now.
@@ -179,6 +188,9 @@ final class Settings: NSObject, NSWindowDelegate {
     /// (not under Reduce Motion); and the action the submenu's items had (tag −1: Off).
     var ambience: () -> (mode: Int?, available: Bool) = { (nil, true) }
     var chooseAmbience: (NSMenuItem) -> Void = { _ in }
+    /// Other sound (DK1): the checkbox's state, the line under it, and whether this macOS has process taps; the tick.
+    var otherSound: () -> (on: Bool, line: String, available: Bool) = { (false, "", false) }
+    var tickOtherSound: (Bool) -> Void = { _ in }
     var onClose: () -> Void = {}
 
     override init() {
@@ -194,6 +206,13 @@ final class Settings: NSObject, NSWindowDelegate {
         reset.bezelStyle = .push
         (reset.target, reset.action) = (self, #selector(resetPressed))
         (soundBox.target, soundBox.action) = (self, #selector(soundToggled))
+        (duckBox.target, duckBox.action) = (self, #selector(duckToggled))
+        for t in [duckAbout, duckLine] {
+            t.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+            t.textColor = .secondaryLabelColor
+            t.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)  // wraps at the row's width
+        }
+        duckLine.maximumNumberOfLines = 2
         for (i, p) in SoundChoice.packs.enumerated() {
             pack.addItem(withTitle: p.title)
             pack.lastItem?.tag = i
@@ -226,6 +245,8 @@ final class Settings: NSObject, NSWindowDelegate {
             [header("Sound"), none], [none, soundBox], [NSTextField(labelWithString: "Clicks:"), pack],
             [NSTextField(labelWithString: "Bed:"), bed],
             [separator(), none],
+            [header("Other sound"), none], [none, duckBox], [none, duckAbout], [none, duckLine],
+            [separator(), none],
             [header("Ambience"), none], [NSTextField(labelWithString: "Mode:"), mode],
             [separator(), none],
             [header("Shortcuts in the box"), none],
@@ -245,6 +266,9 @@ final class Settings: NSObject, NSWindowDelegate {
             grid.row(at: i).mergeCells(in: NSRange(location: 0, length: 2))
             grid.cell(for: groups[i][0])?.xPlacement = groups[i][0] is NSBox ? .fill : .leading
         }
+        // Other sound (DK1): the explanation and the line close under the checkbox, as the chord's line under the field.
+        for v in [duckAbout, duckLine] { grid.cell(for: v)?.row?.topPadding = 3 }
+        duckAbout.preferredMaxLayoutWidth = chord.fittingSize.width
         let view = NSView()
         grid.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(grid)
@@ -256,6 +280,10 @@ final class Settings: NSObject, NSWindowDelegate {
             // Two lines, written or not, so the window keeps its size as the line changes.
             help.widthAnchor.constraint(equalTo: chord.widthAnchor),
             help.heightAnchor.constraint(equalToConstant: 2 * NSLayoutManager().defaultLineHeight(for: help.font!)),
+            // Other sound's text at the same width; its line two lines high too.
+            duckAbout.widthAnchor.constraint(equalTo: chord.widthAnchor),
+            duckLine.widthAnchor.constraint(equalTo: chord.widthAnchor),
+            duckLine.heightAnchor.constraint(equalToConstant: 2 * NSLayoutManager().defaultLineHeight(for: duckLine.font!)),
         ])
         window.contentView = view
         window.setContentSize(view.fittingSize)
@@ -308,6 +336,7 @@ final class Settings: NSObject, NSWindowDelegate {
         if !recorder.listening { help.stringValue = Chord.help(chord, standing, letter: layoutLetter) }
         refreshSound()
         refreshAmbience()
+        refreshOtherSound()
     }
 
     /// The sound group as the model has it (the app calls this whenever it keeps a change of the sound or the bed).
@@ -323,6 +352,16 @@ final class Settings: NSObject, NSWindowDelegate {
     @objc private func packChosen() { pack.selectedItem.map(choosePack) }
     @objc private func bedChosen() { bed.selectedItem.map(chooseBed) }
     @objc private func modeChosen() { mode.selectedItem.map(chooseAmbience) }
+    @objc private func duckToggled() { tickOtherSound(duckBox.state == .on) }
+
+    /// The Other sound group as the state has it (the app calls this whenever the state may have changed: the tick,
+    /// the trial's verdict, a tap that failed). Greyed, with the reason, before macOS 14.2.
+    func refreshOtherSound() {
+        let o = otherSound()
+        duckBox.state = o.on ? .on : .off
+        duckBox.isEnabled = o.available
+        duckLine.stringValue = o.line
+    }
 
     /// The ambience group as the model has it (the app calls this whenever it keeps a change of the mode).
     func refreshAmbience() {

@@ -23,6 +23,8 @@ clicks.bedVolume = 0.6            // 0–1, the default: every bed at Bed.level 
 clicks.isBluetoothOutput          // the default output device is Bluetooth (classic or LE)
 clicks.onOutputChanged = { … }    // main queue, after the default output device changed
 clicks.ioBufferFrames             // the IO buffer the device accepted (128 asked)
+let pair = AtomicPair()           // two floats, one writer, read whole by another thread (the bed's fade cell)
+pair.set(1, 0.25); pair.get()     // for an app's own render code: Lemna's other-sound tap (DESIGN.md DK1)
 ```
 
 - `play` is for the key handler, one thread at a time (the main thread). Call it on key-down before layout and

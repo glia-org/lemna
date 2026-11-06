@@ -460,6 +460,24 @@ private func render(_ loop: BedLoop, _ frames: Int) -> (sounded: Bool, left: [Fl
     #expect(!render(loop, 64).sounded)
 }
 
+/// The fade's cell as an app's render code takes it (DK1's tap): both values of one set, read whole from another thread.
+@Test func anAtomicPairReadsBothValuesOfOneSet() async {
+    let pair = AtomicPair()
+    #expect(pair.get() == (0, 0))
+    pair.set(1, 0.25)
+    #expect(pair.get() == (1, 0.25))
+    let writer = Task.detached {
+        for i in 1...20_000 { pair.set(Float(i), Float(-i)) }
+    }
+    var torn = 0
+    for _ in 0..<20_000 {
+        let (a, b) = pair.get()
+        if a != 1 && a != -b { torn += 1 }
+    }
+    await writer.value
+    #expect(torn == 0 && pair.get() == (20_000, -20_000))
+}
+
 // MARK: The engine (needs an output device; the clicks are audible)
 
 private var hasOutput: Bool { OutputDevice.defaultID() != nil }

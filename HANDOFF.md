@@ -4,6 +4,26 @@
 
 ## State (2026-11-06)
 
+- App, pass 40, other sound (2026-11-06; DESIGN.md DK1 new, SP2 amended, the user's decision): opt-in, off by
+  default, ticked only in the Settings window's new Other sound group (between Sound and Ambience). While the box is
+  up, what other apps play on the default output is 6 dB quieter and duller (a one-pole low-pass at 4 kHz), through a
+  Core Audio process tap that leaves Lemna's own clicks and bed out. Ticking it starts a trial at once, so macOS's
+  System Audio Recording prompt comes over the window; a watch unticks it when the tap hears only silence while
+  another app plays (what a denied permission gives). The window is 427 × 764 pt. Tests 190 (183); release build;
+  nothing launched, and no tap was ever started. Try first, in this order:
+  - Music playing in another app, Settings… → tick "Quieten other apps while the box is up": macOS's prompt over the
+    window (or none: say which), Allow; the line goes from "Asking macOS…" to "On.", the music unchanged meanwhile.
+  - Summon: within a quarter second the music is a little quieter and duller, with a short gap at the switch; type:
+    the clicks and the bed as before; Esc: the music back as it was, the gap again about 0.6 s later.
+  - With the box up, switch the output (headphones in, or another in Control Centre): the shaded music follows to the
+    new output after a moment and does not stay on the old one.
+  - Deny, then check that no app is left muted: remove Lemna from Privacy & Security › Screen & System Audio Recording
+    (or `tccutil reset AudioCapture dev.lemna.app`), tick again with music playing and choose Don't Allow: within 15 s
+    the checkbox unticks and the line says "Needs permission…". Then allow it, tick it, turn Lemna off in that pane,
+    and summon with music playing: the music must not go silent for more than about 3 s, when the tap goes (the
+    checkbox stays ticked until a relaunch, since sound was heard; after one, the first summon unticks it). Say how
+    long it was silent, if at all, and whether a recording indicator showed in the menu bar.
+
 - App, pass 39, the ambience in Settings alone (2026-11-06; DESIGN.md SP2 and A1 amended, the user's decision):
   Ambience ▸ is gone from both menus; the Settings window's new Ambience group ("Mode:" Code, Still water, Off, between
   Sound and the box's chords) calls the submenu's own action and follows a theme's preset while the window is up.
