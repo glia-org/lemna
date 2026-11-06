@@ -525,8 +525,8 @@ function key(ch){
   else{Sound.play('letter');Code.key(ch)}
 }
 
-/* ---------- the loop: about 22 s ---------- */
-var SEQ='Move the review to Thursday at ten and send teh\b\bhe draft first.\nThen book the room.';
+/* ---------- the loop: about 50 s, three paragraphs, so the line is seen carrying a longer piece ---------- */
+var SEQ='The morning was grey and I kept circling the same paragraph, so I closed everything and started again from what I actually knew.\nThe argument is simpler than the draft makes it look. Three claims, one example each, and the figure can go.\nWhat worries me is the second claim, which rests on teh\b\bhe older data. Say so plainly, and move on.';
 var timers=[],mode='auto',idleT=0;
 function later(ms,f){var id=setTimeout(function(){var i=timers.indexOf(id);if(i>=0)timers.splice(i,1);f()},ms);timers.push(id)}
 function cancelTimers(){timers.forEach(clearTimeout);timers=[]}

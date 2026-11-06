@@ -4,8 +4,10 @@
 
 ## State (2026-11-06)
 
-- Site, pass 35b (2026-11-06): the headline, title and description now read "A quiet place to write a thought down
-  without stopping." (a warmer line that still carries the forward-only rule); the lead and the rest unchanged.
+- Site, pass 35c (2026-11-06): the hero no longer reads as if the app were for short notes. Headline, title and
+  description: "A quiet place to write without stopping."; the lead says "for as long as you like" and "puts all of it
+  into that app"; the demo's loop types three paragraphs of a journal entry (about 50 s, one typo and its fix kept, so
+  the reduced-motion still and the tiles' continuation are unchanged in kind). Untried on the live page.
 - Site, pass 35, the page previews the launch defaults (2026-11-06; `site/`; DESIGN.md A1's two notes on the site
   follow). The page is Still's box: its paper by day and its warm dark by night as the system's appearance is, in
   Literata (a lossless Latin subset of `app/Fonts`' variable face, both axes and every feature, 224 KB woff2, with its
