@@ -31,6 +31,16 @@
   cap or ellipsis, as a document's paragraphs with a blank line between them under the window's own (the three fit in
   168 of its 256 px; text sent earlier by a reader gives way first when it is full). Checked in headless Chrome under
   `/lemna/`, both schemes, 1440 and 390 px, the screenshots looked at: console clean. Untried on the live page.
+- Site, pass 35g (2026-11-06): the scrub's display is a deck's: a pixel ▶▶ (two 6 × 11-pixel triangles) at the
+  frame's top left and a tape counter (H:MM:SS of the text's time at a human pace, running with the tape) at the top
+  right, in a 5 × 7-pixel face drawn into two tiny canvases with a one-pixel hard edge and shown with 5 px pixels
+  (70 × 60 and 180 × 40 px on the stage), with a faint flicker, fading with the ramp. The pressed chords are large
+  keycaps over the dim above the box, one per key (⌃ ⌥ Space, then ⌘ ⏎; 92 px tall, Space 236 px wide), in the page's
+  ink with paper glyphs as its button, a 6 px key side; they rise in, go down 5 px at the press (the modifiers a beat
+  first), come back, hold about 1.2 s and fade. Contrast: the caps 7.5:1 against the day dim and 12.2:1 against the
+  night's (9.5 and 10.1 against the app window, where ⌃⌥Space shows), their glyphs 8.7 and 12.4:1; the display 4.6:1
+  by day and 9.3:1 by night. Reduced motion keeps the small labels. Still 9.70 s from the first hint to the hand-off;
+  checked in headless Chrome under `/lemna/`, both schemes, 1440 and 390 px: console clean. Untried on the live page.
 - Site, pass 35, the page previews the launch defaults (2026-11-06; `site/`; DESIGN.md A1's two notes on the site
   follow). The page is Still's box: its paper by day and its warm dark by night as the system's appearance is, in
   Literata (a lossless Latin subset of `app/Fonts`' variable face, both axes and every feature, 224 KB woff2, with its

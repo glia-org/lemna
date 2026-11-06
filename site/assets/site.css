@@ -20,7 +20,7 @@
   /* the loop's tape scrub (passes 35e, 35f): the on-screen display in the ink with a paper edge, the tracking bands,
      the smear's colour */
   --osd:rgba(63,74,60,.82);--osd-edge:rgba(243,240,232,.75);--trk:rgba(63,74,60,.05);--trk-hi:rgba(255,253,246,.5);
-  --smear:70,67,61;
+  --smear:70,67,61;--cap-side:#24221f;
   --serif:Literata,Charter,"Iowan Old Style",Georgia,serif;
   --mono:Menlo,ui-monospace,"SF Mono",SFMono-Regular,Consolas,"DejaVu Sans Mono",monospace;
   --r:12px}
@@ -30,7 +30,7 @@
   --desk:#1d1e20;--win:#2b2c2f;--win-edge:#3b3c40;--win-bar:#323336;--win-dot:#55565a;--win-ph:#45464a;--win-ph-t:#55565a;
   --win-text:#d4d5d8;
   --osd:rgba(226,218,202,.86);--osd-edge:rgba(15,20,18,.8);--trk:rgba(226,218,202,.035);--trk-hi:rgba(226,218,202,.13);
-  --smear:226,218,202}}
+  --smear:226,218,202;--cap-side:#8c8476}}
 *{box-sizing:border-box}
 html{background:var(--paper);color:var(--copy)}
 body{margin:0;font:17px/1.6 var(--serif);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
@@ -95,6 +95,15 @@ h1{font-size:36px;line-height:1.22;font-weight:400;color:var(--text);max-width:3
 .hint kbd{display:inline-block;font-size:15px;line-height:1.4;background:var(--paper);border:1px solid var(--line);
   border-radius:10px;padding:6px 14px}
 .hint span{align-self:center}
+/* the loop's keycaps (pass 35g): over the dim above the box, one cap per key, 92 px tall, the page's ink with paper
+   glyphs (as its button), a 6 px key side under them that the press takes down to 1 px as the cap goes down 5 px */
+.caps{position:absolute;left:0;right:0;top:196px;display:flex;justify-content:center;gap:18px;opacity:0;pointer-events:none}
+.caps kbd{display:flex;align-items:center;justify-content:center;min-width:92px;height:92px;padding:0 22px;border-radius:16px;
+  background:var(--text);color:var(--paper);font:400 52px/1 var(--mono);box-shadow:0 6px 0 var(--cap-side);
+  transition:transform .12s cubic-bezier(.23,1,.32,1),box-shadow .12s cubic-bezier(.23,1,.32,1)}
+.caps kbd.word{min-width:236px;font:400 34px/1 var(--serif);letter-spacing:.01em}
+.caps kbd.ctl{padding-top:18px}  /* Menlo's ⌃ sits high in its em */
+.caps kbd.down{transform:translateY(5px);box-shadow:0 1px 0 var(--cap-side);transition-duration:.06s}
 /* the box: 907 × 120 pt (60 % of a 1512 pt screen, 4 × Literata 30), its centre two thirds down; Still's shape: a 1 pt
    hairline, 16 pt continuous corners (a superellipse where the browser draws one), no shadow. Its line is set glyph by
    glyph from measured advances (site.js Line), so without ligatures and kerning: Literata's Th and fi would fold the
@@ -123,17 +132,18 @@ h1{font-size:36px;line-height:1.22;font-weight:400;color:var(--text);max-width:3
 .ll-in{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;border:0;margin:0;padding:0;font-size:16px;
   color:transparent;background:transparent;caret-color:transparent;cursor:text}
 
-/* the loop's fast-forward (passes 35e, 35f), a tape scrubbing, in the page's ink: a VCR's on-screen display at the top
-   left (two blocky triangles and FF, a hard offset edge), two faint tracking bands drifting down the frame, softening
-   what they cross, the line jittering by up to 1.5 px and smeared to the right. All of it follows the scrub's level,
+/* the loop's fast-forward (passes 35e–35g), a tape scrubbing, in the page's ink: a deck's on-screen display (a pixel ▶▶
+   at the top left, a tape counter at the top right, site.js OSD), two faint tracking bands drifting down the frame,
+   softening what they cross, the line jittering by up to 1.5 px and smeared to the right. All of it follows the scrub's level,
    `--ff` (0 to 1, the speed-up's share of its peak, site.js scrubRun), and `--jit`, so it rises and falls with the
    speed-up and nothing switches. Reduced motion never scrubs. */
 .vhs{position:absolute;left:0;top:0;width:1100px;height:620px;pointer-events:none;opacity:var(--ff,0);overflow:hidden}
-.osd{position:absolute;left:34px;top:30px;display:flex;align-items:flex-end;gap:10px;color:var(--osd);
-  filter:drop-shadow(2px 2px 0 var(--osd-edge))}
-.osd i{display:block;width:38px;height:24px;background:currentColor;
-  clip-path:polygon(0 0,50% 50%,50% 0,100% 50%,50% 100%,50% 50%,0 100%)}
-.osd b{font:700 15px/1 var(--mono);letter-spacing:.14em}
+/* the display's two canvases, a pixel 5 px: the ▶▶ 14 × 12 pixels (70 × 60 px) at the top left, the counter 36 × 8
+   (180 × 40 px) at the top right, their middles level */
+.osd{position:absolute;inset:0}
+.osd canvas{position:absolute;image-rendering:pixelated;image-rendering:crisp-edges}
+.osd-ff{left:36px;top:30px;width:70px;height:60px}
+.osd-n{right:36px;top:40px;width:180px;height:40px}
 .trk{position:absolute;left:0;top:0;width:100%;height:44px;transform:translateY(-60px);
   background:repeating-linear-gradient(to bottom,transparent 0 3px,var(--trk) 3px 4px),
     linear-gradient(to bottom,transparent,var(--trk) 25%,var(--trk-hi) 50%,var(--trk) 75%,transparent);

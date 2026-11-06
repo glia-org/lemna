@@ -333,7 +333,8 @@ function makeWater(cv){
 var Code=makeCode(dim.querySelector('canvas'),2800),TileCode=makeCode(tileCanvas('code'),2400),Water=makeWater(tileCanvas('water'));
 scale();addEventListener('resize',scale);
 function recolour(){scenes.forEach(function(s){s.recolour()})}
-if(darkQ.addEventListener)darkQ.addEventListener('change',recolour);else if(darkQ.addListener)darkQ.addListener(recolour);
+if(darkQ.addEventListener)darkQ.addEventListener('change',function(){recolour();OSD.redraw()});
+else if(darkQ.addListener)darkQ.addListener(function(){recolour();OSD.redraw()});
 
 /* ---------- the sounds: the Keychron pack's clicks (CC0; the first pack, a fresh install's), played as lib/LemnaClicks
    plays them: never the same sample twice in a row, the rate within ±3 % (the pack has no pitched kind), volume 0.6;
@@ -529,7 +530,21 @@ function handOff(){
   return true;
 }
 
-/* ---------- key hints ---------- */
+/* ---------- key hints: in the loop, the chord the demo presses as large keycaps over the dim above the box (site.css
+   .caps), one cap per key, in the page's ink with paper glyphs, as its button; they rise in, go down together at the
+   press (the modifiers a beat before the last key) and come back, hold about 1.2 s and fade. Reduced motion's still
+   frame keeps the small labels (`hintShow`). ---------- */
+var caps=document.createElement('div');caps.className='caps';caps.setAttribute('aria-hidden','true');stage.appendChild(caps);
+function capsShow(keys,press){
+  cancel(caps);caps.innerHTML=keys.map(function(k){return '<kbd'+(k.length>1?' class="word"':k==='⌃'?' class="ctl"':'')+'>'+k+'</kbd>'}).join('');
+  var els=caps.querySelectorAll('kbd'),n=els.length;
+  anim(caps,[{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'none'}],{duration:T.glide,easing:Q,fill:'forwards'});
+  Array.prototype.forEach.call(els,function(e,i){
+    later(press-(n-1-i)*45,function(){e.classList.add('down')});
+    later(press+110,function(){e.classList.remove('down')})});
+  later(1200,function(){anim(caps,[{opacity:1},{opacity:0}],{duration:250,easing:Q,fill:'forwards'})});
+}
+function capsHide(){cancel(caps);caps.style.opacity=0;caps.innerHTML=''}
 function hintShow(html){hint.innerHTML=html;if(reduced){hint.style.opacity=1;return}
   cancel(hint);anim(hint,[{opacity:0},{opacity:1}],{duration:T.glide,easing:Q,fill:'forwards'})}
 function hintHide(){cancel(hint);if(reduced){hint.style.opacity=0;return}
@@ -579,35 +594,65 @@ function plan(){
   while(i<=b){v+=lapse(t,P);t++;while(i<=b&&v>=tape[i]-uA){at.push(uA+t);quiet.push(lapse(t,P)>SCRUB.quiet);i++}if(t>span)break}
   for(;i<=b;i++){at.push(uA+span);quiet.push(false)}
   for(i=b+1;i<keys.length;i++){at.push(uA+span+tape[i]-tape[b]);quiet.push(false)}
-  return {keys:keys,at:at,quiet:quiet,start:uA,P:P,end:at[at.length-1]};
+  P.tape=uA;return {keys:keys,at:at,quiet:quiet,start:uA,P:P,end:at[at.length-1]};
 }
 /* the scrub's look (site.css .vhs, the line's jitter and smear) at its level 0–1 in `--ff`, the jitter's step in
-   `--jit` (at 24 Hz), Code's curtain stepped at the speed-up itself */
+   `--jit` (at 24 Hz), Code's curtain stepped at the speed-up itself. The on-screen display is a deck's: a ▶▶ at the
+   top left and a tape counter at the top right (H:MM:SS of the text's time at a human pace, running as the tape
+   does), drawn pixel by pixel into two tiny canvases with a one-pixel hard edge and shown five times larger,
+   unsmoothed (site.css .osd), with a faint flicker */
 var vhs=document.createElement('div');vhs.className='vhs';vhs.setAttribute('aria-hidden','true');
-vhs.innerHTML='<i class="trk"></i><i class="trk"></i><div class="osd"><i></i><b>FF</b></div>';stage.appendChild(vhs);
+vhs.innerHTML='<i class="trk"></i><i class="trk"></i><div class="osd"><canvas class="osd-ff" width="14" height="12"></canvas>'+
+  '<canvas class="osd-n" width="36" height="8"></canvas></div>';stage.appendChild(vhs);
+var OSD=(function(){
+  var FONT={'0':['01110','10001','10011','10101','11001','10001','01110'],'1':['00100','01100','00100','00100','00100','00100','01110'],
+    '2':['01110','10001','00001','00010','00100','01000','11111'],'3':['11111','00010','00100','00010','00001','10001','01110'],
+    '4':['00010','00110','01010','10010','11111','00010','00010'],'5':['11111','10000','11110','00001','00001','10001','01110'],
+    '6':['00110','01000','10000','11110','10001','10001','01110'],'7':['11111','00001','00010','00100','01000','01000','01000'],
+    '8':['01110','10001','10001','01110','10001','10001','01110'],'9':['01110','10001','10001','01111','00001','00010','01100'],
+    ':':['00','11','11','00','11','11','00']};
+  var tri=[];for(var r=0;r<11;r++)tri.push(new Array(Math.min(r,10-r)+2).join('1'));  // 11 rows, 1 to 6 pixels: ▶
+  var wrap=vhs.querySelector('.osd'),ff=vhs.querySelector('.osd-ff'),n=vhs.querySelector('.osd-n'),shown='',at=0;
+  function colours(){var cs=getComputedStyle(stage);return [cs.getPropertyValue('--osd').trim(),cs.getPropertyValue('--osd-edge').trim()]}
+  function put(c,rows,x,y,col){rows.forEach(function(row,j){for(var i=0;i<row.length;i++)if(row[i]==='1'){c.fillStyle=col;c.fillRect(x+i,y+j,1,1)}})}
+  function paint(cv,glyphs){  // glyphs: [rows, x] pairs; the edge one pixel right and down, the face over it
+    var c=cv.getContext('2d'),k=colours();c.clearRect(0,0,cv.width,cv.height);
+    [[1,k[1]],[0,k[0]]].forEach(function(l){glyphs.forEach(function(g){put(c,g[0],g[1]+l[0],l[0],l[1])})});
+  }
+  function counter(ms){
+    at=ms;var s=Math.floor(ms/1000),txt=Math.floor(s/3600)+':'+('0'+Math.floor(s/60)%60).slice(-2)+':'+('0'+s%60).slice(-2);
+    if(txt===shown)return;shown=txt;var x=0,g=[];
+    txt.split('').forEach(function(ch){g.push([FONT[ch],x]);x+=FONT[ch][0].length+1});paint(n,g);
+  }
+  return {
+    redraw:function(){paint(ff,[[tri,0],[tri,7]]);shown='';counter(at)},  // a new scheme's colours
+    counter:counter,
+    flicker:function(v){wrap.style.opacity=v.toFixed(2)}
+  };
+})();
+OSD.redraw();
 var scrubRaf=0;
 function scrubStop(){if(scrubRaf)cancelAnimationFrame(scrubRaf);scrubRaf=0;stage.classList.remove('ff');
   stage.style.setProperty('--ff','0');stage.style.setProperty('--jit','0px');Code.lapse(1)}
 function scrubRun(P){
-  scrubStop();stage.classList.add('ff');var t0=performance.now(),jt=0;
+  scrubStop();stage.classList.add('ff');var t0=performance.now(),last=t0,jt=0,u=P.tape;OSD.counter(u);
   function f(now){var t=now-t0;if(t>=P.span){scrubStop();return}
-    var x=lapse(t,P),level=(x-1)/Math.max(P.peak-1,1e-6);stage.style.setProperty('--ff',level.toFixed(3));
-    if(now-jt>42){jt=now;stage.style.setProperty('--jit',((2*rnd()-1)*1.5*level).toFixed(2)+'px')}
+    var x=lapse(t,P),level=(x-1)/Math.max(P.peak-1,1e-6);u+=x*(now-last);last=now;
+    stage.style.setProperty('--ff',level.toFixed(3));
+    if(now-jt>42){jt=now;stage.style.setProperty('--jit',((2*rnd()-1)*1.5*level).toFixed(2)+'px');OSD.flicker(.88+.12*rnd());OSD.counter(u)}
     Code.lapse(x);scrubRaf=requestAnimationFrame(f)}
   scrubRaf=requestAnimationFrame(f);
 }
 function loop(){
   mode='auto';Doc.clear();cancel(pasted);scrubStop();
-  var t=600;later(t,function(){hintShow('<kbd>⌃⌥Space</kbd>')});
+  var t=600;later(t,function(){capsShow(['⌃','⌥','Space'],LOOP.show-120)});  // pressed just before the box opens
   t+=LOOP.show;later(t,show);
-  later(t+300,hintHide);
   t+=T.open+LOOP.settle;  // Code builds in for a moment before the first key
   var p=plan();
   later(t+p.start,function(){scrubRun(p.P)});
   p.keys.forEach(function(ch,i){later(t+p.at[i],function(){key(ch,p.quiet[i])})});
-  t+=p.end+LOOP.send;later(t,function(){hintShow('<kbd>⌘⏎</kbd>')});
+  t+=p.end+LOOP.send;later(t,function(){capsShow(['⌘','⏎'],LOOP.go)});  // pressed at the hand-off
   t+=LOOP.go;later(t,handOff);
-  later(t+500,hintHide);
   t+=T.ringLife*1000+2600;
   later(t,function(){anim(pasted,[{opacity:1},{opacity:0}],{duration:T.close,easing:Q,fill:'forwards'})});
   later(t+T.close,loop);
@@ -624,7 +669,7 @@ function resume(){  // 10 s without the reader: the loop again, unless a sentenc
 }
 function takeOver(){  // the reader's turn: the loop stops, the box is theirs and empty
   if(mode!=='user'){
-    cancelTimers();gen++;hintHide();
+    cancelTimers();gen++;hintHide();capsHide();
     if(up&&mode==='auto'){cancel(box);cancel(dim);box.classList.add('up');dim.classList.add('up')}  // open already: it stays
     else{hideNow();show()}
     mode='user';Line.set('');
