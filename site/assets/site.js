@@ -127,9 +127,10 @@ Sheet.prototype.advance=function(dt,I){
 };
 function makeCode(cv,cap){
   var ctx=cv&&cv.getContext&&cv.getContext('2d');
-  var none={show:function(){},close:function(){},still:function(){},see:function(){},key:function(){},pulse:function(){},resize:function(){},recolour:function(){}};
+  var none={show:function(){},close:function(){},still:function(){},see:function(){},key:function(){},pulse:function(){},lapse:function(){},resize:function(){},recolour:function(){}};
   if(!ctx)return none;
   var main=null,near=null,I=0,sinceKey=1e9,age=0,cut=C.shown,keys=[],now=0,raf=0,prev=0,on=false,seen=true,K=0,A=null;
+  var lapse=1,lapseTo=1;  // scene seconds a second: above 1 while the loop's tape scrubs, eased toward lapseTo
   /* the atlases: every code glyph mirrored, in the ink, one cell each, for both sheets (the nearer one at 2^-blur of
      its pixels, so it comes out soft when scaled up); a halo, the shader's ring of radius 0 (a Gaussian, e^-2 one
      width out, nothing at two); the typed glyphs as typed, drawn when first typed */
@@ -196,9 +197,10 @@ function makeCode(cv,cap){
         var gg=sh.glyph[x];ctx.globalAlpha=Math.min(a,1)*inkA;
         ctx.drawImage(at.cv,(gg&15)*at.w,(gg>>4)*at.h,at.w,at.h,X-hw,sh.ys[r]-hh,cw,ch)}}
   }
-  /* one frame: moved on by dt (none: drawn again as it is), then drawn */
+  /* one frame: moved on by dt (none: drawn again as it is; in steps of at most 1/15 s, so a scrub's long frames light
+     every cell their heads pass), then drawn */
   function paint(dt){
-    if(dt>0){advance(dt);age+=dt}
+    if(dt>0){for(var n=Math.ceil(dt*15),k=0;k<n;k++)advance(dt/n);age+=dt}
     var L=palette(),veil=smooth(age/C.buildIn),look={head:lerp(C.head[0],C.head[1],I),top:lerp(C.top[0],C.top[1],I),halo:lerp(C.halo[0],C.halo[1],I)};
     var p=lerp(C.change[0],C.change[1],I)*dt;
     ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;ctx.clearRect(0,0,cv.width,cv.height);
@@ -211,9 +213,10 @@ function makeCode(cv,cap){
   function frame(t){
     if(!on||!seen){raf=0;return}
     raf=requestAnimationFrame(frame);
-    var fast=I>C.calm||sinceKey<C.hold;
+    var fast=I>C.calm||sinceKey<C.hold||lapse>1.01||lapseTo>1;
     if(prev&&t-prev<1000/(fast?60:C.idleRate)-4)return;
-    var dt=prev?Math.min((t-prev)/1000,.1):1/60;prev=t;paint(dt);
+    var dt=prev?Math.min((t-prev)/1000,.1):1/60;prev=t;
+    lapse+=(lapseTo-lapse)*(1-Math.exp(-dt/.12));if(Math.abs(lapse-lapseTo)<.01)lapse=lapseTo;paint(dt*lapse);
   }
   function go(){if(on&&seen&&!reduced&&!raf){prev=0;raf=requestAnimationFrame(frame)}}
   function startHead(ch){
@@ -231,6 +234,7 @@ function makeCode(cv,cap){
     see:function(v){seen=v;go()},
     key:function(ch){if(!main)return;keys.push(now);sinceKey=0;if(on&&!reduced&&ch.trim())startHead(ch)},
     pulse:function(){if(!main)return;keys.push(now);sinceKey=0},
+    lapse:function(f){lapseTo=f||1},
     resize:resize,
     recolour:function(){if(!K)return;build();if(main&&!raf)paint(0)}
   };
@@ -403,11 +407,14 @@ var Bed=(function(){
    before the caret (an insertion pushes it left by the inserted text's own width, measured alone, as Line.width does;
    a deletion glides it back), the caret move's moves both parts; each restarts from what remains of it plus the new
    step, a remainder in the same direction capped at one step, and eases to 0 over 140 ms. The newest glyph fades in
-   over 80 ms, a paragraph end's ` ¶ ` over 200 ms: its two spaces in Literata, its pilcrow in Menlo, muted. Reduced
-   motion jumps. ---------- */
+   over 80 ms, a paragraph end's ` ¶ ` over 200 ms: its two spaces in Literata, its pilcrow in Menlo, muted. The line is
+   set without ligatures or kerning (site.css .box), so each glyph takes the advance it was measured with: Literata's
+   Th or fi would fold a glyph into the one before it, and a pair such as Te or y. would move the line by up to 2.6 px
+   the step did not. Reduced motion jumps. ---------- */
 var Line=(function(){
   var bEl=box.querySelector('.ll-b>span'),aEl=box.querySelector('.ll-a>span');
   var text=[],caret=0,edit={from:0,start:0},move={from:0,start:0},raf=0,widths={},m=document.createElement('canvas').getContext('2d');
+  if('fontKerning' in m)m.fontKerning='none';  // as the line sets its glyphs (site.css .box): each its own advance
   function width(ch){
     if(widths[ch]!=null)return widths[ch];
     var w;m.font='400 30px '+SERIF;
@@ -526,31 +533,41 @@ function key(ch,quiet){  // quiet: the loop's fast-forward, where a click per ke
   else{play('letter');Code.key(ch)}
 }
 
-/* ---------- the loop: about 25 s, three paragraphs, so the line is seen carrying a longer piece: the first sentence
-   at a human pace, the middle fast-forwarded at six times it under a ▸▸ hint and without clicks, the last sentence at
-   the pace again ---------- */
+/* ---------- the loop: three paragraphs, so the line is seen carrying a longer piece, in at most 10 s from the first
+   hint to the hand-off (`LOOP`): the first two words at a human pace, the middle fast-forwarded as a tape scrubbing
+   (`scrub`: the keys at the factor that fits the rest into the time left, at least 14, without clicks; Code's curtain
+   stepped at the same factor), the last words at the pace again, then ⌘⏎ ---------- */
 var SEQ='The morning was grey and I kept circling the same paragraph, so I closed everything and started again from what I actually knew.\nThe argument is simpler than the draft makes it look. Three claims, one example each, and the figure can go.\nWhat worries me is the second claim, which rests on teh\b\bhe older data. Say so plainly, and move on.';
-var FAST={from:SEQ.indexOf('.')+1,to:SEQ.lastIndexOf('. ')+2,by:6};
+var FAST={from:SEQ.indexOf(' ',SEQ.indexOf(' ')+1)+1,to:SEQ.lastIndexOf('and move on.'),least:14};
+var LOOP={most:9600,show:600,settle:700,send:800,go:600};  // ms: hint to hand-off at most; the fixed waits in it
 var timers=[],mode='auto',idleT=0;
 function later(ms,f){var id=setTimeout(function(){var i=timers.indexOf(id);if(i>=0)timers.splice(i,1);f()},ms);timers.push(id)}
-function cancelTimers(){timers.forEach(clearTimeout);timers=[]}
+function cancelTimers(){timers.forEach(clearTimeout);timers=[];scrub(0)}
 function gap(prev,ch){  // a human pace: 90–200 ms a key, longer after a space or a full stop, a pause before fixing a typo
   if(ch==='\b')return prev==='\b'?130:420;
   var g=90+rnd()*110;if(prev===' ')g+=rnd()*150;if(prev==='.'||prev===',')g+=260;if(prev==='\n')g+=320;return g;
 }
+/* the scrub: the stage under `.ff` (site.css: the on-screen display, two tracking bands, the line's jitter and smear),
+   Code at the keys' factor; all of it eases out as the pace returns */
+var vhs=document.createElement('div');vhs.className='vhs';vhs.setAttribute('aria-hidden','true');
+vhs.innerHTML='<i class="trk"></i><i class="trk"></i><div class="osd"><i></i><b>FF</b></div>';stage.appendChild(vhs);
+function scrub(by){stage.classList.toggle('ff',by>1);Code.lapse(by>1?by:1)}
 function loop(){
-  mode='auto';pasted.textContent='';cancel(pasted);
+  mode='auto';pasted.textContent='';cancel(pasted);scrub(0);
   var t=600;later(t,function(){hintShow('<kbd>⌃⌥Space</kbd>')});
-  t+=600;later(t,show);
+  t+=LOOP.show;later(t,show);
   later(t+300,hintHide);
-  t+=T.open+900;  // Code builds in for a moment before the first key
-  var prev='';Array.from(SEQ).forEach(function(ch,i){
-    var fast=i>=FAST.from&&i<FAST.to;t+=gap(prev,ch)/(fast?FAST.by:1);prev=ch;
-    if(i===FAST.from)later(t,function(){hintShow('<kbd>▸▸</kbd>')});
-    if(i===FAST.to)later(t,hintHide);
-    later(t,function(){key(ch,fast)})});
-  t+=900;later(t,function(){hintShow('<kbd>⌘⏎</kbd>')});
-  t+=600;later(t,handOff);
+  t+=T.open+LOOP.settle;  // Code builds in for a moment before the first key
+  var keys=Array.from(SEQ),gaps=[],prev='',slow=0,fast=0;
+  keys.forEach(function(ch,i){var g=gap(prev,ch);prev=ch;gaps.push(g);if(i>=FAST.from&&i<FAST.to)fast+=g;else slow+=g});
+  var room=LOOP.most-LOOP.show-T.open-LOOP.settle-LOOP.send-LOOP.go-slow,by=Math.max(FAST.least,fast/Math.max(room,1));
+  keys.forEach(function(ch,i){
+    var quick=i>=FAST.from&&i<FAST.to;t+=gaps[i]/(quick?by:1);
+    if(i===FAST.from)later(t,function(){scrub(by)});
+    if(i===FAST.to)later(t,function(){scrub(0)});
+    later(t,function(){key(ch,quick)})});
+  t+=LOOP.send;later(t,function(){hintShow('<kbd>⌘⏎</kbd>')});
+  t+=LOOP.go;later(t,handOff);
   later(t+500,hintHide);
   t+=T.ringLife*1000+2000;
   later(t,function(){anim(pasted,[{opacity:1},{opacity:0}],{duration:T.close,easing:Q,fill:'forwards'})});

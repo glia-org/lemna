@@ -11,6 +11,17 @@
 - Site, pass 35d (2026-11-06): the loop fast-forwards its middle, since no visitor waits 50 s: the first sentence at
   a human pace, then six times that under a ▸▸ hint and without clicks, the last sentence at the pace again before ⌘⏎;
   about 25 s a loop. Untried on the live page.
+- Site, pass 35e (2026-11-06): the demo's line (and the tiles') is set without ligatures or kerning: Literata's Th and
+  fi folded the newest glyph into the one before it, and its kerning pairs (Te, y.) moved the line by up to 2.6 px at
+  30 px, which the per-glyph glide did not account for; now the line's width equals the sum of its measured glyphs
+  within 0.03 px at every key (checked through "The fig"). The loop takes 9.6 s from the first hint to the hand-off:
+  the first two words and the last three at a human pace, the middle fast-forwarded at the factor that fits it into the
+  time left (about 19, at least 14), clicks off as before, shown as a tape scrubbing in the page's ink: a VCR display at
+  the frame's top left (two blocky triangles and FF, a hard edge in the paper), two faint tracking bands drifting down
+  and softening what they cross, the line jittering by a pixel or so and smeared to the right, Code stepped at the same
+  factor so its streams pour; all of it eases out over 0.3 s as the pace returns. The ▸▸ hint is gone; reduced motion
+  shows the still frame as before. Checked in headless Chrome under `/lemna/`, by day and night, at 1440 and 390 px: no
+  console message but the check's own, 9.60 s a loop each time. Untried on the live page.
 - Site, pass 35, the page previews the launch defaults (2026-11-06; `site/`; DESIGN.md A1's two notes on the site
   follow). The page is Still's box: its paper by day and its warm dark by night as the system's appearance is, in
   Literata (a lossless Latin subset of `app/Fonts`' variable face, both axes and every feature, 224 KB woff2, with its

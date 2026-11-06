@@ -17,6 +17,9 @@
   /* the app under the dim: a light window on a light desktop by day */
   --desk:#c9ccc5;--win:#fbfbf9;--win-edge:#d9d9d4;--win-bar:#efefec;--win-dot:#d0d0cb;--win-ph:#e0e0dc;--win-ph-t:#cdcdc8;
   --win-text:#2e2e2c;
+  /* the loop's tape scrub (pass 35e): the on-screen display in the ink with a paper edge, the tracking bands, the smear */
+  --osd:rgba(63,74,60,.82);--osd-edge:rgba(243,240,232,.75);--trk:rgba(63,74,60,.05);--trk-hi:rgba(255,253,246,.5);
+  --smear:rgba(70,67,61,.2);--smear-far:rgba(70,67,61,.08);
   --serif:Literata,Charter,"Iowan Old Style",Georgia,serif;
   --mono:Menlo,ui-monospace,"SF Mono",SFMono-Regular,Consolas,"DejaVu Sans Mono",monospace;
   --r:12px}
@@ -24,7 +27,9 @@
   --paper:#1c1b18;--text:#e2daca;--copy:#a69d8e;--mark:#8c8476;--accent:#a2b88e;--line:#34312c;
   --dim:rgba(15,20,18,.62);--ink:#c9d3c4;
   --desk:#1d1e20;--win:#2b2c2f;--win-edge:#3b3c40;--win-bar:#323336;--win-dot:#55565a;--win-ph:#45464a;--win-ph-t:#55565a;
-  --win-text:#d4d5d8}}
+  --win-text:#d4d5d8;
+  --osd:rgba(226,218,202,.86);--osd-edge:rgba(15,20,18,.8);--trk:rgba(226,218,202,.035);--trk-hi:rgba(226,218,202,.13);
+  --smear:rgba(226,218,202,.2);--smear-far:rgba(226,218,202,.08)}}
 *{box-sizing:border-box}
 html{background:var(--paper);color:var(--copy)}
 body{margin:0;font:17px/1.6 var(--serif);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
@@ -85,10 +90,12 @@ h1{font-size:36px;line-height:1.22;font-weight:400;color:var(--text);max-width:3
   border-radius:10px;padding:6px 14px}
 .hint span{align-self:center}
 /* the box: 907 × 120 pt (60 % of a 1512 pt screen, 4 × Literata 30), its centre two thirds down; Still's shape: a 1 pt
-   hairline, 16 pt continuous corners (a superellipse where the browser draws one), no shadow */
+   hairline, 16 pt continuous corners (a superellipse where the browser draws one), no shadow. Its line is set glyph by
+   glyph from measured advances (site.js Line), so without ligatures and kerning: Literata's Th and fi would fold the
+   newest glyph into the one before it, and its kerning pairs (Te, y.) move the line by up to 2.6 px at 30 px */
 .box{position:absolute;left:96px;top:353px;width:907px;height:120px;background:var(--paper);border:1px solid var(--line);
   border-radius:16px;font:400 30px/1 var(--serif);color:var(--text);overflow:hidden;visibility:hidden;opacity:0;
-  font-kerning:normal}
+  font-kerning:none;font-variant-ligatures:none;font-feature-settings:"liga" 0,"clig" 0,"dlig" 0,"calt" 0,"kern" 0}
 @supports (corner-shape:superellipse(1.5)){.box{border-radius:22px;corner-shape:superellipse(1.5)}}
 .box.up,.dim.up{visibility:visible;opacity:1}
 .box:focus-within{outline:2px solid var(--accent);outline-offset:3px}
@@ -107,8 +114,34 @@ h1{font-size:36px;line-height:1.22;font-weight:400;color:var(--text);max-width:3
 .box .new{animation:fadein 80ms cubic-bezier(.23,1,.32,1)}
 .box .p.new{animation-duration:200ms}
 @keyframes fadein{from{opacity:0}}
+.box .ll-b>span,.box .ll-a>span{transition:text-shadow .3s}
 .ll-in{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;border:0;margin:0;padding:0;font-size:16px;
   color:transparent;background:transparent;caret-color:transparent;cursor:text}
+
+/* the loop's fast-forward (pass 35e), a tape scrubbing, in the page's ink: a VCR's on-screen display at the top left
+   (two blocky triangles and FF, a hard offset edge), two faint tracking bands drifting down the frame, softening what
+   they cross, the line jittering by a pixel or two and smeared to the right; all of it eases out over 0.3 s as the
+   pace returns (the jitter at once). Reduced motion never scrubs. */
+.vhs{position:absolute;left:0;top:0;width:1100px;height:620px;pointer-events:none;opacity:0;transition:opacity .3s;
+  overflow:hidden}
+.stage.ff .vhs{opacity:1}
+.osd{position:absolute;left:34px;top:30px;display:flex;align-items:flex-end;gap:10px;color:var(--osd);
+  filter:drop-shadow(2px 2px 0 var(--osd-edge))}
+.osd i{display:block;width:38px;height:24px;background:currentColor;
+  clip-path:polygon(0 0,50% 50%,50% 0,100% 50%,50% 100%,50% 50%,0 100%)}
+.osd b{font:700 15px/1 var(--mono);letter-spacing:.14em}
+.trk{position:absolute;left:0;top:0;width:100%;height:44px;transform:translateY(-60px);
+  background:repeating-linear-gradient(to bottom,transparent 0 3px,var(--trk) 3px 4px),
+    linear-gradient(to bottom,transparent,var(--trk) 25%,var(--trk-hi) 50%,var(--trk) 75%,transparent);
+  -webkit-backdrop-filter:blur(1.4px);backdrop-filter:blur(1.4px)}
+.trk+.trk{height:16px}
+.stage.ff .trk{animation:trk 1.9s linear infinite}
+.stage.ff .trk+.trk{animation-duration:2.7s;animation-delay:-1.6s}
+@keyframes trk{from{transform:translateY(-60px)}to{transform:translateY(660px)}}
+.stage.ff .ll-b,.stage.ff .ll-a{animation:jit .42s steps(1,end) infinite}
+@keyframes jit{0%{translate:0}14%{translate:1.5px}29%{translate:-1px}43%{translate:.5px}57%{translate:-1.5px}
+  71%{translate:1px}86%{translate:-.5px}}
+.stage.ff .box .ll-b>span,.stage.ff .box .ll-a>span{text-shadow:3px 0 0 var(--smear),7px 0 1px var(--smear-far)}
 
 .under{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 20px;max-width:1100px;
   margin-top:12px;font-size:14px}
