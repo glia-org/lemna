@@ -7,9 +7,10 @@ import Darwin
 public enum OtherSound {
     /// Every magnitude of DK1 in one place. Times in seconds.
     public enum Tuning {
-        /// The shade: `duckGain` dB and a one-pole low-pass at `duckCutoff` Hz, matched to the analog pole (−2.9 dB
-        /// at the cutoff at 48 kHz, 6 dB an octave above it), reached and left in a straight glide over `duckGlide`.
-        public static let duckGain = -6.0, duckCutoff = 4000.0, duckGlide = 0.25
+        /// The shade: `duckGain` dB and two one-pole low-passes in series at `duckCutoff` Hz, each matched to the
+        /// analog pole (−2.9 dB at the cutoff at 48 kHz, so −5.8 dB there and 12 dB an octave above it; pass 40b, the
+        /// one pole at 4 kHz left music bright), reached and left in a straight glide over `duckGlide`.
+        public static let duckGain = -6.0, duckCutoff = 2000.0, duckGlide = 0.25
         /// The watch over a tap that shades: only silence for `duckWatch` while another app plays to the same output
         /// takes the tap down at once, so no app stays muted longer: with nothing heard since launch it is macOS
         /// giving no sound (every call succeeds then and the tap hears zeros), and the setting goes off; after sound
@@ -40,14 +41,14 @@ public enum OtherSound {
         Float(1 / max(seconds * sampleRate, 1))
     }
 
-    /// The shade on a stereo pair, the render thread's: a gain and the low-pass gliding together between open (gain 1,
-    /// no filter: the input as it is) and shaded, toward the target each call is given (0 open, 1 shaded) by the step
+    /// The shade on a stereo pair, the render thread's: a gain and the low-pass (two poles in series) gliding together
+    /// between open (gain 1, no filter: the input as it is) and shaded, toward the target each call is given (0 open, 1 shaded) by the step
     /// it is given, so a new target never meets an old step. Allocates nothing and takes no lock after `init`.
     public final class Shade {
         public let shadedGain: Float, shadedCoefficient: Float
         /// 0 open, 1 shaded; where the glide is now.
         public private(set) var amount: Float = 0
-        private var left: Float = 0, right: Float = 0
+        private var left: Float = 0, right: Float = 0, left2: Float = 0, right2: Float = 0
 
         public init(sampleRate: Double, decibels: Double = Tuning.duckGain, cutoff: Double = Tuning.duckCutoff) {
             shadedGain = OtherSound.gain(decibels: decibels)
@@ -60,7 +61,7 @@ public enum OtherSound {
                            inLeft: UnsafePointer<Float>, inRight: UnsafePointer<Float>, inStride: Int,
                            outLeft: UnsafeMutablePointer<Float>, outRight: UnsafeMutablePointer<Float>?,
                            outStride: Int) {
-            var (l, r, amount) = (left, right, self.amount)
+            var (l, r, l2, r2, amount) = (left, right, left2, right2, self.amount)
             for i in 0..<frames {
                 if amount < target { amount = min(amount + step, target) } else if amount > target {
                     amount = max(amount - step, target)
@@ -68,10 +69,12 @@ public enum OtherSound {
                 let g = 1 + (shadedGain - 1) * amount, a = 1 + (shadedCoefficient - 1) * amount
                 l += a * (inLeft[i * inStride] - l)
                 r += a * (inRight[i * inStride] - r)
-                outLeft[i * outStride] = l * g
-                outRight?[i * outStride] = r * g
+                l2 += a * (l - l2)
+                r2 += a * (r - r2)
+                outLeft[i * outStride] = l2 * g
+                outRight?[i * outStride] = r2 * g
             }
-            (left, right, self.amount) = (l, r, amount)
+            (left, right, left2, right2, self.amount) = (l, r, l2, r2, amount)
         }
     }
 
@@ -285,14 +288,14 @@ public enum OtherSound {
             return .stop
         }
 
-        /// The Settings window's line under the checkbox.
+        /// The Settings window's line under the checkbox; empty when the tick alone says it (off, or on and checked).
         public var line: String {
-            if let failure, on { return "On. Last time it could not start: \(failure)." }
+            if let failure, on { return "Last time it could not start: \(failure)." }
             switch phase {
-            case .off: return "Off."
+            case .off: return ""  // the tick says off and on (pass 40b)
             case .trial: return "Asking macOS…"
             case .armed, .running, .rebuilding:
-                return unchecked ? "On. Not checked yet: nothing else was playing." : "On."
+                return unchecked ? "Not checked yet: nothing else was playing." : ""
             case .denied:
                 return "Needs permission: allow Lemna in System Settings › Privacy & Security › Screen & System "
                     + "Audio Recording, then tick it again."

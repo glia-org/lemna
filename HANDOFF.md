@@ -2,17 +2,23 @@
 
 `DESIGN.md` holds the decisions and the plan. This file says what is done and what is next.
 
-## State (2026-11-06)
+## State (2026-11-10)
 
+- App, pass 40b (2026-11-10; DESIGN.md DK1 amended): after the first live try of Other sound (the level right, music
+  still bright) the shade's low-pass is two one-poles in series at 2 kHz, 12 dB an octave, in place of one pole at
+  4 kHz; gain, glide, tap and watch unchanged. The state line is empty when the tick alone says it (off, or on and
+  checked). Untried live. Toolchain note: with Xcode installed and selected (`xcode-select -p` under Xcode.app),
+  run plain `swift test`: the `-F …/CommandLineTools/Library/Developer/Frameworks` flags link the Command Line Tools'
+  older Testing.framework against Xcode's compiler and fail with an undefined `Testing.SourceLocation.init`.
 - App, pass 40, other sound (2026-11-06; DESIGN.md DK1 new, SP2 amended, the user's decision): opt-in, off by
   default, ticked only in the Settings window's new Other sound group (between Sound and Ambience). While the box is
-  up, what other apps play on the default output is 6 dB quieter and duller (a one-pole low-pass at 4 kHz), through a
+  up, what other apps play on the default output is 6 dB quieter and duller (a low-pass; two poles at 2 kHz since 40b), through a
   Core Audio process tap that leaves Lemna's own clicks and bed out. Ticking it starts a trial at once, so macOS's
   System Audio Recording prompt comes over the window; a watch unticks it when the tap hears only silence while
   another app plays (what a denied permission gives). The window is 427 × 764 pt. Tests 190 (183); release build;
   nothing launched, and no tap was ever started. Try first, in this order:
   - Music playing in another app, Settings… → tick "Quieten other apps while the box is up": macOS's prompt over the
-    window (or none: say which), Allow; the line goes from "Asking macOS…" to "On.", the music unchanged meanwhile.
+    window (or none: say which), Allow; the line goes from "Asking macOS…" to nothing (the tick says on; pass 40b), the music unchanged meanwhile.
   - Summon: within a quarter second the music is a little quieter and duller, with a short gap at the switch; type:
     the clicks and the bed as before; Esc: the music back as it was, the gap again about 0.6 s later.
   - With the box up, switch the output (headphones in, or another in Control Centre): the shaded music follows to the

@@ -1,4 +1,4 @@
-// Other sound (DK1, pass 40): the shade's response at 1, 4 and 16 kHz against the one-pole's own, its glide, the watch
+// Other sound (DK1, pass 40, 40b): the shade's response at 1, 2, 4 and 16 kHz against two one-poles' own, its glide, the watch
 // that tells a tap macOS gives no sound from one that hears, and the states with what each event asks of the tap. No
 // audio hardware: the tap itself is the app target's. No Foundation here.
 import Darwin
@@ -10,7 +10,7 @@ private typealias T = OtherSound.Tuning
 /// The steady level, in dB, of a sine of `hz` through `shade` held at `target`: its RMS over the second half (the glide
 /// done by then) against a full-scale sine's (a sample peak would miss the crest at 16 kHz, three samples a cycle).
 private func level(_ shade: OtherSound.Shade, _ hz: Double, target: Float = 1, rate: Double = 48000) -> Double {
-    let n = Int(0.6 * rate)  // the glide's 0.25 s, then 0.3 s measured: whole cycles of 1, 4 and 16 kHz at 48 kHz
+    let n = Int(0.6 * rate)  // the glide's 0.25 s, then 0.3 s measured: whole cycles of 1, 2, 4 and 16 kHz at 48 kHz
     let x = (0..<n).map { Float(sin(2 * Double.pi * hz * Double($0) / rate)) }
     var y = [Float](repeating: 0, count: n)
     x.withUnsafeBufferPointer { xp in
@@ -31,22 +31,24 @@ private func onePole(_ hz: Double, rate: Double = 48000) -> Double {
     return 20 * log10(a / sqrt(1 - 2 * b * cos(w) + b * b))
 }
 
-@Test func theShadeIsSixDecibelsDownAndSofterAboveFourKilohertz() {
-    #expect(T.duckGain == -6 && T.duckCutoff == 4000 && T.duckGlide == 0.25)
+@Test func theShadeIsSixDecibelsDownAndTwelveAnOctaveSofterAboveTwoKilohertz() {
+    #expect(T.duckGain == -6 && T.duckCutoff == 2000 && T.duckGlide == 0.25)
     var shaded: [Double] = []
-    for hz in [1000.0, 4000, 16000] {
+    for hz in [1000.0, 2000, 4000, 16000] {
         let got = level(OtherSound.Shade(sampleRate: 48000), hz)
-        #expect(abs(got - (T.duckGain + onePole(hz))) < 0.2, "\(hz) Hz: \(got) dB")
+        #expect(abs(got - (T.duckGain + 2 * onePole(hz))) < 0.3, "\(hz) Hz: \(got) dB")
         shaded.append(got)
     }
-    // About −6.3, −8.9 and −16.7 dB: the lows barely touched, the cutoff near 3 dB under the gain, the highs softer.
-    #expect(abs(shaded[0] + 6.3) < 0.2 && abs(shaded[1] + 8.9) < 0.2 && abs(shaded[2] + 16.7) < 0.3)
-    #expect(shaded[0] > shaded[1] && shaded[1] > shaded[2])
+    // About −7.9, −12.0, −19.8 and −39 dB: the lows a little touched, the cutoff 6 dB under the gain, an octave up
+    // 12 dB further, the top gone (pass 40b: one pole at 4 kHz, −8.9 and −16.7 dB at 4 and 16 kHz, left music bright).
+    #expect(abs(shaded[0] + 7.9) < 0.3 && abs(shaded[1] + 12.0) < 0.3 && abs(shaded[2] + 19.8) < 0.3
+            && abs(shaded[3] + 39) < 1)
+    #expect(shaded[0] > shaded[1] && shaded[1] > shaded[2] && shaded[2] > shaded[3])
     // Open, the input passes as it is at every frequency.
     for hz in [1000.0, 16000] { #expect(abs(level(OtherSound.Shade(sampleRate: 48000), hz, target: 0)) < 0.01) }
-    // At 44.1 kHz the cutoff stays at 4 kHz.
-    let cd = level(OtherSound.Shade(sampleRate: 44100), 4000, rate: 44100)
-    #expect(abs(cd - (T.duckGain + onePole(4000, rate: 44100))) < 0.2)
+    // At 44.1 kHz the cutoff stays at 2 kHz.
+    let cd = level(OtherSound.Shade(sampleRate: 44100), 2000, rate: 44100)
+    #expect(abs(cd - (T.duckGain + 2 * onePole(2000, rate: 44100))) < 0.3)
 }
 
 @Test func theGlideTakesAQuarterSecondEachWayAndTurnsBackMidway() {
@@ -120,23 +122,23 @@ private func onePole(_ hz: Double, rate: Double = 48000) -> Double {
 
 @Test func theStatesTrialAtTheTickRunWhileTheBoxIsUpAndGoAtTheHide() {
     var s = OtherSound.State(on: false)
-    #expect(s.phase == .off && !s.on && s.line == "Off.")
+    #expect(s.phase == .off && !s.on && s.line == "")
     #expect(s.want(true) == .none && s.want(false) == .none)  // off: the box comes and goes, no tap
     #expect(s.tick(true) == .trial)
     #expect(s.phase == .trial && s.on && s.line == "Asking macOS…")
     #expect(s.tick(true) == .none)
     #expect(s.watched(.heard) == .stop)  // sound came: allowed; the trial's tap goes
-    #expect(s.phase == .armed && s.heard && s.line == "On.")
+    #expect(s.phase == .armed && s.heard && s.line == "")
     #expect(s.want(true) == .start && s.phase == .running)
     #expect(s.want(true) == .none)  // called again at the same state: nothing new
     #expect(s.watched(.heard) == .none && s.phase == .running)
     #expect(s.want(false) == .release && s.phase == .armed)
     #expect(s.want(true) == .start)  // a summon during the glide out: shaded again
-    #expect(s.tick(false) == .stop && s.phase == .off && s.line == "Off.")
+    #expect(s.tick(false) == .stop && s.phase == .off && s.line == "")
     #expect(s.want(false) == .none && s.want(true) == .none)
     // Kept on at launch: armed, nothing made until the box is up.
     var k = OtherSound.State(on: true)
-    #expect(k.phase == .armed && k.on && !k.heard && k.line == "On.")
+    #expect(k.phase == .armed && k.on && !k.heard && k.line == "")
     #expect(k.want(true) == .start)
     // A summon right after the tick, before the trial decided: the shading tap instead.
     var t = OtherSound.State(on: false)
@@ -189,23 +191,23 @@ private func onePole(_ hz: Double, rate: Double = 48000) -> Double {
     _ = h.tick(true)
     _ = h.watched(.heard)
     _ = h.want(true)
-    #expect(h.watched(.silent) == .stop && h.phase == .armed && h.on && h.line == "On.")
+    #expect(h.watched(.silent) == .stop && h.phase == .armed && h.on && h.line == "")
     #expect(h.want(false) == .none && h.want(true) == .start)
     // A tap that will not start, or stops running: down at once, still on, the line says why; the next summon tries.
     var f = OtherSound.State(on: true)
     _ = f.want(true)
     #expect(f.failed("no output device") == .stop && f.phase == .armed && f.on)
-    #expect(f.line == "On. Last time it could not start: no output device.")
+    #expect(f.line == "Last time it could not start: no output device.")
     #expect(f.want(false) == .none && f.want(true) == .start)
-    #expect(f.started() == .none && f.line == "On.")
-    #expect(f.watched(.dead) == .stop && f.line == "On. Last time it could not start: the output did not run.")
+    #expect(f.started() == .none && f.line == "")
+    #expect(f.watched(.dead) == .stop && f.line == "Last time it could not start: the output did not run.")
     // The trial over with nothing else playing: on, not checked yet; the first sound heard checks it.
     var q = OtherSound.State(on: false)
     _ = q.tick(true)
     #expect(q.trialEnded() == .stop && q.phase == .armed)
-    #expect(q.line == "On. Not checked yet: nothing else was playing.")
+    #expect(q.line == "Not checked yet: nothing else was playing.")
     _ = q.want(true)
     _ = q.watched(.heard)
-    #expect(q.line == "On." && q.trialEnded() == .none)
+    #expect(q.line == "" && q.trialEnded() == .none)
     #expect(OtherSound.State.unavailable == "Not on this macOS: it needs macOS 14.2 or later.")
 }

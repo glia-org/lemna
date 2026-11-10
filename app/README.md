@@ -1732,7 +1732,7 @@ Pass 40, other sound (DESIGN.md DK1 new, SP2 amended; 2026-11-06; the user's dec
   Screen & System Audio Recording, then tick it again.", "On. Last time it could not start: …", or before macOS 14.2,
   greyed, "Not on this macOS: it needs macOS 14.2 or later." The window is 427 × 764 pt inside its title bar (599
   before), measured offscreen with a throwaway build of its code.
-- `OtherSound.swift` (LemnaCore): `Tuning` (`duckGain` −6 dB, `duckCutoff` 4000 Hz, `duckGlide` 0.25 s, `duckWatch`
+- `OtherSound.swift` (LemnaCore): `Tuning` (`duckGain` −6 dB, `duckCutoff` 2000 Hz (two poles, pass 40b), `duckGlide` 0.25 s, `duckWatch`
   3 s, `duckTrial` 15 s, `duckRelease` 0.6 s, `silence` −120 dBFS); `Shade`, the gain and one-pole low-pass gliding
   together toward a target by a step, over strided float buffers; `Watch`, fed the IO block's counts (cycles, cycles
   with sound) and whether another process plays to the output: `heard`, `silent` (no buffer with sound for the window
@@ -1775,3 +1775,10 @@ Pass 40, other sound (DESIGN.md DK1 new, SP2 amended; 2026-11-06; the user's dec
   of more than two channels; the default output switched with the box up; 44.1 and 96 kHz outputs and a rate change;
   sleep and wake with the box up; an app holding a silent stream open taken for a denial; a menu-bar recording
   indicator; CPU use; Lemna's own clicks and bed unchanged throughout.
+
+Pass 40b, a duller shade (DESIGN.md DK1 amended; 2026-11-10; after the first live try)
+
+- The shade's low-pass is two one-poles in series at 2 kHz (12 dB an octave; with the gain about −8 dB at 1 kHz, −12
+  at 2, −20 at 4, −39 at 16 kHz) in place of one pole at 4 kHz, which left music bright. `Shade` keeps a second state
+  per channel; gain, glide, tap and watch unchanged. `OtherSoundTests` measures 1, 2, 4 and 16 kHz against the two
+  poles' transfer function. The Settings state line is empty for off and for on-and-checked: the tick says it.
