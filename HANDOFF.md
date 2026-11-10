@@ -4,6 +4,8 @@
 
 ## State (2026-11-10)
 
+- Site (2026-11-10): a facts line on Other sound (opt-in in Settings, quieter and softer while the box is up, the
+  one-time system-audio permission, nothing recorded). Untried on the live page.
 - App, pass 40b (2026-11-10; DESIGN.md DK1 amended): after the first live try of Other sound (the level right, music
   still bright) the shade's low-pass is two one-poles in series at 2 kHz, 12 dB an octave, in place of one pole at
   4 kHz; gain, glide, tap and watch unchanged. The state line is empty when the tick alone says it (off, or on and
