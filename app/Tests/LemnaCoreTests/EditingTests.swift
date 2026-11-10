@@ -2,8 +2,8 @@
 // unit, and the edits each key hands the journal; since pass 29 the selection: every move with ⇧, ⌘A, the collapse of
 // a plain move, typing and pending text over a selection, the four deletes of one, and what ⌘C and ⌘X take; since
 // pass 29b the line break (⇧⏎), one Character inside its paragraph for every key; since pass 30 ⌘V's text, an emoji
-// pasted, and ⌘Z's and ⌘⇧Z's groups, through a `Writer` that records as the line does. No Foundation here (see
-// RenderTests.swift).
+// pasted, and ⌘Z's and ⌘⇧Z's groups, through a `Writer` that records as the line does; since pass 41 ⌘Z's second
+// chance, the last hand-off's text. No Foundation here (see RenderTests.swift).
 import LemnaJournal
 import Testing
 @testable import LemnaCore
@@ -408,6 +408,10 @@ struct Writer {
     }
     @discardableResult mutating func undo() -> Change { revisit(history.undo(&text)) }
     @discardableResult mutating func redo() -> Change { revisit(history.redo(&text)) }
+    /// ⌘Z with nothing to undo (pass 41): the second chance, recorded as the line records it.
+    @discardableResult mutating func restore(_ chance: inout SecondChance) -> Change {
+        revisit(chance.restore(&text, history: &history, at: t + 0.1))
+    }
     private mutating func revisit(_ change: Change) -> Change {
         t += 0.1
         edits += change.edits
@@ -613,4 +617,66 @@ struct Writer {
     var replayed = Text("\u{1F1E9}x\u{1F1EA}")
     for e in change.edits { replayed.apply(e) }
     #expect(replayed.plainText == t.plainText)
+}
+
+// MARK: The second chance (pass 41)
+
+/// The last hand-off's text, in memory alone (`SecondChance`, DESIGN.md O1+O2+O3 and E2): nothing at launch; kept
+/// after a paste, a Copy or a Save… as the session held it, its line breaks and paragraph ends as they were; the next
+/// hand-off's text takes its place; Discard… drops it.
+@Test func theSecondChanceKeepsTheLastHandOffUntilTheNextOrADiscard() {
+    var chance = SecondChance()
+    #expect(chance.text == nil)
+    chance.keep("first" + br + "line\nsecond")
+    #expect(chance.text == "first\u{2028}line\nsecond")
+    chance.keep("next")
+    #expect(chance.text == "next")
+    chance.drop()
+    var line = Text(), history = History()
+    let none = chance.restore(&line, history: &history, at: 1)
+    #expect(chance.text == nil && none == Change() && line.count == 0)
+}
+
+/// ⌘Z gives it back only on the empty line with nothing to undo: not over text, not while a group is left (the ⌫ that
+/// emptied the line, and the typing before it, are taken back first); then once, as one `insert(at:)` with the caret at
+/// its end, and used up.
+@Test func theSecondChanceComesBackOnlyOnTheEmptyLineWithNothingToUndo() {
+    var w = Writer(), chance = SecondChance()
+    chance.keep("kept")
+    w.type("a")
+    #expect(w.restore(&chance) == Change() && w.text.plainText == "a")
+    w.backspace()
+    #expect(w.restore(&chance) == Change() && w.text.plainText == "" && w.history.canUndo)
+    w.undo()
+    w.undo()
+    #expect(w.text.plainText == "" && !w.history.canUndo && chance.text == "kept")
+    #expect(w.restore(&chance) == Change(edits: [.insert(at: 0, "kept")], motion: .before(added: "kept", removed: "")))
+    #expect(marked(w.text) == "kept|" && chance.text == nil && w.replays)
+    #expect(w.redo() == Change())  // the restore is a new edit: what ⌘⇧Z could bring back before it is gone
+    w.undo()
+    #expect(w.text.plainText == "" && w.restore(&chance) == Change() && w.undo() == Change())  // once only
+}
+
+/// Put back, it is the session's text as it went out, so R1 gives the output the hand-off gave and the new session's
+/// journal replays it; one group of ⌘Z's of its own: typing after it does not join it, a further ⌘Z takes it away,
+/// ⌘⇧Z brings it back.
+@Test func theSecondChanceRestoresTheTextThatWentOutAsOneGroup() {
+    var first = Writer()
+    first.type("the  first one.  then")
+    first.lineBreak()
+    first.type("a line", after: History.pause)
+    first.returnKey()
+    first.paste("🦆 next")
+    let went = first.text.plainText, out = Mechanical.apply(went).text
+    var chance = SecondChance()
+    chance.keep(went)  // the hand-off: the line's text, not R1's
+    var next = Writer()  // the new session: an empty line, nothing to undo
+    next.restore(&chance)
+    #expect(next.text == Text(went) && Mechanical.apply(next.text.plainText).text == out)
+    #expect(next.edits == [.insert(at: 0, went)] && next.replays)
+    next.type("!")
+    next.undo()
+    #expect(next.text == Text(went))
+    #expect(next.undo().edits == [.delete(at: 0, count: went.count)] && next.text.plainText == "" && next.replays)
+    #expect(next.redo().edits == [.insert(at: 0, went)] && marked(next.text) == went + "|" && next.replays)
 }

@@ -1098,8 +1098,9 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         }
     }
 
-    /// The session is over: key destroyed, file deleted, the surface cleared, a new session begun. If the key store
-    /// refuses, the session stays, writing goes on and an alert says why; false then.
+    /// The session is over: key destroyed, file deleted, the surface cleared, a new session begun; a hand-off's text
+    /// kept in memory alone for ⌘Z on the empty line (pass 41), Discard… dropping it. If the key store refuses, the
+    /// session stays, writing goes on and an alert says why; false then.
     @discardableResult private func end(discard: Bool) -> Bool {
         defer { updateBed() }  // writing goes on: the bed back in when the container stayed (a ⌘⏎ that copied)
         do {
@@ -1112,7 +1113,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             a.beginSheetModal(for: questionHost())
             return false
         }
-        view.load(keeper.open())
+        view.load(keeper.open(), handedOff: !discard)
         session.started()
         warnIfNotKept()
         return true

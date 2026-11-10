@@ -27,6 +27,8 @@ final class LineView: NSView, NSTextInputClient {
     private var marked = ""
     /// ⌘Z and ⌘⇧Z (pass 30): the groups of edits since the line was loaded.
     private var history = History()
+    /// The last hand-off's text, in memory only, for ⌘Z on the empty line (pass 41).
+    private var secondChance = SecondChance()
     /// Each change to the text, as the journal records it; called on the key event.
     var onEdit: (Edit) -> Void = { _ in }
     /// Clicks on the keys that change the text, played before the edit is laid out and drawn so the sound leaves
@@ -233,8 +235,11 @@ final class LineView: NSView, NSTextInputClient {
 
     // MARK: Session
 
-    /// Shows `t` at rest and takes keys: the restore at launch, and the clear after a session ends.
-    func load(_ t: Text) {
+    /// Shows `t` at rest and takes keys: the restore at launch, and the clear after a session ends. `handedOff`: that
+    /// session went out (a paste, a Copy, a Save…), and its text, as the line still holds it, is kept for ⌘Z's second
+    /// chance (pass 41); else (Discard…, the launch) nothing is.
+    func load(_ t: Text, handedOff: Bool = false) {
+        if handedOff { secondChance.keep(text.plainText) } else { secondChance.drop() }
         (text, marked, glide, slide, entrance, accepting) = (t, "", Glide(), Glide(), Entrance(), true)
         history = History()  // nothing to undo in a restored or a new session
         strip.isHidden = false  // a hand-off's cut hid it
@@ -386,10 +391,13 @@ final class LineView: NSView, NSTextInputClient {
 
     /// ⌘Z: the last group of edits taken back (`History.undo`), the text, the caret and the selection as they were
     /// before it, by the journal's ordinary edits; ⌫'s click and the ambience's ⌫, once. Pending text goes first.
-    /// Nothing to undo: nothing.
+    /// Nothing to undo: on the empty line with no pending text, the last hand-off's text back (pass 41,
+    /// `SecondChance.restore`), fading in as ⌘Z's text does, with the same click and ambience event; else nothing.
     @objc func undo(_ sender: Any?) {
         guard accepting else { return }
-        revisit(history.undo(&text), click: .backspace, ambience: .backspace)
+        let change = !history.canUndo && marked.isEmpty
+            ? secondChance.restore(&text, history: &history, at: CACurrentMediaTime()) : history.undo(&text)
+        revisit(change, click: .backspace, ambience: .backspace)
     }
 
     /// ⌘⇧Z: the group ⌘Z took back, again; a typed key's click and the ambience's glyph (the last Character it puts

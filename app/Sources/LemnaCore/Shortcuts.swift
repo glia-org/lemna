@@ -11,7 +11,7 @@ public enum Shortcuts {
 
     /// The hidden main menu's key equivalents (`mainMenu()`) and the keys LineView takes through AppKit's key bindings
     /// (B4), in the order of a session: the hand-offs and Esc, writing, moving, editing, the rest. ⇧ with any move
-    /// selects; its row names the plain ones.
+    /// selects; its row names the plain ones. ⌘Z has a second row, the second chance on the empty line (pass 41).
     public static let overview: [Row] = [
         Row(chords: [c(0x24, command)], label: "Send into the app"),
         Row(chords: [c(0x24, shift | command)], label: "Copy"),
@@ -24,6 +24,7 @@ public enum Shortcuts {
         Row(chords: [c(0x7B, shift), c(0x7C, shift)], label: "Select (⇧ with any move)"),
         Row(chords: [c(0x33, option), c(0x75, option)], label: "Delete a word"),
         Row(chords: [c(0x06, command), c(0x06, shift | command)], label: "Undo, redo"),
+        Row(chords: [c(0x06, command)], label: "On the empty line: the text that last went out"),
         Row(chords: [c(0x00, command), c(0x08, command), c(0x07, command), c(0x09, command)],
             label: "Select all, copy, cut, paste"),
         Row(chords: [c(0x31, control | command)], label: "Emoji & Symbols"),

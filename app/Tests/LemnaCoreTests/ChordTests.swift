@@ -122,13 +122,14 @@ private let lemna = [("Done", "\r", cmd), ("Copy", "\r", cmd | shift), ("Save…
 
 @Test func theOverviewListsEachChordOnceAsMenusWriteIt() {
     let rows = Shortcuts.overview, chords = rows.flatMap(\.chords)
-    #expect(Set(chords).count == chords.count && Set(rows.map(\.label)).count == rows.count)
+    // Each chord once but ⌘Z, whose second row is the second chance on the empty line (pass 41).
+    #expect(Set(chords).count == chords.count - 1 && Set(rows.map(\.label)).count == rows.count)
     for c in chords {
         let g = c.glyphs(letter: Chord.usLetter)
         #expect(!g.isEmpty && !g.contains("Key"))
     }
     #expect(rows.map(Shortcuts.glyphs) == ["⌘↩", "⇧⌘↩", "⌘S", "⎋", "↩", "⇧↩", "⌥← ⌥→", "⌘← ⌘→", "⇧← ⇧→", "⌥⌫ ⌥⌦",
-                                           "⌘Z ⇧⌘Z", "⌘A ⌘C ⌘X ⌘V", "⌃⌘Space", "⌘K", "⌃⌘F"])
+                                           "⌘Z ⇧⌘Z", "⌘Z", "⌘A ⌘C ⌘X ⌘V", "⌃⌘Space", "⌘K", "⌃⌘F"])
     // Every ⌘ chord but the caret's moves is a key equivalent of the main menu, so it is what the box does.
     for c in chords where c.modifiers & cmd != 0 && ![0x7B, 0x7C].contains(c.key) {
         #expect(lemna.contains { $0.equivalent == c.equivalent() && $0.modifiers == c.modifiers })

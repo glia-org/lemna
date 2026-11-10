@@ -4,6 +4,18 @@
 
 ## State (2026-11-10)
 
+- App, pass 41, a second chance (2026-11-10; DESIGN.md O1+O2+O3 and E2 amended, the user's decision): a posted ⌘V
+  that lands on no text field cannot be detected, and the clipboard item is concealed from clipboard managers, so the
+  text of the last paste, Copy or Save… now stays in Lemna's memory alone (not on disk, not in the journal or the
+  defaults) until the next hand-off, Discard… or quit. ⌘Z on the empty line with nothing to undo puts it back, once:
+  one journal insert, one ⌘Z group (⌘Z again takes it away, ⌘⇧Z brings it back), faded in with ⌫'s click. The Settings
+  overview has a second ⌘Z row; the window is 427 × 781 pt (764 before). A site facts line. Tests 193 (190); debug
+  build only; nothing launched. Try, in the box and in the window (⌃⌘F):
+  - Summon over Finder with a file selected (no text field), write, ⌘⏎: nothing lands. Summon, ⌘Z: the text back as
+    it was (line breaks, paragraph ends), fading in; ⌘Z: gone; ⌘⇧Z: back; ⌘⏎ into a text field pastes it.
+  - Copy (⌘⇧⏎), summon, type a letter and ⌫ it: ⌘Z twice brings the letter back and takes it away, a third brings
+    the copied text. Copy it again, summon, write something new and Discard… it: ⌘Z on the empty line then does
+    nothing (the discard took the copied text with it).
 - Site (2026-11-10): a facts line on Other sound (opt-in in Settings, quieter and softer while the box is up, the
   one-time system-audio permission, nothing recorded). Untried on the live page.
 - App, pass 40b (2026-11-10; DESIGN.md DK1 amended): after the first live try of Other sound (the level right, music

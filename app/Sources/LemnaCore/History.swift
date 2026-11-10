@@ -1,7 +1,8 @@
 // ⌘Z and ⌘⇧Z (DESIGN.md B4, pass 30): the undo stack, beside the text and never in the journal. A group is the text as
 // it stood before some keys and as they left it; ⌘Z makes the text the one before again, ⌘⇧Z the one after, through
 // `Text.become`, which takes the journal's ordinary delete and insert: the journal stays the truth, and its replay
-// shows what the screen showed. Not NSUndoManager: free of AppKit, so the tests drive it as the line does.
+// shows what the screen showed. Not NSUndoManager: free of AppKit, so the tests drive it as the line does. Since pass
+// 41 beside it the second chance (`SecondChance`): the last hand-off's text, which ⌘Z with nothing to undo puts back.
 
 public struct History {
     /// How a key's edit joins the group before it.
@@ -46,6 +47,9 @@ public struct History {
     /// A move or a change of the selection: the next key starts a group.
     public mutating func close() { open = false }
 
+    /// Whether ⌘Z has a group to take back; with none, on the empty line, it may give the second chance (pass 41).
+    public var canUndo: Bool { !undos.isEmpty }
+
     /// ⌘Z: the text, its caret and its selection as they stood before the last group, by `Text.become`'s edits; nothing
     /// when there is none.
     public mutating func undo(_ text: inout Text) -> Change {
@@ -61,5 +65,35 @@ public struct History {
         undos.append(g)
         open = false
         return text.become(g.after)
+    }
+}
+
+/// ⌘Z's second chance (DESIGN.md O1+O2+O3 and E2, pass 41): the text of the last paste, Copy or Save…, kept in memory
+/// only (never in the journal, on disk or in the defaults) until the next hand-off replaces it, Discard… drops it or
+/// Lemna quits. A posted ⌘V that lands on no text field does nothing, and Lemna cannot tell; the clipboard still has
+/// the text (I1), but Lemna's item is concealed, so no clipboard manager keeps it, and the session is finished at once
+/// (E2). Kept as the session held it (paragraph ends "\n", line breaks `Text.lineBreak`), not R1's output, so it comes
+/// back as the line showed it, and R1 makes of it what it made at the hand-off.
+public struct SecondChance {
+    /// The text kept; nil when there is none.
+    public private(set) var text: String?
+
+    public init() {}
+
+    /// A paste, a Copy or a Save… went out: its text, as the session held it, takes the place of the one kept.
+    public mutating func keep(_ handedOff: String) { text = handedOff }
+
+    /// Discard…: nothing is kept.
+    public mutating func drop() { text = nil }
+
+    /// ⌘Z on the empty line with nothing to undo: the kept text typed back in one `insert(at:)`, the journal's own
+    /// edit, so the replay gives what the screen shows; the caret at its end; a group of its own (`alone`), so a
+    /// further ⌘Z takes it away and ⌘⇧Z brings it back. Once: restoring uses it up. Else nothing, and ⌘Z is as before.
+    public mutating func restore(_ line: inout Text, history: inout History, at t: Double) -> Change {
+        guard line.count == 0, !history.canUndo, let kept = text else { return Change() }
+        text = nil
+        let before = line, change = line.insert(kept)
+        history.record(change, from: before, to: line, kind: .alone, at: t)
+        return change
     }
 }

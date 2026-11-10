@@ -84,7 +84,7 @@ git-ignored.
 - `Sources/LemnaCore` (no AppKit): `Text.swift` the model (one string with `"\n"` between paragraphs, U+2028 for a
   line break inside one, and a caret in Characters; each key's edits and motion as a `Change`; a journal edit applied,
   the replay; the line's two parts around the caret with ` ¶ ` and ` ↵ `; since pass 30 a paste's text and ⌘Z's way
-  back to a text as ordinary edits), `History.swift` (pass 30) the undo stack and its groups, `Line.swift` the geometry and drawing (Core Text shaping around the caret, the two
+  back to a text as ordinary edits), `History.swift` (pass 30) the undo stack and its groups (since pass 41 beside it `SecondChance`, the last hand-off's text), `Line.swift` the geometry and drawing (Core Text shaping around the caret, the two
   fades, the clips at the caret, caret, the band, the newest glyphs' look, the colours), `Glide.swift` the glide, the curve
   (`Curve.easeOutQuint`) and the newest glyphs' entrance (`Entrance`), `Effects.swift` the Effects submenu's choice and
   every effect's magnitude (`Effects.Tuning`), `Ambience.swift` the ambience's choice (the Settings window's since pass 39), every magnitude of the
@@ -123,8 +123,8 @@ git-ignored.
   menu-bar item with Lemna's menu; `Settings.swift` (pass 36) the Settings window and the chord's field (`Recorder`).
 - `Tests/LemnaCoreTests`: the model, the glide, the fades, nothing before the caret drawn right of it, the text after it
   from the caret to 95 %, the renders (`CoreTests`, `RenderTests`); every key of B4, its boundaries, the word rules,
-  Characters with é, 🙂 and 👩‍💻, the replay of every key's edits, since pass 30 a paste's text and ⌘Z's groups
-  (`EditingTests`); R1's rules, counts and idempotence (`MechanicalTests`); the state machine (`SessionTests`); the
+  Characters with é, 🙂 and 👩‍💻, the replay of every key's edits, since pass 30 a paste's text and ⌘Z's groups, since
+  pass 41 ⌘Z's second chance (`EditingTests`); R1's rules, counts and idempotence (`MechanicalTests`); the state machine (`SessionTests`); the
   journal round trip through the app's replay, edits in the middle included (`JournalReplayTests`); the menu-bar mark,
   the Bluetooth notice, the muted colour's contrast, Start at Login per status (`FrameTests`); the box's frame and its clamps, one container at a
   time, the paste's decision table, the click-outside guard's table (`BoxTests`); the Sound submenu's default, a
@@ -1782,3 +1782,37 @@ Pass 40b, a duller shade (DESIGN.md DK1 amended; 2026-11-10; after the first liv
   at 2, −20 at 4, −39 at 16 kHz) in place of one pole at 4 kHz, which left music bright. `Shade` keeps a second state
   per channel; gain, glide, tap and watch unchanged. `OtherSoundTests` measures 1, 2, 4 and 16 kHz against the two
   poles' transfer function. The Settings state line is empty for off and for on-and-checked: the tick says it.
+
+Pass 41, a second chance (DESIGN.md O1+O2+O3 and E2 amended; 2026-11-10; the user's decision of 2026-11-10)
+
+- Why: the posted ⌘V goes to whatever has the keys in the app behind, and when that is no text field it does nothing,
+  which Lemna cannot detect. The text stays on the clipboard (I1), but Lemna's item is concealed and transient, so no
+  clipboard manager keeps it and the next copy ends it, and the session is finished at once (E2). Rejected: a check of
+  the focused element's Accessibility role before the ⌘V, unreliable for web and Electron content.
+- `History.swift` (LemnaCore): `SecondChance`, the last hand-off's text, a plain string in memory (`keep`, `drop`,
+  `restore`), and `History.canUndo`. `restore` acts only on the empty line (no Characters) with no group to undo: the
+  kept text in one `Text.insert`, so one `insert(at:)` for the journal, the caret at its end, recorded as a group of its
+  own (`alone`), and the kept text gone. It keeps the session's text (paragraph ends "\n", line breaks
+  `Text.lineBreak`), not R1's output, so the line shows it as it was and R1 gives the same output at the next hand-off.
+- `LineView.swift`: the line holds a `SecondChance`. `load(_:handedOff:)` keeps the text the line still holds when the
+  session went out, and drops it otherwise (Discard…, the launch). `undo(_:)` with no group to undo and no pending
+  text calls `restore` and shows its change as ⌘Z's (`revisit`: the glide, the glyph fade, ⌫'s click, the ambience's
+  ⌫); in every other state ⌘Z is as before. One view in the box and the window, so both have it.
+- `main.swift`: `end(discard:)` loads the next session with `handedOff: !discard`; every end that is not a discard
+  follows a hand-off (a paste, a ⌘⏎ that copied, Secure Input's copy, Copy, Save…). A key store that refuses keeps the
+  session on the line, and nothing changes.
+- `Shortcuts.overview`: a second ⌘Z row after Undo, redo, "On the empty line: the text that last went out". The
+  Settings window is 427 × 781 pt inside its title bar (764 before), measured offscreen with a throwaway build of its
+  code; the label is 238 pt wide, under the 298 pt of the summon field's row, so the width stays.
+- `site/index.html`: a facts line after the hand-off keys.
+- Tests: 193 (190 before; new in `EditingTests`: `theSecondChanceKeepsTheLastHandOffUntilTheNextOrADiscard`,
+  `theSecondChanceComesBackOnlyOnTheEmptyLineWithNothingToUndo`, `theSecondChanceRestoresTheTextThatWentOutAsOneGroup`,
+  the last applying R1 to the restored text and replaying its journal edits; `theOverviewListsEachChordOnceAsMenusWriteIt`
+  allows ⌘Z twice). Debug build without warnings; release and `make-app.sh` not run; nothing launched.
+
+## Known gaps
+
+- Pass 41 is not tried: nothing was launched. Untried: ⌘Z on the empty line after a paste that landed nowhere, in the
+  box and in the window; its glide, fade, click and ambience event; ⌘Z and ⌘⇧Z after it; ⌘Z after a ⌘⏎ that copied
+  with the note up; a dead key pending on the empty line (⌘Z then does nothing). The kept text is an ordinary Swift
+  string in the process's memory, dropped and not wiped, as the line's own text always was.
