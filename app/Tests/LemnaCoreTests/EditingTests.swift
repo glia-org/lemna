@@ -680,3 +680,29 @@ struct Writer {
     #expect(next.undo().edits == [.delete(at: 0, count: went.count)] && next.text.plainText == "" && next.replays)
     #expect(next.redo().edits == [.insert(at: 0, went)] && marked(next.text) == went + "|" && next.replays)
 }
+
+/// ⌘Z that changes nothing says why at the bottom edge (pass 41b, `SecondChance.note`), ⌘Z taken as the line takes it
+/// (the second chance with nothing to undo, else the undo): nothing after a ⌘Z that changed something; "⌘⇧Z brings it
+/// back" once the restored text, or typing, is undone and nothing is left to undo; "Nothing to bring back" with nothing
+/// kept and nothing to redo, on the empty line and over a session restored at launch alike.
+@Test func aCommandZThatBringsNothingBackSaysWhy() {
+    #expect(SecondChance.redoNote == "⌘⇧Z brings it back" && SecondChance.nothingNote == "Nothing to bring back")
+    func commandZ(_ w: inout Writer, _ chance: inout SecondChance) -> String? {
+        let change = w.history.canUndo ? w.undo() : w.restore(&chance)
+        return SecondChance.note(after: change, canUndo: w.history.canUndo, canRedo: w.history.canRedo)
+    }
+    var w = Writer(), chance = SecondChance()
+    chance.keep("kept")
+    #expect(commandZ(&w, &chance) == nil && w.text.plainText == "kept")  // put back
+    #expect(commandZ(&w, &chance) == nil && w.text.plainText == "")  // taken away
+    #expect(commandZ(&w, &chance) == SecondChance.redoNote && w.text.plainText == "")  // used up, on ⌘⇧Z's stack
+    w.redo()
+    #expect(commandZ(&w, &chance) == nil)  // ⌘⇧Z brought it back, ⌘Z takes it away again
+    w = Writer()
+    w.type("a")
+    #expect(commandZ(&w, &chance) == nil && commandZ(&w, &chance) == SecondChance.redoNote)
+    w = Writer()
+    #expect(commandZ(&w, &chance) == SecondChance.nothingNote)
+    w = Writer(text: Text("restored"))
+    #expect(commandZ(&w, &chance) == SecondChance.nothingNote && w.text.plainText == "restored")
+}

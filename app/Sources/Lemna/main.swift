@@ -66,6 +66,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         view.onEdit = { [unowned self] in self.keeper.append($0) }
         view.onEscape = { [unowned self] in self.escape() }
         view.onKey = { [unowned self] in self.edge.clearNote() }  // the next key, Esc included
+        view.onNote = { [unowned self] in self.edge.showNote($0) }  // ⌘Z that brought nothing back (pass 41b)
         view.onAmbient = { [unowned self] in self.box.ambientKey($0) }  // A1, after the key's frame
         view.addSubview(edge)  // at the view's zero size, so the edge's autoresizing keeps it across the bottom
         box = Box(style: style)

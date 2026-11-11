@@ -50,6 +50,9 @@ public struct History {
     /// Whether ⌘Z has a group to take back; with none, on the empty line, it may give the second chance (pass 41).
     public var canUndo: Bool { !undos.isEmpty }
 
+    /// Whether ⌘⇧Z has a group to bring back; with nothing to undo, ⌘Z's note points to it (pass 41b).
+    public var canRedo: Bool { !redos.isEmpty }
+
     /// ⌘Z: the text, its caret and its selection as they stood before the last group, by `Text.become`'s edits; nothing
     /// when there is none.
     public mutating func undo(_ text: inout Text) -> Change {
@@ -95,5 +98,16 @@ public struct SecondChance {
         let before = line, change = line.insert(kept)
         history.record(change, from: before, to: line, kind: .alone, at: t)
         return change
+    }
+
+    public static let redoNote = "⌘⇧Z brings it back"
+    public static let nothingNote = "Nothing to bring back"
+
+    /// ⌘Z's note at the bottom edge (pass 41b), from its `change` and the history after it: none when it changed
+    /// something; else why nothing came back, since the kept text comes back once and the ⌘Z after its restore leaves
+    /// it to ⌘⇧Z: `redoNote` when nothing is left to undo and ⌘⇧Z has a group, else `nothingNote`.
+    public static func note(after change: Change, canUndo: Bool, canRedo: Bool) -> String? {
+        guard change == Change() else { return nil }
+        return !canUndo && canRedo ? redoNote : nothingNote
     }
 }

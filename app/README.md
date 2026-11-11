@@ -1816,3 +1816,28 @@ Pass 41, a second chance (DESIGN.md O1+O2+O3 and E2 amended; 2026-11-10; the use
   box and in the window; its glide, fade, click and ambience event; ⌘Z and ⌘⇧Z after it; ⌘Z after a ⌘⏎ that copied
   with the note up; a dead key pending on the empty line (⌘Z then does nothing). The kept text is an ordinary Swift
   string in the process's memory, dropped and not wiped, as the line's own text always was.
+
+Pass 41b, ⌘Z's note (DESIGN.md O1+O2+O3 amended; 2026-11-11)
+
+- Why: the kept text comes back once, and the ⌘Z after its restore puts it on ⌘⇧Z's stack; a further ⌘Z then did
+  nothing, silently, as if the text were gone.
+- `History.swift` (LemnaCore): `History.canRedo`; `SecondChance.redoNote` ("⌘⇧Z brings it back"),
+  `SecondChance.nothingNote` ("Nothing to bring back") and `SecondChance.note(after:canUndo:canRedo:)`: nil after a
+  change; `redoNote` with nothing left to undo and a group for ⌘⇧Z; else `nothingNote` (nothing kept and nothing to
+  redo, on the empty line or over a session restored at launch).
+- `LineView.swift`: `onNote`, which `undo(_:)` calls with the note when its change is empty; ⌘⇧Z has none.
+  `main.swift` hands it to `EdgeView.showNote`, so it stays until the next key or Esc (`onKey`'s `clearNote`), as a
+  hand-off's note does.
+- The order of one ⌘Z: it is the Edit menu's Undo key. The box's `sendEvent` hands a ⌘ key-down to the main menu
+  first, and in the window AppKit's own key-equivalent pass does, so a ⌘Z the menu takes never reaches `keyDown`; and
+  `keyDown` returns before `onKey` for every ⌘ chord but ⌘← and ⌘→. `onKey` never runs for ⌘Z, so nothing clears the
+  note the same key showed, and no flag is needed.
+- Tests: 194 (193 before; new in `EditingTests`: `aCommandZThatBringsNothingBackSaysWhy`, ⌘Z taken as the line takes
+  it, through the restore, its undo, the used-up ⌘Z, ⌘⇧Z, typing undone, an empty line and a restored session; the two
+  texts verbatim). Debug build without warnings; nothing launched.
+
+## Known gaps
+
+- Pass 41b is not tried. A note stays through ⌘ chords, as a hand-off's does: after ⌘⇧Z brings the text back, "⌘⇧Z
+  brings it back" stays up until the next key. A dead key pending on the empty line with nothing to undo: ⌘Z does
+  nothing and says "Nothing to bring back", though a kept text would come back once the pending text is gone.

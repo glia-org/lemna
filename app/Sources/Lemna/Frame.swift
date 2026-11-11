@@ -14,7 +14,7 @@ final class EdgeView: NSView {
     static let height: CGFloat = 40
     private let notice = NSTextField(labelWithString: BluetoothNotice.text)
     private var shown = 0  // the latest text; an earlier notice's fade finds it moved on
-    /// A hand-off's note is up: it stays until `clearNote`.
+    /// A note is up (a hand-off's, ⌘Z's): it stays until `clearNote`.
     private var noting = false
 
     init() {
@@ -38,8 +38,8 @@ final class EdgeView: NSView {
     /// The Bluetooth notice: at once, then after 5 s it fades out over a second.
     func showNotice() { show(BluetoothNotice.text, fades: true) }
 
-    /// Why ⌘⏎ copied instead of pasting, or why a hand-off did not happen: in the notice's place, until the next key,
-    /// Esc or the container going (`clearNote`).
+    /// Why ⌘⏎ copied instead of pasting, why a hand-off did not happen, or why ⌘Z brought nothing back (pass 41b): in
+    /// the notice's place, until the next key, Esc or the container going (`clearNote`).
     func showNote(_ text: String) { show(text, fades: false) }
 
     /// The note goes; a Bluetooth notice is left to its fade.

@@ -36,8 +36,10 @@ final class LineView: NSView, NSTextInputClient {
     var clicks: ClickPlayer?
     /// Esc while writing: the box hides (the app decides; in the window Esc does nothing).
     var onEscape: () -> Void = {}
-    /// Each key the line takes (not a ⌘ chord, which is the menu's), Esc included: a hand-off's note goes.
+    /// Each key the line takes (not a ⌘ chord, which is the menu's), Esc included: a hand-off's or ⌘Z's note goes.
     var onKey: () -> Void = {}
+    /// ⌘Z that changed nothing, and why (pass 41b, `SecondChance.note`): the app shows it at the bottom edge.
+    var onNote: (String) -> Void = { _ in }
     /// False during a hand-off (Done, Copy, Save…): keys do nothing and the line keeps its last frame.
     private(set) var accepting = true
     /// The Effects submenu (F1), for the glyph fade (K1) and the paragraph fade (E2); set by the app.
@@ -392,12 +394,14 @@ final class LineView: NSView, NSTextInputClient {
     /// ⌘Z: the last group of edits taken back (`History.undo`), the text, the caret and the selection as they were
     /// before it, by the journal's ordinary edits; ⌫'s click and the ambience's ⌫, once. Pending text goes first.
     /// Nothing to undo: on the empty line with no pending text, the last hand-off's text back (pass 41,
-    /// `SecondChance.restore`), fading in as ⌘Z's text does, with the same click and ambience event; else nothing.
+    /// `SecondChance.restore`), fading in as ⌘Z's text does, with the same click and ambience event; else nothing, and
+    /// a note says why (pass 41b). A menu item's key: no `onKey`, so the note stays until the next key.
     @objc func undo(_ sender: Any?) {
         guard accepting else { return }
         let change = !history.canUndo && marked.isEmpty
             ? secondChance.restore(&text, history: &history, at: CACurrentMediaTime()) : history.undo(&text)
         revisit(change, click: .backspace, ambience: .backspace)
+        if let n = SecondChance.note(after: change, canUndo: history.canUndo, canRedo: history.canRedo) { onNote(n) }
     }
 
     /// ⌘⇧Z: the group ⌘Z took back, again; a typed key's click and the ambience's glyph (the last Character it puts
