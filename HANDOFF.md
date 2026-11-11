@@ -5,10 +5,10 @@
 ## State (2026-11-11)
 
 - App, pass 41b, ⌘Z's note (2026-11-11; DESIGN.md O1+O2+O3 amended): a ⌘Z that changes nothing says why at the
-  bottom edge, until the next key or Esc: "⌘⇧Z brings it back" when nothing is left to undo and ⌘⇧Z has a group (the
+  bottom edge, until the next key, Esc or an undo that changes the text: "⌘⇧Z brings it back" when nothing is left to undo and ⌘⇧Z has a group (the
   restored text taken away again), else "Nothing to bring back". Tests 194 (193); debug build only; nothing launched.
-  Try: Copy (⌘⇧⏎), summon, ⌘Z (the text back), ⌘Z (gone), ⌘Z: "⌘⇧Z brings it back"; ⌘⇧Z, then a letter: the note
-  goes. After Discard…, ⌘Z on the empty line: "Nothing to bring back".
+  Try: Copy (⌘⇧⏎), summon, ⌘Z (the text back), ⌘Z (gone), ⌘Z: "⌘⇧Z brings it back"; ⌘⇧Z: the text and the note go
+  back and away together. After Discard…, ⌘Z on the empty line: "Nothing to bring back".
 - App, pass 41, a second chance (2026-11-10; DESIGN.md O1+O2+O3 and E2 amended, the user's decision): a posted ⌘V
   that lands on no text field cannot be detected, and the clipboard item is concealed from clipboard managers, so the
   text of the last paste, Copy or Save… now stays in Lemna's memory alone (not on disk, not in the journal or the

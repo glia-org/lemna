@@ -1838,6 +1838,6 @@ Pass 41b, ⌘Z's note (DESIGN.md O1+O2+O3 amended; 2026-11-11)
 
 ## Known gaps
 
-- Pass 41b is not tried. A note stays through ⌘ chords, as a hand-off's does: after ⌘⇧Z brings the text back, "⌘⇧Z
-  brings it back" stays up until the next key. A dead key pending on the empty line with nothing to undo: ⌘Z does
+- Pass 41b is not tried. A ⌘Z or ⌘⇧Z that changes the text clears the note (`onNote(nil)`), as a typed key does, so
+  "⌘⇧Z brings it back" goes when ⌘⇧Z does; a hand-off's note goes the same way. A dead key pending on the empty line with nothing to undo: ⌘Z does
   nothing and says "Nothing to bring back", though a kept text would come back once the pending text is gone.
