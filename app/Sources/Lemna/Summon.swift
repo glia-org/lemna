@@ -101,7 +101,8 @@ func flags(_ m: UInt32) -> NSEvent.ModifierFlags { modifierPairs.reduce([]) { m 
 /// The menu-bar item: the mark (a template, so the menu bar tints it) and Lemna's menu. As an accessory app Lemna has no
 /// menu bar of its own, so this menu carries the main menu's items too: Show Lemna (with the hotkey's chord, and under it
 /// a grey line when the chord is taken: SD2), Open Window, Done, Copy, Save…, Discard…, Theme ▸ (each theme), Sound ▸
-/// (the packs, the beds, Off, Mute Clicks), Effects ▸ (each effect, Off), Settings… (SP2; the ambience's mode is chosen
+/// (the packs, the beds, Off, Mute Clicks), Effects ▸ (each effect, Off), About Lemna (pass 44: first in the last group,
+/// as About leads an app menu, so the credits are where a Mac user looks), Settings… (SP2; the ambience's mode is chosen
 /// there since pass 39), Start at Login, Quit. The App validates them: the hand-offs' state, the submenus' check marks,
 /// Open Window's title, Start at Login's tick and title; as the menu's delegate it sets Show Lemna's chord and the grey
 /// line each time it opens.
@@ -134,6 +135,7 @@ func makeStatusItem(target: App) -> NSStatusItem {
     menu.addItem(withTitle: "Effects", action: nil, keyEquivalent: "").submenu = effectsMenu(target: target)
     for i in menu.items where i.action != nil { i.target = target }  // the app may not be active: no key window
     menu.addItem(.separator())
+    menu.addItem(withTitle: "About Lemna", action: #selector(App.showAbout(_:)), keyEquivalent: "").target = target
     menu.addItem(withTitle: "Settings…", action: #selector(App.openSettings(_:)), keyEquivalent: ",").target = target
     menu.addItem(withTitle: "Open at Login", action: #selector(App.toggleLogin(_:)), keyEquivalent: "").target = target
     menu.addItem(withTitle: "Quit Lemna", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")

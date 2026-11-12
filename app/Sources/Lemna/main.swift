@@ -461,6 +461,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// The tag of the menu-bar item's grey line under Show Lemna.
     static let chordNote = 1
     private var settings: Settings?
+    /// The standard About panel, once AppKit has made it (pass 44).
+    private weak var about: NSWindow?
 
     /// What `hotkey` holds, checked as at each launch: what does not decode or what the rules or Lemna's own keys
     /// refuse reads as the default.
@@ -530,6 +532,28 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         // Closed: back to the app before, as after the box (`handBack`); in window mode the window keeps the keys.
         s.onClose = { [unowned self] in if self.surface.onScreen == nil { self.handBack() } }
         return s
+    }
+
+    /// About Lemna (the menu-bar item's menu and the main menu's; pass 44): the standard panel, whose credits AppKit reads
+    /// from Credits.html in Contents/Resources (app/Credits.html: who made the key sounds, the background sounds and the
+    /// font, linked, with their licences), shown as Settings… is: the box goes first, the session staying, Lemna comes
+    /// forward, and when the panel closes with nothing else up the app before comes back.
+    @objc func showAbout(_ sender: Any?) {
+        guard session.phase == .writing, !asking, container.attachedSheet == nil else { return }
+        if surface.onScreen == .box {
+            surface.hide()
+            apply()
+        }
+        let before = NSApp.windows
+        NSApp.orderFrontStandardAboutPanel(nil)
+        if about == nil, let panel = NSApp.windows.first(where: { $0.isVisible && !before.contains($0) }) {
+            about = panel  // AppKit keeps it and shows the same one again
+            NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: panel,
+                                                   queue: .main) { [unowned self] _ in
+                if self.surface.onScreen == nil && self.settings?.window.isVisible != true { self.handBack() }
+            }
+        }
+        activateLemna()
     }
 
     /// The menu-bar item's menu as it opens (SD2): Show Lemna with the kept chord while it works as far as can be told,
@@ -745,14 +769,15 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         }
     }
 
-    /// Lemna comes forward: the window, the Settings window, and a question on the box (a sheet takes keys only in the
-    /// active app; the box itself needs no activation). macOS 14's `activate()` does not promise it (cooperative
-    /// activation); if Lemna is still not active a moment later, the older call, to be deprecated but still working,
-    /// forces it.
+    /// Lemna comes forward: the window, the Settings window, the About panel, and a question on the box (a sheet takes
+    /// keys only in the active app; the box itself needs no activation). macOS 14's `activate()` does not promise it
+    /// (cooperative activation); if Lemna is still not active a moment later, the older call, to be deprecated but still
+    /// working, forces it.
     private func activateLemna() {
         NSApp.activate()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-            guard let self, !NSApp.isActive, self.surface.onScreen != nil || self.settings?.window.isVisible == true
+            guard let self, !NSApp.isActive,
+                  self.surface.onScreen != nil || self.settings?.window.isVisible == true || self.about?.isVisible == true
             else { return }
             NSApp.activate(ignoringOtherApps: true)
         }
@@ -856,7 +881,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         case #selector(chooseTheme(_:)):
             item.state = Theme.all[item.tag] == theme ? .on : .off
             return true
-        case #selector(openSettings(_:)): return session.phase == .writing && !asking && container.attachedSheet == nil
+        case #selector(openSettings(_:)), #selector(showAbout(_:)):
+            return session.phase == .writing && !asking && container.attachedSheet == nil
         case #selector(closeWindow(_:)): return NSApp.keyWindow?.styleMask.contains(.closable) == true
         case #selector(showCharacters(_:)):
             return surface.onScreen != nil && session.phase == .writing && !asking && container.attachedSheet == nil
@@ -1152,13 +1178,15 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     }
 }
 
-/// Session › Sound and the menu-bar item's Sound (K1): the packs as radio items, then the beds as a second group under
-/// a Background Sound header (pass 43) with None last (BD1), then Mute All Sounds ⌘K (Off until pass 43), which turns
-/// the sound off, bed and all, and, while it is off, back on with the last pack, ticked while off, and Mute Key Sounds
-/// ⌥⌘K (pass 42), the clicks alone, ticked while muted. `target` nil in the main menu (the App
-/// gets the actions as the delegate); the menu-bar item's menu names it, as Lemna may not be active.
+/// Session › Sound and the menu-bar item's Sound (K1): the packs as radio items under a Key Sounds header (pass 44),
+/// then the beds as a second group under a Background Sound header (pass 43) with None last (BD1), then Mute All
+/// Sounds ⌘K (Off until pass 43), which turns the sound off, bed and all, and, while it is off, back on with the last
+/// pack, ticked while off, and Mute Key Sounds ⌥⌘K (pass 42), the clicks alone, ticked while muted. `target` nil in
+/// the main menu (the App gets the actions as the delegate); the menu-bar item's menu names it, as Lemna may not be
+/// active.
 func soundMenu(target: AnyObject?) -> NSMenu {
     let menu = NSMenu(title: "Sound")
+    menu.addItem(.sectionHeader(title: "Key Sounds"))
     for (i, pack) in SoundChoice.packs.enumerated() {
         let item = menu.addItem(withTitle: pack.title, action: #selector(App.chooseSound(_:)), keyEquivalent: "")
         item.tag = i
@@ -1218,8 +1246,7 @@ func themeMenu(target: AnyObject?) -> NSMenu {
 func mainMenu() -> NSMenu {
     let bar = NSMenu(), app = NSMenu(title: "Lemna"), session = NSMenu(title: "Session"), view = NSMenu(title: "View")
     let edit = NSMenu(title: "Edit")
-    app.addItem(withTitle: "About Lemna", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
-                keyEquivalent: "")  // a placeholder: the standard panel, no credits yet
+    app.addItem(withTitle: "About Lemna", action: #selector(App.showAbout(_:)), keyEquivalent: "")  // the credits
     app.addItem(.separator())
     app.addItem(withTitle: "Settings…", action: #selector(App.openSettings(_:)), keyEquivalent: ",")  // ⌘,
     app.addItem(.separator())

@@ -145,7 +145,7 @@ private final class SettingsWindow: NSWindow {
 /// The Settings window (SW3; since pass 37 groups on its one page): "Lemna Settings", a plain titled window at
 /// the normal level (under the box's), system controls and the system's appearance whatever Lemna's theme. Shortcut:
 /// "Show Lemna:", the field, Reset to ⌃⌥Space (grey while the chord is ⌃⌥Space), and under them a grey line saying
-/// how the chord stands, empty while there is nothing to say, or what to do while the field listens. Sound: Play sound
+/// how the chord stands, empty while there is nothing to say, or what to do while the field listens. Sound: Play sounds
 /// (⌘K's on or off), the clicks' pack and the bed, as Session › Sound ▸ has them; they call the menu's own actions, and
 /// the app refreshes them whenever those keep a change, made here or in a menu; since pass 42 "Show the Bluetooth
 /// hint", which no menu has. Ambience (pass 39, here alone): the mode on the dim, Code, Still water or Off, by the
@@ -159,7 +159,7 @@ final class Settings: NSObject, NSWindowDelegate {
     let recorder = Recorder()
     private let reset = NSButton(title: "Reset to \(Chord.summon.glyphs())", target: nil, action: nil)
     private let help = NSTextField(wrappingLabelWithString: "")
-    private let soundBox = NSButton(checkboxWithTitle: "Play sound", target: nil, action: nil)
+    private let soundBox = NSButton(checkboxWithTitle: "Play sounds", target: nil, action: nil)
     private let pack = NSPopUpButton(frame: .zero, pullsDown: false), bed = NSPopUpButton(frame: .zero, pullsDown: false)
     private let hintBox = NSButton(checkboxWithTitle: "Warn when Bluetooth delays key sounds", target: nil, action: nil)
     private let mode = NSPopUpButton(frame: .zero, pullsDown: false)

@@ -601,7 +601,10 @@ Checked on 2026-11-02 on each page.
    bar (a MacBook Air): whether they belong together is for the ear.
 5. Before Lemna goes to others (DESIGN.md X1): the Electric pack's and the Lab bed's credit lines also in the app's
    About panel or a credits file in the bundle, where a user sees it; the Lab's author asks software for "a credits
-   screen with working weblinks" (pass 28).
+   screen with working weblinks" (pass 28). Addressed in the app, pass 44, not yet seen live: About Lemna (the
+   menu-bar item's menu) shows `app/Credits.html` in the standard About panel, both lines verbatim with their URLs as
+   links, beside every other pack's, bed's and the font's credit; `CreditsTests` checks the file against this one and
+   the json.
 6. Nothing in the three new packs was listened to; every choice above (the filters, the spans, the levels) is by
    measurement. A pack that sounds wrong is fixed by changing a command above and running it again.
 7. Stone and the rain (pass 23a) were not listened to either: the space's rates (0.8, 0.75) and level, the Return's

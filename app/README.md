@@ -2018,3 +2018,56 @@ decision of 2026-11-12)
   Recording prompt with its new line; the site after deploy.
 - Kept on purpose: the Other sound failure causes in parentheses ("the tap was refused", "the output's format is not
   float") stay as they are, for bug reports.
+
+Pass 44, credits and two labels (DESIGN.md K1, Y1, SP2, X1 and TX1 amended; 2026-11-12; the user's decision of
+2026-11-12)
+
+- Why: two CC BY works ship in the app (the Electric pack, the Lab background sound; the Lab's author asks software
+  for "a credits screen with working weblinks"), credited in the repository and on the site but nowhere a user of the
+  app could see; the About item sat in the hidden main menu, which an accessory app never shows. Sound ▸ named its
+  second group and not its first; Settings' "Play sound" read beside "Mute All Sounds".
+- `soundMenu` (`main.swift`): `NSMenuItem.sectionHeader(title: "Key Sounds")` before the packs, so the hidden Session
+  menu and the menu-bar item's Sound ▸ both have it. No action, tag 0 as the Background Sound header: `chooseSound`'s
+  tick reads only items with its action, so the radio groups are unchanged.
+- `Settings.swift`: "Play sound" → "Play sounds". The window stays 427 × 822 pt inside its title bar, measured
+  offscreen with a throwaway build of the app's code that made `Settings()` and printed its content size (the same
+  build with "Play sound" gives 427 × 822).
+- About Lemna: `makeStatusItem` (`Summon.swift`) puts it first in the last group, before Settings…, as About leads an
+  app menu (HIG: About, Settings…, Quit). `App.showAbout(_:)` (`main.swift`), also the
+  hidden main menu's item now: the guard and the box's hiding of `openSettings` (validated alike), then
+  `NSApp.orderFrontStandardAboutPanel(nil)` and `activateLemna()`. The panel AppKit made is kept weakly (`about`, the
+  window that came with the first call), so `activateLemna`'s forced fallback counts it as something on screen, and
+  its close hands back to the app before when no container or Settings is up, as Settings' close does.
+- `app/Credits.html`, for the app's user (TX1): Key Sounds (Keychron, Typewriter, Soft, Electric, Stone), Background
+  Sounds (Rain, Ship, Lab, Space, Synth), Font (Literata); each item's recordings by their Freesound titles, linked,
+  its author, its pack page, and its licence linked (CC0 1.0; OFL 1.1 by the link in its OFL.txt). The two CC BY lines
+  are the `attribution` of `ElectricPack/pack.json` and `Beds/Lab/bed.json` word for word, each URL in them a link.
+  Nothing else from THIRD_PARTY.md (checks, hashes, filters) is in it. AppKit reads the file itself: the standard
+  panel takes "Credits.rtf (.rtfd, .html)" from the main bundle when no credits option is given (NSApplication.h), so
+  no code loads it. `make-app.sh` copies it to Contents/Resources. Dark Mode: the file sets no colours; NSApplication.h
+  says that for apps built with the 10.15 SDK or later the panel shows credits with NSTextView's adaptive colour
+  mapping. Read as AppKit reads it, the text carries no colour of its own (the system font, 11 pt; the headings bold,
+  12 pt; centred) and the links WebKit's blue; drawn as below, the text follows the appearance and the links show in
+  the link colour, lighter on dark, so no attributed string with `labelColor` is built.
+- `CreditsTests` (new): `theCreditsCarryEveryCCBYLineAndLinkEverySource` reads the files with Darwin alone (no
+  Foundation, as the other tests): the quoted paragraphs of `lib/LemnaClicks/THIRD_PARTY.md` that say "licensed under
+  CC BY" (two) equal the json's `attribution`s and appear in the credits' shown text verbatim, every URL in them a link;
+  every https page on Freesound or GitHub that either THIRD_PARTY.md lists (34: recordings, packs, VCSL's folders,
+  Literata's repository; not the licences' pages nor the preview downloads) is an `href`; each pack's and background
+  sound's menu name is a bold label; Literata's copyright line from `OFL.txt` is in it. `theCreditsRenderInLightAndDark`
+  (only where the Swift Testing Foundation overlay has its module, so Xcode's toolchain; the Command Line Tools ship it
+  without) reads Credits.html as AppKit does (`NSAttributedString(url:)`), checks the CC BY lines in the read text
+  (the file's UTF-8 charset honoured: ‘qubodup’), that every `href` became a link to a URL, and draws it in an
+  NSTextView with `usesAdaptiveColorMappingForDarkAppearance`, 280 pt wide, in Aqua and Dark Aqua:
+  `app/renders/credits-light.png` and `credits-dark.png` (560 × 2200 px), looked at: readable in both, links
+  underlined.
+- Tests: 198 (196 before; the two above). Debug build without warnings; nothing launched.
+
+## Known gaps
+
+- Pass 44 is not tried. Untried: both headers in both menus; About Lemna from the menu-bar item (the panel in front,
+  the box going first, the app before back after the close); the credits in the real panel in Light and Dark (the
+  render is an NSTextView set up as NSApplication.h describes, not the panel itself; the panel's width and height are
+  AppKit's); a link opening; "Play sounds".
+- The panel stays at the normal level: if the box is summoned while it is up, it sits under the dim, as any window
+  of the app behind does (Settings' window is hidden at a summon; the panel is not).

@@ -4,6 +4,24 @@
 
 ## State (2026-11-12)
 
+- App, pass 44, credits and two labels (2026-11-12; DESIGN.md K1, Y1, SP2, X1 and TX1 amended, the user's decision):
+  Sound ▸ has a "Key Sounds" section header over the packs, as "Background Sound" is over the beds (both menus; ticks
+  unchanged); Settings' checkbox reads "Play sounds". **About Lemna** is in the menu-bar item's menu, first in its last
+  group (About Lemna, Settings…, Open at Login, Quit Lemna), and shows the standard About panel as Settings… is shown
+  (the box goes first; Lemna comes forward; closed with nothing else up, the app before comes back). Its credits are
+  `app/Credits.html`, which AppKit reads from Contents/Resources (`make-app.sh` copies it): Key Sounds by pack, Background
+  Sounds by name, Font; every recording's page, pack page and licence linked; the Electric and Lab CC BY lines verbatim
+  with their URLs as links (THIRD_PARTY open item 5, the Lab author's "credits screen with working weblinks": addressed
+  in the app, not yet seen live). No colours in the file: AppKit maps black credits text for Dark Mode. New
+  `CreditsTests`: the file against both THIRD_PARTY.md files and the json (drift), and an offscreen render
+  (`app/renders/credits-light.png`, `credits-dark.png`, an NSTextView as the panel uses, 280 pt wide). The Settings
+  window stays 427 × 822 pt. Tests 198 (196); debug build without warnings; nothing launched. Try:
+  - Sound ▸ in the menu-bar item's menu, and in the box or the window: the grey "Key Sounds" header over Keychron …
+    Stone and "Background Sound" over Rain … None; choosing and ticking as before; ⌘K and ⌥⌘K as before.
+  - About Lemna from the menu-bar item: the panel in front with Lemna's icon, name and version; the credits scroll;
+    in Light and in Dark appearance the text and links are readable; a link opens its page in the browser. With the
+    box up: the box goes first. Close the panel: the app before has the keys again.
+  - Settings…: "Play sounds" fits beside its checkbox and acts as before.
 - App, site and README, pass 43, the wording (2026-11-12; DESIGN.md TX1 new, B4 K1 O1+O2+O3 F1 Y1 TH1 SP2 DK1 X1
   amended, the user's decision): every text a user or visitor reads rewritten for that reader and place, with one
   glossary across the app, the site and the root README (TX1): key sounds (not clicks), background sound (not bed),
