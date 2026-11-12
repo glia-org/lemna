@@ -6,19 +6,25 @@
 
 - App, site and README, pass 43, the wording (2026-11-12; DESIGN.md TX1 new, B4 K1 O1+O2+O3 F1 Y1 TH1 SP2 DK1 X1
   amended, the user's decision): every text a user or visitor reads rewritten for that reader and place, with one
-  glossary across the app, the site and the root README (TX1): key sounds (not clicks), background sound (not bed;
-  the five bed names, No bed and "Still (lab bed)" kept as names), show/hide, paste, the dimmed screen, other apps,
-  "saved as you type, encrypted" (not the journal), Open at Login. Text only: no behaviour, key, default or identifier
-  changed. The full before/after table is app/README Pass 43. Two facts fixed: the refused-permission line under
+  glossary across the app, the site and the root README (TX1): key sounds (not clicks), background sound (not bed),
+  show/hide, paste, the dimmed screen, other apps, "saved as you type, encrypted" (not the journal), Open at Login.
+  43b, the user's decision of 2026-11-12 on the table: the beds are Rain, Ship, Lab, Space, Synth and None, under a
+  "Background Sound" section header in Sound ▸ (`NSMenuItem.sectionHeader(title:)`, macOS 14), "Still (Lab
+  Background)"; Sound ▸ Off is "Mute All Sounds" (overview "All sounds off, on"); Effects ▸ Box Opening, Letter
+  Fade-In, Paste Motion, Paragraph Mark Fade-In. Text only: no behaviour, key, default, folder or identifier
+  changed. A release `swift build` with the Command Line Tools alone still completes, so the README's build line
+  stands. The full before/after table is app/README Pass 43. Two facts fixed: the refused-permission line under
   Other sound no longer runs to a cut-off third line; the site and README now say Open Anyway in System Settings ›
   Privacy & Security for the first launch (right-click › Open no longer works from macOS 15 on). The Settings window
   stays 427 × 822 pt. Tests 196 (pinned strings updated); debug build only; nothing launched; the site not deployed.
   Try:
   - The menu-bar item's menu: Paste into App ⌘↩, Open at Login (and, if macOS asks for approval, "Open at Login
-    (Approve in System Settings)"); Sound ▸ Mute Key Sounds ⌥⌘K; Effects ▸ Box Pop, Letter Fade, Text Exit,
-    Paragraph Fade: each still ticks and acts as before.
-  - Settings…: Key sounds:, Background:, "Warn when Bluetooth delays key sounds", the Other apps group's text (five
-    lines) and its lines, Ambience › Animation:, "Shortcuts while writing" and its rows; nothing wraps or clips. In
+    (Approve in System Settings)"); Sound ▸ the packs, the Background Sound header (grey, not choosable) over Rain …
+    Synth and None, Mute All Sounds ⌘K (ticked while off) and Mute Key Sounds ⌥⌘K; Theme ▸ "Still (Lab
+    Background)"; Effects ▸ Box Opening, Letter Fade-In, Paste Motion, Paragraph Mark Fade-In: each ticks and acts
+    as before; ⌘K and ⌥⌘K typed in the box act as before.
+  - Settings…: Key sounds:, Background: (Lab, …, None), "Warn when Bluetooth delays key sounds", the Other apps
+    group's text (five lines) and its lines, Ambience › Animation:, "Shortcuts while writing" and its rows; nothing wraps or clips. In
     the shortcut field: record ⌥⌘K ("Lemna uses ⌥⌘K for Mute Key Sounds."), ⌘L, ⌥K; Esc while listening.
   - The notes at the box's bottom edge: over Bluetooth headphones "Bluetooth delays key sounds · ⌥⌘K mutes them";
     ⌘⏎ in the window ("Copied · no app to paste into"); ⌘⏎ into a password field ("Copied, not pasted · secure input

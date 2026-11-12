@@ -16,10 +16,10 @@ public struct Effects: Equatable {
         /// The submenu's item, in `allCases`' order.
         public var title: String {
             switch self {
-            case .pop: "Box Pop"
-            case .glyphFade: "Letter Fade"
-            case .handOff: "Text Exit"
-            case .paragraphFade: "Paragraph Fade"
+            case .pop: "Box Opening"
+            case .glyphFade: "Letter Fade-In"
+            case .handOff: "Paste Motion"
+            case .paragraphFade: "Paragraph Mark Fade-In"
             }
         }
 

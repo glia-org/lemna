@@ -1152,9 +1152,10 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     }
 }
 
-/// Session › Sound and the menu-bar item's Sound (K1): the packs as radio items, then the beds as a second group with
-/// No bed last (BD1), then Off ⌘K, which turns the sound off, bed and all, and, while it is off, back on with the last
-/// pack, and Mute Clicks ⌥⌘K (pass 42), the clicks alone, ticked while muted. `target` nil in the main menu (the App
+/// Session › Sound and the menu-bar item's Sound (K1): the packs as radio items, then the beds as a second group under
+/// a Background Sound header (pass 43) with None last (BD1), then Mute All Sounds ⌘K (Off until pass 43), which turns
+/// the sound off, bed and all, and, while it is off, back on with the last pack, ticked while off, and Mute Key Sounds
+/// ⌥⌘K (pass 42), the clicks alone, ticked while muted. `target` nil in the main menu (the App
 /// gets the actions as the delegate); the menu-bar item's menu names it, as Lemna may not be active.
 func soundMenu(target: AnyObject?) -> NSMenu {
     let menu = NSMenu(title: "Sound")
@@ -1164,16 +1165,18 @@ func soundMenu(target: AnyObject?) -> NSMenu {
         item.target = target
     }
     menu.addItem(.separator())
+    menu.addItem(.sectionHeader(title: "Background Sound"))
     for (i, bed) in BedChoice.beds.enumerated() {
         let item = menu.addItem(withTitle: bed.title, action: #selector(App.chooseBed(_:)), keyEquivalent: "")
         item.tag = i
         item.target = target
     }
-    let none = menu.addItem(withTitle: "No bed", action: #selector(App.chooseBed(_:)), keyEquivalent: "")
+    let none = menu.addItem(withTitle: "None", action: #selector(App.chooseBed(_:)), keyEquivalent: "")
     none.tag = -1
     none.target = target
     menu.addItem(.separator())
-    menu.addItem(withTitle: "Off", action: #selector(App.toggleSound(_:)), keyEquivalent: "k").target = target  // ⌘K
+    menu.addItem(withTitle: "Mute All Sounds", action: #selector(App.toggleSound(_:)), keyEquivalent: "k")
+        .target = target  // ⌘K
     let mute = menu.addItem(withTitle: "Mute Key Sounds", action: #selector(App.toggleClicks(_:)), keyEquivalent: "k")
     mute.keyEquivalentModifierMask = [.option, .command]  // ⌥⌘K
     mute.target = target

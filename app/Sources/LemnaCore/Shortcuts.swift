@@ -28,7 +28,7 @@ public enum Shortcuts {
         Row(chords: [c(0x00, command), c(0x08, command), c(0x07, command), c(0x09, command)],
             label: "Select all, copy, cut, paste"),
         Row(chords: [c(0x31, control | command)], label: "Emoji & Symbols"),
-        Row(chords: [c(0x28, command)], label: "All sound off, on"),
+        Row(chords: [c(0x28, command)], label: "All sounds off, on"),
         Row(chords: [c(0x28, option | command)], label: "Key sounds off, on"),  // the bed plays on (pass 42)
         Row(chords: [c(0x03, control | command)], label: "Open or close the window"),
     ]

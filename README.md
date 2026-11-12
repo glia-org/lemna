@@ -40,7 +40,7 @@ Security › Accessibility); the first ⌘⏎ asks for it. Build, test and signi
 ## Licence
 
 Apache-2.0 (`LICENSE`). The key-sound packs and the background sounds are CC0 except the Electric pack and the Lab
-bed (CC BY 4.0); credits in `lib/LemnaClicks/THIRD_PARTY.md`.
+background sound (CC BY 4.0); credits in `lib/LemnaClicks/THIRD_PARTY.md`.
 
 The Literata typeface in `app/Fonts/` (Still's line face) and its Latin subset the page serves (`site/assets/fonts/`) are
 under the SIL Open Font License 1.1, its licence beside each; its source and version in `app/THIRD_PARTY.md`.

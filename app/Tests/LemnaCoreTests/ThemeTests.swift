@@ -165,7 +165,7 @@ var stillFont: CTFont? {
     bed.choose(Theme.lemna.defaults.bed)
     #expect(bed.folder == nil)
     // Never a bed unasked (TH1, sound.md §5): a theme whose preset turns one on names it in its item.
-    #expect(Theme.lemna.menuTitle == "Lemna" && Theme.still.menuTitle == "Still (lab bed)")
+    #expect(Theme.lemna.menuTitle == "Lemna" && Theme.still.menuTitle == "Still (Lab Background)")
 }
 
 @Test func stillOpensAndHandsOffByFades() {

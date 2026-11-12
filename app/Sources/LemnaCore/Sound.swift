@@ -60,7 +60,7 @@ public struct BedChoice: Equatable {
     /// rain (pass 23), then the user's picks of pass 28 (FB2, FB6, FB7, FB8 of docs/design-panel-lemna-future-bed.html):
     /// a spaceship's hull, a sci-fi lab, deep space, a synth pad.
     public static let beds: [(title: String, folder: String)] = [
-        ("Rain bed", "Rain"), ("Ship bed", "Ship"), ("Lab bed", "Lab"), ("Space bed", "Space"), ("Synth bed", "Synth"),
+        ("Rain", "Rain"), ("Ship", "Ship"), ("Lab", "Lab"), ("Space", "Space"), ("Synth", "Synth"),
     ]
 
     /// The chosen bed's folder; nil: none.
@@ -89,9 +89,9 @@ public struct BedChoice: Equatable {
 
 extension Theme {
     /// The theme's item in Session › Theme ▸: its title, and the bed its preset turns on, so a bed never comes unasked
-    /// (TH1; sound.md §5): "Still (rain bed)".
+    /// (TH1; sound.md §5): "Still (Lab Background)".
     public var menuTitle: String {
         guard let bed = BedChoice.beds.first(where: { $0.folder == defaults.bed }) else { return title }
-        return "\(title) (\(bed.title.lowercased()))"
+        return "\(title) (\(bed.title) Background)"
     }
 }

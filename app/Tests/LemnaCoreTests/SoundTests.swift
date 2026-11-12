@@ -73,7 +73,7 @@ import Testing
 /// Pass 28's beds after the rain in Sound ▸, each item "<Name> bed" as the rain's, before No bed; each kept under `bed`
 /// across launches and chosen as the rain is; each a folder with its bed.json and its loop in the library.
 @Test func theFourNewBedsFollowTheRainAndAreKeptAsItIs() {
-    #expect(BedChoice.beds.map(\.title) == ["Rain bed", "Ship bed", "Lab bed", "Space bed", "Synth bed"])
+    #expect(BedChoice.beds.map(\.title) == ["Rain", "Ship", "Lab", "Space", "Synth"])
     let beds = String(renders.dropLast("/app/renders".count)) + "/lib/LemnaClicks/Sources/LemnaClicks/Beds/"
     for (i, bed) in BedChoice.beds.enumerated() {
         let kept = BedChoice(kept: bed.folder)  // read back at the next launch
@@ -89,7 +89,7 @@ import Testing
         #expect(access(beds + bed.folder + "/" + bed.folder.lowercased() + ".caf", F_OK) == 0, "\(bed.folder)")
     }
     // A theme names its bed in its item; only Still's preset turns one on, the Lab bed since pass 34 (the rain, pass 23, before).
-    #expect(Theme.all.map(\.menuTitle) == ["Lemna", "Still (lab bed)"])  // the Lab bed since pass 34
+    #expect(Theme.all.map(\.menuTitle) == ["Lemna", "Still (Lab Background)"])  // the Lab bed since pass 34
 }
 
 @Test func theBedPlaysOnlyWhileWritingInAContainerOnScreenWithTheSoundOn() {

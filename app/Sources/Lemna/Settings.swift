@@ -226,7 +226,7 @@ final class Settings: NSObject, NSWindowDelegate {
             bed.addItem(withTitle: b.title)
             bed.lastItem?.tag = i
         }
-        bed.addItem(withTitle: "No bed")
+        bed.addItem(withTitle: "None")
         bed.lastItem?.tag = -1
         for (i, m) in Ambience.Mode.allCases.enumerated() {
             mode.addItem(withTitle: m.title)

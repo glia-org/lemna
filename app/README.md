@@ -1893,12 +1893,24 @@ decision of 2026-11-12)
   session, hand-off), carried detail they cannot use, and gave one thing two words (Settings' "Clicks:" beside notes
   about key sounds). Each text is now written for its reader and its place, with one glossary for the app, the site
   and the root README (DESIGN.md TX1). Text only: no behaviour, shortcut, key equivalent, UserDefaults key or Swift
-  identifier changed; the pack, theme and bed names are kept.
+  identifier changed; the pack and theme names are kept. The bed names lose "bed" and sit under a header (43b).
 - Strings: `Settings.swift`, `main.swift`, `Summon.swift` (the app); `Summoning.swift`, `Shortcuts.swift`,
   `Paste.swift`, `History.swift`, `Effects.swift`, `Chord.swift`, `OtherSound.swift` (LemnaCore); `make-app.sh`
   (NSAudioCaptureUsageDescription); `site/index.html` and the demo's three labels in `site/assets/site.js`; the root
-  `README.md`. Rows changed per place: menus 8, Settings 28 (the overview's 9 among them), the notes at the bottom
-  edge 8, alerts 5, Info.plist 1, the site 21, the README 4.
+  `README.md`. Rows changed per place: menus 13, Settings 29 (the overview's 9 among them), the notes at the bottom
+  edge 8, alerts 5, Info.plist 1, the site 22, the README 4.
+- 43b, the user's decision of 2026-11-12 on the table: the beds' titles are Rain, Ship, Lab, Space, Synth and None
+  (`BedChoice.beds`' titles, Settings' pop-up), under a "Background Sound" header in Sound ▸ (`soundMenu`, so both
+  menus), made with `NSMenuItem.sectionHeader(title:)`, macOS 14's API and the package's deployment target, so no
+  availability check; the theme item reads "Still (Lab Background)" (`Theme.menuTitle`). Folders, the `bed` default's
+  values, `bed.json` and identifiers unchanged. Sound ▸ Off (⌘K) is "Mute All Sounds", ticked while the sound is off
+  as before; the overview reads "All sounds off, on" beside "Key sounds off, on". Effects ▸ Box Opening, Letter
+  Fade-In, Paste Motion, Paragraph Mark Fade-In. The site's credit labels name the background sounds; the authors'
+  credit text after them is unchanged and linked. The header has no action and no tag of its own (0): nothing looks
+  Sound ▸'s items up by index or tag 0.
+- The root README's "build it yourself with the Xcode Command Line Tools" holds: a release `swift build` of this
+  package with `DEVELOPER_DIR=/Library/Developer/CommandLineTools` (Swift 6.2.1 and its SDK, no Xcode in the build
+  plan) completes; the tests need Xcode's Swift Testing, which the README leaves to this file.
 - A refusal of the field names the menu item: "Lemna uses ⌘↩ for Paste into App." (`MenuKey.title` is read from the
   menu, so the renamed items carry over).
 - Two facts corrected on the way: the Other sound line for a refused permission wrapped to three lines in its two-line
@@ -1911,16 +1923,21 @@ decision of 2026-11-12)
   the Other sound text keeps its five lines. The notes at 12 pt: the longest, "Copied, not pasted · allow Lemna in
   System Settings › Privacy & Security › Accessibility", is 494 pt, inside a 600 pt box.
 - Tests: 196, as before; the pinned strings follow (`ChordTests`, `FrameTests`, `OtherSoundTests`, `BoxTests`,
-  `EditingTests`, `EffectsTests`). Debug build without warnings; nothing launched.
+  `EditingTests`, `EffectsTests`, `SoundTests`, `ThemeTests`). Debug build without warnings; nothing launched.
 
 | Place | Before | After | Why |
 |---|---|---|---|
 | Menus | Done | Paste into App | a menu item names its action; Done names a state |
+| Menus | (no header) | Background Sound (a section header over the beds) | says what the group is, so the names can be plain |
+| Menus | Rain bed, Ship bed, Lab bed, Space bed, Synth bed | Rain, Ship, Lab, Space, Synth | bed is jargon; the header names the group |
+| Menus | No bed | None | under the header, None is the HIG's word |
+| Menus | Off (Sound ▸, ⌘K) | Mute All Sounds | a verb, and parallel to Mute Key Sounds; ticked while muted, as Off was |
 | Menus | Mute Clicks | Mute Key Sounds | names what is muted in the reader's words; clicks is ours |
-| Menus | Pop | Box Pop | says what pops; HIG title case |
-| Menus | Glyph fade | Letter Fade | glyph is typesetters' jargon; title case |
-| Menus | Hand-off | Text Exit | hand-off is our coinage and clashes with Apple's Handoff |
-| Menus | Paragraph fade | Paragraph Fade | HIG title case |
+| Menus | Pop | Box Opening | says what moves: the box as it opens and closes |
+| Menus | Glyph fade | Letter Fade-In | glyph is typesetters' jargon; title case |
+| Menus | Hand-off | Paste Motion | hand-off is our coinage and clashes with Apple's Handoff |
+| Menus | Paragraph fade | Paragraph Mark Fade-In | says what fades: the ¶ mark; title case |
+| Menus | Still (lab bed) | Still (Lab Background) | the background sound the theme turns on, by its new name |
 | Menus | Start at Login | Open at Login | Apple's term for the same thing |
 | Menus | Start at Login (approve in System Settings) | Open at Login (Approve in System Settings) | Apple's term; title case in a menu |
 | Settings | Show Lemna from the menu-bar item. | No shortcut. Show Lemna from its icon in the menu bar. | says the state, then what to do; menu-bar item is our term |
@@ -1932,6 +1949,7 @@ decision of 2026-11-12)
 | Settings | Copy uses ⇧⌘↩ in the box. | Lemna uses ⇧⌘↩ for Copy. | says whose key it is |
 | Settings | Clicks: | Key sounds: | one word for one thing (the menu and the note say key sounds) |
 | Settings | Bed: | Background: | bed is jargon; under Sound, Background says what it is |
+| Settings | Rain bed … Synth bed, No bed (the Background pop-up) | Rain … Synth, None | as the menu: Background: Lab |
 | Settings | Show the Bluetooth hint | Warn when Bluetooth delays key sounds | hint is an internal name; names the effect |
 | Settings | Other sound | Other apps | our coinage; the checkbox under it says other apps |
 | Settings | Other apps play a little quieter and softer while the box is up, and as before once it hides. This needs macOS's permission to tap system audio: nothing is recorded or kept, and nothing leaves the Mac. There is a short gap in their sound as it switches. | Other apps play quieter and softer while the box is up. macOS asks once for permission to record system audio: Lemna needs it to change their sound as it plays, and records or keeps nothing. Their sound breaks off briefly when the box shows and hides. | tap is jargon; names the permission as macOS does; says when the gap comes |
@@ -1948,7 +1966,7 @@ decision of 2026-11-12)
 | Settings | Hide the box | Hide the box, keeping the text | the fact users need about Esc |
 | Settings | Paragraph | New paragraph | names the action |
 | Settings | On the empty line: the text that last went out | When empty: the last text pasted, copied or saved | went out is our phrase; names the three actions |
-| Settings | Sound off, on | All sound off, on | told apart from the next row |
+| Settings | Sound off, on | All sounds off, on | reads like the next row, as Mute All Sounds and Mute Key Sounds |
 | Settings | Clicks off, on | Key sounds off, on | glossary |
 | Settings | Window mode | Open or close the window | as the menu says |
 | Notes | Bluetooth output: clicks arrive late · ⌥⌘K mutes them | Bluetooth delays key sounds · ⌥⌘K mutes them | what happened, then what to do, in the reader's words |
@@ -1980,22 +1998,23 @@ decision of 2026-11-12)
 | Site | A ⌘V that lands nowhere is one more ⌘V away: the text stays on the clipboard, and ⌘Z on the empty line brings it back into Lemna. | If the paste lands nowhere, the text is still on the clipboard, and ⌘Z in the empty box brings it back. | plain |
 | Site | Every key is kept in an encrypted journal on your Mac until the text has gone out. | Until you paste, copy or save it, your text is saved as you type, encrypted, on your Mac, so a crash loses nothing; then Lemna deletes that copy. | leads with the benefit; journal reads as a kept diary |
 | Site | Two looks: Still, the default, paper by day and a warm dark by night as the system is; Lemna, dark and monospaced. | Two themes: Still, the default, paper-coloured by day and warm dark by night, as your Mac’s appearance is; and Lemna, dark and monospaced. | the menu's word |
-| Site | A click per key from five sound packs, or off; five beds under it (rain, ship, lab, space, synth) and an ambience on the dim, each or off. It starts with the lab bed and Code. | Key sounds from five packs, a background sound (rain, ship, lab, space or synth) and an animation on the dimmed screen, each of them optional. Lemna starts with the lab background sound and the Code animation. | bed and the dim are ours |
+| Site | A click per key from five sound packs, or off; five beds under it (rain, ship, lab, space, synth) and an ambience on the dim, each or off. It starts with the lab bed and Code. | Key sounds from five packs, a background sound (Rain, Ship, Lab, Space or Synth) and an animation on the dimmed screen, each of them optional. Lemna starts with the Lab background sound and the Code animation. | bed and the dim are ours |
 | Site | Turned on in Settings, other apps play a little quieter and softer while the box is up, and as before once it hides. macOS asks once to let Lemna tap system audio; nothing is recorded or kept. | An option in Settings makes other apps play quieter and softer while you write. macOS asks once for permission to record system audio; nothing is recorded or kept. | tap is jargon |
 | Site | … mirrored glyphs … over the whole dim … on the dim … lights its glyph … | … mirrored characters … over the whole dimmed screen … on the dimmed screen … lights its character … | glossary |
 | Site | On the dim while you write: Code (the default), Still water, or off. | On the dimmed screen while you write: Code (the default), Still water, or off. | the dim is ours |
 | Site | … CC0; the clicks on this page are from it. | … CC0; the key sounds on this page are from it. | glossary (CC0 credit, our words) |
 | Site | … CC0; the Return and the send from the Versilian Community Sample Library … | … CC0; the Return and paste sounds from the Versilian Community Sample Library … | the send is ours (CC0 credit, our words) |
+| Site | Rain bed: … / Lab bed: … / Ship, Space and Synth beds: … | Rain background sound: … / Lab background sound: … / Ship, Space and Synth background sounds: … | the new names; the authors' credit text after each label unchanged |
 | README | … ⌃⌥Space summons a one-line box … you write forward … ⌘⏎ puts the text into that app. A mechanical click per key, an optional ambience on the dim, and every key kept in an encrypted journal on your Mac until the text has gone out. … | … ⌃⌥Space shows a one-line box … you write on … ⌘⏎ pastes the text into that app. Key sounds, a background sound and an animation on the dimmed screen are each optional. Until you paste, copy or save the text, it is saved as you type, encrypted, on your Mac, so a crash loses nothing. … | glossary; the benefit first |
 | README | The build is self-signed, not notarized: the first time, right-click Lemna.app › Open, and confirm. | The build is self-signed, not notarized by Apple, so macOS blocks it the first time you open it; then click Open Anyway in System Settings › Privacy & Security. | right-click › Open no longer works on macOS 15 and later |
 | README | the key clicks: four packs, … | the key sounds and the background sounds: five packs and five beds, … | five packs now; the code's word bed for developers |
-| README | The sound packs and beds are CC0 except … | The key-sound packs and the background sounds are CC0 except … | glossary |
+| README | The sound packs and beds are CC0 except the Electric pack and the Lab bed … | The key-sound packs and the background sounds are CC0 except the Electric pack and the Lab background sound … | glossary |
 
 ## Known gaps
 
 - Pass 43 is not tried. Untried: the Settings window's look (the new labels, the Other sound text, the overview);
-  the menus (Paste into App, Mute Key Sounds, Effects' items, Open at Login in each state); every note at the bottom
-  edge; the alerts; macOS's System Audio Recording prompt with its new line; the site after deploy.
-- Kept on purpose: the bed names ("Rain bed" … "Synth bed"), "No bed" and the theme item "Still (lab bed)", which
-  carry the word the glossary retires; renaming them is the user's call. The Other sound failure causes in
-  parentheses ("the tap was refused", "the output's format is not float") stay as they are, for bug reports.
+  the menus (Paste into App, Sound ▸'s Background Sound header and its names, Mute All Sounds, Mute Key Sounds,
+  Effects' items, Open at Login in each state); every note at the bottom edge; the alerts; macOS's System Audio
+  Recording prompt with its new line; the site after deploy.
+- Kept on purpose: the Other sound failure causes in parentheses ("the tap was refused", "the output's format is not
+  float") stay as they are, for bug reports.

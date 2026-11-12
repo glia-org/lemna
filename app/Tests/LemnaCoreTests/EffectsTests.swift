@@ -11,7 +11,7 @@ private typealias Item = Effects.Item
     #expect(e.on && Item.allCases.allSatisfy { e.plays($0, reduceMotion: false) })  // every one ticked
     // Pass 17b: "Hand-off" (the motion, H1 and C1) where "Hand-off sheen" was (E1); pass 18: "Glyph fade" where
     // "Glyph pop-in" was (K1), Border warms (B2) and Word sheen (K3) removed.
-    #expect(Item.allCases.map(\.title) == ["Box Pop", "Letter Fade", "Text Exit", "Paragraph Fade"])
+    #expect(Item.allCases.map(\.title) == ["Box Opening", "Letter Fade-In", "Paste Motion", "Paragraph Mark Fade-In"])
     #expect(e.duration(.pop, 0.25, reduceMotion: false) == 0.25)
 }
 

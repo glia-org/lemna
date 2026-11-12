@@ -6,7 +6,8 @@ import Testing
 private let (ctrl, opt, shift, cmd) = (Chord.control, Chord.option, Chord.shift, Chord.command)
 
 /// Lemna's main menu's key equivalents as `mainMenu()` writes them (the app reads them from the menu itself).
-private let lemna = [("Paste into App", "\r", cmd), ("Copy", "\r", cmd | shift), ("Save…", "s", cmd), ("Off", "k", cmd),
+private let lemna = [("Paste into App", "\r", cmd), ("Copy", "\r", cmd | shift), ("Save…", "s", cmd),
+                     ("Mute All Sounds", "k", cmd),
                      ("Mute Key Sounds", "k", opt | cmd),
                      ("Undo", "z", cmd), ("Redo", "Z", cmd), ("Cut", "x", cmd), ("Copy", "c", cmd),
                      ("Paste", "v", cmd), ("Select All", "a", cmd), ("Emoji & Symbols", " ", ctrl | cmd),
@@ -72,7 +73,8 @@ private let lemna = [("Paste into App", "\r", cmd), ("Copy", "\r", cmd | shift),
     #expect(Chord(key: 0x03, modifiers: ctrl | cmd).verdict(lemna: lemna, system: none) == .refused(.lemna("Open Window")))
     #expect(Chord(key: 0x06, modifiers: cmd | shift).verdict(lemna: lemna, system: none) == .refused(.lemna("Redo")))
     #expect(Chord(key: 0x06, modifiers: ctrl | cmd).verdict(lemna: lemna, system: none) == .keep)  // ⌃⌘Z is free
-    // Mute Key Sounds (pass 42; Mute Clicks until pass 43) beside Off's ⌘K, which the rules refuse first (one modifier).
+    // Mute Key Sounds (pass 42; Mute Clicks until pass 43) beside Mute All Sounds' ⌘K, which the rules refuse first
+    // (one modifier).
     #expect(Chord(key: 0x28, modifiers: opt | cmd).verdict(lemna: lemna, system: none)
         == .refused(.lemna("Mute Key Sounds")))
     // Emoji & Symbols (pass 38): Lemna's own before the system's Character Viewer.
