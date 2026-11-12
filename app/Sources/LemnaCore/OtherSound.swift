@@ -290,19 +290,22 @@ public enum OtherSound {
 
         /// The Settings window's line under the checkbox; empty when the tick alone says it (off, or on and checked).
         public var line: String {
-            if let failure, on { return "Last time it could not start: \(failure)." }
+            if let failure, on {
+                return "Could not start last time (\(failure)). Lemna tries again when the box shows."
+            }
             switch phase {
             case .off: return ""  // the tick says off and on (pass 40b)
-            case .trial: return "Asking macOS…"
+            case .trial: return "Asking macOS for permission…"
             case .armed, .running, .rebuilding:
-                return unchecked ? "Not checked yet: nothing else was playing." : ""
+                return unchecked
+                    ? "Not checked yet: Lemna checks it the next time another app plays sound while the box is up." : ""
             case .denied:
-                return "Needs permission: allow Lemna in System Settings › Privacy & Security › Screen & System "
-                    + "Audio Recording, then tick it again."
+                return "Allow Lemna in System Settings › Privacy & Security › Screen & System Audio Recording, then "
+                    + "tick it again."
             }
         }
 
         /// The line before macOS 14.2, which has no process taps.
-        public static let unavailable = "Not on this macOS: it needs macOS 14.2 or later."
+        public static let unavailable = "Needs macOS 14.2 or later."
     }
 }

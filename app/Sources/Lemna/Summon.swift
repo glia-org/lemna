@@ -123,7 +123,7 @@ func makeStatusItem(target: App) -> NSStatusItem {
     menu.addItem(withTitle: "Open Window", action: #selector(App.toggleWindow(_:)), keyEquivalent: "f")
         .keyEquivalentModifierMask = [.control, .command]
     menu.addItem(.separator())
-    menu.addItem(withTitle: "Done", action: #selector(App.done(_:)), keyEquivalent: "\r")
+    menu.addItem(withTitle: "Paste into App", action: #selector(App.done(_:)), keyEquivalent: "\r")
     menu.addItem(withTitle: "Copy", action: #selector(App.copyText(_:)), keyEquivalent: "\r")
         .keyEquivalentModifierMask = [.command, .shift]
     menu.addItem(withTitle: "Save…", action: #selector(App.saveText(_:)), keyEquivalent: "s")
@@ -135,7 +135,7 @@ func makeStatusItem(target: App) -> NSStatusItem {
     for i in menu.items where i.action != nil { i.target = target }  // the app may not be active: no key window
     menu.addItem(.separator())
     menu.addItem(withTitle: "Settings…", action: #selector(App.openSettings(_:)), keyEquivalent: ",").target = target
-    menu.addItem(withTitle: "Start at Login", action: #selector(App.toggleLogin(_:)), keyEquivalent: "").target = target
+    menu.addItem(withTitle: "Open at Login", action: #selector(App.toggleLogin(_:)), keyEquivalent: "").target = target
     menu.addItem(withTitle: "Quit Lemna", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     menu.delegate = target
     item.menu = menu

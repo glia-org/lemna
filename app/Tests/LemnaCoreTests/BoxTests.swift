@@ -66,8 +66,8 @@ private let laptop = CGRect(x: 0, y: 80, width: 1512, height: 868)
     // In order: Secure Input over a missing permission (no prompt then), the permission over a missing target.
     #expect(P.decide(secureInput: true, mayPost: false, hasTarget: false) == .copy(note: P.secureNote, ask: false))
     #expect(P.decide(secureInput: false, mayPost: false, hasTarget: false) == .copy(note: P.permissionNote, ask: true))
-    #expect(P.secureNote == "Secure input is on: copied instead")
-    #expect(P.permissionNote == "Copied · allow Lemna under Privacy & Security › Accessibility to paste")
+    #expect(P.secureNote == "Copied, not pasted · secure input is on")
+    #expect(P.permissionNote == "Copied, not pasted · allow Lemna in System Settings › Privacy & Security › Accessibility")
     #expect(P.noTargetNote == "Copied · no app to paste into")
     #expect(P.settle == 0.12)
 }

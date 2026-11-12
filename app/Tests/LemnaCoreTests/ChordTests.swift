@@ -6,8 +6,8 @@ import Testing
 private let (ctrl, opt, shift, cmd) = (Chord.control, Chord.option, Chord.shift, Chord.command)
 
 /// Lemna's main menu's key equivalents as `mainMenu()` writes them (the app reads them from the menu itself).
-private let lemna = [("Done", "\r", cmd), ("Copy", "\r", cmd | shift), ("Save…", "s", cmd), ("Off", "k", cmd),
-                     ("Mute Clicks", "k", opt | cmd),
+private let lemna = [("Paste into App", "\r", cmd), ("Copy", "\r", cmd | shift), ("Save…", "s", cmd), ("Off", "k", cmd),
+                     ("Mute Key Sounds", "k", opt | cmd),
                      ("Undo", "z", cmd), ("Redo", "Z", cmd), ("Cut", "x", cmd), ("Copy", "c", cmd),
                      ("Paste", "v", cmd), ("Select All", "a", cmd), ("Emoji & Symbols", " ", ctrl | cmd),
                      ("Open Window", "f", ctrl | cmd),
@@ -68,13 +68,13 @@ private let lemna = [("Done", "\r", cmd), ("Copy", "\r", cmd | shift), ("Save…
 @Test func lemnasOwnKeysAreRefusedAndTheSystemsWarned() {
     let none = [Chord]()
     #expect(Chord(key: 0x24, modifiers: cmd | shift).verdict(lemna: lemna, system: none) == .refused(.lemna("Copy")))
-    #expect(Chord(key: 0x24, modifiers: cmd).verdict(lemna: lemna, system: none) == .refused(.lemna("Done")))
+    #expect(Chord(key: 0x24, modifiers: cmd).verdict(lemna: lemna, system: none) == .refused(.lemna("Paste into App")))
     #expect(Chord(key: 0x03, modifiers: ctrl | cmd).verdict(lemna: lemna, system: none) == .refused(.lemna("Open Window")))
     #expect(Chord(key: 0x06, modifiers: cmd | shift).verdict(lemna: lemna, system: none) == .refused(.lemna("Redo")))
     #expect(Chord(key: 0x06, modifiers: ctrl | cmd).verdict(lemna: lemna, system: none) == .keep)  // ⌃⌘Z is free
-    // Mute Clicks (pass 42) beside Off's ⌘K, which the rules refuse first (one modifier).
+    // Mute Key Sounds (pass 42; Mute Clicks until pass 43) beside Off's ⌘K, which the rules refuse first (one modifier).
     #expect(Chord(key: 0x28, modifiers: opt | cmd).verdict(lemna: lemna, system: none)
-        == .refused(.lemna("Mute Clicks")))
+        == .refused(.lemna("Mute Key Sounds")))
     // Emoji & Symbols (pass 38): Lemna's own before the system's Character Viewer.
     #expect(Chord(key: 0x31, modifiers: ctrl | cmd).verdict(lemna: lemna, system: [Chord(key: 0x31, modifiers: ctrl | cmd)])
         == .refused(.lemna("Emoji & Symbols")))
@@ -100,17 +100,17 @@ private let lemna = [("Done", "\r", cmd), ("Copy", "\r", cmd | shift), ("Save…
     #expect(taken == .taken("input sources"))
     #expect(Chord.note(Chord.summon, taken) == "⌃⌥Space: taken by macOS")
     #expect(Chord.help(Chord.summon, taken)
-        == "macOS uses ⌃⌥Space (input sources). Lemna gets it once that shortcut is off.")
+        == "macOS uses ⌃⌥Space for input sources. Turn it off in System Settings › Keyboard, or record another.")
     let other = Chord(key: 0x25, modifiers: ctrl | opt | cmd)
-    #expect(Chord.help(other, .taken(nil)) == "macOS uses ⌃⌥⌘L. Lemna gets it once that shortcut is off.")
+    #expect(Chord.help(other, .taken(nil)) == "macOS uses ⌃⌥⌘L. Turn it off in System Settings › Keyboard, or record another.")
     #expect(Chord.standing(other, registered: true, system: system) == .free)
     #expect(Chord.note(other, .free) == nil && Chord.help(other, .free) == "")
     #expect(Chord.standing(other, registered: false, system: system) == .unregistered)
     #expect(Chord.note(other, .unregistered) == "⌃⌥⌘L: not available")
     #expect(Chord.standing(nil, registered: true, system: system) == .none && Chord.note(nil, .none) == nil)
-    #expect(Chord.help(nil, .none) == "Show Lemna from the menu-bar item.")
-    #expect(Chord.listening(keeping: Chord.summon) == "Press the new shortcut. Esc keeps ⌃⌥Space.")
-    #expect(Chord.listening(keeping: nil) == "Press the new shortcut. Esc keeps none.")
+    #expect(Chord.help(nil, .none) == "No shortcut. Show Lemna from its icon in the menu bar.")
+    #expect(Chord.listening(keeping: Chord.summon) == "Press the new shortcut, or Esc to keep ⌃⌥Space.")
+    #expect(Chord.listening(keeping: nil) == "Press the new shortcut, or Esc to cancel.")
     // Why a recorded chord was not kept.
     let optionK = Chord(key: 0x28, modifiers: opt)
     #expect(optionK.help(.needsControlOrCommand, typed: "˚") == "⌥K types ˚. Add ⌃ or ⌘.")
@@ -120,8 +120,8 @@ private let lemna = [("Done", "\r", cmd), ("Copy", "\r", cmd | shift), ("Save…
     #expect(Chord(key: 0x60, modifiers: shift).help(.needsControlOrCommand, typed: "\u{f708}")
         == "⇧F5 needs ⌃ or ⌘, or no modifier.")
     #expect(Chord(key: 0x25, modifiers: cmd).help(.needsAnother, typed: "l")
-        == "Apps use ⌘L themselves. Add another modifier.")
-    #expect(Chord(key: 0x24, modifiers: cmd | shift).help(.lemna("Copy"), typed: "\r") == "Copy uses ⇧⌘↩ in the box.")
+        == "Apps use ⌘L for their own commands. Add another modifier.")
+    #expect(Chord(key: 0x24, modifiers: cmd | shift).help(.lemna("Copy"), typed: "\r") == "Lemna uses ⇧⌘↩ for Copy.")
 }
 
 @Test func theOverviewListsEachChordOnceAsMenusWriteIt() {

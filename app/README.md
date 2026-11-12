@@ -1885,3 +1885,117 @@ Pass 42, a clicks-only mute (DESIGN.md K1 and SP2 amended; 2026-11-12; the user'
 - Pass 42 is not tried. Untried: ⌥⌘K in the box and in the window; the bed playing on while the clicks are muted;
   the notice's new text over Bluetooth, and its fade when ⌥⌘K mutes the clicks while it shows; the checkbox; a pack
   chosen clearing the mute; the flag across a relaunch. Nothing was listened to.
+
+Pass 43, the wording (DESIGN.md TX1 new; B4, K1, O1+O2+O3, F1, Y1, TH1, SP2, DK1 and X1 amended; 2026-11-12; the user's
+decision of 2026-11-12)
+
+- Why: texts users read named things by their design names (the hint, clicks, the bed, the dim, the journal, the
+  session, hand-off), carried detail they cannot use, and gave one thing two words (Settings' "Clicks:" beside notes
+  about key sounds). Each text is now written for its reader and its place, with one glossary for the app, the site
+  and the root README (DESIGN.md TX1). Text only: no behaviour, shortcut, key equivalent, UserDefaults key or Swift
+  identifier changed; the pack, theme and bed names are kept.
+- Strings: `Settings.swift`, `main.swift`, `Summon.swift` (the app); `Summoning.swift`, `Shortcuts.swift`,
+  `Paste.swift`, `History.swift`, `Effects.swift`, `Chord.swift`, `OtherSound.swift` (LemnaCore); `make-app.sh`
+  (NSAudioCaptureUsageDescription); `site/index.html` and the demo's three labels in `site/assets/site.js`; the root
+  `README.md`. Rows changed per place: menus 8, Settings 28 (the overview's 9 among them), the notes at the bottom
+  edge 8, alerts 5, Info.plist 1, the site 21, the README 4.
+- A refusal of the field names the menu item: "Lemna uses ⌘↩ for Paste into App." (`MenuKey.title` is read from the
+  menu, so the renamed items carry over).
+- Two facts corrected on the way: the Other sound line for a refused permission wrapped to three lines in its two-line
+  field and was cut off (now two); the site and the README said right-click › Open for the first launch, which no
+  longer opens an app that is not notarized from macOS 15 on (now: macOS blocks it, then Open Anyway in System
+  Settings › Privacy & Security). The README's "four packs" is five.
+- Measured: the Settings window stays 427 × 822 pt inside its title bar, measured offscreen with a throwaway build of
+  `Settings.swift` and LemnaCore (the same build of main gives 427 × 822); the second ⌘Z row was shortened to keep
+  the window's width. Each line under the shortcut field and under Other sound fits its two lines at the row's 298 pt;
+  the Other sound text keeps its five lines. The notes at 12 pt: the longest, "Copied, not pasted · allow Lemna in
+  System Settings › Privacy & Security › Accessibility", is 494 pt, inside a 600 pt box.
+- Tests: 196, as before; the pinned strings follow (`ChordTests`, `FrameTests`, `OtherSoundTests`, `BoxTests`,
+  `EditingTests`, `EffectsTests`). Debug build without warnings; nothing launched.
+
+| Place | Before | After | Why |
+|---|---|---|---|
+| Menus | Done | Paste into App | a menu item names its action; Done names a state |
+| Menus | Mute Clicks | Mute Key Sounds | names what is muted in the reader's words; clicks is ours |
+| Menus | Pop | Box Pop | says what pops; HIG title case |
+| Menus | Glyph fade | Letter Fade | glyph is typesetters' jargon; title case |
+| Menus | Hand-off | Text Exit | hand-off is our coinage and clashes with Apple's Handoff |
+| Menus | Paragraph fade | Paragraph Fade | HIG title case |
+| Menus | Start at Login | Open at Login | Apple's term for the same thing |
+| Menus | Start at Login (approve in System Settings) | Open at Login (Approve in System Settings) | Apple's term; title case in a menu |
+| Settings | Show Lemna from the menu-bar item. | No shortcut. Show Lemna from its icon in the menu bar. | says the state, then what to do; menu-bar item is our term |
+| Settings | macOS uses ⌃⌥Space (input sources). Lemna gets it once that shortcut is off. | macOS uses ⌃⌥Space for input sources. Turn it off in System Settings › Keyboard, or record another. | what to do now, and where |
+| Settings | ⌃⌥⌘L could not be registered. | ⌃⌥⌘L is not available: another app may use it. Record another shortcut. | registered is the API's word; says the likely cause and what to do |
+| Settings | Press the new shortcut. Esc keeps ⌃⌥Space. | Press the new shortcut, or Esc to keep ⌃⌥Space. | one instruction |
+| Settings | Press the new shortcut. Esc keeps none. | Press the new shortcut, or Esc to cancel. | keeps none read as a glitch |
+| Settings | Apps use ⌘L themselves. Add another modifier. | Apps use ⌘L for their own commands. Add another modifier. | says what for |
+| Settings | Copy uses ⇧⌘↩ in the box. | Lemna uses ⇧⌘↩ for Copy. | says whose key it is |
+| Settings | Clicks: | Key sounds: | one word for one thing (the menu and the note say key sounds) |
+| Settings | Bed: | Background: | bed is jargon; under Sound, Background says what it is |
+| Settings | Show the Bluetooth hint | Warn when Bluetooth delays key sounds | hint is an internal name; names the effect |
+| Settings | Other sound | Other apps | our coinage; the checkbox under it says other apps |
+| Settings | Other apps play a little quieter and softer while the box is up, and as before once it hides. This needs macOS's permission to tap system audio: nothing is recorded or kept, and nothing leaves the Mac. There is a short gap in their sound as it switches. | Other apps play quieter and softer while the box is up. macOS asks once for permission to record system audio: Lemna needs it to change their sound as it plays, and records or keeps nothing. Their sound breaks off briefly when the box shows and hides. | tap is jargon; names the permission as macOS does; says when the gap comes |
+| Settings | Asking macOS… | Asking macOS for permission… | says for what |
+| Settings | Not checked yet: nothing else was playing. | Not checked yet: Lemna checks it the next time another app plays sound while the box is up. | says what happens next |
+| Settings | Needs permission: allow Lemna in System Settings › Privacy & Security › Screen & System Audio Recording, then tick it again. | Allow Lemna in System Settings › Privacy & Security › Screen & System Audio Recording, then tick it again. | the old line wrapped to three lines in a two-line field and was cut off |
+| Settings | Last time it could not start: no output device. | Could not start last time (no output device). Lemna tries again when the box shows. | says what happens next; the cause stays for a bug report |
+| Settings | Not on this macOS: it needs macOS 14.2 or later. | Needs macOS 14.2 or later. | one fact once |
+| Settings | Ambience / Mode: | Ambience / Animation: | Mode says nothing; the items are animations |
+| Settings | Shortcuts in the box | Shortcuts while writing | they work in the window too |
+| Settings | Send into the app | Paste into the app | one verb for ⌘⏎ |
+| Settings | Copy | Copy instead of pasting | told apart from ⌘C's row |
+| Settings | Save… | Save as a file… | says what it makes |
+| Settings | Hide the box | Hide the box, keeping the text | the fact users need about Esc |
+| Settings | Paragraph | New paragraph | names the action |
+| Settings | On the empty line: the text that last went out | When empty: the last text pasted, copied or saved | went out is our phrase; names the three actions |
+| Settings | Sound off, on | All sound off, on | told apart from the next row |
+| Settings | Clicks off, on | Key sounds off, on | glossary |
+| Settings | Window mode | Open or close the window | as the menu says |
+| Notes | Bluetooth output: clicks arrive late · ⌥⌘K mutes them | Bluetooth delays key sounds · ⌥⌘K mutes them | what happened, then what to do, in the reader's words |
+| Notes | Secure input is on: copied instead | Copied, not pasted · secure input is on | what happened first, then why, as the other copy notes |
+| Notes | Copied · allow Lemna under Privacy & Security › Accessibility to paste | Copied, not pasted · allow Lemna in System Settings › Privacy & Security › Accessibility | the full path; what to do last |
+| Notes | Copied · ⌘V could not be made | Copied, not pasted · the paste could not be sent | made a ⌘V is our inside view |
+| Notes | Not copied. | Not copied · try again | what to do now |
+| Notes | Not pasted. | Not pasted · try again | what to do now |
+| Notes | Not saved: <reason>. | Not saved: <reason> | no period, as the other notes (macOS's reason may end in one) |
+| Notes | ⌘⇧Z brings it back | Nothing more to undo · ⇧⌘Z brings it back | what happened, then what to do; Apple's modifier order |
+| Alerts | This session is not kept | Lemna cannot save your text as you type. | session and kept are internal; a full-sentence title takes a period (HIG) |
+| Alerts | Lemna could not open its journal: <problem>. You can write, but if Lemna quits or crashes before you copy or save, the text is lost. | Its encrypted file could not be opened: <problem>. You can still write, but if Lemna quits or crashes before you paste, copy or save the text, it is lost. | journal is internal; paste was missing |
+| Alerts | Discard this session's text? | Discard what you have written? | session is internal |
+| Alerts | Not finished: <reason>. The session stays. | Lemna could not clear the text. | what happened, as a sentence title |
+| Alerts | (none) | The text stays in Lemna, so nothing is lost. Reason: <reason>. | what it means for the user, then the cause |
+| Info.plist | Lemna plays other apps a little quieter and softer while its box is up. Nothing is recorded or kept. | Lemna makes other apps quieter and softer while you write in its box. Nothing is recorded or kept. | plays other apps is odd English |
+| Site | … Summon Lemna over any Mac app with ⌃⌥Space, write forward for as long as you like while the text glides past the caret, and ⌘⏎ puts all of it into that app. | … Press ⌃⌥Space over any Mac app, write for as long as you like while the text glides past the caret, and ⌘⏎ pastes all of it into that app. | plain verbs |
+| Site | Summon it over any app with ⌃⌥Space, write forward for as long as you like while the text glides past the caret, and ⌘⏎ puts all of it into that app. | Press ⌃⌥Space over any app, write for as long as you like while the text glides past the caret, and ⌘⏎ pastes all of it into that app. | plain verbs |
+| Site | macOS 14 or later. Self-signed, not notarized: right-click › Open the first time. | macOS 14 or later. Lemna is not notarized by Apple: the first time, macOS blocks it; then click Open Anyway in System Settings › Privacy & Security. | right-click › Open no longer opens it on macOS 15 and later; self-signed is jargon |
+| Site | … the caret at 60 % of the width. Around it the dim is a curtain of faint mirrored glyphs … | … Around it, on the dimmed screen, a curtain of faint mirrored letters … | a measurement and our coinage |
+| Site | Write in Lemna's box; Return sends it into the app window | Write in Lemna's box; Return pastes it into the app window | one verb |
+| Site | Click into the box to write your own; ⏎ sends it. | Click into the box to write your own; ⏎ pastes it. | one verb |
+| Site | sound: off / sound: on | key sounds: off / key sounds: on | glossary |
+| Site | lab bed: off / lab bed: on | background sound: off / background sound: on | bed is jargon |
+| Site | ⌃⌥Space opens the box · ⌘⏎ sends the text into the app | ⌃⌥Space shows the box · ⌘⏎ pastes the text into the app | glossary |
+| Site | ⌃⌥Space summons the box over the app you are in. | ⌃⌥Space shows the box over the app you are in; you can choose another shortcut in Settings. | plain verb; the shortcut is the visitor's to change |
+| Site | ⌘⏎ pastes into the app behind; it needs the Accessibility permission, for the paste only. | ⌘⏎ pastes the text into that app. macOS asks once for Accessibility permission, which Lemna uses for the paste alone. | says when they will meet it |
+| Site | ⌘⇧⏎ copies, ⌘S saves, Esc hides. | ⇧⌘⏎ copies it instead, ⌘S saves it as a Markdown file, Esc hides the box and keeps the text for next time. | Apple's modifier order; what each gives |
+| Site | A ⌘V that lands nowhere is one more ⌘V away: the text stays on the clipboard, and ⌘Z on the empty line brings it back into Lemna. | If the paste lands nowhere, the text is still on the clipboard, and ⌘Z in the empty box brings it back. | plain |
+| Site | Every key is kept in an encrypted journal on your Mac until the text has gone out. | Until you paste, copy or save it, your text is saved as you type, encrypted, on your Mac, so a crash loses nothing; then Lemna deletes that copy. | leads with the benefit; journal reads as a kept diary |
+| Site | Two looks: Still, the default, paper by day and a warm dark by night as the system is; Lemna, dark and monospaced. | Two themes: Still, the default, paper-coloured by day and warm dark by night, as your Mac’s appearance is; and Lemna, dark and monospaced. | the menu's word |
+| Site | A click per key from five sound packs, or off; five beds under it (rain, ship, lab, space, synth) and an ambience on the dim, each or off. It starts with the lab bed and Code. | Key sounds from five packs, a background sound (rain, ship, lab, space or synth) and an animation on the dimmed screen, each of them optional. Lemna starts with the lab background sound and the Code animation. | bed and the dim are ours |
+| Site | Turned on in Settings, other apps play a little quieter and softer while the box is up, and as before once it hides. macOS asks once to let Lemna tap system audio; nothing is recorded or kept. | An option in Settings makes other apps play quieter and softer while you write. macOS asks once for permission to record system audio; nothing is recorded or kept. | tap is jargon |
+| Site | … mirrored glyphs … over the whole dim … on the dim … lights its glyph … | … mirrored characters … over the whole dimmed screen … on the dimmed screen … lights its character … | glossary |
+| Site | On the dim while you write: Code (the default), Still water, or off. | On the dimmed screen while you write: Code (the default), Still water, or off. | the dim is ours |
+| Site | … CC0; the clicks on this page are from it. | … CC0; the key sounds on this page are from it. | glossary (CC0 credit, our words) |
+| Site | … CC0; the Return and the send from the Versilian Community Sample Library … | … CC0; the Return and paste sounds from the Versilian Community Sample Library … | the send is ours (CC0 credit, our words) |
+| README | … ⌃⌥Space summons a one-line box … you write forward … ⌘⏎ puts the text into that app. A mechanical click per key, an optional ambience on the dim, and every key kept in an encrypted journal on your Mac until the text has gone out. … | … ⌃⌥Space shows a one-line box … you write on … ⌘⏎ pastes the text into that app. Key sounds, a background sound and an animation on the dimmed screen are each optional. Until you paste, copy or save the text, it is saved as you type, encrypted, on your Mac, so a crash loses nothing. … | glossary; the benefit first |
+| README | The build is self-signed, not notarized: the first time, right-click Lemna.app › Open, and confirm. | The build is self-signed, not notarized by Apple, so macOS blocks it the first time you open it; then click Open Anyway in System Settings › Privacy & Security. | right-click › Open no longer works on macOS 15 and later |
+| README | the key clicks: four packs, … | the key sounds and the background sounds: five packs and five beds, … | five packs now; the code's word bed for developers |
+| README | The sound packs and beds are CC0 except … | The key-sound packs and the background sounds are CC0 except … | glossary |
+
+## Known gaps
+
+- Pass 43 is not tried. Untried: the Settings window's look (the new labels, the Other sound text, the overview);
+  the menus (Paste into App, Mute Key Sounds, Effects' items, Open at Login in each state); every note at the bottom
+  edge; the alerts; macOS's System Audio Recording prompt with its new line; the site after deploy.
+- Kept on purpose: the bed names ("Rain bed" … "Synth bed"), "No bed" and the theme item "Still (lab bed)", which
+  carry the word the glossary retires; renaming them is the user's call. The Other sound failure causes in
+  parentheses ("the tap was refused", "the output's format is not float") stay as they are, for bug reports.

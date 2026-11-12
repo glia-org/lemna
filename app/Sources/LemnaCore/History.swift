@@ -100,7 +100,7 @@ public struct SecondChance {
         return change
     }
 
-    public static let redoNote = "⌘⇧Z brings it back"
+    public static let redoNote = "Nothing more to undo · ⇧⌘Z brings it back"
     public static let nothingNote = "Nothing to bring back"
 
     /// ⌘Z's note at the bottom edge (pass 41b), from its `change` and the history after it: none when it changed

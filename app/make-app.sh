@@ -63,7 +63,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSAudioCaptureUsageDescription</key>
-	<string>Lemna plays other apps a little quieter and softer while its box is up. Nothing is recorded or kept.</string>
+	<string>Lemna makes other apps quieter and softer while you write in its box. Nothing is recorded or kept.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

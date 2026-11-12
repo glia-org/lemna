@@ -13,24 +13,24 @@ public enum Shortcuts {
     /// (B4), in the order of a session: the hand-offs and Esc, writing, moving, editing, the rest. ⇧ with any move
     /// selects; its row names the plain ones. ⌘Z has a second row, the second chance on the empty line (pass 41).
     public static let overview: [Row] = [
-        Row(chords: [c(0x24, command)], label: "Send into the app"),
-        Row(chords: [c(0x24, shift | command)], label: "Copy"),
-        Row(chords: [c(0x01, command)], label: "Save…"),
-        Row(chords: [c(0x35)], label: "Hide the box"),
-        Row(chords: [c(0x24)], label: "Paragraph"),
+        Row(chords: [c(0x24, command)], label: "Paste into the app"),
+        Row(chords: [c(0x24, shift | command)], label: "Copy instead of pasting"),
+        Row(chords: [c(0x01, command)], label: "Save as a file…"),
+        Row(chords: [c(0x35)], label: "Hide the box, keeping the text"),
+        Row(chords: [c(0x24)], label: "New paragraph"),
         Row(chords: [c(0x24, shift)], label: "Line break"),
         Row(chords: [c(0x7B, option), c(0x7C, option)], label: "Word left, right"),
         Row(chords: [c(0x7B, command), c(0x7C, command)], label: "Paragraph start, end"),
         Row(chords: [c(0x7B, shift), c(0x7C, shift)], label: "Select (⇧ with any move)"),
         Row(chords: [c(0x33, option), c(0x75, option)], label: "Delete a word"),
         Row(chords: [c(0x06, command), c(0x06, shift | command)], label: "Undo, redo"),
-        Row(chords: [c(0x06, command)], label: "On the empty line: the text that last went out"),
+        Row(chords: [c(0x06, command)], label: "When empty: the last text pasted, copied or saved"),
         Row(chords: [c(0x00, command), c(0x08, command), c(0x07, command), c(0x09, command)],
             label: "Select all, copy, cut, paste"),
         Row(chords: [c(0x31, control | command)], label: "Emoji & Symbols"),
-        Row(chords: [c(0x28, command)], label: "Sound off, on"),
-        Row(chords: [c(0x28, option | command)], label: "Clicks off, on"),  // the bed plays on (pass 42)
-        Row(chords: [c(0x03, control | command)], label: "Window mode"),
+        Row(chords: [c(0x28, command)], label: "All sound off, on"),
+        Row(chords: [c(0x28, option | command)], label: "Key sounds off, on"),  // the bed plays on (pass 42)
+        Row(chords: [c(0x03, control | command)], label: "Open or close the window"),
     ]
 
     /// A row's chords as the window writes them. Letters are the US layout's: the menus' key equivalents are

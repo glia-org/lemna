@@ -11,8 +11,9 @@ public enum Paste {
         case copy(note: String, ask: Bool)
     }
 
-    public static let secureNote = "Secure input is on: copied instead"
-    public static let permissionNote = "Copied · allow Lemna under Privacy & Security › Accessibility to paste"
+    public static let secureNote = "Copied, not pasted · secure input is on"
+    public static let permissionNote = "Copied, not pasted · allow Lemna in System Settings › Privacy & Security › "
+        + "Accessibility"
     public static let noTargetNote = "Copied · no app to paste into"
 
     /// In this order: Secure Input on (a password field has the keys, and a posted ⌘V would go into it), no permission

@@ -125,7 +125,7 @@ private func onePole(_ hz: Double, rate: Double = 48000) -> Double {
     #expect(s.phase == .off && !s.on && s.line == "")
     #expect(s.want(true) == .none && s.want(false) == .none)  // off: the box comes and goes, no tap
     #expect(s.tick(true) == .trial)
-    #expect(s.phase == .trial && s.on && s.line == "Asking macOS…")
+    #expect(s.phase == .trial && s.on && s.line == "Asking macOS for permission…")
     #expect(s.tick(true) == .none)
     #expect(s.watched(.heard) == .stop)  // sound came: allowed; the trial's tap goes
     #expect(s.phase == .armed && s.heard && s.line == "")
@@ -176,7 +176,7 @@ private func onePole(_ hz: Double, rate: Double = 48000) -> Double {
     _ = s.tick(true)
     #expect(s.watched(.silent) == .stop)
     #expect(s.phase == .denied && !s.on)
-    #expect(s.line.hasPrefix("Needs permission: allow Lemna in System Settings › Privacy & Security › Screen & System"))
+    #expect(s.line.hasPrefix("Allow Lemna in System Settings › Privacy & Security › Screen & System Audio Recording"))
     #expect(s.want(true) == .none)  // the box comes: no tap
     #expect(s.tick(false) == .none && s.phase == .denied)  // already unticked
     #expect(s.tick(true) == .trial)  // ticked again, after allowing it
@@ -197,17 +197,18 @@ private func onePole(_ hz: Double, rate: Double = 48000) -> Double {
     var f = OtherSound.State(on: true)
     _ = f.want(true)
     #expect(f.failed("no output device") == .stop && f.phase == .armed && f.on)
-    #expect(f.line == "Last time it could not start: no output device.")
+    #expect(f.line == "Could not start last time (no output device). Lemna tries again when the box shows.")
     #expect(f.want(false) == .none && f.want(true) == .start)
     #expect(f.started() == .none && f.line == "")
-    #expect(f.watched(.dead) == .stop && f.line == "Last time it could not start: the output did not run.")
+    #expect(f.watched(.dead) == .stop && f.line
+        == "Could not start last time (the output did not run). Lemna tries again when the box shows.")
     // The trial over with nothing else playing: on, not checked yet; the first sound heard checks it.
     var q = OtherSound.State(on: false)
     _ = q.tick(true)
     #expect(q.trialEnded() == .stop && q.phase == .armed)
-    #expect(q.line == "Not checked yet: nothing else was playing.")
+    #expect(q.line == "Not checked yet: Lemna checks it the next time another app plays sound while the box is up.")
     _ = q.want(true)
     _ = q.watched(.heard)
     #expect(q.line == "" && q.trialEnded() == .none)
-    #expect(OtherSound.State.unavailable == "Not on this macOS: it needs macOS 14.2 or later.")
+    #expect(OtherSound.State.unavailable == "Needs macOS 14.2 or later.")
 }

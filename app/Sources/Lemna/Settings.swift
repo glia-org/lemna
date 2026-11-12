@@ -161,15 +161,15 @@ final class Settings: NSObject, NSWindowDelegate {
     private let help = NSTextField(wrappingLabelWithString: "")
     private let soundBox = NSButton(checkboxWithTitle: "Play sound", target: nil, action: nil)
     private let pack = NSPopUpButton(frame: .zero, pullsDown: false), bed = NSPopUpButton(frame: .zero, pullsDown: false)
-    private let hintBox = NSButton(checkboxWithTitle: "Show the Bluetooth hint", target: nil, action: nil)
+    private let hintBox = NSButton(checkboxWithTitle: "Warn when Bluetooth delays key sounds", target: nil, action: nil)
     private let mode = NSPopUpButton(frame: .zero, pullsDown: false)
     private let duckBox = NSButton(checkboxWithTitle: "Quieten other apps while the box is up", target: nil, action: nil)
     private let duckAbout = NSTextField(wrappingLabelWithString: Settings.duckAbout)
     private let duckLine = NSTextField(wrappingLabelWithString: "")
     /// The Other sound group's explanation (DK1).
-    static let duckAbout = "Other apps play a little quieter and softer while the box is up, and as before once it "
-        + "hides. This needs macOS's permission to tap system audio: nothing is recorded or kept, and nothing leaves "
-        + "the Mac. There is a short gap in their sound as it switches."
+    static let duckAbout = "Other apps play quieter and softer while the box is up. macOS asks once for permission "
+        + "to record system audio: Lemna needs it to change their sound as it plays, and records or keeps nothing. "
+        + "Their sound breaks off briefly when the box shows and hides."
     /// The chord kept and how it stands now.
     var stand: () -> (chord: Chord?, standing: Chord.Standing) = { (nil, .none) }
     /// Whether a recorded chord may be kept (SC2), read against the menus and the system's list as they are now.
@@ -247,14 +247,14 @@ final class Settings: NSObject, NSWindowDelegate {
         let groups: [[NSView]] = [
             [header("Shortcut"), none], [NSTextField(labelWithString: "Show Lemna:"), chord], [none, help],
             [separator(), none],
-            [header("Sound"), none], [none, soundBox], [NSTextField(labelWithString: "Clicks:"), pack],
-            [NSTextField(labelWithString: "Bed:"), bed], [none, hintBox],
+            [header("Sound"), none], [none, soundBox], [NSTextField(labelWithString: "Key sounds:"), pack],
+            [NSTextField(labelWithString: "Background:"), bed], [none, hintBox],
             [separator(), none],
-            [header("Other sound"), none], [none, duckBox], [none, duckAbout], [none, duckLine],
+            [header("Other apps"), none], [none, duckBox], [none, duckAbout], [none, duckLine],
             [separator(), none],
-            [header("Ambience"), none], [NSTextField(labelWithString: "Mode:"), mode],
+            [header("Ambience"), none], [NSTextField(labelWithString: "Animation:"), mode],
             [separator(), none],
-            [header("Shortcuts in the box"), none],
+            [header("Shortcuts while writing"), none],
         ]
         let small = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
         let mono = NSFont.monospacedSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)

@@ -70,7 +70,7 @@ func drawMark(scale: Int, name: String) -> (CGFloat, CGFloat) -> UInt8 {
 
 /// Since pass 42: what the notice says, the clicks muted alone (⌥⌘K) counted as the sound off, and Settings' hint.
 @Test func bluetoothNoticeWaitsForTheClicksAndTheHint() {
-    #expect(BluetoothNotice.text == "Bluetooth output: clicks arrive late · ⌥⌘K mutes them")
+    #expect(BluetoothNotice.text == "Bluetooth delays key sounds · ⌥⌘K mutes them")
     var n = BluetoothNotice()
     let muted = n.check(bluetooth: true, sound: true, clicksMuted: true, hint: true)
     let back = n.check(bluetooth: true, sound: true, clicksMuted: false, hint: true)
@@ -90,10 +90,10 @@ func drawMark(scale: Int, name: String) -> (CGFloat, CGFloat) -> UInt8 {
         let i = LoginItem(s)
         return (i.title, i.ticked, i.act)
     }
-    #expect(look(.notRegistered) == ("Start at Login", false, .register))
-    #expect(look(.enabled) == ("Start at Login", true, .unregister))
+    #expect(look(.notRegistered) == ("Open at Login", false, .register))
+    #expect(look(.enabled) == ("Open at Login", true, .unregister))
     // Turned off in System Settings, or waiting there: ticked, and choosing it opens Login Items rather than undoing it.
-    #expect(look(.requiresApproval) == ("Start at Login (approve in System Settings)", true, .openSettings))
+    #expect(look(.requiresApproval) == ("Open at Login (Approve in System Settings)", true, .openSettings))
 }
 
 /// WCAG's contrast ratio of two sRGB colours: (L1 + 0.05) / (L2 + 0.05) of their relative luminances, L1 the lighter.

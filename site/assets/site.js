@@ -366,7 +366,7 @@ var Sound=(function(){
     gain=ac.createGain();gain.gain.value=.6;gain.connect(ac.destination);
     names.forEach(function(n){Audio2.load(src(n)).then(function(d){buf[n]=d},function(){})});
   }
-  function label(){btn.textContent=on?'sound: on':'sound: off';btn.setAttribute('aria-pressed',String(on))}
+  function label(){btn.textContent=on?'key sounds: on':'key sounds: off';btn.setAttribute('aria-pressed',String(on))}
   if(btn){btn.addEventListener('click',function(){on=!on;if(on){load();Audio2.ctx()}label()});label()}
   return {play:function(kind){
     if(!on)return;var list=FILES[kind],n=list.length,p=0;
@@ -399,7 +399,7 @@ var Bed=(function(){
       if(isUp)fade(1,1.5);
     },function(){el=new Audio('assets/snd/lab.m4a');el.loop=true;if(isUp)fade(1,1.5)});
   }
-  function label(){btn.textContent=on?'lab bed: on':'lab bed: off';btn.setAttribute('aria-pressed',String(on))}
+  function label(){btn.textContent=on?'background sound: on':'background sound: off';btn.setAttribute('aria-pressed',String(on))}
   if(btn){btn.addEventListener('click',function(){on=!on;if(on){load();Audio2.ctx();if(isUp)fade(1,1.5)}else fade(0,.6);label()});label()}
   return {up:function(v){if(v===isUp)return;isUp=v;fade(v?1:0,v?1.5:.6)}};
 })();
@@ -660,7 +660,7 @@ function loop(){
 function still(){  // reduced motion: one frame of the box over the dimmed app and Code's rest, the key hints as labels
   mode='still';Doc.clear();up=true;box.classList.add('up');dim.classList.add('up');Code.still();
   Line.set(SEQ.replace('teh\b\bhe','the'));
-  hintShow('<kbd>⌃⌥Space</kbd><span>opens the box</span><kbd>⌘⏎</kbd><span>sends the text into the app</span>');
+  hintShow('<kbd>⌃⌥Space</kbd><span>shows the box</span><kbd>⌘⏎</kbd><span>pastes the text into the app</span>');
 }
 function idle(){clearTimeout(idleT);idleT=setTimeout(resume,10000)}
 function resume(){  // 10 s without the reader: the loop again, unless a sentence of theirs is still in the box

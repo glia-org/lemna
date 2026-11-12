@@ -172,17 +172,19 @@ public struct Chord: Hashable {
     public static func help(_ chord: Chord?, _ s: Standing, letter: (UInt32) -> String? = usLetter) -> String {
         let g = chord?.glyphs(letter: letter) ?? ""
         switch s {
-        case .none: return "Show Lemna from the menu-bar item."
+        case .none: return "No shortcut. Show Lemna from its icon in the menu bar."
         case .free: return ""
         case .taken(let name):
-            return "macOS uses \(g)\(name.map { " (\($0))" } ?? ""). Lemna gets it once that shortcut is off."
-        case .unregistered: return "\(g) could not be registered."
+            return "macOS uses \(g)\(name.map { " for \($0)" } ?? ""). Turn it off in System Settings › Keyboard, or "
+                + "record another."
+        case .unregistered: return "\(g) is not available: another app may use it. Record another shortcut."
         }
     }
 
     /// The grey line while the field listens; `old` is what Esc keeps.
     public static func listening(keeping old: Chord?, letter: (UInt32) -> String? = usLetter) -> String {
-        "Press the new shortcut. Esc keeps \(old?.glyphs(letter: letter) ?? "none")."
+        old.map { "Press the new shortcut, or Esc to keep \($0.glyphs(letter: letter))." }
+            ?? "Press the new shortcut, or Esc to cancel."
     }
 
     /// Why a recorded chord was not kept; `typed`: what the key typed with its modifiers, from the key-down.
@@ -196,8 +198,8 @@ public struct Chord: Hashable {
                   !typed.allSatisfy(\.isWhitespace)
             else { return "\(g) needs ⌃ or ⌘\(more)." }
             return "\(g) types \(typed). Add ⌃ or ⌘\(more)."
-        case .needsAnother: return "Apps use \(g) themselves. Add another modifier."
-        case .lemna(let title): return "\(title) uses \(g) in the box."
+        case .needsAnother: return "Apps use \(g) for their own commands. Add another modifier."
+        case .lemna(let title): return "Lemna uses \(g) for \(title)."
         }
     }
 

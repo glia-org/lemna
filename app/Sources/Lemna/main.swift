@@ -808,9 +808,9 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         guard let problem = keeper.problem else { return }
         guard surface.onScreen != nil else { return notKept = true }
         let a = NSAlert()
-        a.messageText = "This session is not kept"
-        a.informativeText = "Lemna could not open its journal: \(problem). You can write, but if Lemna quits or crashes "
-            + "before you copy or save, the text is lost."
+        a.messageText = "Lemna cannot save your text as you type."
+        a.informativeText = "Its encrypted file could not be opened: \(problem). You can still write, but if Lemna "
+            + "quits or crashes before you paste, copy or save the text, it is lost."
         a.beginSheetModal(for: questionHost())
     }
 
@@ -931,7 +931,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     /// the container then stays with the note at its bottom edge, until the next key or Esc. Without one the container
     /// goes, as after a paste.
     private func copyOut(_ text: String, note: String?) {
-        guard Clipboard.write(text) else { return notHandedOff("Not copied.") }
+        guard Clipboard.write(text) else { return notHandedOff("Not copied · try again") }
         timing.mark("clipboard written")
         guard let note else { return leave() }
         guard finished() else { return }
@@ -959,7 +959,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     private func paste(_ text: String, into app: NSRunningApplication) {
         guard let keys = CommandV() else {
             box.unsend()  // the box stays, with the note
-            return copyOut(text, note: "Copied · ⌘V could not be made")
+            return copyOut(text, note: "Copied, not pasted · the paste could not be sent")
         }
         let inFront = NSWorkspace.shared.frontmostApplication == app
         timing.mark(inFront ? "target in front" : "target not in front")
@@ -971,7 +971,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         for (i, act) in zip(acts.indices, acts) {
             switch act {
             case .write:
-                guard Clipboard.write(text) else { return notHandedOff("Not pasted.") }
+                guard Clipboard.write(text) else { return notHandedOff("Not pasted · try again") }
                 guard session.handedOff() else { return }
                 timing.mark("clipboard written")
             case .hide:
@@ -1078,7 +1078,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             do {
                 try Data((text + "\n").utf8).write(to: url, options: .atomic)
             } catch {
-                return self.notHandedOff("Not saved: \(describe(error)).")
+                return self.notHandedOff("Not saved: \(describe(error))")
             }
             UserDefaults.standard.set(url.deletingLastPathComponent().path, forKey: Self.folderKey)
             self.clicks?.play(.paragraph)  // K1's P1, as Copy
@@ -1117,7 +1117,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     @objc func discard(_ sender: Any?) {
         guard !asking, session.phase == .writing else { return }
         let a = NSAlert()
-        a.messageText = "Discard this session's text?"
+        a.messageText = "Discard what you have written?"
         a.informativeText = "It cannot be recovered."
         a.addButton(withTitle: "Discard").hasDestructiveAction = true
         a.addButton(withTitle: "Cancel")
@@ -1140,7 +1140,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             session.kept()
             view.resume()
             let a = NSAlert()
-            a.messageText = "Not finished: \(describe(error)). The session stays."
+            a.messageText = "Lemna could not clear the text."
+            a.informativeText = "The text stays in Lemna, so nothing is lost. Reason: \(describe(error))."
             a.beginSheetModal(for: questionHost())
             return false
         }
@@ -1173,7 +1174,7 @@ func soundMenu(target: AnyObject?) -> NSMenu {
     none.target = target
     menu.addItem(.separator())
     menu.addItem(withTitle: "Off", action: #selector(App.toggleSound(_:)), keyEquivalent: "k").target = target  // ⌘K
-    let mute = menu.addItem(withTitle: "Mute Clicks", action: #selector(App.toggleClicks(_:)), keyEquivalent: "k")
+    let mute = menu.addItem(withTitle: "Mute Key Sounds", action: #selector(App.toggleClicks(_:)), keyEquivalent: "k")
     mute.keyEquivalentModifierMask = [.option, .command]  // ⌥⌘K
     mute.target = target
     return menu
@@ -1220,7 +1221,7 @@ func mainMenu() -> NSMenu {
     app.addItem(withTitle: "Settings…", action: #selector(App.openSettings(_:)), keyEquivalent: ",")  // ⌘,
     app.addItem(.separator())
     app.addItem(withTitle: "Quit Lemna", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-    session.addItem(withTitle: "Done", action: #selector(App.done(_:)), keyEquivalent: "\r")  // ⌘⏎
+    session.addItem(withTitle: "Paste into App", action: #selector(App.done(_:)), keyEquivalent: "\r")  // ⌘⏎
     session.addItem(withTitle: "Copy", action: #selector(App.copyText(_:)), keyEquivalent: "\r")
         .keyEquivalentModifierMask = [.command, .shift]  // ⌘⇧⏎
     session.addItem(withTitle: "Save…", action: #selector(App.saveText(_:)), keyEquivalent: "s")  // ⌘S

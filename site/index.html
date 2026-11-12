@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Lemna · a quiet place to write without stopping</title>
-<meta name="description" content="A quiet place to write without stopping. Summon Lemna over any Mac app with ⌃⌥Space, write forward for as long as you like while the text glides past the caret, and ⌘⏎ puts all of it into that app.">
+<meta name="description" content="A quiet place to write without stopping. Press ⌃⌥Space over any Mac app, write for as long as you like while the text glides past the caret, and ⌘⏎ pastes all of it into that app.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#f3f0e8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1c1b18" media="(prefers-color-scheme: dark)">
@@ -12,21 +12,21 @@
 <link rel="preload" href="assets/fonts/literata-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/site.css">
 <!-- The page previews the app as a fresh install starts it (DESIGN.md TH1, K1, A1, passes 32-34): the Still theme by
-     the system's appearance, Literata, Code on the dim, the Lab bed. Every claim is of the build of 2026-11-05 (pass 34;
-     DESIGN.md, HANDOFF.md, app/README.md). Plain static files: no build step, no third-party requests, complete
-     without JavaScript. -->
+     the system's appearance, Literata, Code on the dim, the Lab bed. Every claim is of the build of 2026-11-12 (pass 43;
+     DESIGN.md, HANDOFF.md, app/README.md); its words follow DESIGN.md TX1. Plain static files: no build step, no
+     third-party requests, complete without JavaScript. -->
 </head>
 <body class="nojs">
 <main class="wrap">
   <header class="top">
     <a class="brand" href="https://github.com/glia-org/lemna"><svg viewBox="0 0 16 16" width="32" height="32" aria-hidden="true"><path d="M2 7.75L8.5 7H14V8.5H8.5Z"/><rect x="8.5" y="3.5" width="1.5" height="8.5"/></svg>Lemna</a>
     <h1>A quiet place to write without stopping.</h1>
-    <p class="lead">Summon it over any app with <kbd>⌃⌥Space</kbd>, write forward for as long as you like while the text glides past the caret, and <kbd>⌘⏎</kbd> puts all of it into that app.</p>
-    <p class="get"><a class="btn" href="https://github.com/glia-org/lemna/releases/latest">Download</a><span>macOS 14 or later. Self-signed, not notarized: right-click › Open the first time. <a href="https://github.com/glia-org/lemna">Source on GitHub</a>.</span></p>
+    <p class="lead">Press <kbd>⌃⌥Space</kbd> over any app, write for as long as you like while the text glides past the caret, and <kbd>⌘⏎</kbd> pastes all of it into that app.</p>
+    <p class="get"><a class="btn" href="https://github.com/glia-org/lemna/releases/latest">Download</a><span>macOS 14 or later. Lemna is not notarized by Apple: the first time, macOS blocks it; then click Open Anyway in System Settings › Privacy &amp; Security. <a href="https://github.com/glia-org/lemna">Source on GitHub</a>.</span></p>
   </header>
 
   <figure class="demo">
-    <noscript><picture class="still"><source media="(prefers-color-scheme: dark)" srcset="assets/img/demo-night.png"><img src="assets/img/demo-day.png" width="1100" height="620" alt="Lemna's box, one line tall, paper-coloured with a hairline edge, over a dimmed app. On the line, in a serif face: “reeds bent over them”, the older words fading toward the left, the caret at 60 % of the width. Around it the dim is a curtain of faint mirrored glyphs in columns, brighter streams falling through it."></picture></noscript>
+    <noscript><picture class="still"><source media="(prefers-color-scheme: dark)" srcset="assets/img/demo-night.png"><img src="assets/img/demo-day.png" width="1100" height="620" alt="Lemna's box, one line tall, paper-coloured with a hairline edge, over a dimmed app. On the line, in a serif face: “reeds bent over them”, the older words fading toward the left. Around it, on the dimmed screen, a curtain of faint mirrored letters in columns, brighter streams falling through it."></picture></noscript>
     <div class="fit js" id="fit">
       <div class="stage" id="stage" tabindex="0" role="group" aria-label="Lemna over an app window. Return opens the box to write in.">
         <div class="win" aria-hidden="true">
@@ -46,25 +46,25 @@
           <div class="ll-b"><span></span></div>
           <i class="ll-c"></i>
           <div class="ll-a"><span></span></div>
-          <input class="ll-in" id="ll-in" type="text" aria-label="Write in Lemna's box; Return sends it into the app window" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <input class="ll-in" id="ll-in" type="text" aria-label="Write in Lemna's box; Return pastes it into the app window" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
         </div>
       </div>
     </div>
     <div class="under js">
-      <p>Click into the box to write your own; <kbd>⏎</kbd> sends it.</p>
-      <span class="tog"><button type="button" class="snd" id="snd" aria-pressed="false">sound: off</button><button type="button" class="snd" id="bed" aria-pressed="false">lab bed: off</button></span>
+      <p>Click into the box to write your own; <kbd>⏎</kbd> pastes it.</p>
+      <span class="tog"><button type="button" class="snd" id="snd" aria-pressed="false">key sounds: off</button><button type="button" class="snd" id="bed" aria-pressed="false">background sound: off</button></span>
     </div>
   </figure>
 
   <ul class="facts">
-    <li><kbd>⌃⌥Space</kbd> summons the box over the app you are in.</li>
-    <li><kbd>⌘⏎</kbd> pastes into the app behind; it needs the Accessibility permission, for the paste only.</li>
-    <li><kbd>⌘⇧⏎</kbd> copies, <kbd>⌘S</kbd> saves, <kbd>Esc</kbd> hides.</li>
-    <li>A <kbd>⌘V</kbd> that lands nowhere is one more <kbd>⌘V</kbd> away: the text stays on the clipboard, and <kbd>⌘Z</kbd> on the empty line brings it back into Lemna.</li>
-    <li>Every key is kept in an encrypted journal on your Mac until the text has gone out.</li>
-    <li>Two looks: Still, the default, paper by day and a warm dark by night as the system is; Lemna, dark and monospaced.</li>
-    <li>A click per key from five sound packs, or off; five beds under it (rain, ship, lab, space, synth) and an ambience on the dim, each or off. It starts with the lab bed and Code.</li>
-    <li>Turned on in Settings, other apps play a little quieter and softer while the box is up, and as before once it hides. macOS asks once to let Lemna tap system audio; nothing is recorded or kept.</li>
+    <li><kbd>⌃⌥Space</kbd> shows the box over the app you are in; you can choose another shortcut in Settings.</li>
+    <li><kbd>⌘⏎</kbd> pastes the text into that app. macOS asks once for Accessibility permission, which Lemna uses for the paste alone.</li>
+    <li><kbd>⇧⌘⏎</kbd> copies it instead, <kbd>⌘S</kbd> saves it as a Markdown file, <kbd>Esc</kbd> hides the box and keeps the text for next time.</li>
+    <li>If the paste lands nowhere, the text is still on the clipboard, and <kbd>⌘Z</kbd> in the empty box brings it back.</li>
+    <li>Until you paste, copy or save it, your text is saved as you type, encrypted, on your Mac, so a crash loses nothing; then Lemna deletes that copy.</li>
+    <li>Two themes: Still, the default, paper-coloured by day and warm dark by night, as your Mac’s appearance is; and Lemna, dark and monospaced.</li>
+    <li>Key sounds from five packs, a background sound (rain, ship, lab, space or synth) and an animation on the dimmed screen, each of them optional. Lemna starts with the lab background sound and the Code animation.</li>
+    <li>An option in Settings makes other apps play quieter and softer while you write. macOS asks once for permission to record system audio; nothing is recorded or kept.</li>
     <li>Nothing leaves your Mac: no network, no account, no telemetry.</li>
   </ul>
 
@@ -92,26 +92,26 @@
     </template>
     <div class="tiles">
       <figure>
-        <noscript><picture><source media="(prefers-color-scheme: dark)" srcset="assets/img/code-night.png"><img src="assets/img/code-day.png" width="540" height="304" alt="Code: a curtain of faint mirrored glyphs in columns over the whole dim, brighter streams falling through it, a few nearer ones larger and softer."></picture></noscript>
-        <div class="fit js tile" data-mode="code" role="img" aria-label="Code: a dense curtain of mirrored glyphs on the dim, most of them faint, with brighter streams falling through it, each column at its own pace, a few nearer streams larger and softer; while keys come, more streams fall, longer and brighter, and each key lights its glyph where it sits on the keyboard."></div>
+        <noscript><picture><source media="(prefers-color-scheme: dark)" srcset="assets/img/code-night.png"><img src="assets/img/code-day.png" width="540" height="304" alt="Code: a curtain of faint mirrored characters in columns over the whole dimmed screen, brighter streams falling through it, a few nearer ones larger and softer."></picture></noscript>
+        <div class="fit js tile" data-mode="code" role="img" aria-label="Code: a dense curtain of mirrored characters on the dimmed screen, most of them faint, with brighter streams falling through it, each column at its own pace, a few nearer streams larger and softer; while keys come, more streams fall, longer and brighter, and each key lights its character where it sits on the keyboard."></div>
         <figcaption>Code</figcaption>
       </figure>
       <figure>
-        <noscript><picture><source media="(prefers-color-scheme: dark)" srcset="assets/img/water-night.png"><img src="assets/img/water-day.png" width="540" height="304" alt="Still water: rain on still water seen from above, hundreds of rings on the dim, most small and faint, a few large with a second crest behind the first."></picture></noscript>
+        <noscript><picture><source media="(prefers-color-scheme: dark)" srcset="assets/img/water-night.png"><img src="assets/img/water-day.png" width="540" height="304" alt="Still water: rain on still water seen from above, hundreds of rings on the dimmed screen, most small and faint, a few large with a second crest behind the first."></picture></noscript>
         <div class="fit js tile" data-mode="water" role="img" aria-label="Still water: rain on still water seen from above, hundreds of drops a second in gusts and lulls, many small rings that fade fast, a few large ones with crests behind them; while keys come, the rain gets heavier, and each word drops a large ring where its last key sits."></div>
         <figcaption>Still water</figcaption>
       </figure>
     </div>
-    <p class="cap">On the dim while you write: Code (the default), Still water, or off.</p>
+    <p class="cap">On the dimmed screen while you write: Code (the default), Still water, or off.</p>
   </section>
 </main>
 
 <footer class="foot">
-  <p>Keychron pack: Keychron K10 key sounds by <a href="https://freesound.org/people/Sadiquecat/packs/38565/">Sadiquecat</a> on Freesound, CC0; the clicks on this page are from it.</p>
+  <p>Keychron pack: Keychron K10 key sounds by <a href="https://freesound.org/people/Sadiquecat/packs/38565/">Sadiquecat</a> on Freesound, CC0; the key sounds on this page are from it.</p>
   <p>Soft pack: MacBook Air M2 and FUJITSU key sounds by <a href="https://freesound.org/people/Sadiquecat/packs/38565/">Sadiquecat</a> on Freesound, CC0.</p>
   <p>Typewriter pack: Silver Typewriter (Keystroke), (Space Bar), (Carriage Return Lever 3) and (Margin Release and Carriage Return) by <a href="https://freesound.org/people/moodyfingers/packs/40966/">moodyfingers</a> on Freesound, CC0.</p>
   <p>Electric pack: <a href="https://freesound.org/people/magedu/sounds/277721/">typewriter_electric_typing_01.wav</a>, <a href="https://freesound.org/people/magedu/sounds/277724/">typewriter_electric_spacebar.wav</a>, <a href="https://freesound.org/people/magedu/sounds/319944/">typewriter_electric_spacebar_several_times.wav</a> and <a href="https://freesound.org/people/magedu/sounds/319945/">typewriter_electric_return.wav</a> by <a href="https://freesound.org/people/magedu/">magedu</a>, from the pack <a href="https://freesound.org/people/magedu/packs/17107/">Typewriter</a>, licensed under CC BY 4.0; changed for Lemna: cut into single key sounds, high-pass filtered at 150 Hz, peak-normalised, some slowed and lowered in level, the return also spliced shorter.</p>
-  <p>Stone pack: Single rock hitting wood 1–4 by <a href="https://freesound.org/people/worthahep88/">worthahep88</a> on Freesound, CC0; the Return and the send from the <a href="https://github.com/sgossner/VCSL">Versilian Community Sample Library</a> (VCSL), CC0. Rain bed: a recording by <a href="https://freesound.org/people/felix.blume/sounds/585845/">felix.blume</a> on Freesound, CC0.</p>
+  <p>Stone pack: Single rock hitting wood 1–4 by <a href="https://freesound.org/people/worthahep88/">worthahep88</a> on Freesound, CC0; the Return and paste sounds from the <a href="https://github.com/sgossner/VCSL">Versilian Community Sample Library</a> (VCSL), CC0. Rain bed: a recording by <a href="https://freesound.org/people/felix.blume/sounds/585845/">felix.blume</a> on Freesound, CC0.</p>
   <p>Lab bed: <a href="https://freesound.org/people/qubodup/sounds/212025/">Sci-fi Laboratory Ambience</a> by <a href="https://freesound.org/people/qubodup/">Iwan ‘qubodup’ Gabovitch</a> with sounds by wolick, swiftoid, Diboz, licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> (the author’s description gives <a href="https://creativecommons.org/licenses/by/3.0/legalcode">CC BY 3.0</a>); changed for Lemna: 90 s of it cut and looped, its end crossfaded over its head, high-pass filtered at 80 and 120 Hz, lowered in level, and for this page encoded as AAC at 64 kbit/s; no warranties are given. Ship, Space and Synth beds: <a href="https://freesound.org/people/jaava73/sounds/45347/">inside spaceship.wav</a> by jaava73, <a href="https://freesound.org/people/Sonicfreak/sounds/174450/">Space Ambience.wav</a> by Sonicfreak and <a href="https://freesound.org/people/PhonZz/sounds/242773/">Angelic Pad Loop.wav</a> by PhonZz on Freesound, CC0.</p>
   <p>Literata by the <a href="https://github.com/googlefonts/literata">Literata Project Authors</a>, under the SIL Open Font License 1.1 (<a href="assets/fonts/OFL.txt">its text</a>); this page serves its Latin characters.</p>
   <p>No cookies, no analytics, no third-party requests.</p>

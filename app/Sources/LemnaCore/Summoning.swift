@@ -38,7 +38,7 @@ public enum StatusMark {
 /// whichever comes first while the output is Bluetooth and the clicks are heard. With the sound off or the clicks muted
 /// (⌥⌘K, pass 42) there is nothing to warn about; with the hint unticked in Settings (pass 42) it never shows.
 public struct BluetoothNotice {
-    public static let text = "Bluetooth output: clicks arrive late · ⌥⌘K mutes them"
+    public static let text = "Bluetooth delays key sounds · ⌥⌘K mutes them"
     private var shown = false
 
     public init() {}
@@ -69,10 +69,10 @@ public struct LoginItem {
 
     public init(_ status: Status) {
         switch status {
-        case .notRegistered: (title, ticked, act) = ("Start at Login", false, .register)
-        case .enabled: (title, ticked, act) = ("Start at Login", true, .unregister)
+        case .notRegistered: (title, ticked, act) = ("Open at Login", false, .register)
+        case .enabled: (title, ticked, act) = ("Open at Login", true, .unregister)
         case .requiresApproval:
-            (title, ticked, act) = ("Start at Login (approve in System Settings)", true, .openSettings)
+            (title, ticked, act) = ("Open at Login (Approve in System Settings)", true, .openSettings)
         }
     }
 }

@@ -686,7 +686,8 @@ struct Writer {
 /// back" once the restored text, or typing, is undone and nothing is left to undo; "Nothing to bring back" with nothing
 /// kept and nothing to redo, on the empty line and over a session restored at launch alike.
 @Test func aCommandZThatBringsNothingBackSaysWhy() {
-    #expect(SecondChance.redoNote == "⌘⇧Z brings it back" && SecondChance.nothingNote == "Nothing to bring back")
+    #expect(SecondChance.redoNote == "Nothing more to undo · ⇧⌘Z brings it back"
+        && SecondChance.nothingNote == "Nothing to bring back")
     func commandZ(_ w: inout Writer, _ chance: inout SecondChance) -> String? {
         let change = w.history.canUndo ? w.undo() : w.restore(&chance)
         return SecondChance.note(after: change, canUndo: w.history.canUndo, canRedo: w.history.canRedo)
