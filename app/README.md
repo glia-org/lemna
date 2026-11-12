@@ -94,7 +94,7 @@ git-ignored.
   each physical key is on a MacBook's main block, ANSI and ISO (pass 16),
   `Mechanical.swift`
   the deterministic pass R1, `Session.swift` the end of a session as a state machine, `Summoning.swift` the menu-bar
-  mark, when the Bluetooth notice shows and since pass 20 Start at Login's title and tick (`LoginItem`), `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`), since pass 23 its beds and when the bed plays (`BedChoice`), `Theme.swift` (pass 21) the themes, one literal each (`Theme`: palettes for day and night, type, box, motion, the preset's defaults; `Theme.all`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
+  mark, when the Bluetooth notice shows and since pass 20 Start at Login's title and tick (`LoginItem`), `Sound.swift` the Sound submenu's packs and what ⌘K does (`SoundChoice`, since pass 42 ⌥⌘K's clicks-only mute too), since pass 23 its beds and when the bed plays (`BedChoice`), `Theme.swift` (pass 21) the themes, one literal each (`Theme`: palettes for day and night, type, box, motion, the preset's defaults; `Theme.all`), `Box.swift` the box's frame on a screen (`BoxFrame`), which container
   holds the line (`Surface`) and when a click outside or, since pass 26, another app in front hides the box
   (`ClickOutside`), `Paste.swift` the paste's
   decision table, and since pass 17a its steps in order (`Paste.acts`) and the wait for Return to come up
@@ -213,6 +213,8 @@ Milestone 4 in the app, the clicks (K1):
 - Bluetooth: when the output is Bluetooth at launch, after the output device changes, or when the sound is turned on,
   the surface's bottom edge says `Bluetooth output: clicks arrive late · ⌘K mutes` (12 pt system font, `#5c646f`,
   centred, 12 pt above the bottom), once per output, only while the sound is on; it fades out over 1 s after 5 s.
+  (Since pass 42 it says `Bluetooth output: clicks arrive late · ⌥⌘K mutes them`, and only while the clicks are not
+  muted and Settings' "Show the Bluetooth hint" is ticked, below.)
 
 Milestone 5, summoning (W1); the session frame (M1) it also brought went in pass 10:
 
@@ -1841,3 +1843,45 @@ Pass 41b, ⌘Z's note (DESIGN.md O1+O2+O3 amended; 2026-11-11)
 - Pass 41b is not tried. A ⌘Z or ⌘⇧Z that changes the text clears the note (`onNote(nil)`), as a typed key does, so
   "⌘⇧Z brings it back" goes when ⌘⇧Z does; a hand-off's note goes the same way. A dead key pending on the empty line with nothing to undo: ⌘Z does
   nothing and says "Nothing to bring back", though a kept text would come back once the pending text is gone.
+
+Pass 42, a clicks-only mute (DESIGN.md K1 and SP2 amended; 2026-11-12; the user's decision of 2026-11-12)
+
+- Why: ⌘K silences the bed with the clicks, so there was no way to keep the bed and drop the clicks, which over
+  Bluetooth arrive 120–300 ms late; and the Bluetooth notice could not be turned off.
+- `Sound.swift` (LemnaCore): `SoundChoice.clicksMuted` (the init's `clicksMuted:`, false by default) and
+  `toggleClicks()`, which changes the flag alone; `choose` clears it (a pack is chosen to be heard, as it turns the
+  sound on), `preset` (a theme's pack) and `toggle` (⌘K) leave it.
+- `lib/LemnaClicks`: `ClickPlayer.clicksMuted`: `play` returns at once while it is set; `startBed`, `stopBed` and the
+  engine are untouched, and `enabled` keeps its meaning. The silencing lives in the player because every click goes
+  through `play`: the line's keys (seven call sites in `LineView.swift`), ⌘⏎'s send and the Return of Copy, Save… and
+  a ⌘⏎ that copies (five in `main.swift`); one check covers them all and any added later.
+- `main.swift`: `clicksMuted` (false) and `bluetoothHint` (true) registered with the other defaults and read at
+  launch. `toggleClicks(_:)` (Session › Sound ▸ Mute Clicks, ⌥⌘K) goes through `keepSound`, which writes the flag,
+  hands it to the player and checks the Bluetooth notice, as ⌘K does; `validateMenuItem` ticks the item while the
+  flag is set, the sound on or off (the flag is kept either way). `soundMenu` puts the item after Off, so the hidden
+  Session menu and the menu-bar item's Sound ▸ both have it; the box's `sendEvent` hands ⌥⌘K to the menu as any ⌘
+  chord. `keepHint` keeps the Settings checkbox.
+- `Summoning.swift` (LemnaCore): `BluetoothNotice.text` is "Bluetooth output: clicks arrive late · ⌥⌘K mutes them";
+  `check(bluetooth:sound:clicksMuted:hint:)` shows it only with the clicks heard and the hint ticked, still once per
+  output, so ⌥⌘K turning the clicks back on over Bluetooth shows it as the sound turned on does, if not yet shown for
+  this output. Muting the clicks while it shows calls nothing on the edge, so it fades as it would. The hint unticked
+  leaves the notice unshown for the output, so ticking it again lets the next check (a summon) show it.
+- `Settings.swift`: the checkbox "Show the Bluetooth hint" after Bed in the Sound group (the `sound` closure gains
+  `hint`, `tickHint` keeps it). It hides nothing else: ⌘Z's notes and the hand-offs' notes are `showNote`, not the
+  notice. No clicks-mute control here. The window is 427 × 822 pt inside its title bar (781 before), measured offscreen
+  with a throwaway build of its code (the same build of the code before this pass gave 781).
+- `Shortcuts.overview`: a ⌥⌘K row after ⌘K's, "Clicks off, on". ⌥⌘K is now Lemna's own key, so the summon field
+  refuses it ("Mute Clicks uses ⌥⌘K in the box.") and a summon chord kept as ⌥⌘K reads as the default at the next
+  launch (SC2).
+- Tests: 196 (194 before; new `commandOptionKMutesTheClicksAloneUntilAPackIsChosen` in `SoundTests`,
+  `bluetoothNoticeWaitsForTheClicksAndTheHint` in `FrameTests`; `theOverviewListsEachChordOnceAsMenusWriteIt` lists
+  ⌥⌘K, `lemnasOwnKeysAreRefusedAndTheSystemsWarned` refuses it). LemnaClicks: `theBedFadesInAndOutOnTheEngine` plays
+  a letter and a send with `clicksMuted` set while the bed plays: nothing reaches the mixer, the bed stays at its level
+  and the engine runs; 26 tests run, `playReturnsInMicroseconds` (audible clicks) skipped. Debug build without
+  warnings; nothing launched.
+
+## Known gaps
+
+- Pass 42 is not tried. Untried: ⌥⌘K in the box and in the window; the bed playing on while the clicks are muted;
+  the notice's new text over Bluetooth, and its fade when ⌥⌘K mutes the clicks while it shows; the checkbox; a pack
+  chosen clearing the mute; the flag across a relaunch. Nothing was listened to.

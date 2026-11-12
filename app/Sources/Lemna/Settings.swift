@@ -147,11 +147,12 @@ private final class SettingsWindow: NSWindow {
 /// "Show Lemna:", the field, Reset to ⌃⌥Space (grey while the chord is ⌃⌥Space), and under them a grey line saying
 /// how the chord stands, empty while there is nothing to say, or what to do while the field listens. Sound: Play sound
 /// (⌘K's on or off), the clicks' pack and the bed, as Session › Sound ▸ has them; they call the menu's own actions, and
-/// the app refreshes them whenever those keep a change, made here or in a menu. Ambience (pass 39, here alone): the
-/// mode on the dim, Code, Still water or Off, by the submenu's action it replaces, refreshed the same way (a theme's
-/// preset writes it too). Other sound (pass 40, DK1, after Sound): the checkbox that shades other apps while the box
-/// is up, what it does and needs in a few plain sentences, and a line saying how it stands. Shortcuts in the box: the
-/// fixed chords, read-only (`Shortcuts.overview`). The app supplies the state and acts on what the controls ask.
+/// the app refreshes them whenever those keep a change, made here or in a menu; since pass 42 "Show the Bluetooth
+/// hint", which no menu has. Ambience (pass 39, here alone): the mode on the dim, Code, Still water or Off, by the
+/// submenu's action it replaces, refreshed the same way (a theme's preset writes it too). Other sound (pass 40, DK1,
+/// after Sound): the checkbox that shades other apps while the box is up, what it does and needs in a few plain
+/// sentences, and a line saying how it stands. Shortcuts in the box: the fixed chords, read-only
+/// (`Shortcuts.overview`). The app supplies the state and acts on what the controls ask.
 final class Settings: NSObject, NSWindowDelegate {
     let window: NSWindow = SettingsWindow(contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered,
                                           defer: true)
@@ -160,6 +161,7 @@ final class Settings: NSObject, NSWindowDelegate {
     private let help = NSTextField(wrappingLabelWithString: "")
     private let soundBox = NSButton(checkboxWithTitle: "Play sound", target: nil, action: nil)
     private let pack = NSPopUpButton(frame: .zero, pullsDown: false), bed = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let hintBox = NSButton(checkboxWithTitle: "Show the Bluetooth hint", target: nil, action: nil)
     private let mode = NSPopUpButton(frame: .zero, pullsDown: false)
     private let duckBox = NSButton(checkboxWithTitle: "Quieten other apps while the box is up", target: nil, action: nil)
     private let duckAbout = NSTextField(wrappingLabelWithString: Settings.duckAbout)
@@ -178,12 +180,14 @@ final class Settings: NSObject, NSWindowDelegate {
     /// The field began or ended listening: the hotkey pauses meanwhile.
     var pause: (Bool) -> Void = { _ in }
     /// The sound as Session › Sound ▸ has it: on or off, the pack's place in `SoundChoice.packs`, the bed's in
-    /// `BedChoice.beds` (nil: none).
-    var sound: () -> (on: Bool, pack: Int, bed: Int?) = { (true, 0, nil) }
+    /// `BedChoice.beds` (nil: none); and whether the Bluetooth notice may show (pass 42).
+    var sound: () -> (on: Bool, pack: Int, bed: Int?, hint: Bool) = { (true, 0, nil, true) }
     /// The menu's own actions, given the item they would get: Off (⌘K), a pack, a bed (tag −1: No bed).
     var toggleSound: () -> Void = {}
     var choosePack: (NSMenuItem) -> Void = { _ in }
     var chooseBed: (NSMenuItem) -> Void = { _ in }
+    /// The Bluetooth hint ticked or unticked (pass 42).
+    var tickHint: (Bool) -> Void = { _ in }
     /// The ambience shown: the mode's place in `Ambience.Mode.allCases` (nil: Off), and whether the modes are offered
     /// (not under Reduce Motion); and the action the submenu's items had (tag −1: Off).
     var ambience: () -> (mode: Int?, available: Bool) = { (nil, true) }
@@ -206,6 +210,7 @@ final class Settings: NSObject, NSWindowDelegate {
         reset.bezelStyle = .push
         (reset.target, reset.action) = (self, #selector(resetPressed))
         (soundBox.target, soundBox.action) = (self, #selector(soundToggled))
+        (hintBox.target, hintBox.action) = (self, #selector(hintToggled))
         (duckBox.target, duckBox.action) = (self, #selector(duckToggled))
         for t in [duckAbout, duckLine] {
             t.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
@@ -243,7 +248,7 @@ final class Settings: NSObject, NSWindowDelegate {
             [header("Shortcut"), none], [NSTextField(labelWithString: "Show Lemna:"), chord], [none, help],
             [separator(), none],
             [header("Sound"), none], [none, soundBox], [NSTextField(labelWithString: "Clicks:"), pack],
-            [NSTextField(labelWithString: "Bed:"), bed],
+            [NSTextField(labelWithString: "Bed:"), bed], [none, hintBox],
             [separator(), none],
             [header("Other sound"), none], [none, duckBox], [none, duckAbout], [none, duckLine],
             [separator(), none],
@@ -345,10 +350,12 @@ final class Settings: NSObject, NSWindowDelegate {
         soundBox.state = s.on ? .on : .off
         pack.selectItem(withTag: s.pack)
         bed.selectItem(withTag: s.bed ?? -1)
+        hintBox.state = s.hint ? .on : .off
     }
 
     @objc private func resetPressed() { resetChord() }
     @objc private func soundToggled() { toggleSound() }
+    @objc private func hintToggled() { tickHint(hintBox.state == .on) }
     @objc private func packChosen() { pack.selectedItem.map(choosePack) }
     @objc private func bedChosen() { bed.selectedItem.map(chooseBed) }
     @objc private func modeChosen() { mode.selectedItem.map(chooseAmbience) }

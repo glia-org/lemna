@@ -545,7 +545,7 @@ private var hasOutput: Bool { OutputDevice.defaultID() != nil }
     }
 
     /// Plays the rain for about half a second, quietly: decoded off the main thread, faded in and out on the engine,
-    /// silenced by `enabled`, taken off by `bed = nil`.
+    /// left playing by `clicksMuted`, silenced by `enabled`, taken off by `bed = nil`.
     @Test(.enabled(if: hasOutput, "no audio output device: engine test skipped")) @MainActor
     func theBedFadesInAndOutOnTheEngine() async throws {
         let player = try ClickPlayer(pack: defaultPack())
@@ -580,6 +580,12 @@ private var hasOutput: Bool { OutputDevice.defaultID() != nil }
         player.startBed(fadeIn: 0.05)
         try await Task.sleep(nanoseconds: 200_000_000)
         #expect(loop.level == 1)
+        player.clicksMuted = true  // ⌥⌘K: the clicks alone; the bed plays on, the engine runs
+        player.play(.letter)
+        player.play(.send)
+        try await Task.sleep(nanoseconds: 100_000_000)
+        #expect(player.mixer.consumed == 0 && loop.level == 1 && player.engine.isRunning)
+        player.clicksMuted = false
         player.enabled = false  // ⌘K: the bed with the clicks
         player.startBed()
         player.enabled = true

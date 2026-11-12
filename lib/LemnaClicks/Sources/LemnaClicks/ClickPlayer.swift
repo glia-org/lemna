@@ -34,6 +34,10 @@ public final class ClickPlayer {
         }
     }
 
+    /// The clicks alone silent: `play` does nothing, the bed plays on as it is asked to and the engine keeps running
+    /// (Lemna's Mute Clicks, ⌥⌘K). Apart from `enabled`, which still silences both.
+    public var clicksMuted = false
+
     /// 0–1, applied at the main mixer's input.
     public var volume: Float = 0.6 {
         didSet { source.volume = Self.clamp(volume) }
@@ -165,7 +169,7 @@ public final class ClickPlayer {
     /// Call on key-down from the key handler, from one thread at a time (the main thread in the
     /// app). Returns in microseconds: no allocation, no lock, no node or engine call.
     public func play(_ kind: KeyKind) {
-        guard enabled, pickers.indices.contains(pack) else { return }
+        guard enabled, !clicksMuted, pickers.indices.contains(pack) else { return }
         let (sample, rate) = pickers[pack].next(kind)
         mixer.trigger(sample: sample, rate: rate)
     }

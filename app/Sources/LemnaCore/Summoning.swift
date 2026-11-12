@@ -34,10 +34,11 @@ public enum StatusMark {
 }
 
 /// The Bluetooth notice (K1): Bluetooth output plays every click 120–300 ms late, which no app can shorten, so the
-/// surface says so once per output: at launch, after the output changed, or when the sound is turned on, whichever
-/// comes first while the output is Bluetooth and the sound is on. With the sound off there is nothing to warn about.
+/// surface says so once per output: at launch, after the output changed, or when the sound or the clicks are turned on,
+/// whichever comes first while the output is Bluetooth and the clicks are heard. With the sound off or the clicks muted
+/// (⌥⌘K, pass 42) there is nothing to warn about; with the hint unticked in Settings (pass 42) it never shows.
 public struct BluetoothNotice {
-    public static let text = "Bluetooth output: clicks arrive late · ⌘K mutes"
+    public static let text = "Bluetooth output: clicks arrive late · ⌥⌘K mutes them"
     private var shown = false
 
     public init() {}
@@ -45,9 +46,10 @@ public struct BluetoothNotice {
     /// The default output changed: the next check may show the notice again.
     public mutating func outputChanged() { shown = false }
 
-    /// Whether to show the notice now.
-    public mutating func check(bluetooth: Bool, sound: Bool) -> Bool {
-        guard bluetooth, sound, !shown else { return false }
+    /// Whether to show the notice now. `hint`: Settings' "Show the Bluetooth hint"; unticked, the notice stays unshown
+    /// for this output, so ticking it again lets the next check show it.
+    public mutating func check(bluetooth: Bool, sound: Bool, clicksMuted: Bool = false, hint: Bool = true) -> Bool {
+        guard bluetooth, sound, !clicksMuted, hint, !shown else { return false }
         shown = true
         return true
     }

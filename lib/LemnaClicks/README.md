@@ -15,6 +15,7 @@ let all = try ClickPlayer(packs: ["DefaultPack", "TypewriterPack"].map { try Sou
 all.pack = 1                      // which pack plays: an index, every pack is loaded already
 clicks.play(.letter)              // on key-down: .letter, .space, .paragraph (Return), .backspace; .send (⌘⏎'s paste)
 clicks.enabled = false            // play() and startBed() do nothing, the bed stops, the engine pauses
+clicks.clicksMuted = true         // play() alone does nothing: the bed plays on, the engine runs (Lemna's ⌥⌘K)
 clicks.volume = 0.6               // 0–1, the default
 clicks.bed = try Bed.bundled("Rain")  // the ambient bed: decoded off the main thread; nil takes it off, frees it
 clicks.startBed()                 // fade in over 1.5 s (fadeIn:) from the level it has; before the decode is done too

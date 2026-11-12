@@ -44,12 +44,14 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     func applicationDidFinishLaunching(_ notification: Notification) {
         // The launch defaults (pass 32): the sound on with the first pack, the Lab bed, Code on the dim, the Still theme;
         // a key once written by a menu keeps its own value. Since pass 36 the summon chord too, ⌃⌥Space (SD2).
-        // Since pass 40 other sound (DK1), off.
+        // Since pass 40 other sound (DK1), off; since pass 42 the clicks not muted and the Bluetooth hint shown.
         UserDefaults.standard.register(defaults: [Self.soundKey: true, Self.bedKey: "Lab", Self.ambienceKey: "code",
                                                   Self.themeKey: "still", Self.hotkeyKey: Chord.summon.stored,
-                                                  Self.duckKey: false])
+                                                  Self.duckKey: false, Self.mutedKey: false, Self.hintKey: true])
         choice = SoundChoice(pack: UserDefaults.standard.string(forKey: Self.packKey),
-                             on: UserDefaults.standard.bool(forKey: Self.soundKey))
+                             on: UserDefaults.standard.bool(forKey: Self.soundKey),
+                             clicksMuted: UserDefaults.standard.bool(forKey: Self.mutedKey))
+        hint = UserDefaults.standard.bool(forKey: Self.hintKey)
         bedChoice = BedChoice(kept: UserDefaults.standard.string(forKey: Self.bedKey))
         effects = Effects(kept: UserDefaults.standard.dictionary(forKey: Self.effectsKey) as? [String: Bool])
         ambience = Ambience(kept: UserDefaults.standard.string(forKey: Self.ambienceKey))
@@ -122,8 +124,9 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
 
     // MARK: Clicks (K1)
 
-    /// `sound`: on or off, as before the submenu; `soundPack`: the chosen pack's folder.
-    private static let soundKey = "sound", packKey = "soundPack"
+    /// `sound`: on or off, as before the submenu; `soundPack`: the chosen pack's folder; `clicksMuted`: Mute Clicks
+    /// (⌥⌘K, pass 42); `bluetoothHint`: Settings' "Show the Bluetooth hint" (pass 42).
+    private static let soundKey = "sound", packKey = "soundPack", mutedKey = "clicksMuted", hintKey = "bluetoothHint"
     /// Session › Sound: the pack and whether it plays, kept across launches (read at launch).
     private var choice = SoundChoice(pack: nil, on: true)
     private var sound: Bool { choice.on }
@@ -135,6 +138,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
             let c = try ClickPlayer(packs: SoundChoice.packs.map { try SoundPack.bundled($0.folder) })
             c.pack = choice.index
             c.enabled = sound
+            c.clicksMuted = choice.clicksMuted
             c.onOutputChanged = { [unowned self] in
                 self.notice.outputChanged()
                 self.warnIfBluetooth()
@@ -148,13 +152,23 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         }
     }
 
-    /// Bluetooth output plays every click late: the surface's bottom edge says so once per output, while sound is on,
-    /// and only while a container is on screen (else the notice would fade unseen and count as told); each summon
-    /// checks again.
+    /// Bluetooth output plays every click late: the surface's bottom edge says so once per output, while sound is on
+    /// and the clicks are not muted, unless the hint is unticked in Settings (pass 42), and only while a container is
+    /// on screen (else the notice would fade unseen and count as told); each summon checks again. Muting the clicks
+    /// while it shows leaves it to its fade.
     private func warnIfBluetooth() {
-        guard surface.onScreen != nil, let clicks, notice.check(bluetooth: clicks.isBluetoothOutput, sound: sound)
+        guard surface.onScreen != nil, let clicks, notice.check(bluetooth: clicks.isBluetoothOutput, sound: sound,
+                                                                clicksMuted: choice.clicksMuted, hint: hint)
         else { return }
         edge.showNotice()
+    }
+
+    /// Settings' "Show the Bluetooth hint" (pass 42), kept across launches (read at launch); it hides nothing else.
+    private var hint = true
+
+    private func keepHint(_ on: Bool) {
+        hint = on
+        UserDefaults.standard.set(on, forKey: Self.hintKey)
     }
 
     /// Session › Sound › Off (⌘K), also in the menu-bar item: clicks off, or, while off, back on with the last pack.
@@ -163,8 +177,16 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         keepSound()
     }
 
-    /// A pack from Session › Sound (the item's tag is its place in `SoundChoice.packs`): the next key plays it, and the
-    /// sound is on.
+    /// Session › Sound › Mute Clicks (⌥⌘K, pass 42), also in the menu-bar item: the key clicks, the send and the Return
+    /// of Copy, Save… and a ⌘⏎ that copies silent, or back; the bed plays as before. While the sound is off only the
+    /// flag changes.
+    @objc func toggleClicks(_ sender: Any?) {
+        choice.toggleClicks()
+        keepSound()
+    }
+
+    /// A pack from Session › Sound (the item's tag is its place in `SoundChoice.packs`): the next key plays it, the
+    /// sound is on and the clicks are not muted.
     @objc func chooseSound(_ sender: NSMenuItem) {
         choice.choose(SoundChoice.packs[sender.tag].folder)
         keepSound()
@@ -175,10 +197,12 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
     private func keepSound() {
         UserDefaults.standard.set(choice.on, forKey: Self.soundKey)
         UserDefaults.standard.set(choice.pack, forKey: Self.packKey)
+        UserDefaults.standard.set(choice.clicksMuted, forKey: Self.mutedKey)
         clicks?.pack = choice.index
         clicks?.enabled = sound
+        clicks?.clicksMuted = choice.clicksMuted  // `play` alone silent, the bed and the engine as they are
         updateBed()
-        warnIfBluetooth()  // turned on over Bluetooth: said once for this output
+        warnIfBluetooth()  // the sound or the clicks turned on over Bluetooth: said once for this output
         settings?.refreshSound()  // the window's Sound group follows every change, from it or from a menu (pass 37)
     }
 
@@ -484,10 +508,11 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         }
         s.pause = { [unowned self] in self.hotkey?.paused = $0 }
         // The Sound group (pass 37): the menu's own actions, so one path keeps the defaults, the player and the ticks.
-        s.sound = { [unowned self] in (self.sound, self.choice.index, self.bedChoice.index) }
+        s.sound = { [unowned self] in (self.sound, self.choice.index, self.bedChoice.index, self.hint) }
         s.toggleSound = { [unowned self] in self.toggleSound(nil) }
         s.choosePack = { [unowned self] in self.chooseSound($0) }
         s.chooseBed = { [unowned self] in self.chooseBed($0) }
+        s.tickHint = { [unowned self] in self.keepHint($0) }  // pass 42
         // The Ambience group (pass 39): the submenu's action, as the Sound group's are the menu's.
         // Reduce Motion ticks Off and greys the modes, read each time the group refreshes, as the submenu read it as
         // it opened.
@@ -812,6 +837,9 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
         case #selector(toggleSound(_:)):
             item.state = sound ? .off : .on  // Off is ticked while the sound is off
             return true
+        case #selector(toggleClicks(_:)):  // ticked while the clicks are muted, the sound on or off (the flag is kept)
+            item.state = choice.clicksMuted ? .on : .off
+            return true
         case #selector(chooseSound(_:)):
             item.state = sound && item.tag == choice.index ? .on : .off
             return true
@@ -1125,8 +1153,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemVa
 
 /// Session › Sound and the menu-bar item's Sound (K1): the packs as radio items, then the beds as a second group with
 /// No bed last (BD1), then Off ⌘K, which turns the sound off, bed and all, and, while it is off, back on with the last
-/// pack. `target` nil in the main menu (the App gets the actions as the delegate); the menu-bar item's menu names it,
-/// as Lemna may not be active.
+/// pack, and Mute Clicks ⌥⌘K (pass 42), the clicks alone, ticked while muted. `target` nil in the main menu (the App
+/// gets the actions as the delegate); the menu-bar item's menu names it, as Lemna may not be active.
 func soundMenu(target: AnyObject?) -> NSMenu {
     let menu = NSMenu(title: "Sound")
     for (i, pack) in SoundChoice.packs.enumerated() {
@@ -1145,6 +1173,9 @@ func soundMenu(target: AnyObject?) -> NSMenu {
     none.target = target
     menu.addItem(.separator())
     menu.addItem(withTitle: "Off", action: #selector(App.toggleSound(_:)), keyEquivalent: "k").target = target  // ⌘K
+    let mute = menu.addItem(withTitle: "Mute Clicks", action: #selector(App.toggleClicks(_:)), keyEquivalent: "k")
+    mute.keyEquivalentModifierMask = [.option, .command]  // ⌥⌘K
+    mute.target = target
     return menu
 }
 
@@ -1197,7 +1228,7 @@ func mainMenu() -> NSMenu {
     session.addItem(withTitle: "Close", action: #selector(App.closeWindow(_:)), keyEquivalent: "w")  // ⌘W
     session.addItem(.separator())
     session.addItem(withTitle: "Theme", action: nil, keyEquivalent: "").submenu = themeMenu(target: nil)
-    session.addItem(withTitle: "Sound", action: nil, keyEquivalent: "").submenu = soundMenu(target: nil)  // Off ⌘K
+    session.addItem(withTitle: "Sound", action: nil, keyEquivalent: "").submenu = soundMenu(target: nil)  // ⌘K, ⌥⌘K
     session.addItem(withTitle: "Effects", action: nil, keyEquivalent: "").submenu = effectsMenu(target: nil)
     edit.addItem(withTitle: "Undo", action: #selector(LineView.undo(_:)), keyEquivalent: "z")  // ⌘Z
     edit.addItem(withTitle: "Redo", action: #selector(LineView.redo(_:)), keyEquivalent: "Z")  // ⌘⇧Z: "Z" holds the ⇧

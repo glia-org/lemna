@@ -2,8 +2,27 @@
 
 `DESIGN.md` holds the decisions and the plan. This file says what is done and what is next.
 
-## State (2026-11-11)
+## State (2026-11-12)
 
+- App, pass 42, a clicks-only mute (2026-11-12; DESIGN.md K1 and SP2 amended, the user's decision): Session › Sound ▸
+  Mute Clicks, ⌥⌘K, after Off ⌘K (in both menus), ticked while muted: the key clicks, the send and the Return of Copy,
+  Save… and a ⌘⏎ that copies are silent, the bed plays as before, the engine runs (`ClickPlayer.clicksMuted`, checked in
+  `play`). Kept under `clicksMuted`. ⌘K unchanged; ⌥⌘K while the sound is off changes the flag alone; a pack chosen
+  (Sound ▸ or Settings' Clicks) clears it, a theme's preset does not. The Bluetooth notice now says "Bluetooth output:
+  clicks arrive late · ⌥⌘K mutes them" and shows only with the clicks heard and Settings' new "Show the Bluetooth hint"
+  ticked (Sound group, on by default, `bluetoothHint`; it hides no other note). The overview's ⌥⌘K row, "Clicks off,
+  on". The Settings window is 427 × 822 pt (781 before). Tests 196 (194); LemnaClicks 26 run (the audible click test
+  skipped); debug build only; nothing launched. Try, in the box and in the window (⌃⌘F):
+  - With a bed playing (Lab, the default), ⌥⌘K: the keys, ⌫ and Return go silent and the bed plays on, unbroken;
+    Sound ▸ shows Mute Clicks ticked. ⌥⌘K again: the clicks back. Then ⌘⏎ (the send), ⌘⇧⏎ and ⌘S with the clicks
+    muted: no send, no Return click.
+  - ⌥⌘K, then ⌘K (all off) and ⌘K again: the bed back, the clicks still muted. ⌘K off, ⌥⌘K, ⌘K on: the clicks back.
+  - Clicks muted, choose a pack in Sound ▸ (and once in Settings' Clicks pop-up): the clicks back with it.
+  - Clicks muted, quit and relaunch: still muted, Mute Clicks ticked.
+  - Over Bluetooth headphones: the notice's new text at the summon; ⌥⌘K while it shows: it fades after its 5 s as
+    before. Switch outputs away and back with the clicks muted: no notice; ⌥⌘K then: the notice once.
+  - Settings… → untick "Show the Bluetooth hint", switch to the headphones and summon: no notice; a ⌘⏎ that copies
+    still shows its note. Tick it again and summon: the notice once.
 - App, pass 41b, ⌘Z's note (2026-11-11; DESIGN.md O1+O2+O3 amended): a ⌘Z that changes nothing says why at the
   bottom edge, until the next key, Esc or an undo that changes the text: "⌘⇧Z brings it back" when nothing is left to undo and ⌘⇧Z has a group (the
   restored text taken away again), else "Nothing to bring back". Tests 194 (193); debug build only; nothing launched.

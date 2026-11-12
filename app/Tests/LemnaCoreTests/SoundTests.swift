@@ -1,5 +1,5 @@
 // The Sound submenu (K1): the packs, the default, a choice, and ⌘K; since pass 23 the bed (BD1): kept, chosen, and when
-// it plays; since pass 28 five beds.
+// it plays; since pass 28 five beds; since pass 42 ⌥⌘K, the clicks alone.
 import Darwin
 import Testing
 @testable import LemnaCore
@@ -27,6 +27,31 @@ import Testing
     #expect(s == SoundChoice(pack: "ElectricPack", on: true) && s.index == 3)
     s.choose("NoSuchPack")
     #expect(s == SoundChoice(pack: "ElectricPack", on: true))
+}
+
+/// ⌥⌘K (pass 42) mutes the clicks alone and is kept apart from ⌘K's on or off; a pack chosen clears it, a theme's
+/// preset leaves it.
+@Test func commandOptionKMutesTheClicksAloneUntilAPackIsChosen() {
+    #expect(!SoundChoice(pack: nil, on: true).clicksMuted)  // a first launch, or a build before pass 42
+    var s = SoundChoice(pack: "SoftPack", on: true, clicksMuted: true)  // as kept across launches
+    #expect(s.clicksMuted && s.on && s.index == 2)
+    s.toggleClicks()  // ⌥⌘K: back, the sound as it was
+    #expect(s == SoundChoice(pack: "SoftPack", on: true))
+    s.toggleClicks()
+    s.toggle()  // ⌘K off: the flag stays
+    #expect(s == SoundChoice(pack: "SoftPack", on: false, clicksMuted: true))
+    s.toggleClicks()  // ⌥⌘K while the sound is off: the flag alone, nothing turned on
+    #expect(s == SoundChoice(pack: "SoftPack", on: false))
+    s.toggleClicks()
+    s.toggle()  // ⌘K on again: the clicks follow the flag, still muted
+    #expect(s == SoundChoice(pack: "SoftPack", on: true, clicksMuted: true))
+    s.preset("StonePack")  // a theme's pack: the flag as it was, as the sound's on or off is
+    #expect(s == SoundChoice(pack: "StonePack", on: true, clicksMuted: true))
+    s.choose("NoSuchPack")
+    #expect(s.clicksMuted)
+    s.toggle()
+    s.choose("TypewriterPack")  // a pack chosen, in Sound ▸ or the Settings window: heard, the sound on too
+    #expect(s == SoundChoice(pack: "TypewriterPack", on: true))
 }
 
 @Test func theBedIsNoneUnlessOneWasKept() {

@@ -68,6 +68,23 @@ func drawMark(scale: Int, name: String) -> (CGFloat, CGFloat) -> UInt8 {
     #expect(!off && on)  // muted at launch: nothing to warn about, until the sound is turned on
 }
 
+/// Since pass 42: what the notice says, the clicks muted alone (⌥⌘K) counted as the sound off, and Settings' hint.
+@Test func bluetoothNoticeWaitsForTheClicksAndTheHint() {
+    #expect(BluetoothNotice.text == "Bluetooth output: clicks arrive late · ⌥⌘K mutes them")
+    var n = BluetoothNotice()
+    let muted = n.check(bluetooth: true, sound: true, clicksMuted: true, hint: true)
+    let back = n.check(bluetooth: true, sound: true, clicksMuted: false, hint: true)
+    let again = n.check(bluetooth: true, sound: true, clicksMuted: false, hint: true)
+    #expect(!muted && back && !again)  // ⌥⌘K back over Bluetooth: once, as the sound turned on
+    var hidden = BluetoothNotice()
+    let unticked = hidden.check(bluetooth: true, sound: true, clicksMuted: false, hint: false)
+    let ticked = hidden.check(bluetooth: true, sound: true, clicksMuted: false, hint: true)
+    #expect(!unticked && ticked)  // unticked: never; ticked again: once for this output, as it was not shown
+    var wired = BluetoothNotice()
+    let none = wired.check(bluetooth: false, sound: true, clicksMuted: false, hint: true)
+    #expect(!none)
+}
+
 @Test func startAtLoginFollowsTheStatus() {
     func look(_ s: LoginItem.Status) -> (String, Bool, LoginItem.Act) {
         let i = LoginItem(s)
